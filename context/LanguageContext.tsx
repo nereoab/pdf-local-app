@@ -19,6 +19,8 @@ const translations = {
       number: { title: 'Numerar Páginas', desc: 'Añade números de página (folios) a tus documentos con posición personalizable.' },
       rotate: { title: 'Rotar PDF', desc: 'Gira las páginas de tus documentos escaneados al revés.' },
       protect: { title: 'Proteger PDF', desc: 'Añade una contraseña para evitar que abran tus documentos confidenciales.' },
+      edit: { title: 'Añadir Texto', desc: 'Haz clic en cualquier parte...' },
+      word: { title: 'PDF a Word', desc: 'Convierte tu PDF a un documento de Word (.docx) para editar el texto libremente.' },
     },
     footer: {
       title: 'Procesamiento 100% Local y Seguro',
@@ -39,6 +41,8 @@ const translations = {
       number: { title: 'Number Pages', desc: 'Add page numbers (folios) to your documents with customizable positioning.' },
       rotate: { title: 'Rotate PDF', desc: 'Rotate pages of your scanned documents that are upside down.' },
       protect: { title: 'Protect PDF', desc: 'Add a password to prevent unauthorized access to your confidential documents.' },
+      edit: { title: 'Add Text', desc: 'Click anywhere on the PDF...' },
+      word: { title: 'PDF to Word', desc: 'Convert your PDF to a Word document (.docx) to edit the text freely.' }
     },
     footer: {
       title: '100% Local and Secure Processing',

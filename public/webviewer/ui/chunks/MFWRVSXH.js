@@ -1,0 +1,2 @@
+import{a as B}from"./RRGP5WIM.js";import{k as t,mc as A}from"./QAQ2OXCF.js";import{b as Z}from"./NSGJGDTO.js";import{e as C,h as g,j as I,k as b}from"./VEWNHGBN.js";g();b();I();g();b();I();var m=C(Z());var i=C(B()),G=C(t());var c=({height:l="50px",width:X="54px",inPanel:d=!1})=>A("div",{className:(0,i.default)("spinner",{"panel-type":d}),css:{height:l,width:X}});c.propTypes={height:G.default.string,width:G.default.string,inPanel:G.default.bool};var W=c;var e=W;export{e as a};
+//# sourceMappingURL=MFWRVSXH.js.map

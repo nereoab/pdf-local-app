@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/getAnnotationCreateToolNames.js"],
+  "sourcesContent": ["import core from 'core';\n\nexport default () => {\n  const toolNames = [];\n  const toolModeMap = core.getToolModeMap();\n\n  Object.keys(toolModeMap).forEach((toolMode) => {\n    const tool = toolModeMap[toolMode];\n    const isAnnotationTool = tool instanceof window.Core.Tools.GenericAnnotationCreateTool || tool instanceof window.Core.Tools.TextAnnotationCreateTool || tool.defaults;\n\n    if (isAnnotationTool) {\n      toolNames.push(tool.name);\n    }\n  });\n\n  return toolNames;\n};\n"],
+  "mappings": "yFAAAA,IAAAC,IAAAC,IAAAC,IAEA,IAAOC,EAAQ,IAAM,CACnB,IAAMC,EAAY,CAAC,EACbC,EAAcC,EAAK,eAAe,EAExC,cAAO,KAAKD,CAAW,EAAE,QAASE,GAAa,CAC7C,IAAMC,EAAOH,EAAYE,CAAQ,GACRC,aAAgB,OAAO,KAAK,MAAM,6BAA+BA,aAAgB,OAAO,KAAK,MAAM,0BAA4BA,EAAK,WAG3JJ,EAAU,KAAKI,EAAK,IAAI,CAE5B,CAAC,EAEMJ,CACT",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_core", "getAnnotationCreateToolNames_default", "toolNames", "toolModeMap", "core_default", "toolMode", "tool"]
+}

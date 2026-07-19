@@ -1,0 +1,2 @@
+import{S as u}from"./SDF3JQ66.js";import{h as r,j as o,k as a}from"./VEWNHGBN.js";r();a();o();r();a();o();var f=n=>e=>{if(!e){n();return}let{nativeEvent:t}=e,s=e.currentTarget.getAttribute("data-element");if(!s){console.warn("You used the useFocusHandler hook on an element without a data-element attribute. Please add a dataElement for the focus transfer to work correctly."),n(e);return}t.pointerType==="mouse"||t.detail>0?u.clear():(t.pointerType===""||t.pointerType===void 0)&&u.push(s),n(e)},i=f;var h=i;export{h as a};
+//# sourceMappingURL=P5BVR7XQ.js.map

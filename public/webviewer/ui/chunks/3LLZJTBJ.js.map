@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/getClassName.js"],
+  "sourcesContent": ["export default (className, { isOpen }) => [className, isOpen ? 'open' : 'closed'].join(' ').trim();\n"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAAA,IAAOC,EAAQ,CAACC,EAAW,CAAE,OAAAC,CAAO,IAAM,CAACD,EAAWC,EAAS,OAAS,QAAQ,EAAE,KAAK,GAAG,EAAE,KAAK",
+  "names": ["init_dirname", "init_buffer", "init_process", "getClassName_default", "className", "isOpen"]
+}

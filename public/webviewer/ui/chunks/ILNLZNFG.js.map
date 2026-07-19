@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/constants/theme.js"],
+  "sourcesContent": ["/**\n * String enumeration of available themes for WebViewer. Use these values to set the viewer's theme.\n * @name UI.Theme\n * @property {string} DARK The dark theme for WebViewer.\n * @property {string} LIGHT The light theme for WebViewer.\n * @example\n * WebViewer(...)\n *   .then(function(instance) {\n *     const theme = instance.UI.Theme;\n *     instance.UI.setTheme(theme.DARK);\n *   });\n */\n\nexport default {\n  DARK: 'dark',\n  LIGHT: 'light',\n};"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAaA,IAAOC,EAAQ,CACb,KAAM,OACN,MAAO,OACT",
+  "names": ["init_dirname", "init_buffer", "init_process", "theme_default"]
+}

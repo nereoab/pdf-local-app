@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/constants/autosave.js", "../../../src/ui/src/helpers/autosaveDraftReply.js"],
+  "sourcesContent": ["export const AUTO_SAVE_INDICATOR_TIMEOUT = 1000;\nexport const AUTO_SAVE_DEFAULT_TIMEOUT = 1000;\nexport const AUTOSAVE_DRAFT_REPLY_KEY = 'trn-autosave-draft-reply';\nexport const AUTOSAVE_DRAFT_REPLY_SOURCE = 'autosaveDraftReply';\nexport const AUTOSAVE_DRAFT_REPLY_COMMIT_SOURCE = 'autosaveDraftReplyCommit';\n", "import { AUTOSAVE_DRAFT_REPLY_KEY } from '../constants/autosave';\n\nexport const markAutosaveDraftReply = (annotation) => {\n  annotation.setCustomData(AUTOSAVE_DRAFT_REPLY_KEY, 'true');\n};\n\nexport const clearAutosaveDraftReply = (annotation) => {\n  annotation.setCustomData(AUTOSAVE_DRAFT_REPLY_KEY, '');\n};\n\nexport const isAutosaveDraftReply = (annotation) => annotation?.getCustomData?.(AUTOSAVE_DRAFT_REPLY_KEY) === 'true';"],
+  "mappings": "uDAAA,IAEaA,EACAC,EACAC,EAJbC,EAAAC,EAAA,KAAAC,IAAAC,IAAAC,IAEaP,EAA2B,2BAC3BC,EAA8B,qBAC9BC,EAAqC,6BCJlDM,IAAAC,IAAAC,IAAAC,IAEO,IAAMC,EAA0BC,GAAe,CACpDA,EAAW,cAAcC,EAA0B,MAAM,CAC3D,EAEaC,EAA2BF,GAAe,CACrDA,EAAW,cAAcC,EAA0B,EAAE,CACvD,EAEaE,EAAwBH,GAAeA,GAAY,gBAAgBC,CAAwB,IAAM",
+  "names": ["AUTOSAVE_DRAFT_REPLY_KEY", "AUTOSAVE_DRAFT_REPLY_SOURCE", "AUTOSAVE_DRAFT_REPLY_COMMIT_SOURCE", "init_autosave", "__esmMin", "init_dirname", "init_buffer", "init_process", "init_dirname", "init_buffer", "init_process", "init_autosave", "markAutosaveDraftReply", "annotation", "AUTOSAVE_DRAFT_REPLY_KEY", "clearAutosaveDraftReply", "isAutosaveDraftReply"]
+}

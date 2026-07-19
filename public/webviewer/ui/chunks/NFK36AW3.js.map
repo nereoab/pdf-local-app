@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/getGroupedLinkAnnotations.js"],
+  "sourcesContent": ["import core from 'core';\n\n// helper function to get all the link annotations that are grouped with the passed in annotation\nexport default (annotation) => {\n  const groupedLinks = [];\n  const groupedAnnotations = core.getAnnotationManager().getGroupAnnotations(annotation);\n  groupedAnnotations.forEach((annot) => {\n    const groupedLinksOfAnnot = annot.getGroupedChildren().filter((childrenAnnotation) => childrenAnnotation instanceof window.Core.Annotations.Link);\n    groupedLinks.push(...groupedLinksOfAnnot);\n  });\n\n  return groupedLinks;\n};\n"],
+  "mappings": "yFAAAA,IAAAC,IAAAC,IAAAC,IAGA,IAAOC,EAASC,GAAe,CAC7B,IAAMC,EAAe,CAAC,EAEtB,OAD2BC,EAAK,qBAAqB,EAAE,oBAAoBF,CAAU,EAClE,QAASG,GAAU,CACpC,IAAMC,EAAsBD,EAAM,mBAAmB,EAAE,OAAQE,GAAuBA,aAA8B,OAAO,KAAK,YAAY,IAAI,EAChJJ,EAAa,KAAK,GAAGG,CAAmB,CAC1C,CAAC,EAEMH,CACT",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_core", "getGroupedLinkAnnotations_default", "annotation", "groupedLinks", "core_default", "annot", "groupedLinksOfAnnot", "childrenAnnotation"]
+}

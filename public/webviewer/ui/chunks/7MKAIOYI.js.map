@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/node_modules/lodash/isString.js"],
+  "sourcesContent": ["var baseGetTag = require('./_baseGetTag'),\n    isArray = require('./isArray'),\n    isObjectLike = require('./isObjectLike');\n\n/** `Object#toString` result references. */\nvar stringTag = '[object String]';\n\n/**\n * Checks if `value` is classified as a `String` primitive or object.\n *\n * @static\n * @since 0.1.0\n * @memberOf _\n * @category Lang\n * @param {*} value The value to check.\n * @returns {boolean} Returns `true` if `value` is a string, else `false`.\n * @example\n *\n * _.isString('abc');\n * // => true\n *\n * _.isString(1);\n * // => false\n */\nfunction isString(value) {\n  return typeof value == 'string' ||\n    (!isArray(value) && isObjectLike(value) && baseGetTag(value) == stringTag);\n}\n\nmodule.exports = isString;\n"],
+  "mappings": "uGAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAC,IAAAC,IAAAC,IAAA,IAAIC,EAAa,IACbC,EAAU,IACVC,EAAe,IAGfC,EAAY,kBAmBhB,SAASC,EAASC,EAAO,CACvB,OAAO,OAAOA,GAAS,UACpB,CAACJ,EAAQI,CAAK,GAAKH,EAAaG,CAAK,GAAKL,EAAWK,CAAK,GAAKF,CACpE,CAEAP,EAAO,QAAUQ",
+  "names": ["require_isString", "__commonJSMin", "exports", "module", "init_dirname", "init_buffer", "init_process", "baseGetTag", "isArray", "isObjectLike", "stringTag", "isString", "value"]
+}

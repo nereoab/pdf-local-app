@@ -1,0 +1,2 @@
+import{a as f}from"./BCVWJDEL.js";import{P as c}from"./ZLBUS2AU.js";import{c as d,h as a,j as l,k as g}from"./VEWNHGBN.js";var T=d((y,u)=>{a();g();l();var E=f(),v=c(),x="Expected a function";function R(n,t,e){var r=!0,i=!0;if(typeof n!="function")throw new TypeError(x);return v(e)&&(r="leading"in e?!!e.leading:r,i="trailing"in e?!!e.trailing:i),E(n,t,{leading:r,maxWait:t,trailing:i})}u.exports=R});export{T as a};
+//# sourceMappingURL=KNXHTMO6.js.map

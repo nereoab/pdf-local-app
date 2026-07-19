@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/hooks/useDocumentLoadState.js"],
+  "sourcesContent": ["import { useEffect, useState } from 'react';\nimport useCore from './useCore';\n\nexport default function useDocumentLoadState() {\n  const { core } = useCore();\n  const [documentLoaded, setDocumentLoaded] = useState(!!core.getDocument());\n  useEffect(() => {\n    setDocumentLoaded(!!core.getDocument());\n    const onLoad = () => setDocumentLoaded(true);\n    const onUnload = () => setDocumentLoaded(false);\n    core.addEventListener('documentLoaded', onLoad);\n    core.addEventListener('documentUnloaded', onUnload);\n    return () => {\n      core.removeEventListener('documentLoaded', onLoad);\n      core.removeEventListener('documentUnloaded', onUnload);\n    };\n  }, [core]);\n  return documentLoaded;\n}"],
+  "mappings": "sHAAAA,IAAAC,IAAAC,IAAA,IAAAC,EAAoC,OAGrB,SAARC,GAAwC,CAC7C,GAAM,CAAE,KAAAC,CAAK,EAAIC,EAAQ,EACnB,CAACC,EAAgBC,CAAiB,KAAI,YAAS,CAAC,CAACH,EAAK,YAAY,CAAC,EACzE,sBAAU,IAAM,CACdG,EAAkB,CAAC,CAACH,EAAK,YAAY,CAAC,EACtC,IAAMI,EAAS,IAAMD,EAAkB,EAAI,EACrCE,EAAW,IAAMF,EAAkB,EAAK,EAC9C,OAAAH,EAAK,iBAAiB,iBAAkBI,CAAM,EAC9CJ,EAAK,iBAAiB,mBAAoBK,CAAQ,EAC3C,IAAM,CACXL,EAAK,oBAAoB,iBAAkBI,CAAM,EACjDJ,EAAK,oBAAoB,mBAAoBK,CAAQ,CACvD,CACF,EAAG,CAACL,CAAI,CAAC,EACFE,CACT",
+  "names": ["init_dirname", "init_buffer", "init_process", "import_react", "useDocumentLoadState", "core", "useCore_default", "documentLoaded", "setDocumentLoaded", "onLoad", "onUnload"]
+}

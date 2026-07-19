@@ -1,0 +1,2 @@
+import{e as s}from"./ONIDEO73.js";import{k as f,mc as o}from"./QAQ2OXCF.js";import{b as m}from"./NSGJGDTO.js";import{e as l,h as i,j as e,k as r}from"./VEWNHGBN.js";i();r();e();i();r();e();var v=l(m()),d=l(f());var t=({id:p,label:n})=>{let[u]=s();return o("div",{id:p,className:"visually-hidden",children:u(n)})};t.propTypes={id:d.default.string.isRequired,label:d.default.string.isRequired};var a=t;var x=a;export{x as a};
+//# sourceMappingURL=2DUMKEYZ.js.map

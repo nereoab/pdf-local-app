@@ -1,0 +1,2 @@
+import{h as s,j as n,k as r}from"./VEWNHGBN.js";s();r();n();(function(){var e=document.createElement("link");e.rel="stylesheet";var t=typeof import.meta<"u"&&import.meta.url||"",a=t?t.slice(0,t.lastIndexOf("/")+1):"";e.href=a+"theme-light.chunk.css",e.setAttribute("data-theme","light"),window.__apryseInsertCss?window.__apryseInsertCss(e,e.href):document.head.appendChild(e)})();
+//# sourceMappingURL=QQ7FU5CU.js.map

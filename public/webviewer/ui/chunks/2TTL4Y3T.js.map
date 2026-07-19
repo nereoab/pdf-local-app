@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/getColor.js"],
+  "sourcesContent": ["export default (color) => {\n  const parsedColor = (color?.toHexString?.() || '').substring(1);\n  return parsedColor;\n};\n"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAAA,IAAOC,EAASC,IACOA,GAAO,cAAc,GAAK,IAAI,UAAU,CAAC",
+  "names": ["init_dirname", "init_buffer", "init_process", "getColor_default", "color"]
+}

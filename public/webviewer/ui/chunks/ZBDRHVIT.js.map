@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/isAnnotationRenderedInDisplayMode.js"],
+  "sourcesContent": ["export const isAnnotationRenderedInDisplayMode = (core, annotation) => {\n  const pageCount = core.getTotalPages();\n  if (!annotation || !annotation.PageNumber || annotation.PageNumber > pageCount) {\n    return false;\n  }\n\n  const visiblePages = core.getDisplayModeObject().getVisiblePages();\n  const isAnnotationInVisiblePages = visiblePages.includes(annotation.PageNumber);\n  const isFocusableInCurrentDisplayMode = core.isContinuousDisplayMode() || (!core.isContinuousDisplayMode() && isAnnotationInVisiblePages);\n  return isFocusableInCurrentDisplayMode;\n};"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAAO,IAAMC,EAAoC,CAACC,EAAMC,IAAe,CACrE,IAAMC,EAAYF,EAAK,cAAc,EACrC,GAAI,CAACC,GAAc,CAACA,EAAW,YAAcA,EAAW,WAAaC,EACnE,MAAO,GAIT,IAAMC,EADeH,EAAK,qBAAqB,EAAE,gBAAgB,EACjB,SAASC,EAAW,UAAU,EAE9E,OADwCD,EAAK,wBAAwB,GAAM,CAACA,EAAK,wBAAwB,GAAKG,CAEhH",
+  "names": ["init_dirname", "init_buffer", "init_process", "isAnnotationRenderedInDisplayMode", "core", "annotation", "pageCount", "isAnnotationInVisiblePages"]
+}

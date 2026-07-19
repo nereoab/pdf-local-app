@@ -1,0 +1,2 @@
+import{h as r,j as a,k as s}from"./VEWNHGBN.js";r();s();a();(function(){var e=document.createElement("link");e.rel="stylesheet";var t=typeof import.meta<"u"&&import.meta.url||"",n=t?t.slice(0,t.lastIndexOf("/")+1):"";e.href=n+"theme-dark-modular.chunk.css",e.setAttribute("data-theme","dark-modular"),window.__apryseInsertCss?window.__apryseInsertCss(e,e.href):document.head.appendChild(e)})();
+//# sourceMappingURL=BRNZCAP2.js.map

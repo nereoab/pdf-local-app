@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["theme-scss:/home/admin/jenkins/workspace/iewer-npm-publisher_release_12.0/src/ui/src/components/App/App.scss?theme-light-modular"],
+  "sourcesContent": ["\n(function() {\n  var link = document.createElement('link');\n  link.rel = 'stylesheet';\n  // Resolve path relative to the current module's directory. We deliberately avoid\n  // `new URL('.', import.meta.url)` because webpack 5's asset-module parser (used by\n  // size-limit) treats the literal '.' as a static module specifier and fails with\n  // \"Can't resolve '.'\". Slicing the URL string ourselves gives the same runtime value\n  // without giving any bundler something to statically analyze.\n  var u = (typeof import.meta !== 'undefined' && import.meta.url) || '';\n  var base = u ? u.slice(0, u.lastIndexOf('/') + 1) : '';\n  link.href = base + \"theme-light-modular.chunk.css\";\n  link.setAttribute('data-theme', \"light-modular\");\n\n  if (window.__apryseInsertCss) {\n    window.__apryseInsertCss(link, link.href);\n  } else {\n    document.head.appendChild(link);\n  }\n})();\n"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,KACC,UAAW,CACV,IAAIC,EAAO,SAAS,cAAc,MAAM,EACxCA,EAAK,IAAM,aAMX,IAAIC,EAAK,OAAO,YAAgB,KAAe,YAAY,KAAQ,GAC/DC,EAAOD,EAAIA,EAAE,MAAM,EAAGA,EAAE,YAAY,GAAG,EAAI,CAAC,EAAI,GACpDD,EAAK,KAAOE,EAAO,gCACnBF,EAAK,aAAa,aAAc,eAAe,EAE3C,OAAO,kBACT,OAAO,kBAAkBA,EAAMA,EAAK,IAAI,EAExC,SAAS,KAAK,YAAYA,CAAI,CAElC,GAAG",
+  "names": ["init_dirname", "init_buffer", "init_process", "link", "u", "base"]
+}

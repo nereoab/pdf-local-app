@@ -1,0 +1,2 @@
+import{ec as s}from"./QAQ2OXCF.js";import{h as o,j as c,k as r}from"./VEWNHGBN.js";o();r();c();var b=(e,g)=>{if(!e)return"";if(e.actions?.U?.[0]instanceof window.Core.Actions.URI)return e.actions.U?.[0]?.uri;if(e.actions?.U?.[0]instanceof window.Core.Actions.GoTo){let t=g?.getState(),i=s.getPageLabels(t),n=s.isCustomPageLabelsEnabled(t),a=e.actions.U?.[0]?.dest.page;return`Page ${n?i[a-1]:a}`}return""},p=b;export{p as a};
+//# sourceMappingURL=ULNVSZWQ.js.map

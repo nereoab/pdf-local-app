@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/components/VisuallyHiddenLabel/index.js", "../../../src/ui/src/components/VisuallyHiddenLabel/VisuallyHiddenLabel.js"],
+  "sourcesContent": ["import VisuallyHiddenLabel from './VisuallyHiddenLabel';\n\nexport default VisuallyHiddenLabel;", "import React from 'react';\nimport PropTypes from 'prop-types';\nimport { useTranslation } from 'react-i18next';\n\nconst VisuallyHiddenLabel = ({ id, label }) => {\n  const [t] = useTranslation();\n\n  return (\n    <div\n      id={id}\n      className='visually-hidden'\n    >\n      {t(label)}\n    </div>\n  );\n};\n\nVisuallyHiddenLabel.propTypes = {\n  id: PropTypes.string.isRequired,\n  label: PropTypes.string.isRequired,\n};\n\nexport default VisuallyHiddenLabel;\n"],
+  "mappings": "qKAAAA,IAAAC,IAAAC,ICAAC,IAAAC,IAAAC,IAAA,IAAAC,EAAkB,OAClBC,EAAsB,OAGtB,IAAMC,EAAsB,CAAC,CAAE,GAAAC,EAAI,MAAAC,CAAM,IAAM,CAC7C,GAAM,CAACC,CAAC,EAAIC,EAAe,EAE3B,OACEC,EAAC,OACC,GAAIJ,EACJ,UAAU,kBAET,SAAAE,EAAED,CAAK,EACV,CAEJ,EAEAF,EAAoB,UAAY,CAC9B,GAAI,EAAAM,QAAU,OAAO,WACrB,MAAO,EAAAA,QAAU,OAAO,UAC1B,EAEA,IAAOC,EAAQP,EDpBf,IAAOQ,EAAQA",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_dirname", "init_buffer", "init_process", "import_react", "import_prop_types", "VisuallyHiddenLabel", "id", "label", "t", "useTranslation", "jsx", "PropTypes", "VisuallyHiddenLabel_default", "VisuallyHiddenLabel_default"]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/setCellFontStyle.js"],
+  "sourcesContent": ["import core from 'core';\n\nfunction setCellFontStyle(font) {\n  if (!font) {\n    return;\n  }\n\n  if (font.color) {\n    font.color = font.color.toHexString ? font.color.toHexString() : '';\n  }\n\n  const spreadsheetEditorManager = core.getDocumentViewer().getSpreadsheetEditorManager();\n  spreadsheetEditorManager.setSelectedCellsStyle({ font });\n}\n\nexport default setCellFontStyle;"],
+  "mappings": "yFAAAA,IAAAC,IAAAC,IAAAC,IAEA,SAASC,EAAiBC,EAAM,CAC9B,GAAI,CAACA,EACH,OAGEA,EAAK,QACPA,EAAK,MAAQA,EAAK,MAAM,YAAcA,EAAK,MAAM,YAAY,EAAI,IAGlCC,EAAK,kBAAkB,EAAE,4BAA4B,EAC7D,sBAAsB,CAAE,KAAAD,CAAK,CAAC,CACzD,CAEA,IAAOE,EAAQH",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_core", "setCellFontStyle", "font", "core_default", "setCellFontStyle_default"]
+}

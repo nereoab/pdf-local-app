@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/node_modules/dayjs/locale/en.js"],
+  "sourcesContent": ["!function(e,n){\"object\"==typeof exports&&\"undefined\"!=typeof module?module.exports=n():\"function\"==typeof define&&define.amd?define(n):(e=\"undefined\"!=typeof globalThis?globalThis:e||self).dayjs_locale_en=n()}(this,(function(){\"use strict\";return{name:\"en\",weekdays:\"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday\".split(\"_\"),months:\"January_February_March_April_May_June_July_August_September_October_November_December\".split(\"_\")}}));"],
+  "mappings": "uDAAA,IAAAA,EAAAC,EAAA,CAAAC,EAAAC,IAAA,CAAAC,IAAAC,IAAAC,KAAC,SAASC,EAAEC,EAAE,CAAW,OAAON,GAAjB,UAAuC,OAAOC,EAApB,IAA2BA,EAAO,QAAQK,EAAE,EAAc,OAAO,QAAnB,YAA2B,OAAO,IAAI,OAAOA,CAAC,GAAGD,EAAe,OAAO,WAApB,IAA+B,WAAWA,GAAG,MAAM,gBAAgBC,EAAE,CAAC,GAAEN,GAAM,UAAU,CAAC,aAAa,MAAM,CAAC,KAAK,KAAK,SAAS,2DAA2D,MAAM,GAAG,EAAE,OAAO,wFAAwF,MAAM,GAAG,CAAC,CAAC,EAAE",
+  "names": ["require_en", "__commonJSMin", "exports", "module", "init_dirname", "init_buffer", "init_process", "e", "n"]
+}

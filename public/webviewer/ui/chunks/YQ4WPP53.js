@@ -1,0 +1,2 @@
+import{c as y,h as t,j as d,k as u}from"./VEWNHGBN.js";var i=y((n,_)=>{t();u();d();(function(a,e){typeof n=="object"&&typeof _<"u"?_.exports=e():typeof define=="function"&&define.amd?define(e):(a=typeof globalThis<"u"?globalThis:a||self).dayjs_locale_en=e()})(n,(function(){"use strict";return{name:"en",weekdays:"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),months:"January_February_March_April_May_June_July_August_September_October_November_December".split("_")}}))});export default i();
+//# sourceMappingURL=YQ4WPP53.js.map

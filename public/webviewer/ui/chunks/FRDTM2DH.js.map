@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/getCspNonce.js"],
+  "sourcesContent": ["import { getInstanceNode } from 'helpers/getRootNode';\n\nexport default function getCspNonce() {\n  if (window.isApryseWebViewerWebComponent) {\n    return getInstanceNode()?.getAttribute('cspNonce') || '';\n  }\n\n  if (window.parent !== window) {\n    try {\n      return window.frameElement?.dataset?.cspNonce\n        || window.frameElement?.getAttribute('data-csp-nonce')\n        || '';\n    } catch {\n      return '';\n    }\n  }\n\n  return '';\n}\n"],
+  "mappings": "yFAAAA,IAAAC,IAAAC,IAAAC,IAEe,SAARC,GAA+B,CACpC,GAAI,OAAO,8BACT,OAAOC,EAAgB,GAAG,aAAa,UAAU,GAAK,GAGxD,GAAI,OAAO,SAAW,OACpB,GAAI,CACF,OAAO,OAAO,cAAc,SAAS,UAChC,OAAO,cAAc,aAAa,gBAAgB,GAClD,EACP,MAAQ,CACN,MAAO,EACT,CAGF,MAAO,EACT",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_getRootNode", "getCspNonce", "getInstanceNode"]
+}

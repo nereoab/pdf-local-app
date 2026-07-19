@@ -1,0 +1,2 @@
+import{h as s,j as f,k as l}from"./VEWNHGBN.js";s();l();f();var t=new Map,n=e=>(t.has(e)||t.set(e,new Map),t.get(e)),x=(e,r,o)=>{n(e).set(r,{parentAnnotationId:r,...o})},c=(e,r)=>{let o=t.get(e);o&&(o.delete(r),o.size||t.delete(e))},E=e=>{let r=t.get(e);return r?Array.from(r.values()):[]},F=e=>{t.delete(e)};s();l();f();var v="wv-after-file-download",O="wv-before-file-download";export{x as a,c as b,E as c,F as d,v as e,O as f};
+//# sourceMappingURL=A3RTCIYN.js.map

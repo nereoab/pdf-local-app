@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/mapValidationResponseToTranslation.js"],
+  "sourcesContent": ["export default ({ errorType }) => {\n  switch (errorType) {\n    case 'empty':\n      return 'formField.formFieldPopup.invalidField.empty';\n    case 'duplicate':\n      return 'formField.formFieldPopup.invalidField.duplicate';\n  }\n};"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAAA,IAAOC,EAAQ,CAAC,CAAE,UAAAC,CAAU,IAAM,CAChC,OAAQA,EAAW,CACjB,IAAK,QACH,MAAO,8CACT,IAAK,YACH,MAAO,iDACX,CACF",
+  "names": ["init_dirname", "init_buffer", "init_process", "mapValidationResponseToTranslation_default", "errorType"]
+}

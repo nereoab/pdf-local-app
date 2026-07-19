@@ -1,0 +1,2 @@
+/** Notice * This file contains works from many authors under various (but compatible) licenses. Please see core.txt for more information. **/
+(function(){self.onmessage=e=>{if(e.data.action===`init`){let t=e.data.path;t&&(self.workerBasePath=t,self.pdfWorkerPath=`${t}pdf/`,self.officeWorkerPath=`${t}office/`,self.legacyOfficeWorkerPath=`${t}legacyOffice/`);let n=e.data.file;importScripts(n),self.onmessage(e)}}})();

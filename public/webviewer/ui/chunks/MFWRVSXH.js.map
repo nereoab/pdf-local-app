@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/components/Spinner/index.js", "../../../src/ui/src/components/Spinner/Spinner.js"],
+  "sourcesContent": ["import Spinner from './Spinner';\n\nexport default Spinner;\n", "import React from 'react';\nimport './Spinner.scss';\nimport classNames from 'classnames';\nimport PropTypes from 'prop-types';\nconst Spinner = ({ height = '50px', width = '54px', inPanel = false }) => {\n  return (\n    <div className={classNames('spinner', { 'panel-type': inPanel })} css={{ height, width }}></div>\n  );\n};\n\nSpinner.propTypes = {\n  height: PropTypes.string,\n  width: PropTypes.string,\n  inPanel: PropTypes.bool,\n};\n\nexport default Spinner;"],
+  "mappings": "qKAAAA,IAAAC,IAAAC,ICAAC,IAAAC,IAAAC,IAAA,IAAAC,EAAkB,OAElB,IAAAC,EAAuB,OACvBC,EAAsB,OACtB,IAAMC,EAAU,CAAC,CAAE,OAAAC,EAAS,OAAQ,MAAAC,EAAQ,OAAQ,QAAAC,EAAU,EAAM,IAEhEC,EAAC,OAAI,aAAW,EAAAC,SAAW,UAAW,CAAE,aAAcF,CAAQ,CAAC,EAAG,IAAK,CAAE,OAAAF,EAAQ,MAAAC,CAAM,EAAG,EAI9FF,EAAQ,UAAY,CAClB,OAAQ,EAAAM,QAAU,OAClB,MAAO,EAAAA,QAAU,OACjB,QAAS,EAAAA,QAAU,IACrB,EAEA,IAAOC,EAAQP,EDdf,IAAOQ,EAAQA",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_dirname", "init_buffer", "init_process", "import_react", "import_classnames", "import_prop_types", "Spinner", "height", "width", "inPanel", "jsx", "classNames", "PropTypes", "Spinner_default", "Spinner_default"]
+}

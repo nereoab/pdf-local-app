@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/hooks/useDidUpdate.js"],
+  "sourcesContent": ["import { useEffect, useRef } from 'react';\n\nexport default (callback = () => {}, deps) => {\n  const didMount = useRef(false);\n\n  useEffect(() => {\n    if (!didMount.current) {\n      didMount.current = true;\n      return;\n    }\n\n    return callback();\n  // eslint-disable-next-line\n  }, deps);\n};\n"],
+  "mappings": "yFAAAA,IAAAC,IAAAC,IAAA,IAAAC,EAAkC,OAE3BC,EAAQ,CAACC,EAAW,IAAM,CAAC,EAAGC,IAAS,CAC5C,IAAMC,KAAW,UAAO,EAAK,KAE7B,aAAU,IAAM,CACd,GAAI,CAACA,EAAS,QAAS,CACrBA,EAAS,QAAU,GACnB,MACF,CAEA,OAAOF,EAAS,CAElB,EAAGC,CAAI,CACT",
+  "names": ["init_dirname", "init_buffer", "init_process", "import_react", "useDidUpdate_default", "callback", "deps", "didMount"]
+}

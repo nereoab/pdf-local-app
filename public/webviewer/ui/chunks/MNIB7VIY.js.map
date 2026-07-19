@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/setToolStyles.js"],
+  "sourcesContent": ["import core from 'core';\n\nexport default (toolName, property, value) => {\n  const tools = [];\n\n  const toolArray = core.getToolsFromAllDocumentViewers(toolName);\n  for (const tool of toolArray) {\n    if (tool) {\n      tools.push(tool);\n    }\n  }\n\n  tools.forEach((tool) => {\n    tool.setStyles({\n      [property]: value,\n    });\n  });\n};\n"],
+  "mappings": "yFAAAA,IAAAC,IAAAC,IAAAC,IAEA,IAAOC,EAAQ,CAACC,EAAUC,EAAUC,IAAU,CAC5C,IAAMC,EAAQ,CAAC,EAETC,EAAYC,EAAK,+BAA+BL,CAAQ,EAC9D,QAAWM,KAAQF,EACbE,GACFH,EAAM,KAAKG,CAAI,EAInBH,EAAM,QAASG,GAAS,CACtBA,EAAK,UAAU,CACb,CAACL,CAAQ,EAAGC,CACd,CAAC,CACH,CAAC,CACH",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_core", "setToolStyles_default", "toolName", "property", "value", "tools", "toolArray", "core_default", "tool"]
+}

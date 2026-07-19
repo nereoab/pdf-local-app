@@ -1,0 +1,2 @@
+import{a}from"./CCASJK7D.js";import{b as L}from"./NSGJGDTO.js";import{e as s,h as r,j as u,k as c}from"./VEWNHGBN.js";r();c();u();var t=s(L());function f(){let{core:e}=a(),[m,o]=(0,t.useState)(!!e.getDocument());return(0,t.useEffect)(()=>{o(!!e.getDocument());let n=()=>o(!0),d=()=>o(!1);return e.addEventListener("documentLoaded",n),e.addEventListener("documentUnloaded",d),()=>{e.removeEventListener("documentLoaded",n),e.removeEventListener("documentUnloaded",d)}},[e]),m}export{f as a};
+//# sourceMappingURL=YJ36BSVK.js.map

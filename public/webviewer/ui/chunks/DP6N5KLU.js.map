@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/constants/focusableElementDomString.js"],
+  "sourcesContent": ["export const focusableElementDomString = [\n  'a[href]',\n  'area[href]',\n  'input:not([disabled]):not([type=\"hidden\"]):not([aria-hidden])',\n  'select:not([disabled]):not([aria-hidden])',\n  'textarea:not([disabled]):not([aria-hidden])',\n  'button:not([disabled]):not([aria-hidden])',\n  'iframe',\n  'object',\n  'embed',\n  '[contenteditable]',\n  '[tabindex]:not([tabindex^=\"-\"])',\n].join(',');"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAAO,IAAMC,EAA4B,CACvC,UACA,aACA,gEACA,4CACA,8CACA,4CACA,SACA,SACA,QACA,oBACA,iCACF,EAAE,KAAK,GAAG",
+  "names": ["init_dirname", "init_buffer", "init_process", "focusableElementDomString"]
+}

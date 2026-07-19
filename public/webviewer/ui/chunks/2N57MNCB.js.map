@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/components/HorizontalDivider/index.js", "../../../src/ui/src/components/HorizontalDivider/HorizontalDivider.js"],
+  "sourcesContent": ["import HorizontalDivider from './HorizontalDivider';\n\nexport default HorizontalDivider;", "import React from 'react';\nimport { css } from '@emotion/react';\nimport './HorizontalDivider.scss';\n\nconst HorizontalDivider = ({ style = {} }) => {\n  return (\n    <div\n      className=\"divider-container\"\n      css={css({\n        ...style\n      })}\n    >\n      <div className=\"divider-horizontal\" />\n    </div>\n  );\n};\n\nexport default HorizontalDivider;"],
+  "mappings": "+JAAAA,IAAAC,IAAAC,ICAAC,IAAAC,IAAAC,IAAA,IAAAC,EAAkB,OAIlB,IAAMC,EAAoB,CAAC,CAAE,MAAAC,EAAQ,CAAC,CAAE,IAEpCC,EAAC,OACC,UAAU,oBACV,IAAKC,EAAI,CACP,GAAGF,CACL,CAAC,EAED,SAAAC,EAAC,OAAI,UAAU,qBAAqB,EACtC,EAIGE,EAAQJ,EDff,IAAOK,EAAQA",
+  "names": ["init_dirname", "init_buffer", "init_process", "init_dirname", "init_buffer", "init_process", "import_react", "HorizontalDivider", "style", "jsx", "css", "HorizontalDivider_default", "HorizontalDivider_default"]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/helpers/headerFooterModalState.js"],
+  "sourcesContent": ["const HeaderFooterModalState = (() => {\n  let pageNumber = 0;\n  return {\n    setPageNumber: (val) => pageNumber = val,\n    getPageNumber: () => pageNumber,\n  };\n})();\n\nexport default HeaderFooterModalState;\n"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAAA,IAAMC,GAA0B,IAAM,CACpC,IAAIC,EAAa,EACjB,MAAO,CACL,cAAgBC,GAAQD,EAAaC,EACrC,cAAe,IAAMD,CACvB,CACF,GAAG,EAEIE,EAAQH",
+  "names": ["init_dirname", "init_buffer", "init_process", "HeaderFooterModalState", "pageNumber", "val", "headerFooterModalState_default"]
+}

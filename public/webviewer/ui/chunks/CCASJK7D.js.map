@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/hooks/useCore/index.js"],
+  "sourcesContent": ["import useCore from './useCore';\n\nexport default useCore;"],
+  "mappings": "kFAAAA,IAAAC,IAAAC,IAEA,IAAOC,EAAQA",
+  "names": ["init_dirname", "init_buffer", "init_process", "useCore_default"]
+}

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/constants/layoutMode.js"],
+  "sourcesContent": ["/**\n * Contains string enums for all layouts for WebViewer. They are used to dictate how pages are placed within the viewer.\n * @name UI.LayoutMode\n * @property {string} Single Only the current page will be visible.\n * @property {string} Continuous All pages are visible in one column.\n * @property {string} Facing Up to two pages will be visible.\n * @property {string} FacingContinuous All pages visible in two columns.\n * @property {string} FacingCover All pages visible in two columns, with an even numbered page rendered first. (i.e. The first page of the document is rendered by itself on the right side of the viewer to simulate a book cover.)\n * @property {string} FacingCoverContinuous All pages visible, with an even numbered page rendered first. (i.e. The first page of the document is rendered by itself on the right side of the viewer to simulate a book cover.)\n * @example\nWebViewer(...)\n  .then(function(instance) {\n    const LayoutMode = instance.UI.LayoutMode;\n    instance.UI.setLayoutMode(LayoutMode.Single);\n  });\n */\n\nexport default {\n  Single: 'Single',\n  Continuous: 'Continuous',\n  Facing: 'Facing',\n  FacingContinuous: 'FacingContinuous',\n  FacingCover: 'CoverFacing',\n  FacingCoverContinuous: 'Cover',\n};"],
+  "mappings": "gDAAAA,IAAAC,IAAAC,IAiBA,IAAOC,EAAQ,CACb,OAAQ,SACR,WAAY,aACZ,OAAQ,SACR,iBAAkB,mBAClB,YAAa,cACb,sBAAuB,OACzB",
+  "names": ["init_dirname", "init_buffer", "init_process", "layoutMode_default"]
+}

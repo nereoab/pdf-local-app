@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/constants/signatureModes.js"],
+  "sourcesContent": ["const SignatureModes = {\n  FULL_SIGNATURE: window.Core.Tools.SignatureCreateTool.SignatureTypes.FULL_SIGNATURE,\n  INITIALS: window.Core.Tools.SignatureCreateTool.SignatureTypes.INITIALS,\n};\n\nexport default SignatureModes;"],
+  "mappings": "uDAAA,IAAMA,EAKCC,EALPC,EAAAC,EAAA,KAAAC,IAAAC,IAAAC,IAAMN,EAAiB,CACrB,eAAgB,OAAO,KAAK,MAAM,oBAAoB,eAAe,eACrE,SAAU,OAAO,KAAK,MAAM,oBAAoB,eAAe,QACjE,EAEOC,EAAQD",
+  "names": ["SignatureModes", "signatureModes_default", "init_signatureModes", "__esmMin", "init_dirname", "init_buffer", "init_process"]
+}

@@ -12,6 +12,7 @@
     "@pdfsmaller/pdf-encrypt": "^1.0.2",
     "@pdftron/webviewer": "^12.0.0",
     "@syncfusion/ej2-react-documenteditor": "^34.1.31",
+    "framer-motion": "^12.42.2",
     "jszip": "^3.10.1",
     "lucide-react": "^1.24.0",
     "next": "16.2.10",

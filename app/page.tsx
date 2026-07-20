@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import PdfUploader from '../components/PdfUploader';
 import PdfSplitter from '../components/PdfSplitter';
@@ -50,34 +50,30 @@ function MainApp() {
     setActiveCategory(category);
   };
 
+  // 🔥 1. CONFIGURACIÓN DE LA ENTRADA EN CASCADA (STAGGER)
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
+    show: { 
+      opacity: 1, 
+      transition: { staggerChildren: 0.15, delayChildren: 0.1 } 
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } // Curva de animación suave y lujosa
+    }
   };
 
   return (
     <div className="flex min-h-screen flex-col transition-colors duration-700 selection:bg-blue-500/30 selection:text-blue-200 relative overflow-x-hidden font-sans text-slate-200 bg-black">
       
-      {/* 🌌 FONDO SÓLIDO Y SOBRIO (Negro con gradiente radial carbón) */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-slate-900 via-black to-black pointer-events-none z-0"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-slate-900 via-black to-black pointer-events-none z-0"></div>
 
       <Toaster position="bottom-right" richColors closeButton theme="dark" />
-
-      {/* 🌌 ILUMINACIÓN FOCAL SUTIL (Orbes de luz difuminados) */}
-      {mounted && (
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          <motion.div 
-            animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.1, 1] }} 
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-900/20 blur-[150px]" 
-          />
-          <motion.div 
-            animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.2, 1] }} 
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-900/10 blur-[150px]" 
-          />
-        </div>
-      )}
 
       {/* ==========================================
           ENCABEZADO OFICIAL (HEADER)
@@ -85,17 +81,15 @@ function MainApp() {
       <header className="w-full bg-black/50 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 transition-all duration-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between relative z-10">
           
-          {/* ♠️ LOGO */}
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-3 cursor-pointer group" onClick={goHome}>
             <div className="bg-gradient-to-b from-slate-700 to-slate-900 border border-slate-600 p-2.5 rounded-xl shadow-lg transition-all">
-              <Spade className="w-5 h-5 text-white" fill="currentColor" />
+              <Spade className="w-6 h-6 text-white" fill="currentColor" />
             </div>
             <span className="text-3xl tracking-tight text-white font-light">
               PDF<span className="font-black">Black</span>
             </span>
           </motion.div>
 
-          {/* MENÚS DESPLEGABLES */}
           <div className="hidden lg:flex items-center gap-8">
             <DropdownMenu title={isEs ? 'Editar PDF' : 'Edit PDF'} category="editar" navigate={navigateToCategory} t={t} isEs={isEs} setActiveTool={setActiveTool} />
             <DropdownMenu title={isEs ? 'Organizar PDF' : 'Organize PDF'} category="organizar" navigate={navigateToCategory} t={t} isEs={isEs} setActiveTool={setActiveTool} />
@@ -103,7 +97,6 @@ function MainApp() {
             <DropdownMenu title={isEs ? 'Optimizar PDF' : 'Optimize PDF'} category="optimizar" navigate={navigateToCategory} t={t} isEs={isEs} setActiveTool={setActiveTool} />
           </div>
 
-          {/* BOTONES DERECHOS */}
           <div className="flex items-center gap-3 sm:gap-4">
             <AnimatePresence mode="wait">
               {activeTool ? (
@@ -128,39 +121,49 @@ function MainApp() {
       {/* ==========================================
           CUERPO PRINCIPAL (MAIN CONTENT)
       ========================================== */}
-      {/* 🔥 FIX: Reducimos el padding vertical (py-12 a py-4) para subir todo el contenido */}
-      <main className="flex-1 w-full max-w-[100%] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 flex flex-col z-10 relative">
+      <main className="flex-1 w-full max-w-[100%] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 flex flex-col z-10 relative">
         
         {/* LA PORTADA */}
         {!activeCategory && !activeTool && (
-          <div className="flex-1 flex flex-col items-center justify-start pt-2">
+          <motion.div 
+            variants={containerVariants} 
+            initial="hidden" 
+            animate="show" 
+            className="flex-1 flex flex-col items-center justify-start pt-2 pb-8"
+          >
             
-            {/* 🔥 FIX: Título más compacto y con menos margen inferior (mb-16 a mb-8) */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="text-center max-w-4xl mb-8 relative z-10">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-lg mb-2 leading-tight">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-500/15 blur-[120px] rounded-full pointer-events-none z-0"></div>
+
+            <div className="text-center max-w-4xl mb-8 relative z-10">
+              {/* Título Blanco (Entra primero) */}
+              <motion.h1 variants={itemVariants} className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-lg mb-2 leading-tight">
                 {isEs ? 'Herramientas PDF gratuitas,' : 'Completely free PDF tools,'} <br className="hidden sm:block"/> 
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-300">
+              </motion.h1>
+              
+              {/* 🔥 3. TEXTO GRADIENTE FLUIDO (Entra segundo y se mueve infinitamente) */}
+              <motion.div variants={itemVariants}>
+                <motion.span 
+                  animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                  style={{ backgroundSize: '200% auto' }}
+                  className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-300 text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight inline-block pb-2"
+                >
                   {isEs ? 'sin tarjeta, sin registro.' : 'no credit card, no sign-up.'}
-                </span>
-              </h1>
-            </motion.div>
+                </motion.span>
+              </motion.div>
+            </div>
 
-            {/* 🔥 FIX: Tarjetas con menos gap y padding para que entren en pantalla */}
-            <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-4xl mb-10 relative z-10">
-              <CategoryCard icon={<Edit3 className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Editar PDF" : "Edit PDF"} desc={isEs ? "Modifica el texto real, añade numeración o llena formularios interactivos." : "Modify real text, add numbering, or fill out forms."} onClick={() => setActiveCategory('editar')} />
-              <CategoryCard icon={<FolderOpen className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Organizar PDF" : "Organize PDF"} desc={isEs ? "Une, divide, ordena y rota las páginas de tus expedientes con Drag & Drop." : "Merge, split, sort, and rotate pages of your files."} onClick={() => setActiveCategory('organizar')} />
-              <CategoryCard icon={<RefreshCw className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Convertir PDF" : "Convert PDF"} desc={isEs ? "Transforma tus PDFs a formatos editables como Microsoft Word (.docx)." : "Transform your PDFs into editable formats like Word (.docx)."} onClick={() => setActiveCategory('convertir')} />
-              <CategoryCard icon={<Zap className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Optimizar PDF" : "Optimize PDF"} desc={isEs ? "Añade contraseñas de seguridad AES-256 o reduce el peso del archivo." : "Add security passwords or reduce file weight."} onClick={() => setActiveCategory('optimizar')} />
-            </motion.div>
+            {/* TARJETAS (Entran en cascada una por una) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-4xl mb-12 relative z-10">
+              <CategoryCard variants={itemVariants} icon={<Edit3 className="w-7 h-7 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Editar PDF" : "Edit PDF"} desc={isEs ? "Modifica el texto real, añade numeración o llena formularios interactivos." : "Modify real text, add numbering, or fill out forms."} onClick={() => setActiveCategory('editar')} />
+              <CategoryCard variants={itemVariants} icon={<FolderOpen className="w-7 h-7 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Organizar PDF" : "Organize PDF"} desc={isEs ? "Une, divide, ordena y rota las páginas de tus expedientes con Drag & Drop." : "Merge, split, sort, and rotate pages of your files."} onClick={() => setActiveCategory('organizar')} />
+              <CategoryCard variants={itemVariants} icon={<RefreshCw className="w-7 h-7 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Convertir PDF" : "Convert PDF"} desc={isEs ? "Transforma tus PDFs a formatos editables como Microsoft Word (.docx)." : "Transform your PDFs into editable formats like Word (.docx)."} onClick={() => setActiveCategory('convertir')} />
+              <CategoryCard variants={itemVariants} icon={<Zap className="w-7 h-7 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Optimizar PDF" : "Optimize PDF"} desc={isEs ? "Añade contraseñas de seguridad AES-256 o reduce el peso del archivo." : "Add security passwords or reduce file weight."} onClick={() => setActiveCategory('optimizar')} />
+            </div>
 
-            {/* TEXTO TÉCNICO SECUNDARIO */}
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              transition={{ duration: 1, delay: 0.5 }} 
-              className="text-center max-w-3xl w-full relative z-10 pt-8 border-t border-white/5"
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#121212] text-slate-300 font-medium text-xs sm:text-sm mb-4 border border-white/5 backdrop-blur-md">
+            {/* TEXTO TÉCNICO SECUNDARIO (Entra al final) */}
+            <motion.div variants={itemVariants} className="text-center max-w-3xl w-full relative z-10 pt-10 border-t border-white/5">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#121212] text-slate-300 font-medium text-xs sm:text-sm mb-6 mt-2 border border-white/5 backdrop-blur-md">
                 <ShieldCheck className="w-4 h-4 text-blue-500" strokeWidth={2} />
                 {isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}
               </div>
@@ -168,19 +171,19 @@ function MainApp() {
               <h2 className="text-xl sm:text-2xl font-semibold text-white mb-3 tracking-tight">
                 {isEs ? 'Todo tu flujo de trabajo, ' : 'Your entire workflow, '} <span className="text-slate-400">{isEs ? 'cero servidores.' : 'zero servers.'}</span>
               </h2>
-              <p className="text-sm sm:text-base text-[#A1A1AA] font-normal leading-relaxed max-w-2xl mx-auto">
+              <p className="text-sm sm:text-base text-[#A1A1AA] font-normal leading-relaxed max-w-2xl mx-auto mb-4">
                 {isEs 
                   ? 'Edita, organiza y optimiza tus documentos con total confidencialidad. Todo el procesamiento ocurre directamente en tu dispositivo, garantizando que tus archivos nunca abandonen tu control.' 
                   : 'Edit, organize, and optimize your documents with total confidentiality. All processing happens directly on your device, ensuring your files never leave your control.'}
               </p>
             </motion.div>
 
-          </div>
+          </motion.div>
         )}
 
         <AnimatePresence mode="wait">
           {activeCategory && !activeTool && (
-            <motion.div key="category" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="flex-1 w-full max-w-5xl mx-auto relative z-10">
+            <motion.div key="category" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="flex-1 w-full max-w-6xl mx-auto">
               <div className="mb-10 text-center">
                 <h2 className="text-4xl font-bold text-white capitalize mb-3 tracking-tight">{activeCategory} PDF</h2>
                 <p className="text-[#A1A1AA]">{isEs ? 'Selecciona una herramienta para comenzar:' : 'Select a tool to start:'}</p>
@@ -189,27 +192,27 @@ function MainApp() {
               <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {activeCategory === 'editar' && (
                   <>
-                    <ToolCard icon={<FileEdit className="w-6 h-6 text-blue-500" />} title={t.tools.edit.title} description={t.tools.edit.desc} onClick={() => setActiveTool('editor')} />
-                    <ToolCard icon={<Hash className="w-6 h-6 text-blue-500" />} title={t.tools.number.title} description={t.tools.number.desc} onClick={() => setActiveTool('foliar')} />
+                    <ToolCard variants={itemVariants} icon={<FileEdit className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.edit.title} description={t.tools.edit.desc} onClick={() => setActiveTool('editor')} />
+                    <ToolCard variants={itemVariants} icon={<Hash className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.number.title} description={t.tools.number.desc} onClick={() => setActiveTool('foliar')} />
                   </>
                 )}
                 {activeCategory === 'organizar' && (
                   <>
-                    <ToolCard icon={<LayoutGrid className="w-6 h-6 text-blue-500" />} title={t.tools.organize.title} description={t.tools.organize.desc} onClick={() => setActiveTool('ordenar')} />
-                    <ToolCard icon={<Layers className="w-6 h-6 text-blue-500" />} title={t.tools.merge.title} description={t.tools.merge.desc} onClick={() => setActiveTool('unir')} />
-                    <ToolCard icon={<Scissors className="w-6 h-6 text-blue-500" />} title={t.tools.split.title} description={t.tools.split.desc} onClick={() => setActiveTool('dividir')} />
-                    <ToolCard icon={<RotateCw className="w-6 h-6 text-blue-500" />} title={t.tools.rotate.title} description={t.tools.rotate.desc} onClick={() => setActiveTool('rotar')} />
+                    <ToolCard variants={itemVariants} icon={<LayoutGrid className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.organize.title} description={t.tools.organize.desc} onClick={() => setActiveTool('ordenar')} />
+                    <ToolCard variants={itemVariants} icon={<Layers className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.merge.title} description={t.tools.merge.desc} onClick={() => setActiveTool('unir')} />
+                    <ToolCard variants={itemVariants} icon={<Scissors className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.split.title} description={t.tools.split.desc} onClick={() => setActiveTool('dividir')} />
+                    <ToolCard variants={itemVariants} icon={<RotateCw className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.rotate.title} description={t.tools.rotate.desc} onClick={() => setActiveTool('rotar')} />
                   </>
                 )}
                 {activeCategory === 'convertir' && (
                   <>
-                    <ToolCard icon={<FileText className="w-6 h-6 text-blue-500" />} title={t.tools.word.title} description={t.tools.word.desc} onClick={() => setActiveTool('word')} />
+                    <ToolCard variants={itemVariants} icon={<FileText className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.word.title} description={t.tools.word.desc} onClick={() => setActiveTool('word')} />
                   </>
                 )}
                 {activeCategory === 'optimizar' && (
                   <>
-                    <ToolCard icon={<ShieldCheck className="w-6 h-6 text-blue-500" />} title={t.tools.protect.title} description={t.tools.protect.desc} onClick={() => setActiveTool('proteger')} />
-                    <ToolCard icon={<Zap className="w-6 h-6 text-slate-500" />} title={isEs ? 'Comprimir PDF' : 'Compress PDF'} description={isEs ? 'Reduce el peso de tu PDF sin perder calidad.' : 'Reduce the weight of your PDF without losing quality.'} onClick={() => {}} isComingSoon soonText={isEs ? 'Pronto' : 'Soon'} />
+                    <ToolCard variants={itemVariants} icon={<ShieldCheck className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={t.tools.protect.title} description={t.tools.protect.desc} onClick={() => setActiveTool('proteger')} />
+                    <ToolCard variants={itemVariants} icon={<Zap className="w-6 h-6 text-slate-500" strokeWidth={1.5} />} title={isEs ? 'Comprimir PDF' : 'Compress PDF'} description={isEs ? 'Reduce el peso de tu PDF sin perder calidad.' : 'Reduce the weight of your PDF without losing quality.'} onClick={() => {}} isComingSoon soonText={isEs ? 'Pronto' : 'Soon'} />
                   </>
                 )}
               </motion.div>
@@ -298,41 +301,56 @@ function DropdownMenu({ title, category, navigate, t, isEs, setActiveTool }: any
   );
 }
 
-// 🔥 TARJETAS PREMIUM (Fondo #121212, Borde white/10, Hover Azul, Texto #A1A1AA)
-function CategoryCard({ icon, title, desc, onClick }: any) {
+// 🔥 2. y 4. TARJETAS PREMIUM CON MICRO-INTERACCIONES (Hover, Sombra, Escala de Ícono)
+function CategoryCard({ icon, title, desc, onClick, variants }: any) {
   return (
     <motion.button 
-      whileHover={{ y: -3, borderColor: '#3b82f6', boxShadow: '0 8px 30px rgba(59,130,246,0.15)' }}
+      variants={variants}
+      whileHover={{ 
+        y: -4, 
+        borderColor: 'rgba(59, 130, 246, 0.4)', 
+        boxShadow: '0 12px 30px -10px rgba(59, 130, 246, 0.25)',
+        transition: { duration: 0.3, ease: "easeInOut" }
+      }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="group relative flex flex-col items-start p-6 sm:p-8 bg-[#121212] rounded-3xl border border-white/10 shadow-xl hover:shadow-2xl text-left transition-all duration-300 h-full w-full outline-none overflow-hidden"
+      className="group relative flex flex-col items-start p-6 sm:p-8 bg-[#121212] rounded-3xl border border-white/10 shadow-xl text-left w-full outline-none overflow-hidden"
     >
-      <div className="relative z-20 bg-slate-900 p-3 sm:p-4 rounded-2xl mb-4 sm:mb-6 shadow-sm border border-slate-800 group-hover:border-slate-700 transition-colors">
+      <motion.div 
+        whileHover={{ scale: 1.08 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="relative z-20 bg-slate-900 p-3 sm:p-4 rounded-2xl mb-4 sm:mb-6 shadow-sm border border-slate-800 group-hover:border-slate-700 transition-colors"
+      >
         {icon}
-      </div>
+      </motion.div>
       <h2 className="relative z-20 text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">{title}</h2>
       <p className="relative z-20 text-[#A1A1AA] font-medium leading-relaxed text-xs sm:text-sm">{desc}</p>
     </motion.button>
   );
 }
 
-function ToolCard({ icon, title, description, onClick, isComingSoon = false, soonText = 'Pronto' }: any) {
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, scale: 0.95 },
-    show: { opacity: 1, scale: 1, transition: { type: "spring", bounce: 0.4 } }
-  };
+function ToolCard({ icon, title, description, onClick, isComingSoon = false, soonText = 'Pronto', variants }: any) {
   return (
     <motion.div 
-      variants={itemVariants} 
-      whileHover={!isComingSoon ? { y: -3, borderColor: '#3b82f6', boxShadow: '0 8px 30px rgba(59,130,246,0.15)' } : {}} 
+      variants={variants} 
+      whileHover={!isComingSoon ? { 
+        y: -4, 
+        borderColor: 'rgba(59, 130, 246, 0.4)', 
+        boxShadow: '0 12px 30px -10px rgba(59, 130, 246, 0.25)',
+        transition: { duration: 0.3, ease: "easeInOut" }
+      } : {}} 
       whileTap={!isComingSoon ? { scale: 0.98 } : {}} 
       onClick={!isComingSoon ? onClick : undefined} 
-      className={`relative bg-[#121212] p-6 sm:p-8 rounded-2xl border border-white/10 shadow-lg transition-all duration-300 flex flex-col items-start text-left w-full ${isComingSoon ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-2xl hover:bg-[#0f0f0f]'}`}
+      className={`relative bg-[#121212] p-6 sm:p-8 rounded-2xl border border-white/10 shadow-lg flex flex-col items-start text-left w-full ${isComingSoon ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {isComingSoon && <span className="absolute top-5 right-5 bg-slate-800 text-slate-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">{soonText}</span>}
-      <div className="bg-slate-900 p-3 rounded-xl mb-5 border border-slate-800">
+      <motion.div 
+        whileHover={!isComingSoon ? { scale: 1.08 } : {}}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="bg-slate-900 p-3 rounded-xl mb-5 border border-slate-800 group-hover:border-slate-700 transition-colors"
+      >
         {icon}
-      </div>
+      </motion.div>
       <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
       <p className="text-[#A1A1AA] text-sm leading-relaxed">{description}</p>
     </motion.div>

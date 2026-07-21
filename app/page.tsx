@@ -1,95 +1,275 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, Variants } from 'framer-motion';
+import { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
-import { ShieldCheck, Edit3, RefreshCw, Zap, FolderOpen } from 'lucide-react';
+import { 
+  ShieldCheck, Edit3, RefreshCw, Zap, FolderOpen, Activity, 
+  FileText, CheckCircle2, FileArchive, Download, Trash2, Search, Star, 
+  Clock, HardDrive, Bot, Eye, Sparkles, X, ArrowRight
+} from 'lucide-react';
 
-export default function HomePage() {
+function AnimatedCounter({ from = 0, to, decimals = 0, suffix = '' }: { from?: number, to: number, decimals?: number, suffix?: string }) {
+  const nodeRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (node) {
+      const controls = animate(from, to, {
+        duration: 1.5,
+        ease: "easeOut",
+        onUpdate(value) { node.textContent = value.toFixed(decimals) + suffix; },
+      });
+      return () => controls.stop();
+    }
+  }, [from, to, decimals, suffix]);
+  return <span ref={nodeRef}>{from.toFixed(decimals)}{suffix}</span>;
+}
+
+const categories = [
+  {
+    id: 'editar',
+    titleEs: 'Editar PDF',
+    titleEn: 'Edit PDF',
+    descEs: 'Modifica texto, añade numeración o llena formularios.',
+    descEn: 'Modify text, add numbering, or fill out forms.',
+    icon: Edit3,
+    path: '/editar',
+    color: 'text-blue-400',
+    glow: 'group-hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] group-hover:border-blue-400/60'
+  },
+  {
+    id: 'organizar',
+    titleEs: 'Organizar PDF',
+    titleEn: 'Organize PDF',
+    descEs: 'Une, divide, ordena y rota páginas con Drag & Drop.',
+    descEn: 'Merge, split, sort, and rotate pages easily.',
+    icon: FolderOpen,
+    path: '/organizar',
+    color: 'text-emerald-400',
+    glow: 'group-hover:shadow-[0_0_30px_rgba(16,185,129,0.2)] group-hover:border-emerald-500/50'
+  },
+  {
+    id: 'convertir',
+    titleEs: 'Convertir PDF',
+    titleEn: 'Convert PDF',
+    descEs: 'Transforma tus PDFs a formatos editables como Word.',
+    descEn: 'Transform PDFs into editable formats like Word.',
+    icon: RefreshCw,
+    path: '/convertir',
+    color: 'text-orange-400',
+    glow: 'group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] group-hover:border-orange-500/50'
+  },
+  {
+    id: 'optimizar',
+    titleEs: 'Optimizar PDF',
+    titleEn: 'Optimize PDF',
+    descEs: 'Añade contraseñas AES-256 o reduce el peso del archivo.',
+    descEn: 'Add AES-256 passwords or reduce file weight.',
+    icon: Zap,
+    path: '/optimizar',
+    color: 'text-purple-400',
+    glow: 'group-hover:shadow-[0_0_30px_rgba(168,85,247,0.2)] group-hover:border-purple-500/50'
+  }
+];
+
+export default function DashboardPage() {
   const { lang } = useLanguage();
   const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => setMounted(true), []);
+  const [isAiOpen, setIsAiOpen] = useState(false);
   const isEs = lang === 'es';
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } }
-  };
+  useEffect(() => setMounted(true), []);
 
   return (
-    // 🔥 FIX: Reducimos drásticamente el padding vertical (py-2 sm:py-6) para subir todo
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-2 sm:py-6 flex flex-col items-center justify-start relative z-10 min-h-[calc(100vh-80px)]">
+    // 1. EL RESPIRO VERTICAL: Cambiamos py-6 por pt-24 pb-12
+    <div className="w-full px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex flex-col items-center justify-start relative z-10 min-h-[calc(100vh-80px)] bg-[#030712]">
       
-      {/* 🌌 FONDO PREMIUM: ILUMINACIÓN FOCAL SUTIL (Sin Malla 3D) */}
       {mounted && (
-        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center">
-          <motion.div 
-            animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.1, 1] }} 
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-900/20 blur-[150px]" 
-          />
-          <motion.div 
-            animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.2, 1] }} 
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-900/10 blur-[150px]" 
-          />
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-start">
+          <motion.div animate={{ opacity: [0.03, 0.06, 0.03] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[5%] w-[80vw] h-[50vw] rounded-full bg-cyan-500 blur-[150px]" />
+          <motion.div animate={{ opacity: [0.02, 0.05, 0.02] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }} className="absolute top-[15%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-500 blur-[150px]" />
         </div>
       )}
 
-      {/* 🔥 FIX: Título más compacto y con menos margen inferior (mb-6) */}
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="text-center max-w-4xl mb-6 relative z-10 mt-2">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-lg mb-2 leading-tight">
-          {isEs ? 'Herramientas PDF gratuitas,' : 'Completely free PDF tools,'} <br className="hidden sm:block"/> 
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-300">
-            {isEs ? 'sin tarjeta, sin registro.' : 'no credit card, no sign-up.'}
-          </span>
-        </h1>
-      </motion.div>
+      <div className="w-full max-w-7xl relative z-10">
+        
+        <div className="mb-8 text-center md:text-left flex flex-col md:flex-row justify-between items-end">
+          <div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#F4F4F5] tracking-tight drop-shadow-lg mb-3 leading-[1.15] text-balance antialiased">
+              {isEs ? 'Herramientas PDF gratuitas, ' : 'Completely free PDF tools, '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                {isEs ? 'sin tarjeta, sin registro.' : 'no credit card, no sign-up.'}
+              </span>
+            </h1>
+            <p className="text-gray-400 text-sm md:text-base flex items-center gap-2 justify-center md:justify-start">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" /> {isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}
+            </p>
+          </div>
+        </div>
 
-      {/* 🔥 FIX: Tarjetas con menos gap y margen inferior para que entren en pantalla */}
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full max-w-4xl mb-8 relative z-10">
-        <CategoryCard icon={<Edit3 className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Editar PDF" : "Edit PDF"} desc={isEs ? "Modifica el texto real, añade numeración o llena formularios interactivos." : "Modify real text, add numbering, or fill out forms."} path="/editar" />
-        <CategoryCard icon={<FolderOpen className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Organizar PDF" : "Organize PDF"} desc={isEs ? "Une, divide, ordena y rota las páginas de tus expedientes con Drag & Drop." : "Merge, split, sort, and rotate pages of your files."} path="/organizar" />
-        <CategoryCard icon={<RefreshCw className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Convertir PDF" : "Convert PDF"} desc={isEs ? "Transforma tus PDFs a formatos editables como Microsoft Word (.docx)." : "Transform your PDFs into editable formats like Word (.docx)."} path="/convertir" />
-        <CategoryCard icon={<Zap className="w-6 h-6 text-blue-500" strokeWidth={1.5} />} title={isEs ? "Optimizar PDF" : "Optimize PDF"} desc={isEs ? "Añade contraseñas de seguridad AES-256 o reduce el peso del archivo." : "Add security passwords or reduce file weight."} path="/optimizar" />
-      </motion.div>
+        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-12">
+          <KpiPill icon={FileText} title={isEs ? "Procesados" : "Processed"} value={12} color="text-blue-400" />
+          <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={1.2} decimals={1} suffix=" GB" color="text-emerald-400" />
+          <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={45} suffix=" min" color="text-orange-400" />
+          
+          <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full shadow-[inset_0_1px_0_rgba(6,182,212,0.2)]">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            </span>
+            <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">{isEs ? 'Motor Local Activo' : 'Local Engine Active'}</span>
+          </div>
+        </div>
 
-      {/* 🔥 FIX: Texto técnico secundario más pegado a las tarjetas */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.5 }} className="text-center max-w-3xl w-full relative z-10 pt-6 border-t border-white/5">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#121212] text-slate-300 font-medium text-xs sm:text-sm mb-4 border border-white/5 backdrop-blur-md">
-          <ShieldCheck className="w-4 h-4 text-blue-500" strokeWidth={2} />
-          {isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}
+        <div className="mb-5 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400/20" />
+          <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{isEs ? 'Inicio Rápido' : 'Quick Start'}</h3>
         </div>
         
-        <h2 className="text-xl sm:text-2xl font-semibold text-white mb-2 tracking-tight">
-          {isEs ? 'Todo tu flujo de trabajo, ' : 'Your entire workflow, '} <span className="text-slate-400">{isEs ? 'cero servidores.' : 'zero servers.'}</span>
-        </h2>
-        <p className="text-sm text-[#A1A1AA] font-normal leading-relaxed max-w-2xl mx-auto">
-          {isEs ? 'Edita, organiza y optimiza tus documentos con total confidencialidad. Todo el procesamiento ocurre directamente en tu dispositivo, garantizando que tus archivos nunca abandonen tu control.' : 'Edit, organize, and optimize your documents with total confidentiality. All processing happens directly on your device, ensuring your files never leave your control.'}
-        </p>
-      </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          {categories.map((cat, index) => {
+            const isFirst = index === 0;
+            const defaultStyles = isFirst 
+              ? 'border-blue-500/40 shadow-[0_0_25px_rgba(59,130,246,0.15)]' 
+              : 'border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]';
+
+            return (
+              <Link key={cat.id} href={cat.path} className="outline-none group">
+                <motion.div 
+                  whileHover={{ y: -8 }}
+                  className={`bg-white/[0.02] backdrop-blur-2xl border rounded-3xl p-8 transition-all duration-500 h-full min-h-[240px] flex flex-col justify-between ${defaultStyles} ${cat.glow}`}
+                >
+                  <div>
+                    <div className="mb-6 relative">
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl blur-sm group-hover:blur-md transition-all"></div>
+                      <div className={`relative bg-black/50 border p-3.5 rounded-xl w-fit shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500 ${isFirst ? 'border-blue-500/30' : 'border-white/10'}`}>
+                        <cat.icon className={`w-8 h-8 ${cat.color} drop-shadow-[0_0_8px_currentColor]`} />
+                      </div>
+                    </div>
+                    <h2 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">{isEs ? cat.titleEs : cat.titleEn}</h2>
+                    <p className="text-sm text-gray-400 leading-relaxed">{isEs ? cat.descEs : cat.descEn}</p>
+                  </div>
+
+                  <div className="mt-6 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                    <span className="text-sm font-bold text-cyan-400 flex items-center gap-2">
+                      {isEs ? 'Comenzar' : 'Get Started'} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </div>
+                </motion.div>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="w-full bg-white/[0.02] backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-2xl mb-12 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <FolderOpen className="w-5 h-5 text-cyan-400" /> {isEs ? 'Archivos Recientes' : 'Recent Files'}
+            </h3>
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input type="text" placeholder={isEs ? "Buscar archivos..." : "Search files..."} className="w-full bg-black/50 border border-white/10 rounded-full py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-cyan-500/50 transition-colors" />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead>
+                <tr className="border-b border-white/[0.08]">
+                  <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500 pl-2">{isEs ? 'Nombre del Archivo' : 'File Name'}</th>
+                  <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Tamaño' : 'Size'}</th>
+                  <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Acción Realizada' : 'Action Performed'}</th>
+                  <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Estado' : 'Status'}</th>
+                  <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500 text-right pr-2">{isEs ? 'Acciones' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-300">
+                <TableRow name="CAO_Presupuesto_Final.pdf" size="2.4 MB" action={isEs ? "Convertido a Excel" : "Converted to Excel"} status={isEs ? "Completado" : "Completed"} icon={FileText} color="text-blue-400" />
+                <TableRow name="Planos_Estructurales_v2.pdf" size="15.1 MB" action={isEs ? "Comprimido (-45%)" : "Compressed (-45%)"} status={isEs ? "Completado" : "Completed"} icon={FileArchive} color="text-amber-400" />
+                <TableRow name="Contrato_Firmado.pdf" size="840 KB" action={isEs ? "Protegido (AES-256)" : "Protected (AES-256)"} status={isEs ? "Completado" : "Completed"} icon={ShieldCheck} color="text-emerald-400" />
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <AnimatePresence>
+          {isAiOpen && (
+            <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.9 }} className="mb-4 w-80 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-cyan-900/50 to-blue-900/50 p-4 border-b border-white/10 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <span className="font-bold text-white text-sm">{isEs ? 'Asistente PDFBlack' : 'PDFBlack Assistant'}</span>
+                </div>
+                <button onClick={() => setIsAiOpen(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4"/></button>
+              </div>
+              <div className="p-4 h-48 flex flex-col justify-end bg-black/50">
+                <div className="bg-white/10 p-3 rounded-xl rounded-bl-none w-[85%] mb-2">
+                  <p className="text-xs text-gray-200">{isEs ? '¡Hola! Todo el procesamiento es local. ¿Qué necesitas hacer hoy?' : 'Hello! All processing is local. What do you need to do today?'}</p>
+                </div>
+              </div>
+              <div className="p-3 border-t border-white/5 bg-[#0a0a0a]">
+                <input type="text" placeholder={isEs ? "Escribe tu consulta..." : "Type your query..."} className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <div className="relative group">
+          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-black border border-white/10 rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            {isEs ? 'Asistente IA' : 'AI Assistant'}
+          </div>
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsAiOpen(!isAiOpen)} className="bg-cyan-500 hover:bg-cyan-400 text-black p-3.5 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-colors flex items-center justify-center">
+            <Bot className="w-5 h-5" />
+          </motion.button>
+        </div>
+      </div>
 
     </div>
   );
 }
 
-// 🚀 TARJETAS PREMIUM (Usan <Link> de Next.js para navegar a las otras páginas)
-function CategoryCard({ icon, title, desc, path }: any) {
+function KpiPill({ icon: Icon, title, value, decimals, suffix, color }: any) {
   return (
-    <Link href={path} className="w-full h-full outline-none">
-      <motion.div 
-        whileHover={{ y: -3, borderColor: '#3b82f6', boxShadow: '0 8px 30px rgba(59,130,246,0.15)' }} 
-        whileTap={{ scale: 0.98 }} 
-        className="group relative flex flex-col items-start p-6 sm:p-8 bg-[#121212] rounded-3xl border border-white/10 shadow-xl hover:shadow-2xl text-left transition-all duration-300 h-full w-full overflow-hidden"
-      >
-        <div className="relative z-20 bg-slate-900 p-3 rounded-2xl mb-4 shadow-sm border border-slate-800 group-hover:border-slate-700 transition-colors">
-          {icon}
+    <div className="flex items-center gap-2.5 px-4 py-2 bg-white/[0.02] border border-white/[0.06] rounded-full hover:bg-white/[0.04] transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <Icon className={`w-4 h-4 ${color}`} />
+      <span className="text-sm font-bold text-white">
+        <AnimatedCounter to={value} decimals={decimals} suffix={suffix} />
+      </span>
+      <span className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">{title}</span>
+    </div>
+  );
+}
+
+function TableRow({ name, size, action, status, icon: Icon, color }: any) {
+  return (
+    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+      <td className="py-4 pl-2">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-black/50 rounded-lg border border-white/5 group-hover:border-white/10 transition-colors">
+            <Icon className={`w-4 h-4 ${color}`} />
+          </div>
+          <span className="font-medium text-gray-200 group-hover:text-white transition-colors">{name}</span>
         </div>
-        <h2 className="relative z-20 text-xl font-bold text-white mb-2">{title}</h2>
-        <p className="relative z-20 text-[#A1A1AA] font-medium leading-relaxed text-sm">{desc}</p>
-      </motion.div>
-    </Link>
+      </td>
+      <td className="py-4 text-gray-400">{size}</td>
+      <td className="py-4 text-gray-400">{action}</td>
+      <td className="py-4">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-transparent border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+          <CheckCircle2 className="w-3 h-3" /> {status}
+        </span>
+      </td>
+      <td className="py-4 pr-2 text-right">
+        <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity duration-300">
+          <button className="p-1.5 text-gray-400 hover:text-yellow-400 hover:bg-white/10 rounded-md transition-colors" title="Favorito"><Star className="w-4 h-4" /></button>
+          <button className="p-1.5 text-gray-400 hover:text-cyan-400 hover:bg-white/10 rounded-md transition-colors" title="Vista Previa"><Eye className="w-4 h-4" /></button>
+          <button className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded-md transition-colors" title="Descargar"><Download className="w-4 h-4" /></button>
+          <button className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-md transition-colors" title="Eliminar"><Trash2 className="w-4 h-4" /></button>
+        </div>
+      </td>
+    </tr>
   );
 }

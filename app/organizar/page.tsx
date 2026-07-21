@@ -2,45 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, FileSpreadsheet, Presentation, Image as ImageIcon, FileType2, UploadCloud } from 'lucide-react';
+import { Files, Scissors, LayoutGrid, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
-const conversionTools = [
+const organizeTools = [
   {
-    id: 'word', title: 'PDF a Word', desc: 'Convierte a documentos .docx editables con alta precisión.',
-    icon: FileText, color: 'text-blue-400', activeBorder: 'border-blue-400', activeBg: 'bg-blue-500/10',
-    glow: 'group-hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] group-hover:border-blue-500/50'
+    id: 'merge', title: 'Unir PDF', desc: 'Combina múltiples archivos PDF en un solo documento de forma rápida.',
+    icon: Files, color: 'text-indigo-400', activeBorder: 'border-indigo-400', activeBg: 'bg-indigo-500/10',
+    glow: 'group-hover:shadow-[0_0_30px_rgba(99,102,241,0.2)] group-hover:border-indigo-500/50', href: '/organizar/unir'
   },
   {
-    id: 'excel', title: 'PDF a Excel', desc: 'Extrae tablas y datos a hojas de cálculo .xlsx.',
-    icon: FileSpreadsheet, color: 'text-emerald-400', activeBorder: 'border-emerald-400', activeBg: 'bg-emerald-500/10',
-    glow: 'group-hover:shadow-[0_0_30px_rgba(16,185,129,0.2)] group-hover:border-emerald-500/50'
+    id: 'split', title: 'Dividir PDF', desc: 'Extrae páginas específicas o divide un documento grande en varios archivos.',
+    icon: Scissors, color: 'text-orange-400', activeBorder: 'border-orange-400', activeBg: 'bg-orange-500/10',
+    glow: 'group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] group-hover:border-orange-500/50', href: '/organizar/dividir'
   },
   {
-    id: 'ppt', title: 'PDF a PowerPoint', desc: 'Transforma presentaciones a formato .pptx editable.',
-    icon: Presentation, color: 'text-orange-400', activeBorder: 'border-orange-400', activeBg: 'bg-orange-500/10',
-    glow: 'group-hover:shadow-[0_0_30px_rgba(249,115,22,0.2)] group-hover:border-orange-500/50'
-  },
-  {
-    id: 'jpg', title: 'PDF a JPG', desc: 'Extrae cada página como una imagen de alta calidad.',
-    icon: ImageIcon, color: 'text-purple-400', activeBorder: 'border-purple-400', activeBg: 'bg-purple-500/10',
-    glow: 'group-hover:shadow-[0_0_30px_rgba(168,85,247,0.2)] group-hover:border-purple-500/50'
-  },
-  {
-    id: 'txt', title: 'PDF a Texto', desc: 'Extrae el texto plano sin formato para uso rápido.',
-    icon: FileType2, color: 'text-cyan-400', activeBorder: 'border-cyan-400', activeBg: 'bg-cyan-500/10',
-    glow: 'group-hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] group-hover:border-cyan-500/50'
+    id: 'sort', title: 'Ordenar y Rotar', desc: 'Reorganiza visualmente las páginas, elimina las que no necesites o rótalas.',
+    icon: LayoutGrid, color: 'text-teal-400', activeBorder: 'border-teal-400', activeBg: 'bg-teal-500/10',
+    glow: 'group-hover:shadow-[0_0_30px_rgba(20,184,166,0.2)] group-hover:border-teal-500/50', href: '/organizar/ordenar'
   }
 ];
 
-export default function ConvertirPage() {
+export default function OrganizarPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex flex-col items-center justify-start relative z-10 min-h-[calc(100vh-80px)] bg-[#030712]">
-      
-      {/* Iluminación Ambiental */}
       {mounted && (
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-start">
           <motion.div animate={{ opacity: [0.03, 0.06, 0.03] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[5%] w-[80vw] h-[50vw] rounded-full bg-cyan-500 blur-[150px]" />
@@ -48,19 +37,17 @@ export default function ConvertirPage() {
         </div>
       )}
 
-      {/* Encabezado Premium */}
       <div className="text-center max-w-3xl mb-12 relative z-10">
         <h1 className="text-4xl md:text-5xl font-bold text-[#F4F4F5] tracking-tight drop-shadow-lg mb-4 leading-[1.15] text-balance antialiased">
-          Convertir <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">PDF</span>
+          Organizar <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">PDF</span>
         </h1>
         <p className="text-gray-400 text-base md:text-lg">
-          Transforma tus documentos a otros formatos al instante.
+          Une, divide y reordena las páginas de tus expedientes fácilmente.
         </p>
       </div>
 
-      {/* Grid de Herramientas */}
       <div className="flex flex-wrap justify-center gap-6 w-full max-w-7xl relative z-10">
-        {conversionTools.map((tool) => (
+        {organizeTools.map((tool) => (
           <ToolCard key={tool.id} tool={tool} />
         ))}
       </div>
@@ -70,6 +57,7 @@ export default function ConvertirPage() {
 
 function ToolCard({ tool }: { tool: any }) {
   const [isDragging, setIsDragging] = useState(false);
+  const router = useRouter();
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
@@ -84,7 +72,8 @@ function ToolCard({ tool }: { tool: any }) {
   };
   const handleFile = (file: File) => {
     if (file.type !== 'application/pdf') return toast.error('Por favor, suelta un archivo PDF válido.');
-    toast.success(`Iniciando conversión de ${file.name}...`);
+    toast.success(`Preparando ${file.name}...`);
+    router.push(tool.href);
   };
 
   return (
@@ -100,7 +89,7 @@ function ToolCard({ tool }: { tool: any }) {
       `}
     >
       {isDragging && <div className={`absolute inset-0 ${tool.activeBg} blur-3xl opacity-50 pointer-events-none transition-opacity duration-300`} />}
-      <input type="file" className="hidden" accept=".pdf" onChange={handleFileInput} />
+      <input type="file" className="hidden" accept=".pdf" multiple={tool.id === 'merge'} onChange={handleFileInput} />
 
       <div className="flex-grow w-full relative z-10">
         <div className="mb-6 relative">

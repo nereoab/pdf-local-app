@@ -1,206 +1,228 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useLanguage } from '@/context/LanguageContext';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { 
-  FileText, Shield, Hash, RotateCw, Split, Layers,
-  ArrowLeft 
-} from 'lucide-react';
+  Type, PenTool, Hash, Lock, ShieldAlert, Image as ImageIcon,
+  UploadCloud, FilePlus, FileText, X, Home, ShieldCheck, Zap, ArrowRight
+} from "lucide-react";
+import { useFileStore } from "../../store/useFileStore"; 
 
-// Importación de tus componentes core
-import PdfUploader from '@/components/PdfUploader';
-import PdfFoliador from '@/components/PdfFoliador';
-import PdfOrganizer from '@/components/PdfOrganizer';
-import PdfProtector from '@/components/PdfProtector';
-import PdfRotator from '@/components/PdfRotator';
-import PdfSplitter from '@/components/PdfSplitter';
+const herramientasEdicion = [
+  { id: "firmar", nombre: "Firmar Documento", descripcion: "Dibuja, escribe o sube tu firma electrónica de forma segura.", icono: PenTool, href: "/editar/firmar", color: "text-emerald-400", glow: "bg-emerald-500/20" },
+  { id: "foliar", nombre: "Foliar (Numerar)", descripcion: "Añade números de página o folios con formato personalizado.", icono: Hash, href: "/editar/foliar", color: "text-orange-400", glow: "bg-orange-500/20" },
+  { id: "proteger", nombre: "Proteger con Contraseña", descripcion: "Cifra tu PDF para que solo personas autorizadas puedan abrirlo.", icono: Lock, href: "/editar/proteger", color: "text-purple-400", glow: "bg-purple-500/20" },
+  { id: "texto", nombre: "Editar Texto Real", descripcion: "Modifica el texto original del PDF directamente en el navegador.", icono: Type, href: "/editar/texto", color: "text-blue-400", glow: "bg-blue-500/20", isPremium: true },
+  { id: "censurar", nombre: "Censurar Información", descripcion: "Oculta permanentemente datos sensibles (Redaction).", icono: ShieldAlert, href: "/editar/censurar", color: "text-red-400", glow: "bg-red-500/20" },
+  { id: "marcadeagua", nombre: "Marca de Agua", descripcion: "Añade un texto o imagen de fondo para proteger tu propiedad.", icono: ImageIcon, href: "/editar/marca-de-agua", color: "text-cyan-400", glow: "bg-cyan-500/20" }
+];
 
-// 🛠️ BYPASS DE TYPESCRIPT PARA DIAGNÓSTICO
-// Esto le dice a TS: "Confía en mí, sé lo que estoy haciendo con estos componentes"
-const SafePdfUploader = PdfUploader as any;
-const SafePdfFoliador = PdfFoliador as any;
-const SafePdfOrganizer = PdfOrganizer as any;
-const SafePdfProtector = PdfProtector as any;
-const SafePdfRotator = PdfRotator as any;
-const SafePdfSplitter = PdfSplitter as any;
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.6 } }
+};
 
-type ActiveTool = 'foliar' | 'organizar' | 'proteger' | 'rotar' | 'dividir' | null;
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.4 } }
+};
 
-export default function EditarHubPage() {
-  const { lang } = useLanguage();
-  const isEs = lang === 'es';
+export default function HubEdicionPage() {
+  const { globalFile, clearGlobalFile } = useFileStore();
+  const [file, setFile] = useState<File | null>(globalFile);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [file, setFile] = useState<File | null>(null);
-  const [activeTool, setActiveTool] = useState<ActiveTool>(null);
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPdfUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPdfUrl(null);
+    }
+  }, [file]);
 
-  const handleFileSelect = (selectedFile: File) => {
-    setFile(selectedFile);
-    setActiveTool(null);
+  const procesarArchivoLocal = (archivoSeleccionado: File) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    const interval = setInterval(() => {
+      setUploadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setFile(archivoSeleccionado);
+            setIsUploading(false);
+            setUploadProgress(0);
+          }, 400);
+          return 100;
+        }
+        return prev + Math.floor(Math.random() * 15) + 10; 
+      });
+    }, 100);
   };
 
-  const handleBackToHub = () => {
-    setActiveTool(null);
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); if (!isUploading && !file) setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
+    if (isUploading || file) return;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFile = e.dataTransfer.files[0];
+      if (droppedFile.type === "application/pdf") procesarArchivoLocal(droppedFile);
+      else alert("Por favor, sube un archivo PDF válido.");
+    }
   };
 
-  const handleResetFile = () => {
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) procesarArchivoLocal(e.target.files[0]);
+  };
+
+  const handleRemoveFile = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setFile(null);
-    setActiveTool(null);
+    clearGlobalFile();
   };
 
-  const tools = [
-    {
-      id: 'foliar' as ActiveTool,
-      titleEs: 'Foliar PDF',
-      titleEn: 'Add Page Numbers',
-      descEs: 'Inserta números de página de forma automática.',
-      descEn: 'Automatically insert page numbers into your PDF.',
-      icon: Hash,
-      color: 'text-blue-400',
-      borderGlow: 'hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]',
-    },
-    {
-      id: 'organizar' as ActiveTool,
-      titleEs: 'Organizar PDF',
-      titleEn: 'Organize PDF',
-      descEs: 'Une, reordena o elimina páginas con facilidad.',
-      descEn: 'Merge, reorder, or delete pages easily.',
-      icon: Layers,
-      color: 'text-emerald-400',
-      borderGlow: 'hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)]',
-    },
-    {
-      id: 'proteger' as ActiveTool,
-      titleEs: 'Proteger PDF',
-      titleEn: 'Protect PDF',
-      descEs: 'Añade una contraseña con cifrado fuerte AES-256.',
-      descEn: 'Encrypt your PDF with a strong AES-256 password.',
-      icon: Shield,
-      color: 'text-purple-400',
-      borderGlow: 'hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]',
-    },
-    {
-      id: 'rotar' as ActiveTool,
-      titleEs: 'Rotar PDF',
-      titleEn: 'Rotate PDF',
-      descEs: 'Gira páginas individuales o todo el documento.',
-      descEn: 'Rotate individual pages or the entire document.',
-      icon: RotateCw,
-      color: 'text-orange-400',
-      borderGlow: 'hover:border-orange-500/50 hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]',
-    },
-    {
-      id: 'dividir' as ActiveTool,
-      titleEs: 'Dividir PDF',
-      titleEn: 'Split PDF',
-      descEs: 'Extrae páginas seleccionadas en un nuevo archivo.',
-      descEn: 'Extract selected pages into a brand new file.',
-      icon: Split,
-      color: 'text-red-400',
-      borderGlow: 'hover:border-red-500/50 hover:shadow-[0_0_20px_rgba(239,68,68,0.15)]',
-    },
-  ];
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   return (
-    <main className="w-full min-h-[calc(100vh-80px)] bg-[#030712] text-[#F4F4F5] pt-12 pb-24 px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col items-center">
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-start">
-        <div className="absolute top-[10%] w-[70vw] h-[40vw] rounded-full bg-cyan-500/5 blur-[120px]" />
-      </div>
-
-      <div className="w-full max-w-5xl z-10">
-        
-        {/* PANTALLA 1: SUBIR EL ARCHIVO */}
-        {!file && (
-          <div className="flex flex-col items-center justify-center min-h-[500px]">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-extrabold text-white tracking-tight mb-3">
-                {isEs ? 'Herramientas de Edición' : 'PDF Editing Hub'} ♠️
-              </h1>
-              <p className="text-gray-400 max-w-xl mx-auto">
-                {isEs 
-                  ? 'Sube tu documento localmente para comenzar. El procesamiento se realiza de forma privada en tu navegador.' 
-                  : 'Upload your document locally to begin. Processing runs 100% privately in your browser.'}
-              </p>
-            </div>
-            
-            <div className="w-full max-w-xl">
-              <SafePdfUploader onFileSelect={handleFileSelect} />
-            </div>
-          </div>
+    <div className={`w-full px-4 sm:px-6 lg:px-8 pb-24 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#030712] transition-all duration-700 ${file ? 'pt-8' : 'pt-32'}`}>
+      
+      <AnimatePresence>
+        {file && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="fixed inset-0 z-[40] bg-black/70 backdrop-blur-sm pointer-events-none" />
         )}
+      </AnimatePresence>
 
-        {/* PANTALLA 2: ARCHIVO SUBIDO - SELECCIÓN DE HERRAMIENTA */}
-        {file && !activeTool && (
-          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8">
-            <div className="w-full bg-white/[0.02] border border-white/[0.06] rounded-3xl p-6 backdrop-blur-xl flex flex-col sm:flex-row justify-between items-center gap-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl">
-                  <FileText className="w-8 h-8 text-cyan-400" />
+      <div className="w-full max-w-5xl relative">
+        <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileInput} />
+
+        <AnimatePresence mode="wait">
+          {!file && !isUploading && (
+            <motion.div key="home-view" exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="relative z-10">
+              <div className="text-center mb-10">
+                <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+                  Editar <span className="text-cyan-400">PDF</span>
+                </h1>
+                <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+                  Procesamiento 100% local y privado. Tus archivos nunca abandonan tu dispositivo.
+                </p>
+              </div>
+
+              <div onClick={() => fileInputRef.current?.click()} className="w-full mb-12 bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 hover:border-cyan-500/50 border-dashed rounded-3xl p-12 md:p-20 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                <div className="bg-cyan-500/10 p-6 rounded-full mb-6 group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all duration-300 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                  <UploadCloud className="w-16 h-16 text-cyan-400" strokeWidth={1.5} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white max-w-[280px] sm:max-w-md truncate">{file.name}</h2>
-                  <p className="text-sm text-gray-400">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Arrastra y suelta tu PDF aquí</h2>
+                <p className="text-gray-400 mb-8 text-lg">o haz clic para explorar en tu dispositivo</p>
+                <button className="bg-white text-black hover:bg-gray-200 transition-all font-bold rounded-xl px-8 py-4 flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] text-lg pointer-events-none">
+                  <FilePlus className="w-6 h-6" /> Seleccionar Archivo
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {isUploading && (
+            <motion.div key="uploading-view" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full bg-black/60 border border-cyan-500/30 rounded-3xl p-12 shadow-[0_0_40px_rgba(6,182,212,0.15)] mt-10 relative z-[50]">
+              <div className="max-w-md mx-auto">
+                <div className="flex justify-between items-end mb-4">
+                  <div className="text-left">
+                    <h3 className="text-white font-bold text-xl flex items-center gap-2">Procesando documento...</h3>
+                    <p className="text-cyan-400/80 text-sm flex items-center gap-1 mt-1"><ShieldCheck className="w-4 h-4" /> Entorno local seguro</p>
+                  </div>
+                  <span className="text-cyan-400 font-bold text-3xl tabular-nums">{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-900 rounded-full h-3 overflow-hidden border border-white/10 shadow-inner">
+                  <motion.div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full relative" initial={{ width: 0 }} animate={{ width: `${uploadProgress}%` }} transition={{ ease: "linear", duration: 0.1 }}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-[shimmer_1.5s_infinite]"></div>
+                  </motion.div>
                 </div>
               </div>
-              <button 
-                onClick={handleResetFile}
-                className="flex items-center gap-2 text-sm font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 px-5 py-2.5 rounded-xl transition-all"
-              >
-                {isEs ? 'Cambiar archivo' : 'Change file'}
-              </button>
-            </div>
+            </motion.div>
+          )}
 
-            <div>
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">
-                {isEs ? 'Selecciona una herramienta' : 'Choose an editing action'}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tools.map((tool) => (
-                  <button 
-                    key={tool.id}
-                    onClick={() => setActiveTool(tool.id)}
-                    className={`bg-white/[0.01] border border-white/[0.06] rounded-3xl p-6 flex flex-col justify-between h-56 text-left transition-all duration-300 cursor-pointer ${tool.borderGlow}`}
-                  >
-                    <div>
-                      <div className="p-3 bg-black/40 border border-white/5 rounded-2xl w-fit mb-5">
-                        <tool.icon className={`w-6 h-6 ${tool.color}`} />
-                      </div>
-                      <h4 className="text-lg font-bold text-white mb-2">{isEs ? tool.titleEs : tool.titleEn}</h4>
-                      <p className="text-sm text-gray-400 leading-relaxed">{isEs ? tool.descEs : tool.descEn}</p>
+          {file && pdfUrl && !isUploading && (
+            <motion.div key="preview-view" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full flex flex-col items-center relative z-[50]">
+              
+              <div className="w-48 sm:w-56 bg-white/[0.02] border border-cyan-500/30 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.15)] mb-6 flex flex-col relative group">
+                <div className="bg-cyan-950/60 backdrop-blur-xl border-b border-cyan-500/30 p-2 flex justify-between items-center z-10">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <div className="bg-cyan-500/20 p-1.5 rounded-lg border border-cyan-500/30 flex-shrink-0">
+                      <FileText className="w-3 h-3 text-cyan-400" />
                     </div>
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="text-white font-bold text-[10px] truncate w-20 sm:w-28">{file.name}</span>
+                      <span className="text-cyan-400/80 text-[8px] font-medium">{formatFileSize(file.size)}</span>
+                    </div>
+                  </div>
+                  <button onClick={handleRemoveFile} className="flex-shrink-0 p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-all duration-300">
+                    <X className="w-3 h-3 hover:rotate-90 transition-transform duration-300" />
                   </button>
-                ))}
+                </div>
+                <div className="w-full aspect-[1/1.4] bg-[#0a0a0a] relative pointer-events-none">
+                  <div className="absolute inset-0 bg-black/5 z-10"></div>
+                  <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} className="w-full h-full border-none" title="PDF Preview" />
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
 
-        {/* PANTALLA 3: ENTORNO DE EDICIÓN */}
-        {file && activeTool && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-6">
-            <div className="flex justify-between items-center mb-2">
-              <button 
-                onClick={handleBackToHub}
-                className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-white hover:bg-white/5 px-4 py-2.5 rounded-xl border border-white/5 transition-all"
-              >
-                <ArrowLeft className="w-4 h-4" /> {isEs ? 'Volver a herramientas' : 'Back to tools'}
-              </button>
-              <span className="text-xs text-gray-500 font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                {activeTool.toUpperCase()} MODE
-              </span>
-            </div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mb-6 flex items-center gap-2">
+                <Zap className="w-6 h-6 text-cyan-400 fill-cyan-400/20" />
+                <h3 className="text-lg font-bold uppercase tracking-widest text-cyan-400">¿Qué deseas hacer con este archivo?</h3>
+              </motion.div>
 
-            <div className="bg-white/[0.01] border border-white/[0.06] rounded-3xl p-2 md:p-6 backdrop-blur-3xl shadow-2xl">
-              {activeTool === 'foliar' && <SafePdfFoliador file={file} onBack={handleBackToHub} />}
-              {activeTool === 'organizar' && <SafePdfOrganizer file={file} onBack={handleBackToHub} />}
-              {activeTool === 'proteger' && <SafePdfProtector file={file} onBack={handleBackToHub} />}
-              {activeTool === 'rotar' && <SafePdfRotator file={file} onBack={handleBackToHub} />}
-              {activeTool === 'dividir' && <SafePdfSplitter file={file} onBack={handleBackToHub} />}
-            </div>
-          </motion.div>
-        )}
+              <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mb-16">
+                {herramientasEdicion.map((cat) => (
+                  <motion.div key={cat.id} variants={itemVariants}>
+                    <Link href={cat.href} className="outline-none group block h-full">
+                      <div className={`bg-white/[0.02] backdrop-blur-2xl border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] rounded-3xl p-8 transition-all duration-500 h-full min-h-[240px] flex flex-col justify-between ${cat.glow}`}>
+                        <div>
+                          <div className="mb-6 relative flex justify-between items-start">
+                            <div className="relative">
+                              <div className={`absolute inset-0 ${cat.glow} blur-xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-500`}></div>
+                              <div className="relative bg-black/50 border border-white/10 p-3.5 rounded-xl w-fit shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500">
+                                <cat.icono className={`w-8 h-8 ${cat.color} drop-shadow-[0_0_8px_currentColor]`} />
+                              </div>
+                            </div>
+                            {cat.isPremium && (
+                              <span className="bg-white text-black text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wide shadow-[0_0_10px_rgba(255,255,255,0.2)]">Pro</span>
+                            )}
+                          </div>
+                          <h2 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">{cat.nombre}</h2>
+                          <p className="text-sm text-gray-400 leading-relaxed">{cat.descripcion}</p>
+                        </div>
+                        <div className="mt-6 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                          <span className="text-sm font-bold text-cyan-400 flex items-center gap-2">
+                            Usar archivo aquí <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </motion.div>
 
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </main>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-16 flex justify-center relative z-10">
+        <Link href="/" className="flex items-center gap-2 text-gray-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] px-6 py-3 rounded-full transition-all duration-300 hover:shadow-lg">
+          <Home className="w-4 h-4" /> <span className="text-sm font-medium">Volver al Inicio</span>
+        </Link>
+      </motion.div>
+    </div>
   );
 }

@@ -1,33 +1,38 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "../context/ThemeContext";
-import { LanguageProvider } from "../context/LanguageContext";
-import SharedLayout from "../components/SharedLayout"; // IMPORTAMOS EL CASCARÓN
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
 
-const inter = Inter({ subsets: ["latin"] });
+// 1. Importamos tu contexto de idioma
+import { LanguageProvider } from '../context/LanguageContext';
 
-export const metadata: Metadata = {
-  title: 'PDFBlack | Herramientas PDF Gratuitas y Privadas',
-  description: 'Edita, organiza, convierte y optimiza tus archivos PDF directamente en tu navegador. 100% local, sin servidores, sin registro.',
-  manifest: '/manifest.json',
+// 2. IMPORTAMOS TU CABECERA Y PIE DE PÁGINA (El archivo que vi en tu captura)
+import SharedLayout from '../components/SharedLayout'; 
+
+export const viewport: Viewport = {
+  themeColor: '#030712',
+  colorScheme: 'dark',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const metadata: Metadata = {
+  title: 'PDFBlack ♠️ | Herramientas PDF Gratuitas',
+  description: 'Edición de PDF 100% local, privada y en modo oscuro.',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="es" className="dark" suppressHydrationWarning> 
-      <head>
-        <meta name="theme-color" content="#030712" />
-      </head>
-      <body className={inter.className}>
-        <ThemeProvider>
-          <LanguageProvider>
-            {/* ENVOLVEMOS LA APP EN EL CASCARÓN */}
-            <SharedLayout>
-              {children}
-            </SharedLayout>
-          </LanguageProvider>
-        </ThemeProvider>
+    <html lang="es" className="dark" style={{ colorScheme: 'dark' }}>
+      <body className="bg-[#030712] text-gray-100 antialiased min-h-screen">
+        
+        <LanguageProvider>
+          {/* 3. RESTAURAMOS EL LAYOUT COMPARTIDO (Header + Footer) */}
+          <SharedLayout>
+            {children}
+          </SharedLayout>
+        </LanguageProvider>
+
       </body>
     </html>
   );

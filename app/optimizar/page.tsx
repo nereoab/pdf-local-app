@@ -6,8 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  ArrowLeft, Zap, Sliders, Activity, EyeOff,
-  FileText, UploadCloud, FilePlus, X 
+  ArrowRight, Zap, Sliders, Activity, EyeOff,
+  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -82,10 +82,70 @@ export default function OptimizarPage() {
   };
 
   const optimizationTools = [
-    { id: 'compresion-basica', titleEs: 'Compresión Básica', titleEn: 'Basic Compression', descEs: 'Reduce el peso de tu archivo de forma equilibrada sin sacrificar la calidad de lectura.', descEn: 'Reduce file size with a perfect balance, without sacrificing reading quality.', icon: Sliders, path: '/optimizar/compresion-basica' },
-    { id: 'compresion-extrema', titleEs: 'Compresión Extrema', titleEn: 'Extreme Compression', descEs: 'Máxima optimización de tamaño, ideal para envíos con límites de tamaño rigurosos.', descEn: 'Maximum size optimization, ideal for strict file size limit restrictions.', icon: Zap, path: '/optimizar/compresion-extrema' },
-    { id: 'reparar', titleEs: 'Reparar PDF', titleEn: 'Repair PDF', descEs: 'Analiza, reestructura y recupera documentos PDF dañados o corruptos.', descEn: 'Analyze, rebuild, and recover damaged or corrupted PDF documents.', icon: Activity, path: '/optimizar/reparar' },
-    { id: 'metadatos', titleEs: 'Limpiar Metadatos', titleEn: 'Clear Metadata', descEs: 'Elimina información oculta como creador, fechas de edición y software para privacidad.', descEn: 'Remove hidden author, edit date, and software info for maximum privacy.', icon: EyeOff, path: '/optimizar/metadatos' }
+    { 
+      id: 'compresion-basica', 
+      tagEs: '⚡ RECOMENDADO', tagEn: '⚡ RECOMMENDED', 
+      titleEs: 'Compresión Básica', titleEn: 'Basic Compression', 
+      descEs: 'Reduce el peso de tu archivo de forma equilibrada sin sacrificar la calidad de lectura.', 
+      descEn: 'Reduce file size with a perfect balance, without sacrificing reading quality.', 
+      icon: Sliders, path: '/optimizar/compresion-basica',
+      borderColor: 'border-purple-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(168,85,247,0.2)]',
+      hoverBorder: 'group-hover/card:border-purple-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(168,85,247,0.9),0_0_15px_rgba(168,85,247,0.5)]',
+      hoverBg: 'group-hover/card:from-purple-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-400/40',
+      btnGradient: 'from-purple-400 to-violet-500 group-hover/card:from-purple-300 group-hover/card:to-violet-400',
+      iconBg: 'from-purple-500/30 to-violet-500/20 border-purple-400/50 text-purple-300'
+    },
+    { 
+      id: 'compresion-extrema', 
+      tagEs: '🔥 MÁXIMO AHORRO', tagEn: '🔥 MAXIMUM SAVINGS', 
+      titleEs: 'Compresión Extrema', titleEn: 'Extreme Compression', 
+      descEs: 'Máxima optimización de tamaño, ideal para envíos con límites de tamaño rigurosos.', 
+      descEn: 'Maximum size optimization, ideal for strict file size limit restrictions.', 
+      icon: Zap, path: '/optimizar/compresion-extrema',
+      borderColor: 'border-orange-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
+      hoverBorder: 'group-hover/card:border-orange-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(249,115,22,0.9),0_0_15px_rgba(249,115,22,0.5)]',
+      hoverBg: 'group-hover/card:from-orange-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-orange-500/20 text-orange-300 border-orange-400/40',
+      btnGradient: 'from-orange-400 to-red-500 group-hover/card:from-orange-300 group-hover/card:to-red-400',
+      iconBg: 'from-orange-500/30 to-red-500/20 border-orange-400/50 text-orange-300'
+    },
+    { 
+      id: 'reparar', 
+      tagEs: '🛠️ RECUPERACIÓN', tagEn: '🛠️ RECOVERY', 
+      titleEs: 'Reparar PDF', titleEn: 'Repair PDF', 
+      descEs: 'Analiza, reestructura y recupera documentos PDF dañados o corruptos.', 
+      descEn: 'Analyze, rebuild, and recover damaged or corrupted PDF documents.', 
+      icon: Activity, path: '/optimizar/reparar',
+      borderColor: 'border-cyan-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(6,182,212,0.2)]',
+      hoverBorder: 'group-hover/card:border-cyan-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(6,182,212,0.9),0_0_15px_rgba(6,182,212,0.5)]',
+      hoverBg: 'group-hover/card:from-cyan-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
+      btnGradient: 'from-cyan-400 to-blue-500 group-hover/card:from-cyan-300 group-hover/card:to-blue-400',
+      iconBg: 'from-cyan-500/30 to-blue-500/20 border-cyan-400/50 text-cyan-300'
+    },
+    { 
+      id: 'metadatos', 
+      tagEs: '🛡️ PRIVACIDAD', tagEn: '🛡️ PRIVACY', 
+      titleEs: 'Limpiar Metadatos', titleEn: 'Clear Metadata', 
+      descEs: 'Elimina información oculta como creador, fechas de edición y software para privacidad.', 
+      descEn: 'Remove hidden author, edit date, and software info for maximum privacy.', 
+      icon: EyeOff, path: '/optimizar/metadatos',
+      borderColor: 'border-emerald-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
+      hoverBorder: 'group-hover/card:border-emerald-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(16,185,129,0.9),0_0_15px_rgba(16,185,129,0.5)]',
+      hoverBg: 'group-hover/card:from-emerald-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+      btnGradient: 'from-emerald-400 to-teal-500 group-hover/card:from-emerald-300 group-hover/card:to-teal-400',
+      iconBg: 'from-emerald-500/30 to-teal-500/20 border-emerald-400/50 text-emerald-300'
+    }
   ];
 
   if (!mounted) return null;
@@ -118,30 +178,64 @@ export default function OptimizarPage() {
 
           {!isUploading && (
             <motion.div key="workspace-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full">
-              <div className="mb-6">
-                <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors">
-                  <ArrowLeft className="w-4 h-4" />
-                  {isEs ? "Volver al Inicio" : "Back to Home"}
-                </Link>
+              {/* TÍTULO DE PÁGINA Y KPI STATS */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 mt-2 pb-4 border-b border-white/5">
+                <div className="flex items-center gap-3.5">
+                  <div className="bg-gradient-to-tr from-purple-500/30 to-pink-500/20 p-3 sm:p-3.5 rounded-2xl border border-purple-400/40 shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+                    <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-purple-300 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                      {isEs ? "OPTIMIZAR DOCUMENTO" : "OPTIMIZE DOCUMENT"}
+                    </h1>
+                    <p className="text-neutral-400 text-xs sm:text-sm font-medium">
+                      {isEs ? "Reduce el peso o repara la integridad de tu archivo PDF:" : "Reduce file size or repair the integrity of your PDF file:"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={15} tooltip={isEs ? "Tus archivos optimizados esta semana" : "Files optimized this week"} color="text-purple-400" />
+                  <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={4.8} decimals={1} suffix=" GB" tooltip={isEs ? "Espacio en disco comprimido" : "Compressed disk space"} color="text-pink-400" />
+                  <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={35} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-cyan-400" />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                <div className="lg:col-span-5 flex flex-col">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-5 flex flex-col justify-start">
                   {!globalFile ? (
-                    <div onClick={() => fileInputRef.current?.click()} className="w-full h-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 hover:border-purple-500/50 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] min-h-[540px]">
-                      <div className="bg-purple-500/10 p-4 rounded-full group-hover:scale-110 group-hover:bg-purple-500/20 transition-all duration-300">
-                        <UploadCloud className="w-8 h-8 text-purple-400" />
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-[560px] bg-purple-950/10 hover:bg-purple-950/30 border-2 border-dashed border-purple-500/30 hover:border-purple-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(168,85,247,0.25)]"
+                    >
+                      <motion.div 
+                        animate={{ y: [0, -8, 0] }}
+                        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                        className="bg-gradient-to-tr from-purple-500/20 to-pink-500/20 p-6 rounded-full border border-purple-500/30 group-hover:scale-110 group-hover:bg-purple-500/30 group-hover:border-purple-400 shadow-[0_0_30px_rgba(168,85,247,0.2)] transition-all duration-300"
+                      >
+                        <UploadCloud className="w-16 h-16 text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.6)]" />
+                      </motion.div>
+
+                      <div className="text-center flex flex-col items-center gap-1.5">
+                        <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-purple-200 transition-colors">
+                          {isEs ? "Arrastra tu PDF aquí para optimizar" : "Drop your PDF here to optimize"}
+                        </h3>
+                        <p className="text-purple-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+                          {isEs ? "O haz clic para explorar tus archivos" : "Or click to browse your files"}
+                        </p>
                       </div>
-                      <div className="text-center">
-                        <h3 className="text-xl font-bold text-white mb-1">{isEs ? "Sube un archivo para comenzar" : "Upload a file to start"}</h3>
-                        <p className="text-gray-400 text-sm">{isEs ? "Arrastra tu PDF aquí o haz clic para explorar." : "Drop your PDF here or click to browse."}</p>
-                      </div>
-                      <button className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">
-                        <FilePlus className="w-4 h-4" /> {isEs ? "Seleccionar PDF" : "Select PDF"}
+
+                      <button className="flex items-center justify-center gap-2.5 bg-purple-500 hover:bg-purple-400 text-white px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(168,85,247,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(168,85,247,0.7)] transition-all mt-1 cursor-pointer border border-purple-300/40">
+                        <FilePlus className="w-4 h-4 text-white" /> {isEs ? "Subir Archivo" : "Upload File"}
                       </button>
+
+                      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
+                      </div>
                     </div>
                   ) : (
-                    <div className="w-full h-full bg-white/[0.02] border border-purple-500/20 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(168,85,247,0.1)] flex flex-col relative min-h-[540px]">
+                    <div className="w-full h-[560px] bg-purple-950/20 hover:bg-purple-950/30 border-2 border-purple-500/40 hover:border-purple-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(168,85,247,0.25)] hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] transition-all duration-300 flex flex-col relative">
                       <div className="bg-[#030712] border-b border-white/[0.06] p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="bg-purple-500/20 p-2 rounded-xl border border-purple-500/30 flex-shrink-0">
@@ -174,34 +268,58 @@ export default function OptimizarPage() {
                   )}
                 </div>
 
-                <div className="lg:col-span-7 flex flex-col justify-between">
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-purple-400" />
-                      <h2 className="text-xs font-bold uppercase tracking-widest text-purple-400">{isEs ? "Optimizar Documento" : "Optimize Document"}</h2>
-                    </div>
-                    <p className="text-neutral-400 text-sm mb-6">{isEs ? "Reduce el peso o repara la integridad de tu archivo PDF:" : "Reduce file size or repair the integrity of your PDF file:"}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                <div className="lg:col-span-7 flex flex-col justify-between h-[560px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 h-full max-h-[560px] group/grid">
                     {optimizationTools.map((tool) => (
-                      <Link key={tool.id} href={globalFile ? tool.path : "#"} onClick={(e) => { if (!globalFile) { e.preventDefault(); toast.error(isEs ? "Sube un archivo primero para usar las herramientas." : "Upload a file first to use the tools."); } }} className={`outline-none group block ${!globalFile ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/[0.06] rounded-3xl p-6 transition-all duration-500 h-full min-h-[180px] flex flex-col justify-between hover:border-purple-500/40 hover:shadow-[0_0_25px_rgba(168,85,247,0.15)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                      <Link 
+                        key={tool.id} 
+                        href={globalFile ? tool.path : "#"} 
+                        onClick={(e) => { 
+                          if (!globalFile) { 
+                            e.preventDefault(); 
+                            toast.error(isEs ? "Sube un archivo primero para usar la herramienta." : "Upload a file first to use the tool."); 
+                          } 
+                        }} 
+                        className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
+                      >
+                        <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${tool.borderColor} ${tool.shadowColor} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
+                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+
                           <div>
-                            <div className="mb-4 relative">
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl blur-sm group-hover:blur-md transition-all" />
-                              <div className="relative bg-black/50 border border-white/10 p-2.5 rounded-xl w-fit shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-105 transition-transform duration-500">
-                                <tool.icon className="w-5 h-5 text-purple-400" />
+                            <div className="flex items-center justify-between mb-2">
+                              <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
+                                <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                              </div>
+
+                              <div className={`bg-gradient-to-r ${tool.btnGradient} text-slate-950 font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
+                                <span>{isEs ? "Usar Ahora" : "Use Now"}</span>
+                                <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
                               </div>
                             </div>
-                            <h3 className="text-md font-bold text-white mb-1 group-hover:text-purple-300 transition-colors">{isEs ? tool.titleEs : tool.titleEn}</h3>
-                            <p className="text-xs text-gray-400 leading-relaxed">{isEs ? tool.descEs : tool.descEn}</p>
+
+                            <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border mb-1 inline-block shadow-sm`}>
+                              {isEs ? tool.tagEs : tool.tagEn}
+                            </span>
+
+                            <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
+                              {isEs ? tool.titleEs : tool.titleEn}
+                            </h3>
+                            <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
+                              {isEs ? tool.descEs : tool.descEn}
+                            </p>
                           </div>
-                          {globalFile && (
-                            <div className="mt-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                              <span className="text-[11px] font-bold text-purple-400 flex items-center gap-1">{isEs ? 'Configurar' : 'Configure'} <ArrowLeft className="w-3 h-3 rotate-180" /></span>
-                            </div>
-                          )}
+
+                          <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                              {isEs ? "100% Local" : "100% Local"}
+                            </span>
+
+                            <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
+                              {isEs ? "Iniciar" : "Start"}
+                              <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
+                            </span>
+                          </div>
                         </div>
                       </Link>
                     ))}
@@ -211,6 +329,18 @@ export default function OptimizarPage() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = "", tooltip, color }: any) {
+  return (
+    <div title={tooltip} className="flex items-center gap-2 bg-slate-900/90 border border-white/10 hover:border-white/20 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md transition-all cursor-default group">
+      <Icon className={`w-3.5 h-3.5 ${color}`} />
+      <div className="flex items-baseline gap-1">
+        <span className="text-white font-extrabold text-xs">{value}{suffix}</span>
+        <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">{title}</span>
       </div>
     </div>
   );

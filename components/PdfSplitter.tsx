@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
-import { Scissors, FileText, X, Loader2, Settings2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Scissors, FileText, X, Loader2, Settings2, ArrowRight, ShieldCheck, UploadCloud, FilePlus } from 'lucide-react';
 import { useFileStore } from '../store/useFileStore';
+import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'framer-motion';
 
 export default function PdfSplitter() {
+  const { lang } = useLanguage();
+  const isEs = lang === 'es';
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
   const [file, setFile] = useState<File | null>(globalFile);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -173,27 +177,37 @@ export default function PdfSplitter() {
       <motion.div 
         initial={{ opacity: 0, y: 15 }} 
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-3xl bg-slate-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-slate-800 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden"
+        onClick={() => fileInputRef.current?.click()}
+        className="w-full max-w-3xl bg-cyan-950/10 hover:bg-cyan-950/30 border-2 border-dashed border-cyan-500/30 hover:border-cyan-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(6,182,212,0.25)] min-h-[440px] relative overflow-hidden"
       >
-        <div className="absolute -top-24 -left-24 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 p-6 rounded-full mb-6 border border-indigo-500/30 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
-          <Scissors className="w-14 h-14 text-indigo-400" />
-        </div>
-        <h2 className="text-3xl font-extrabold text-white mb-3 tracking-tight">Dividir archivo PDF</h2>
-        <p className="text-slate-400 mb-6 text-center max-w-md leading-relaxed text-sm">
-          Extrae rangos específicos o divide tu PDF en múltiples archivos de tamaño fijo de forma local y segura.
-        </p>
+        <motion.div 
+          animate={{ y: [0, -8, 0] }}
+          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+          className="bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 p-6 rounded-full border border-indigo-500/30 group-hover:scale-110 group-hover:bg-indigo-500/30 group-hover:border-indigo-400 shadow-[0_0_30px_rgba(99,102,241,0.2)] transition-all duration-300"
+        >
+          <Scissors className="w-16 h-16 text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.6)]" />
+        </motion.div>
 
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-8">
-          <ShieldCheck className="w-4 h-4" />
-          <span>Procesamiento 100% Local & Seguro</span>
+        <div className="text-center flex flex-col items-center gap-1.5">
+          <h2 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-indigo-200 transition-colors">
+            {isEs ? "Dividir archivo PDF" : "Split PDF file"}
+          </h2>
+          <p className="text-indigo-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+            {isEs ? "Arrastra tu PDF aquí o haz clic para explorar" : "Drag your PDF here or click to browse"}
+          </p>
         </div>
-        
-        <label className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-10 py-4 rounded-xl cursor-pointer font-bold text-lg transition-all shadow-lg shadow-indigo-600/30 hover:scale-105 active:scale-95 border border-indigo-400/30">
-          Seleccionar archivo PDF
-          <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} disabled={isProcessing} />
+
+        <label className="flex items-center justify-center gap-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(6,182,212,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(6,182,212,0.7)] transition-all mt-1 cursor-pointer border border-cyan-300/40">
+          <FilePlus className="w-4 h-4 text-slate-950" /> {isEs ? "Seleccionar PDF" : "Select PDF"}
+          <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
         </label>
-        {isProcessing && <p className="mt-4 text-sm text-slate-400 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> {progressMsg}</p>}
+        {isProcessing && <p className="mt-2 text-sm text-cyan-400 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> {progressMsg}</p>}
+
+        {/* LEYENDA DE PRIVACIDAD DENTRO DEL CUADRO DE CARGA */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
+        </div>
       </motion.div>
     );
   }

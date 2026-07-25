@@ -3,19 +3,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, ShieldCheck, FileEdit, FileText, X, Save, Download, CheckCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { useFileStore } from '@/store/useFileStore';
 
 type Step = 'upload' | 'edit' | 'download';
 
 export default function PdfEditor() {
   const viewer = useRef<HTMLDivElement>(null);
-  const [step, setStep] = useState<Step>('upload');
+  const globalFile = useFileStore((state) => state.globalFile);
+  const setGlobalFile = useFileStore((state) => state.setGlobalFile);
+
+  const [file, setFile] = useState<File | null>(globalFile);
+  const [step, setStep] = useState<Step>(globalFile ? 'edit' : 'upload');
   
-  const [file, setFile] = useState<File | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
   const [viewerInstance, setViewerInstance] = useState<any>(null);
   const [editedPdfUrl, setEditedPdfUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (globalFile && !file) {
+      setFile(globalFile);
+      setStep('edit');
+    }
+  }, [globalFile, file]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

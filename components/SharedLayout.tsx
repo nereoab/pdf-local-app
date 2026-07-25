@@ -36,7 +36,18 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
 
           {/* AÑADIDO: gap-4 xl:gap-8 para que sea responsivo en laptops */}
           <div className="hidden lg:flex items-center gap-4 xl:gap-8">
-            <DropdownMenu title={isEs ? 'Editar PDF' : 'Edit PDF'} basePath="/editar" items={[{ label: t.tools.edit.title, path: '/editar/texto' }, { label: t.tools.number.title, path: '/editar/foliar' }]} />
+            <DropdownMenu 
+              title={isEs ? 'Editar PDF' : 'Edit PDF'} 
+              basePath="/editar" 
+              items={[
+                { label: isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images', path: '/editar/texto' },
+                { label: isEs ? 'Poner Números a Páginas (Foliado)' : 'Add Page Numbers', path: '/editar/foliar' },
+                { label: isEs ? 'Poner Sello de Agua' : 'Add Watermark', path: '/editar/marca-agua' },
+                { label: isEs ? 'Quitar Sello de Agua' : 'Remove Watermark', path: '/editar/quitar-marca-agua' },
+                { label: isEs ? 'Firmar PDF' : 'Sign PDF', path: '/editar/firma' },
+                { label: isEs ? 'OCR PDF (Texto Seleccionable)' : 'OCR PDF (Searchable Text)', path: '/editar/ocr' }
+              ]} 
+            />
             <DropdownMenu title={isEs ? 'Organizar PDF' : 'Organize PDF'} basePath="/organizar" items={[{ label: t.tools.organize.title, path: '/organizar/ordenar' }, { label: t.tools.merge.title, path: '/organizar/unir' }, { label: t.tools.split.title, path: '/organizar/dividir' }, { label: t.tools.rotate.title, path: '/organizar/rotar' }]} />
             <DropdownMenu title={isEs ? 'Convertir PDF' : 'Convert PDF'} basePath="/convertir" items={[{ label: 'Ver todos los conversores', path: '/convertir' }]} />
             <DropdownMenu title={isEs ? 'Optimizar PDF' : 'Optimize PDF'} basePath="/optimizar" items={[{ label: t.tools.protect.title, path: '/optimizar/proteger' }]} />
@@ -55,38 +66,41 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               )}
             </AnimatePresence>
 
-            <div className="relative group cursor-pointer hidden sm:block">
-              <motion.button 
-                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black px-4 py-2 rounded-full font-bold text-sm transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4" /> {isEs ? 'Nuevo' : 'New'}
-              </motion.button>
-              
-              <div className="absolute right-0 top-10 pt-4 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50">
-                <div className="bg-[#0a0a0a] border border-slate-800 rounded-xl shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-xl">
-                  <div className="px-3 py-2 border-b border-white/5 mb-1">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isEs ? 'Selecciona una acción' : 'Select an action'}</p>
+            {/* MOSTRAR BOTÓN 'NUEVO' SOLO EN LA PÁGINA INICIAL Y OCULTARLO EN LAS SUBPÁGINAS */}
+            {isHome && (
+              <div className="relative group cursor-pointer hidden sm:block">
+                <motion.button 
+                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black px-4 py-2 rounded-full font-bold text-sm transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" /> {isEs ? 'Nuevo' : 'New'}
+                </motion.button>
+                
+                <div className="absolute right-0 top-10 pt-4 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50">
+                  <div className="bg-[#0a0a0a] border border-slate-800 rounded-xl shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-xl">
+                    <div className="px-3 py-2 border-b border-white/5 mb-1">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isEs ? 'Selecciona una acción' : 'Select an action'}</p>
+                    </div>
+                    <Link href="/editar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-blue-500/10 rounded-lg group/item transition-colors">
+                      <Edit3 className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-blue-400">{isEs ? 'Editar PDF' : 'Edit PDF'}</span>
+                    </Link>
+                    <Link href="/organizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-emerald-500/10 rounded-lg group/item transition-colors">
+                      <FolderOpen className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-emerald-400">{isEs ? 'Organizar PDF' : 'Organize PDF'}</span>
+                    </Link>
+                    <Link href="/convertir" className="flex items-center gap-3 px-3 py-2.5 hover:bg-orange-500/10 rounded-lg group/item transition-colors">
+                      <RefreshCw className="w-4 h-4 text-orange-400" />
+                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-orange-400">{isEs ? 'Convertir PDF' : 'Convert PDF'}</span>
+                    </Link>
+                    <Link href="/optimizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-purple-500/10 rounded-lg group/item transition-colors">
+                      <Zap className="w-4 h-4 text-purple-400" />
+                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-purple-400">{isEs ? 'Optimizar PDF' : 'Optimize PDF'}</span>
+                    </Link>
                   </div>
-                  <Link href="/editar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-blue-500/10 rounded-lg group/item transition-colors">
-                    <Edit3 className="w-4 h-4 text-blue-400" />
-                    <span className="text-sm font-medium text-slate-300 group-hover/item:text-blue-400">{isEs ? 'Editar PDF' : 'Edit PDF'}</span>
-                  </Link>
-                  <Link href="/organizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-emerald-500/10 rounded-lg group/item transition-colors">
-                    <FolderOpen className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-medium text-slate-300 group-hover/item:text-emerald-400">{isEs ? 'Organizar PDF' : 'Organize PDF'}</span>
-                  </Link>
-                  <Link href="/convertir" className="flex items-center gap-3 px-3 py-2.5 hover:bg-orange-500/10 rounded-lg group/item transition-colors">
-                    <RefreshCw className="w-4 h-4 text-orange-400" />
-                    <span className="text-sm font-medium text-slate-300 group-hover/item:text-orange-400">{isEs ? 'Convertir PDF' : 'Convert PDF'}</span>
-                  </Link>
-                  <Link href="/optimizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-purple-500/10 rounded-lg group/item transition-colors">
-                    <Zap className="w-4 h-4 text-purple-400" />
-                    <span className="text-sm font-medium text-slate-300 group-hover/item:text-purple-400">{isEs ? 'Optimizar PDF' : 'Optimize PDF'}</span>
-                  </Link>
                 </div>
               </div>
-            </div>
+            )}
 
             <motion.button onClick={toggleLanguage} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-2 rounded-full font-semibold text-xs transition-all border border-white/5 flex-shrink-0">
               <Globe className="w-4 h-4" /> {lang === 'es' ? 'EN' : 'ES'}

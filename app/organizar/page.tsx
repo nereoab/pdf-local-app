@@ -6,8 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  ArrowLeft, FolderOpen, Merge, Scissors, Trash2, LayoutGrid, ExternalLink,
-  FileText, UploadCloud, FilePlus, X 
+  ArrowRight, FolderOpen, Merge, Scissors, Trash2, LayoutGrid, ExternalLink,
+  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -82,11 +82,86 @@ export default function OrganizarPage() {
   };
 
   const organizingTools = [
-    { id: 'unir', titleEs: 'Unir PDF', titleEn: 'Merge PDF', descEs: 'Combina múltiples archivos PDF en un solo documento de forma ordenada.', descEn: 'Combine multiple PDF files into a single ordered document.', icon: Merge, path: '/organizar/unir' },
-    { id: 'dividir', titleEs: 'Dividir PDF', titleEn: 'Split PDF', descEs: 'Extrae rangos específicos de páginas o guarda cada hoja como un archivo.', descEn: 'Extract specific page ranges or save each sheet as a file.', icon: Scissors, path: '/organizar/dividir' },
-    { id: 'eliminar', titleEs: 'Eliminar Páginas', titleEn: 'Delete Pages', descEs: 'Remueve hojas innecesarias de tu documento de manera limpia y visual.', descEn: 'Cleanly and visually remove unnecessary pages from your document.', icon: Trash2, path: '/organizar/eliminar' },
-    { id: 'reordenar', titleEs: 'Reordenar Páginas', titleEn: 'Reorder Pages', descEs: 'Arrastra y organiza el orden de tus páginas de manera interactiva.', descEn: 'Drag and arrange the order of your pages interactively.', icon: LayoutGrid, path: '/organizar/reordenar' },
-    { id: 'extraer', titleEs: 'Extraer Páginas', titleEn: 'Extract Pages', descEs: 'Selecciona solo las hojas que necesitas y expórtalas a un nuevo PDF.', descEn: 'Select only the sheets you need and export them to a new PDF.', icon: ExternalLink, path: '/organizar/extraer' }
+    { 
+      id: 'unir', 
+      tagEs: '📄+📄 UNIR ARCHIVOS', tagEn: '📄+📄 MERGE FILES', 
+      titleEs: 'Unir PDFs', titleEn: 'Merge PDFs', 
+      descEs: 'Combina múltiples archivos PDF en un único documento de forma ordenada.', 
+      descEn: 'Combine multiple PDF files into a single structured document.', 
+      icon: Merge, path: '/organizar/unir',
+      borderColor: 'border-emerald-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
+      hoverBorder: 'group-hover/card:border-emerald-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(16,185,129,0.9),0_0_15px_rgba(16,185,129,0.5)]',
+      hoverBg: 'group-hover/card:from-emerald-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+      btnGradient: 'from-emerald-400 to-teal-500 group-hover/card:from-emerald-300 group-hover/card:to-teal-400',
+      iconBg: 'from-emerald-500/30 to-teal-500/20 border-emerald-400/50 text-emerald-300'
+    },
+    { 
+      id: 'dividir', 
+      tagEs: '✂️ SEPARAR HOJAS', tagEn: '✂️ SPLIT PAGES', 
+      titleEs: 'Dividir PDF', titleEn: 'Split PDF', 
+      descEs: 'Extrae rangos de páginas o separa cada página en archivos individuales.', 
+      descEn: 'Extract page ranges or separate each page into individual files.', 
+      icon: Scissors, path: '/organizar/dividir',
+      borderColor: 'border-teal-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(20,184,166,0.2)]',
+      hoverBorder: 'group-hover/card:border-teal-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(20,184,166,0.9),0_0_15px_rgba(20,184,166,0.5)]',
+      hoverBg: 'group-hover/card:from-teal-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-teal-500/20 text-teal-300 border-teal-400/40',
+      btnGradient: 'from-teal-400 to-cyan-500 group-hover/card:from-teal-300 group-hover/card:to-cyan-400',
+      iconBg: 'from-teal-500/30 to-cyan-500/20 border-teal-400/50 text-teal-300'
+    },
+    { 
+      id: 'eliminar', 
+      tagEs: '🗑️ QUITAR PÁGINAS', tagEn: '🗑️ DELETE PAGES', 
+      titleEs: 'Eliminar Páginas', titleEn: 'Delete Pages', 
+      descEs: 'Remueve páginas innecesarias de tu documento de forma visual e instantánea.', 
+      descEn: 'Remove unnecessary pages from your document visually and instantly.', 
+      icon: Trash2, path: '/organizar/eliminar',
+      borderColor: 'border-red-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(239,68,68,0.2)]',
+      hoverBorder: 'group-hover/card:border-red-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(239,68,68,0.9),0_0_15px_rgba(239,68,68,0.5)]',
+      hoverBg: 'group-hover/card:from-red-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-red-500/20 text-red-300 border-red-400/40',
+      btnGradient: 'from-red-400 to-rose-500 group-hover/card:from-red-300 group-hover/card:to-rose-400',
+      iconBg: 'from-red-500/30 to-rose-500/20 border-red-400/50 text-red-300'
+    },
+    { 
+      id: 'reordenar', 
+      tagEs: '🔄 MOVER Y ROTAR', tagEn: '🔄 MOVE & ROTATE', 
+      titleEs: 'Reordenar y Rotar', titleEn: 'Reorder & Rotate', 
+      descEs: 'Arrastra para cambiar la posición de las hojas o girarlas 90°/180°.', 
+      descEn: 'Drag to change page order or rotate them 90°/180°.', 
+      icon: LayoutGrid, path: '/organizar/reordenar',
+      borderColor: 'border-blue-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(59,130,246,0.2)]',
+      hoverBorder: 'group-hover/card:border-blue-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(59,130,246,0.9),0_0_15px_rgba(59,130,246,0.5)]',
+      hoverBg: 'group-hover/card:from-blue-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-400/40',
+      btnGradient: 'from-blue-400 to-indigo-500 group-hover/card:from-blue-300 group-hover/card:to-indigo-400',
+      iconBg: 'from-blue-500/30 to-indigo-500/20 border-blue-400/50 text-blue-300'
+    },
+    { 
+      id: 'extraer', 
+      tagEs: '📥 EXTRAER SELECCIÓN', tagEn: '📥 EXTRACT SELECTION', 
+      titleEs: 'Extraer Páginas', titleEn: 'Extract Pages', 
+      descEs: 'Guarda únicamente las hojas seleccionadas en un nuevo archivo independiente.', 
+      descEn: 'Save only selected pages into a new independent file.', 
+      icon: ExternalLink, path: '/organizar/extraer',
+      borderColor: 'border-purple-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(168,85,247,0.2)]',
+      hoverBorder: 'group-hover/card:border-purple-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(168,85,247,0.9),0_0_15px_rgba(168,85,247,0.5)]',
+      hoverBg: 'group-hover/card:from-purple-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-400/40',
+      btnGradient: 'from-purple-400 to-violet-500 group-hover/card:from-purple-300 group-hover/card:to-violet-400',
+      iconBg: 'from-purple-500/30 to-violet-500/20 border-purple-400/50 text-purple-300'
+    }
   ];
 
   if (!mounted) return null;
@@ -119,30 +194,64 @@ export default function OrganizarPage() {
 
           {!isUploading && (
             <motion.div key="workspace-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full">
-              <div className="mb-6">
-                <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors">
-                  <ArrowLeft className="w-4 h-4" />
-                  {isEs ? "Volver al Inicio" : "Back to Home"}
-                </Link>
+              {/* TÍTULO DE PÁGINA Y KPI STATS */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 mt-2 pb-4 border-b border-white/5">
+                <div className="flex items-center gap-3.5">
+                  <div className="bg-gradient-to-tr from-emerald-500/30 to-teal-500/20 p-3 sm:p-3.5 rounded-2xl border border-emerald-400/40 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                    <FolderOpen className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-300 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                      {isEs ? "ORGANIZAR DOCUMENTO" : "ORGANIZE DOCUMENT"}
+                    </h1>
+                    <p className="text-neutral-400 text-xs sm:text-sm font-medium">
+                      {isEs ? "Administra las páginas y la estructura de tu documento PDF:" : "Manage the pages and structure of your PDF document:"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={18} tooltip={isEs ? "Tus archivos organizados esta semana" : "Files organized this week"} color="text-emerald-400" />
+                  <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={2.4} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-teal-400" />
+                  <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={60} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-cyan-400" />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                <div className="lg:col-span-5 flex flex-col">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-5 flex flex-col justify-start">
                   {!globalFile ? (
-                    <div onClick={() => fileInputRef.current?.click()} className="w-full h-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 hover:border-emerald-500/50 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] min-h-[540px]">
-                      <div className="bg-emerald-500/10 p-4 rounded-full group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-300">
-                        <UploadCloud className="w-8 h-8 text-emerald-400" />
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-[560px] bg-emerald-950/10 hover:bg-emerald-950/30 border-2 border-dashed border-emerald-500/30 hover:border-emerald-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(16,185,129,0.25)]"
+                    >
+                      <motion.div 
+                        animate={{ y: [0, -8, 0] }}
+                        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                        className="bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 p-6 rounded-full border border-emerald-500/30 group-hover:scale-110 group-hover:bg-emerald-500/30 group-hover:border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.2)] transition-all duration-300"
+                      >
+                        <UploadCloud className="w-16 h-16 text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.6)]" />
+                      </motion.div>
+
+                      <div className="text-center flex flex-col items-center gap-1.5">
+                        <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-emerald-200 transition-colors">
+                          {isEs ? "Arrastra tu PDF aquí para organizar" : "Drop your PDF here to organize"}
+                        </h3>
+                        <p className="text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+                          {isEs ? "O haz clic para explorar tus archivos" : "Or click to browse your files"}
+                        </p>
                       </div>
-                      <div className="text-center">
-                        <h3 className="text-xl font-bold text-white mb-1">{isEs ? "Sube un archivo para comenzar" : "Upload a file to start"}</h3>
-                        <p className="text-gray-400 text-sm">{isEs ? "Arrastra tu PDF aquí o haz clic para explorar." : "Drop your PDF here or click to browse."}</p>
-                      </div>
-                      <button className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">
-                        <FilePlus className="w-4 h-4" /> {isEs ? "Seleccionar PDF" : "Select PDF"}
+
+                      <button className="flex items-center justify-center gap-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(16,185,129,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(16,185,129,0.7)] transition-all mt-1 cursor-pointer border border-emerald-300/40">
+                        <FilePlus className="w-4 h-4 text-slate-950" /> {isEs ? "Subir Archivo" : "Upload File"}
                       </button>
+
+                      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
+                      </div>
                     </div>
                   ) : (
-                    <div className="w-full h-full bg-white/[0.02] border border-emerald-500/20 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.1)] flex flex-col relative min-h-[540px]">
+                    <div className="w-full h-[560px] bg-emerald-950/20 hover:bg-emerald-950/30 border-2 border-emerald-500/40 hover:border-emerald-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.25)] hover:shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all duration-300 flex flex-col relative">
                       <div className="bg-[#030712] border-b border-white/[0.06] p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 flex-shrink-0">
@@ -175,34 +284,58 @@ export default function OrganizarPage() {
                   )}
                 </div>
 
-                <div className="lg:col-span-7 flex flex-col justify-between">
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      <FolderOpen className="w-5 h-5 text-emerald-400" />
-                      <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400">{isEs ? "Organizar Documento" : "Organize Document"}</h2>
-                    </div>
-                    <p className="text-neutral-400 text-sm mb-6">{isEs ? "Administra las páginas y la estructura de tu documento PDF:" : "Manage the pages and structure of your PDF document:"}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                <div className="lg:col-span-7 flex flex-col justify-between h-[560px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 h-full max-h-[560px] group/grid">
                     {organizingTools.map((tool) => (
-                      <Link key={tool.id} href={globalFile ? tool.path : "#"} onClick={(e) => { if (!globalFile) { e.preventDefault(); toast.error(isEs ? "Sube un archivo primero para usar las herramientas." : "Upload a file first to use the tools."); } }} className={`outline-none group block ${!globalFile ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/[0.06] rounded-3xl p-6 transition-all duration-500 h-full min-h-[180px] flex flex-col justify-between hover:border-emerald-500/40 hover:shadow-[0_0_25px_rgba(16,185,129,0.15)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                      <Link 
+                        key={tool.id} 
+                        href={globalFile ? tool.path : "#"} 
+                        onClick={(e) => { 
+                          if (!globalFile) { 
+                            e.preventDefault(); 
+                            toast.error(isEs ? "Sube un archivo primero para usar la herramienta." : "Upload a file first to use the tool."); 
+                          } 
+                        }} 
+                        className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
+                      >
+                        <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${tool.borderColor} ${tool.shadowColor} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
+                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+
                           <div>
-                            <div className="mb-4 relative">
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl blur-sm group-hover:blur-md transition-all" />
-                              <div className="relative bg-black/50 border border-white/10 p-2.5 rounded-xl w-fit shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-105 transition-transform duration-500">
-                                <tool.icon className="w-5 h-5 text-emerald-400" />
+                            <div className="flex items-center justify-between mb-2">
+                              <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
+                                <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                              </div>
+
+                              <div className={`bg-gradient-to-r ${tool.btnGradient} text-slate-950 font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
+                                <span>{isEs ? "Usar Ahora" : "Use Now"}</span>
+                                <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
                               </div>
                             </div>
-                            <h3 className="text-md font-bold text-white mb-1 group-hover:text-emerald-300 transition-colors">{isEs ? tool.titleEs : tool.titleEn}</h3>
-                            <p className="text-xs text-gray-400 leading-relaxed">{isEs ? tool.descEs : tool.descEn}</p>
+
+                            <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border mb-1 inline-block shadow-sm`}>
+                              {isEs ? tool.tagEs : tool.tagEn}
+                            </span>
+
+                            <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
+                              {isEs ? tool.titleEs : tool.titleEn}
+                            </h3>
+                            <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
+                              {isEs ? tool.descEs : tool.descEn}
+                            </p>
                           </div>
-                          {globalFile && (
-                            <div className="mt-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                              <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">{isEs ? 'Configurar' : 'Configure'} <ArrowLeft className="w-3 h-3 rotate-180" /></span>
-                            </div>
-                          )}
+
+                          <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                              {isEs ? "100% Local" : "100% Local"}
+                            </span>
+
+                            <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
+                              {isEs ? "Iniciar" : "Start"}
+                              <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
+                            </span>
+                          </div>
                         </div>
                       </Link>
                     ))}
@@ -212,6 +345,18 @@ export default function OrganizarPage() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = "", tooltip, color }: any) {
+  return (
+    <div title={tooltip} className="flex items-center gap-2 bg-slate-900/90 border border-white/10 hover:border-white/20 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md transition-all cursor-default group">
+      <Icon className={`w-3.5 h-3.5 ${color}`} />
+      <div className="flex items-baseline gap-1">
+        <span className="text-white font-extrabold text-xs">{value}{suffix}</span>
+        <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">{title}</span>
       </div>
     </div>
   );

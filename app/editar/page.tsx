@@ -5,9 +5,11 @@ import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
+import { animate } from 'framer-motion';
 import { 
-  ArrowLeft, ShieldCheck, Edit3, Type, PenTool, Hash, ShieldAlert, Lock, 
-  FileText, UploadCloud, FilePlus, X, Zap 
+  ArrowLeft, ArrowRight, ShieldCheck, Edit3, Type, PenTool, Hash, ShieldAlert, Lock, 
+  FileText, UploadCloud, FilePlus, X, Zap, HardDrive, Clock, Search, Star, Eye, 
+  Download, Trash2, Bot, CheckCircle2, FolderOpen, Sparkles 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +24,7 @@ export default function EditarPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isAiOpen, setIsAiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -82,11 +85,102 @@ export default function EditarPage() {
   };
 
   const editingTools = [
-    { id: 'texto', titleEs: 'Texto Real', titleEn: 'Real Text', descEs: 'Edita texto nativo y redacta directamente sobre el PDF con el motor de Apryse.', descEn: 'Edit native text and redact directly on the PDF with the Apryse engine.', icon: Type, path: '/editar/texto' },
-    { id: 'firma', titleEs: 'Firmar PDF', titleEn: 'Sign PDF', descEs: 'Dibuja, escribe o sube una imagen de tu firma para estamparla en el documento.', descEn: 'Draw, type, or upload an image of your signature to stamp on the document.', icon: PenTool, path: '/editar/firma' },
-    { id: 'folios', titleEs: 'Páginas y Folios', titleEn: 'Page Numbers', descEs: 'Añade números correlativos y folios personalizables en el encabezado o pie.', descEn: 'Add consecutive numbers and customizable folios in headers or footers.', icon: Hash, path: '/editar/folios' },
-    { id: 'marca-agua', titleEs: 'Marca de Agua', titleEn: 'Watermark', descEs: 'Inserta logotipos o textos de seguridad para proteger la propiedad del documento.', descEn: 'Insert security text or logos to protect document ownership.', icon: ShieldAlert, path: '/editar/marca-agua' },
-    { id: 'proteger', titleEs: 'Contraseña y Cifrado', titleEn: 'Password & Encryption', descEs: 'Cifra y bloquea el archivo con algoritmos AES para evitar accesos no autorizados.', descEn: 'Encrypt and lock the file with AES algorithms to prevent unauthorized access.', icon: Lock, path: '/editar/proteger' }
+    { 
+      id: 'texto', 
+      tagEs: '✏️ TEXTO E IMÁGENES', tagEn: '✏️ TEXT & IMAGES', 
+      titleEs: 'Editar Texto e Imágenes', titleEn: 'Edit Text & Images', 
+      descEs: 'Edita texto e imágenes directamente en tu PDF sin perder el formato original del documento.', 
+      descEn: 'Edit text and images directly in your PDF without losing original layout.', 
+      icon: Type, path: '/editar/texto',
+      borderColor: 'border-cyan-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(6,182,212,0.2)]',
+      hoverBorder: 'group-hover/card:border-cyan-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(6,182,212,0.9),0_0_15px_rgba(6,182,212,0.5)]',
+      hoverBg: 'group-hover/card:from-cyan-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
+      btnGradient: 'from-cyan-400 to-blue-500 group-hover/card:from-cyan-300 group-hover/card:to-blue-400',
+      iconBg: 'from-cyan-500/30 to-blue-500/20 border-cyan-400/50 text-cyan-300'
+    },
+    { 
+      id: 'foliado', 
+      tagEs: '🔢 FOLIADO Y NÚMEROS', tagEn: '🔢 PAGE NUMBERS', 
+      titleEs: 'Poner Números a Páginas (Foliado)', titleEn: 'Add Page Numbers (Folios)', 
+      descEs: 'Añade números correlativos y foliados personalizados en el encabezado o pie de página.', 
+      descEn: 'Add consecutive page numbers and customized folios in headers or footers.', 
+      icon: Hash, path: '/editar/foliar',
+      borderColor: 'border-emerald-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
+      hoverBorder: 'group-hover/card:border-emerald-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(16,185,129,0.9),0_0_15px_rgba(16,185,129,0.5)]',
+      hoverBg: 'group-hover/card:from-emerald-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+      btnGradient: 'from-emerald-400 to-teal-500 group-hover/card:from-emerald-300 group-hover/card:to-teal-400',
+      iconBg: 'from-emerald-500/30 to-teal-500/20 border-emerald-400/50 text-emerald-300'
+    },
+    { 
+      id: 'poner-marca-agua', 
+      tagEs: '🛡️ SELLO DE AGUA', tagEn: '🛡️ ADD WATERMARK', 
+      titleEs: 'Poner Sello de Agua', titleEn: 'Add Watermark', 
+      descEs: 'Inserta sellos de agua personalizados en texto o imagen en todo el documento PDF.', 
+      descEn: 'Insert customized text or image watermarks across the entire PDF document.', 
+      icon: ShieldAlert, path: '/editar/marca-agua',
+      borderColor: 'border-amber-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(245,158,11,0.2)]',
+      hoverBorder: 'group-hover/card:border-amber-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(245,158,11,0.9),0_0_15px_rgba(245,158,11,0.5)]',
+      hoverBg: 'group-hover/card:from-amber-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+      btnGradient: 'from-amber-400 to-yellow-500 group-hover/card:from-amber-300 group-hover/card:to-yellow-400',
+      iconBg: 'from-amber-500/30 to-yellow-500/20 border-amber-400/50 text-amber-300'
+    },
+    { 
+      id: 'quitar-marca-agua', 
+      tagEs: '🧹 QUITAR SELLO DE AGUA', tagEn: '🧹 REMOVE WATERMARK', 
+      titleEs: 'Quitar Sello de Agua', titleEn: 'Remove Watermark', 
+      descEs: 'Detecta y remueve sellos o marcas de agua existentes de un documento PDF.', 
+      descEn: 'Detect and remove existing watermarks or stamps from a PDF document.', 
+      icon: Sparkles, path: '/editar/quitar-marca-agua',
+      borderColor: 'border-pink-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(236,72,153,0.2)]',
+      hoverBorder: 'group-hover/card:border-pink-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(236,72,153,0.9),0_0_15px_rgba(236,72,153,0.5)]',
+      hoverBg: 'group-hover/card:from-pink-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-400/40',
+      btnGradient: 'from-pink-400 to-rose-500 group-hover/card:from-pink-300 group-hover/card:to-rose-400',
+      iconBg: 'from-pink-500/30 to-rose-500/20 border-pink-400/50 text-pink-300'
+    },
+    { 
+      id: 'firmar', 
+      tagEs: '🖋️ FIRMA DIGITAL', tagEn: '🖋️ DIGITAL SIGNATURE', 
+      titleEs: 'Firmar PDF', titleEn: 'Sign PDF', 
+      descEs: 'Dibuja, escribe o sube una imagen de tu firma para estamparla en el documento.', 
+      descEn: 'Draw, type, or upload an image of your signature to stamp on the document.', 
+      icon: PenTool, path: '/editar/firma',
+      borderColor: 'border-purple-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(168,85,247,0.2)]',
+      hoverBorder: 'group-hover/card:border-purple-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(168,85,247,0.9),0_0_15px_rgba(168,85,247,0.5)]',
+      hoverBg: 'group-hover/card:from-purple-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-400/40',
+      btnGradient: 'from-purple-400 to-violet-500 group-hover/card:from-purple-300 group-hover/card:to-violet-400',
+      iconBg: 'from-purple-500/30 to-violet-500/20 border-purple-400/50 text-purple-300'
+    },
+    { 
+      id: 'ocr', 
+      tagEs: '🔍 OCR RECONOCIMIENTO', tagEn: '🔍 SEARCHABLE OCR', 
+      titleEs: 'OCR PDF (Texto Seleccionable)', titleEn: 'OCR PDF (Selectable Text)', 
+      descEs: 'Convierte un PDF escaneado o imágenes en un documento PDF con texto seleccionable.', 
+      descEn: 'Convert scanned PDF or images into a PDF with selectable text.', 
+      icon: Search, path: '/editar/ocr',
+      borderColor: 'border-indigo-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(99,102,241,0.2)]',
+      hoverBorder: 'group-hover/card:border-indigo-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(99,102,241,0.9),0_0_15px_rgba(99,102,241,0.5)]',
+      hoverBg: 'group-hover/card:from-indigo-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40',
+      btnGradient: 'from-indigo-400 to-blue-600 group-hover/card:from-indigo-300 group-hover/card:to-blue-500',
+      iconBg: 'from-indigo-500/30 to-blue-500/20 border-indigo-400/50 text-indigo-300'
+    }
   ];
 
   if (!mounted) return null;
@@ -119,30 +213,64 @@ export default function EditarPage() {
 
           {!isUploading && (
             <motion.div key="workspace-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full">
-              <div className="mb-6">
-                <Link href="/" className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors">
-                  <ArrowLeft className="w-4 h-4" />
-                  {isEs ? "Volver al Inicio" : "Back to Home"}
-                </Link>
+              {/* TÍTULO DE PÁGINA Y KPI STATS */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 mt-2 pb-4 border-b border-white/5">
+                <div className="flex items-center gap-3.5">
+                  <div className="bg-gradient-to-tr from-blue-500/30 to-cyan-500/20 p-3 sm:p-3.5 rounded-2xl border border-blue-400/40 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                    <Edit3 className="w-7 h-7 sm:w-8 sm:h-8 text-blue-300 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                      {isEs ? "EDITAR DOCUMENTO" : "EDIT DOCUMENT"}
+                    </h1>
+                    <p className="text-neutral-400 text-xs sm:text-sm font-medium">
+                      {isEs ? "Selecciona el módulo de edición que deseas aplicar sobre tu documento:" : "Select the editing module you wish to apply to your document:"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={12} tooltip={isEs ? "Tus archivos procesados esta semana" : "Files processed this week"} color="text-blue-400" />
+                  <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={1.2} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-emerald-400" />
+                  <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={45} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-orange-400" />
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                <div className="lg:col-span-5 flex flex-col">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-5 flex flex-col justify-start">
                   {!globalFile ? (
-                    <div onClick={() => fileInputRef.current?.click()} className="w-full h-full bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 hover:border-blue-500/50 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] min-h-[540px]">
-                      <div className="bg-blue-500/10 p-4 rounded-full group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300">
-                        <UploadCloud className="w-8 h-8 text-blue-400" />
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-[560px] bg-cyan-950/10 hover:bg-cyan-950/30 border-2 border-dashed border-cyan-500/30 hover:border-cyan-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(6,182,212,0.25)]"
+                    >
+                      <motion.div 
+                        animate={{ y: [0, -8, 0] }}
+                        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                        className="bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 p-6 rounded-full border border-blue-500/30 group-hover:scale-110 group-hover:bg-blue-500/30 group-hover:border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.2)] transition-all duration-300"
+                      >
+                        <UploadCloud className="w-16 h-16 text-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]" />
+                      </motion.div>
+
+                      <div className="text-center flex flex-col items-center gap-1.5">
+                        <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-blue-200 transition-colors">
+                          {isEs ? "Arrastra tu PDF aquí para editar" : "Drop your PDF here to edit"}
+                        </h3>
+                        <p className="text-blue-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+                          {isEs ? "O haz clic para explorar tus archivos" : "Or click to browse your files"}
+                        </p>
                       </div>
-                      <div className="text-center">
-                        <h3 className="text-xl font-bold text-white mb-1">{isEs ? "Sube un archivo para comenzar" : "Upload a file to start"}</h3>
-                        <p className="text-gray-400 text-sm">{isEs ? "Arrastra tu PDF aquí o haz clic para explorar." : "Drop your PDF here or click to browse."}</p>
-                      </div>
-                      <button className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors">
-                        <FilePlus className="w-4 h-4" /> {isEs ? "Seleccionar PDF" : "Select PDF"}
+
+                      <button className="flex items-center justify-center gap-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(6,182,212,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(6,182,212,0.7)] transition-all mt-1 cursor-pointer border border-cyan-300/40">
+                        <FilePlus className="w-4 h-4 text-slate-950" /> {isEs ? "Subir Archivo" : "Upload File"}
                       </button>
+
+                      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
+                      </div>
                     </div>
                   ) : (
-                    <div className="w-full h-full bg-white/[0.02] border border-blue-500/20 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.1)] flex flex-col relative min-h-[540px]">
+                    <div className="w-full h-[560px] bg-cyan-950/20 hover:bg-cyan-950/30 border-2 border-blue-500/40 hover:border-blue-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.25)] hover:shadow-[0_0_50px_rgba(59,130,246,0.4)] transition-all duration-300 flex flex-col relative">
                       <div className="bg-[#030712] border-b border-white/[0.06] p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="bg-blue-500/20 p-2 rounded-xl border border-blue-500/30 flex-shrink-0">
@@ -175,37 +303,139 @@ export default function EditarPage() {
                   )}
                 </div>
 
-                <div className="lg:col-span-7 flex flex-col justify-between">
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      <Edit3 className="w-5 h-5 text-blue-400" />
-                      <h2 className="text-xs font-bold uppercase tracking-widest text-blue-400">{isEs ? "Herramientas de Edición" : "Editing Tools"}</h2>
-                    </div>
-                    <p className="text-neutral-400 text-sm mb-6">{isEs ? "Selecciona el módulo de edición que deseas aplicar sobre tu documento:" : "Select the editing module you wish to apply to your document:"}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                <div className="lg:col-span-7 flex flex-col justify-between h-[560px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 h-full max-h-[560px] group/grid">
                     {editingTools.map((tool) => (
-                      <Link key={tool.id} href={globalFile ? tool.path : "#"} onClick={(e) => { if (!globalFile) { e.preventDefault(); toast.error(isEs ? "Sube un archivo primero para usar las herramientas." : "Upload a file first to use the tools."); } }} className={`outline-none group block ${!globalFile ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <div className="bg-white/[0.02] backdrop-blur-2xl border border-white/[0.06] rounded-3xl p-6 transition-all duration-500 h-full min-h-[180px] flex flex-col justify-between hover:border-blue-500/40 hover:shadow-[0_0_25px_rgba(59,130,246,0.15)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                      <Link 
+                        key={tool.id} 
+                        href={globalFile ? tool.path : "#"} 
+                        onClick={(e) => { 
+                          if (!globalFile) { 
+                            e.preventDefault(); 
+                            toast.error(isEs ? "Sube un archivo primero para usar la herramienta." : "Upload a file first to use the tool."); 
+                          } 
+                        }} 
+                        className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
+                      >
+                        <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${tool.borderColor} ${tool.shadowColor} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
+                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+
                           <div>
-                            <div className="mb-4 relative">
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl blur-sm group-hover:blur-md transition-all" />
-                              <div className="relative bg-black/50 border border-white/10 p-2.5 rounded-xl w-fit shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-105 transition-transform duration-500">
-                                <tool.icon className="w-5 h-5 text-blue-400" />
+                            <div className="flex items-center justify-between mb-2">
+                              <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
+                                <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                              </div>
+
+                              <div className={`bg-gradient-to-r ${tool.btnGradient} text-slate-950 font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
+                                <span>{isEs ? "Usar Ahora" : "Use Now"}</span>
+                                <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
                               </div>
                             </div>
-                            <h3 className="text-md font-bold text-white mb-1 group-hover:text-blue-300 transition-colors">{isEs ? tool.titleEs : tool.titleEn}</h3>
-                            <p className="text-xs text-gray-400 leading-relaxed">{isEs ? tool.descEs : tool.descEn}</p>
+
+                            <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border mb-1 inline-block shadow-sm`}>
+                              {isEs ? tool.tagEs : tool.tagEn}
+                            </span>
+
+                            <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
+                              {isEs ? tool.titleEs : tool.titleEn}
+                            </h3>
+                            <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
+                              {isEs ? tool.descEs : tool.descEn}
+                            </p>
                           </div>
-                          {globalFile && (
-                            <div className="mt-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                              <span className="text-[11px] font-bold text-blue-400 flex items-center gap-1">{isEs ? 'Configurar' : 'Configure'} <ArrowLeft className="w-3 h-3 rotate-180" /></span>
-                            </div>
-                          )}
+
+                          <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                              {isEs ? "100% Local" : "100% Local"}
+                            </span>
+                            <span className="text-[11px] font-black text-white group-hover/card:translate-x-0.5 transition-transform flex items-center gap-1">
+                              {isEs ? "Iniciar" : "Start"} &rarr;
+                            </span>
+                          </div>
                         </div>
                       </Link>
                     ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECCIÓN: 3 PASOS VISUALES */}
+              {!globalFile && (
+                <div className="w-full mt-12 pt-8 border-t border-white/5 flex flex-col items-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
+                    {/* PASO 1 */}
+                    <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] group">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(6,182,212,0.25)] group-hover:scale-110 transition-transform">
+                        1
+                      </div>
+                      <h4 className="text-base font-extrabold text-white mb-1.5 flex items-center gap-1.5">
+                        📁 {isEs ? '1. Sube tu PDF' : '1. Upload your PDF'}
+                      </h4>
+                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                        {isEs ? 'Arrastra o selecciona tu archivo PDF en el recuadro principal.' : 'Drag or select your PDF file in the main dropzone box.'}
+                      </p>
+                    </div>
+
+                    {/* PASO 2 */}
+                    <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-blue-500/30 hover:border-blue-400 transition-all shadow-xl hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(59,130,246,0.25)] group-hover:scale-110 transition-transform">
+                        2
+                      </div>
+                      <h4 className="text-base font-extrabold text-white mb-1.5 flex items-center gap-1.5">
+                        ⚡ {isEs ? '2. Elige y usa la herramienta' : '2. Choose and use tool'}
+                      </h4>
+                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                        {isEs ? 'Selecciona la función que necesitas y aplica los cambios requeridos.' : 'Select the feature you need and apply required changes.'}
+                      </p>
+                    </div>
+
+                    {/* PASO 3 */}
+                    <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-400 transition-all shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.2)] group">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(16,185,129,0.25)] group-hover:scale-110 transition-transform">
+                        3
+                      </div>
+                      <h4 className="text-base font-extrabold text-white mb-1.5 flex items-center gap-1.5">
+                        ⬇️ {isEs ? '3. Descarga tu documento' : '3. Download your document'}
+                      </h4>
+                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                        {isEs ? 'Obtén tu documento final 100% procesado de forma local.' : 'Get your final document 100% processed locally.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TABLA DE ARCHIVOS RECIENTES */}
+              <div className="relative z-10 mt-12 sm:mt-16">
+                <div className="w-full bg-white/[0.02] backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-2xl mb-12 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <FolderOpen className="w-5 h-5 text-blue-400" /> {isEs ? 'Archivos Recientes' : 'Recent Files'}
+                    </h3>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input type="text" placeholder={isEs ? "Buscar archivos..." : "Search files..."} className="w-full bg-black/50 border border-white/10 rounded-full py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead>
+                        <tr className="border-b border-white/[0.08]">
+                          <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500 pl-2">{isEs ? 'Nombre del Archivo' : 'File Name'}</th>
+                          <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Tamaño' : 'Size'}</th>
+                          <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Acción Realizada' : 'Action Performed'}</th>
+                          <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Estado' : 'Status'}</th>
+                          <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500 text-right pr-2">{isEs ? 'Acciones' : 'Actions'}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-gray-300">
+                        <TableRow name="Documento_Editado_v1.pdf" size="3.1 MB" action={isEs ? "Texto & Firma Editados" : "Text & Signature Edited"} status={isEs ? "Completado" : "Completed"} icon={FileText} color="text-blue-400" />
+                        <TableRow name="Expediente_Foliado.pdf" size="8.4 MB" action={isEs ? "Folios Agregados (1-42)" : "Page Numbers Added (1-42)"} status={isEs ? "Completado" : "Completed"} icon={Hash} color="text-cyan-400" />
+                        <TableRow name="Contrato_Protegido.pdf" size="1.2 MB" action={isEs ? "Cifrado con Contraseña" : "Encrypted with Password"} status={isEs ? "Completado" : "Completed"} icon={ShieldCheck} color="text-emerald-400" />
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -213,6 +443,109 @@ export default function EditarPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ASISTENTE IA */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        <AnimatePresence>
+          {isAiOpen && (
+            <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.9 }} className="mb-4 w-80 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-900/50 to-cyan-900/50 p-4 border-b border-white/10 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                  <span className="font-bold text-white text-sm">{isEs ? 'Asistente PDFBlack' : 'PDFBlack Assistant'}</span>
+                </div>
+                <button onClick={() => setIsAiOpen(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4"/></button>
+              </div>
+              <div className="p-4 h-48 flex flex-col justify-end bg-black/50">
+                <div className="bg-white/10 p-3 rounded-xl rounded-bl-none w-[85%] mb-2">
+                  <p className="text-xs text-gray-200">{isEs ? '¡Hola! Estoy listo para ayudarte a editar tus archivos PDF de forma 100% local.' : 'Hello! I am ready to help you edit your PDF files 100% locally.'}</p>
+                </div>
+              </div>
+              <div className="p-3 border-t border-white/5 bg-[#0a0a0a]">
+                <input type="text" placeholder={isEs ? "Escribe tu consulta..." : "Type your query..."} className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <div className="relative group">
+          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-black border border-white/10 rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            {isEs ? 'Asistente IA' : 'AI Assistant'}
+          </div>
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsAiOpen(!isAiOpen)} className="bg-blue-500 hover:bg-blue-400 text-white p-3.5 rounded-full shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-colors flex items-center justify-center">
+            <Bot className="w-5 h-5" />
+          </motion.button>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function AnimatedCounter({ from = 0, to, decimals = 0, suffix = "" }: { from?: number; to: number; decimals?: number; suffix?: string }) {
+  const nodeRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (node) {
+      const controls = animate(from, to, {
+        duration: 1.5,
+        ease: "easeOut",
+        onUpdate(value) { node.textContent = value.toFixed(decimals) + suffix; },
+      });
+      return () => controls.stop();
+    }
+  }, [from, to, decimals, suffix]);
+  return <span ref={nodeRef}>{from.toFixed(decimals)}{suffix}</span>;
+}
+
+function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip, color }: any) {
+  return (
+    <div className="relative group/kpi">
+      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white/[0.03] border border-white/[0.08] hover:border-cyan-500/40 rounded-full hover:bg-white/[0.06] transition-all cursor-help shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <Icon className={`w-3.5 h-3.5 ${color}`} />
+        <span className="text-xs font-black text-white">
+          <AnimatedCounter to={value} decimals={decimals} suffix={suffix} />
+        </span>
+        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{title}</span>
+      </div>
+
+      {tooltip && (
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900 border border-slate-700/80 rounded-xl text-[10px] font-semibold text-cyan-300 opacity-0 group-hover/kpi:opacity-100 transition-opacity duration-200 pointer-events-none shadow-xl whitespace-nowrap z-50">
+          {tooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TableRow({ name, size, action, status, icon: Icon, color }: any) {
+  const { lang } = useLanguage();
+  const isEs = lang === 'es';
+
+  return (
+    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+      <td className="py-4 pl-2">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-black/50 rounded-lg border border-white/5 group-hover:border-white/10 transition-colors">
+            <Icon className={`w-4 h-4 ${color}`} />
+          </div>
+          <span className="font-medium text-gray-200 group-hover:text-white transition-colors">{name}</span>
+        </div>
+      </td>
+      <td className="py-4 text-gray-400">{size}</td>
+      <td className="py-4 text-gray-400">{action}</td>
+      <td className="py-4">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-transparent border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+          <CheckCircle2 className="w-3 h-3" /> {status}
+        </span>
+      </td>
+      <td className="py-4 pr-2 text-right">
+        <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity duration-300">
+          <button className="p-1.5 text-gray-400 hover:text-yellow-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Favorito" : "Favorite"}><Star className="w-4 h-4" /></button>
+          <button className="p-1.5 text-gray-400 hover:text-cyan-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Vista Previa" : "Preview"}><Eye className="w-4 h-4" /></button>
+          <button className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Descargar" : "Download"}><Download className="w-4 h-4" /></button>
+          <button className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Eliminar" : "Delete"}><Trash2 className="w-4 h-4" /></button>
+        </div>
+      </td>
+    </tr>
   );
 }

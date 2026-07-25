@@ -2,11 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib';
-import { UploadCloud, FileText, X, Loader2, Plus, Info, ShieldCheck } from 'lucide-react';
+import { UploadCloud, FileText, X, Loader2, Plus, Info, ShieldCheck, FilePlus } from 'lucide-react';
 import { useFileStore } from '../store/useFileStore';
+import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'framer-motion';
 
 export default function PdfUploader() {
+  const { lang } = useLanguage();
+  const isEs = lang === 'es';
   const { globalFiles, setGlobalFiles, removeGlobalFile } = useFileStore();
   const [files, setFiles] = useState<File[]>(globalFiles || []);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -113,30 +116,36 @@ export default function PdfUploader() {
       <motion.div 
         initial={{ opacity: 0, y: 15 }} 
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-3xl bg-slate-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-slate-800 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden"
+        onClick={() => fileInputRef.current?.click()}
+        className="w-full max-w-3xl bg-cyan-950/10 hover:bg-cyan-950/30 border-2 border-dashed border-cyan-500/30 hover:border-cyan-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(6,182,212,0.25)] min-h-[440px] relative overflow-hidden"
       >
-        {/* Glow de fondo */}
-        <div className="absolute -top-24 -left-24 w-60 h-60 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-60 h-60 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <motion.div 
+          animate={{ y: [0, -8, 0] }}
+          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+          className="bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 p-6 rounded-full border border-blue-500/30 group-hover:scale-110 group-hover:bg-blue-500/30 group-hover:border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.2)] transition-all duration-300"
+        >
+          <UploadCloud className="w-16 h-16 text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.6)]" />
+        </motion.div>
 
-        <div className="bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 p-6 rounded-full mb-6 border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-          <UploadCloud className="w-14 h-14 text-cyan-400" />
+        <div className="text-center flex flex-col items-center gap-1.5">
+          <h2 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-cyan-200 transition-colors">
+            {isEs ? "Unir archivos PDF" : "Merge PDF files"}
+          </h2>
+          <p className="text-cyan-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+            {isEs ? "Arrastra múltiples archivos PDF aquí o haz clic para explorar" : "Drag multiple PDF files here or click to browse"}
+          </p>
         </div>
 
-        <h2 className="text-3xl font-extrabold text-white mb-3 tracking-tight">Unir archivos PDF</h2>
-        <p className="text-slate-400 mb-6 text-center max-w-md leading-relaxed text-sm">
-          Une múltiples archivos PDF en el orden exacto que prefieras. 100% procesado de manera privada en tu navegador.
-        </p>
-
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-8">
-          <ShieldCheck className="w-4 h-4" />
-          <span>Procesamiento 100% Local & Seguro</span>
-        </div>
-        
-        <label className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-10 py-4 rounded-xl cursor-pointer font-bold text-lg transition-all shadow-lg shadow-blue-600/30 hover:scale-105 active:scale-95 border border-cyan-400/30">
-          Seleccionar archivos PDF
+        <label className="flex items-center justify-center gap-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(6,182,212,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(6,182,212,0.7)] transition-all mt-1 cursor-pointer border border-cyan-300/40">
+          <FilePlus className="w-4 h-4 text-slate-950" /> {isEs ? "Seleccionar PDFs" : "Select PDFs"}
           <input type="file" multiple accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} />
         </label>
+
+        {/* LEYENDA DE PRIVACIDAD DENTRO DEL CUADRO DE CARGA */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
+        </div>
       </motion.div>
     );
   }

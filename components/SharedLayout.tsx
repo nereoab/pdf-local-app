@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
-import { Globe, ArrowLeft, ShieldCheck, Layers, ChevronDown, Spade, Plus, User, Settings, LogOut, Edit3, FolderOpen, RefreshCw, Zap } from 'lucide-react';
+import { Globe, ArrowLeft, ShieldCheck, Spade, Plus, Settings, LogOut, Edit3, FolderOpen, RefreshCw, Zap, ChevronDown } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +20,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
       {/* ENCABEZADO GLOBAL SAAS */}
       <header className="w-full bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-50 transition-all duration-500">
         {/* AÑADIDO: gap-4 para que los 3 bloques principales nunca se toquen */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
           
           {/* AÑADIDO: flex-shrink-0 para que el logo no se aplaste */}
           <Link href="/" className="flex-shrink-0">
@@ -58,13 +58,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div className="relative group cursor-pointer hidden sm:block">
               <motion.button 
                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-black px-4 py-2 rounded-full font-bold text-sm transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] whitespace-nowrap"
+                className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black px-4 py-2 rounded-full font-bold text-sm transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" /> {isEs ? 'Nuevo' : 'New'}
               </motion.button>
               
               <div className="absolute right-0 top-10 pt-4 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50">
-                <div className="bg-[#0a0a0a] border border-slate-800 rounded-xl shadow-2xl p-2 flex flex-col gap-1">
+                <div className="bg-[#0a0a0a] border border-slate-800 rounded-xl shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-xl">
                   <div className="px-3 py-2 border-b border-white/5 mb-1">
                     <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isEs ? 'Selecciona una acción' : 'Select an action'}</p>
                   </div>
@@ -124,6 +124,12 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <Spade className="w-5 h-5 text-slate-500" fill="currentColor" />
             <span className="font-medium text-slate-400 text-sm">PDFBlack © {new Date().getFullYear()}</span>
           </div>
+
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>{isEs ? 'Procesamiento 100% Local & Privado en tu Navegador' : '100% Local & Private Browser Processing'}</span>
+          </div>
+
           <div className="flex gap-6">
             <button className="text-xs text-slate-500 hover:text-white transition-colors">API</button>
             <button className="text-xs text-slate-500 hover:text-white transition-colors">{isEs ? 'Privacidad' : 'Privacy'}</button>

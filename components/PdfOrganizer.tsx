@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PDFDocument, degrees } from 'pdf-lib';
-import { LayoutGrid, X, Loader2, Plus, RotateCw, FilePlus2, CheckCircle2 } from 'lucide-react';
+import { LayoutGrid, X, Loader2, Plus, RotateCw, FilePlus2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { useFileStore } from '../store/useFileStore';
+import { motion } from 'framer-motion';
 
 const FILE_COLORS = [
-  { border: 'border-red-400', bg: 'bg-red-100', text: 'text-red-700' },
-  { border: 'border-cyan-400', bg: 'bg-cyan-100', text: 'text-cyan-700' },
-  { border: 'border-yellow-400', bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  { border: 'border-emerald-400', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  { border: 'border-purple-400', bg: 'bg-purple-100', text: 'text-purple-700' },
+  { border: 'border-red-400', bg: 'bg-red-950/40', text: 'text-red-300' },
+  { border: 'border-cyan-400', bg: 'bg-cyan-950/40', text: 'text-cyan-300' },
+  { border: 'border-yellow-400', bg: 'bg-yellow-950/40', text: 'text-yellow-300' },
+  { border: 'border-emerald-400', bg: 'bg-emerald-950/40', text: 'text-emerald-300' },
+  { border: 'border-purple-400', bg: 'bg-purple-950/40', text: 'text-purple-300' },
 ];
 
 type PageItem = {
@@ -23,6 +25,7 @@ type PageItem = {
 };
 
 export default function PdfOrganizer() {
+  const { globalFiles, globalFile, setGlobalFiles } = useFileStore();
   const [files, setFiles] = useState<File[]>([]);
   const [pages, setPages] = useState<PageItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,17 +34,14 @@ export default function PdfOrganizer() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
+  const procesarArchivosPDF = async (selectedFiles: File[]) => {
     setIsProcessing(true);
-    setProgressMsg('Iniciando motor...');
+    setProgressMsg('Iniciando motor PDF...');
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-      const selectedFiles = Array.from(e.target.files).filter(file => file.type === 'application/pdf');
       const newFilesList = [...files, ...selectedFiles];
       let newPages: PageItem[] = [...pages];
       
@@ -81,6 +81,7 @@ export default function PdfOrganizer() {
       
       setFiles(newFilesList);
       setPages(newPages);
+      setGlobalFiles(newFilesList);
       toast.success('Archivos cargados con éxito');
     } catch (error) {
       console.error(error);
@@ -90,6 +91,20 @@ export default function PdfOrganizer() {
       setProgressMsg('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  // Carga inicial si ya existen archivos en el store global
+  useEffect(() => {
+    const existing = globalFiles && globalFiles.length > 0 ? globalFiles : (globalFile ? [globalFile] : []);
+    if (existing.length > 0 && files.length === 0) {
+      procesarArchivosPDF(existing);
+    }
+  }, [globalFiles, globalFile, files.length]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const selectedFiles = Array.from(e.target.files).filter(file => file.type === 'application/pdf');
+    await procesarArchivosPDF(selectedFiles);
   };
 
   const addBlankPage = () => {
@@ -192,34 +207,45 @@ export default function PdfOrganizer() {
   // VISTA DE CARGA Y SUBIDA
   if (files.length === 0) {
     return (
-      <div className="w-full max-w-3xl mx-auto bg-white dark:bg-slate-900 p-10 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center min-h-[400px] transition-colors relative overflow-hidden">
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-3xl mx-auto bg-slate-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-slate-800 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden"
+      >
+        <div className="absolute -top-24 -left-24 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         {isProcessing ? (
-          <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
+          <div className="flex flex-col items-center justify-center">
             <div className="relative flex items-center justify-center mb-8">
-              <div className="absolute inset-0 bg-rose-500 rounded-full blur-xl opacity-40 animate-pulse"></div>
-              <div className="bg-white dark:bg-slate-800 p-5 rounded-full shadow-2xl relative z-10 border border-rose-100 dark:border-rose-900">
-                <Loader2 className="w-12 h-12 text-rose-600 dark:text-rose-400 animate-spin" />
+              <div className="absolute inset-0 bg-emerald-500 rounded-full blur-xl opacity-40 animate-pulse"></div>
+              <div className="bg-slate-800 p-5 rounded-full shadow-2xl relative z-10 border border-emerald-500/30">
+                <Loader2 className="w-12 h-12 text-emerald-400 animate-spin" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-4 text-center">Procesando documento...</h2>
-            <div className="bg-rose-50 dark:bg-rose-900/30 px-6 py-2.5 rounded-full border border-rose-100 dark:border-rose-800 shadow-inner">
-              <p className="text-rose-600 dark:text-rose-400 font-bold text-sm animate-pulse">{progressMsg}</p>
+            <h2 className="text-2xl font-bold text-white mb-4 text-center">Procesando documento...</h2>
+            <div className="bg-emerald-500/10 px-6 py-2.5 rounded-full border border-emerald-500/30 shadow-inner">
+              <p className="text-emerald-400 font-bold text-sm animate-pulse">{progressMsg}</p>
             </div>
           </div>
         ) : (
           <>
-            <div className="bg-rose-50 dark:bg-rose-900/30 p-6 rounded-full mb-6">
-              <LayoutGrid className="w-16 h-16 text-rose-600 dark:text-rose-400" />
+            <div className="bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 p-6 rounded-full mb-6 border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+              <LayoutGrid className="w-14 h-14 text-emerald-400" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-4">Ordenar y Rotar PDF</h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-8 text-center max-w-md">Visualiza el contenido, ordena páginas o inserta hojas en blanco de forma segura.</p>
-            <label className="bg-rose-600 hover:bg-rose-700 text-white px-10 py-4 rounded-xl cursor-pointer font-bold text-lg transition-all shadow-lg shadow-rose-600/20 active:scale-95">
+            <h2 className="text-3xl font-extrabold text-white mb-3 tracking-tight">Ordenar y Rotar PDF</h2>
+            <p className="text-slate-400 mb-6 text-center max-w-md leading-relaxed text-sm">Visualiza páginas en miniatura, reordena arrastrando, rota o inserta hojas en blanco de forma totalmente local.</p>
+            
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-8">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Procesamiento 100% Local & Seguro</span>
+            </div>
+
+            <label className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-10 py-4 rounded-xl cursor-pointer font-bold text-lg transition-all shadow-lg shadow-emerald-600/30 hover:scale-105 active:scale-95 border border-emerald-400/30">
               Seleccionar archivo PDF
               <input type="file" multiple accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} />
             </label>
           </>
         )}
-      </div>
+      </motion.div>
     );
   }
 

@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
-import { Scissors, FileText, X, Loader2, Settings2, ArrowRight } from 'lucide-react';
+import { Scissors, FileText, X, Loader2, Settings2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useFileStore } from '../store/useFileStore';
+import { motion } from 'framer-motion';
 
 export default function PdfSplitter() {
-  const [file, setFile] = useState<File | null>(null);
+  const { globalFile, setGlobalFile } = useFileStore();
+  const [file, setFile] = useState<File | null>(globalFile);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [splitMode, setSplitMode] = useState<'custom' | 'fixed'>('custom');
   
@@ -17,29 +20,34 @@ export default function PdfSplitter() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState<string>('');
 
+  const cargarPdfGlobal = async (selectedFile: File) => {
+    setFile(selectedFile);
+    setIsProcessing(true);
+    setProgressMsg('Leyendo documento...');
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer, { updateMetadata: false, ignoreEncryption: true });
+      const count = pdfDoc.getPageCount();
+      setTotalPages(count);
+      setStartPage(1);
+      setEndPage(count);
+      setFixedPages(1);
+      setGlobalFile(selectedFile);
+    } catch (error) {
+      console.error(error);
+      setFile(null);
+      alert('Error al leer el PDF. Verifica que no tenga contraseña.');
+    } finally {
+      setIsProcessing(false);
+      setProgressMsg('');
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
       if (selectedFile.type === 'application/pdf') {
-        setFile(selectedFile);
-        setIsProcessing(true);
-        setProgressMsg('Leyendo documento...');
-        try {
-          const arrayBuffer = await selectedFile.arrayBuffer();
-          const pdfDoc = await PDFDocument.load(arrayBuffer, { updateMetadata: false, ignoreEncryption: true });
-          const count = pdfDoc.getPageCount();
-          setTotalPages(count);
-          setStartPage(1);
-          setEndPage(count);
-          setFixedPages(1);
-        } catch (error) {
-          console.error(error);
-          setFile(null);
-          alert('Error al leer el PDF. Verifica que no tenga contraseña.');
-        } finally {
-          setIsProcessing(false);
-          setProgressMsg('');
-        }
+        await cargarPdfGlobal(selectedFile);
       }
     }
     e.target.value = '';
@@ -47,7 +55,31 @@ export default function PdfSplitter() {
 
   const removeFile = () => {
     setFile(null); setTotalPages(0); setStartPage(1); setEndPage(1); setFixedPages(1);
+    setGlobalFile(null);
   };
+
+  // Sincronización automática con Zustand si ya hay un archivo cargado globalmente
+  useEffect(() => {
+    if (globalFile && !file) {
+      cargarPdfGlobal(globalFile);
+    }
+  }, [globalFile, file]);
+
+  // Escuchador de atajos de teclado (Esc para cerrar, Ctrl+A para seleccionar todo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!file) return;
+      if (e.key === 'Escape') {
+        removeFile();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && splitMode === 'custom') {
+        e.preventDefault();
+        setStartPage(1);
+        setEndPage(totalPages);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [file, totalPages, splitMode]);
 
   const handleStartPageChange = (val: number) => {
     if (val < 1) val = 1;
@@ -138,21 +170,31 @@ export default function PdfSplitter() {
 
   if (!file) {
     return (
-      <div className="w-full max-w-3xl bg-white p-10 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center min-h-[400px]">
-        <div className="bg-indigo-50 p-6 rounded-full mb-6">
-          <Scissors className="w-16 h-16 text-indigo-600" />
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }} 
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-3xl bg-slate-900/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-slate-800 flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden"
+      >
+        <div className="absolute -top-24 -left-24 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 p-6 rounded-full mb-6 border border-indigo-500/30 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
+          <Scissors className="w-14 h-14 text-indigo-400" />
         </div>
-        <h2 className="text-3xl font-bold text-slate-800 mb-4">Dividir archivo PDF</h2>
-        <p className="text-slate-500 mb-8 text-center max-w-md">
-          Extrae páginas específicas o divide tu expediente en múltiples partes de forma local y segura.
+        <h2 className="text-3xl font-extrabold text-white mb-3 tracking-tight">Dividir archivo PDF</h2>
+        <p className="text-slate-400 mb-6 text-center max-w-md leading-relaxed text-sm">
+          Extrae rangos específicos o divide tu PDF en múltiples archivos de tamaño fijo de forma local y segura.
         </p>
+
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-8">
+          <ShieldCheck className="w-4 h-4" />
+          <span>Procesamiento 100% Local & Seguro</span>
+        </div>
         
-        <label className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 rounded-xl cursor-pointer font-bold text-lg transition-all shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95">
+        <label className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-10 py-4 rounded-xl cursor-pointer font-bold text-lg transition-all shadow-lg shadow-indigo-600/30 hover:scale-105 active:scale-95 border border-indigo-400/30">
           Seleccionar archivo PDF
           <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} disabled={isProcessing} />
         </label>
-        {isProcessing && <p className="mt-4 text-sm text-slate-500 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> {progressMsg}</p>}
-      </div>
+        {isProcessing && <p className="mt-4 text-sm text-slate-400 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin"/> {progressMsg}</p>}
+      </motion.div>
     );
   }
 

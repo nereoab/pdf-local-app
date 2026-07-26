@@ -40,17 +40,50 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               title={isEs ? 'Editar PDF' : 'Edit PDF'} 
               basePath="/editar" 
               items={[
-                { label: isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images', path: '/editar/texto' },
-                { label: isEs ? 'Poner Números a Páginas (Foliado)' : 'Add Page Numbers', path: '/editar/foliar' },
-                { label: isEs ? 'Poner Sello de Agua' : 'Add Watermark', path: '/editar/marca-agua' },
-                { label: isEs ? 'Quitar Sello de Agua' : 'Remove Watermark', path: '/editar/quitar-marca-agua' },
-                { label: isEs ? 'Firmar PDF' : 'Sign PDF', path: '/editar/firma' },
-                { label: isEs ? 'OCR PDF (Texto Seleccionable)' : 'OCR PDF (Searchable Text)', path: '/editar/ocr' }
+                { label: isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images', path: '/editar?tool=texto' },
+                { label: isEs ? 'Poner Números a Páginas (Foliado)' : 'Add Page Numbers', path: '/editar?tool=foliado' },
+                { label: isEs ? 'Poner Sello de Agua' : 'Add Watermark', path: '/editar?tool=poner-marca-agua' },
+                { label: isEs ? 'Quitar Sello de Agua' : 'Remove Watermark', path: '/editar?tool=quitar-marca-agua' },
+                { label: isEs ? 'Firmar PDF' : 'Sign PDF', path: '/editar?tool=firmar' },
+                { label: isEs ? 'OCR PDF (Texto Seleccionable)' : 'OCR PDF (Searchable Text)', path: '/editar?tool=ocr' }
               ]} 
             />
-            <DropdownMenu title={isEs ? 'Organizar PDF' : 'Organize PDF'} basePath="/organizar" items={[{ label: t.tools.organize.title, path: '/organizar/ordenar' }, { label: t.tools.merge.title, path: '/organizar/unir' }, { label: t.tools.split.title, path: '/organizar/dividir' }, { label: t.tools.rotate.title, path: '/organizar/rotar' }]} />
-            <DropdownMenu title={isEs ? 'Convertir PDF' : 'Convert PDF'} basePath="/convertir" items={[{ label: 'Ver todos los conversores', path: '/convertir' }]} />
-            <DropdownMenu title={isEs ? 'Optimizar PDF' : 'Optimize PDF'} basePath="/optimizar" items={[{ label: t.tools.protect.title, path: '/optimizar/proteger' }]} />
+            <DropdownMenu 
+              title={isEs ? 'Organizar PDF' : 'Organize PDF'} 
+              basePath="/organizar" 
+              items={[
+                { label: isEs ? 'Unir PDF' : 'Merge PDF', path: '/organizar?tool=unir' },
+                { label: isEs ? 'Dividir PDF' : 'Split PDF', path: '/organizar?tool=dividir' },
+                { label: isEs ? 'Eliminar Páginas' : 'Delete Pages', path: '/organizar?tool=eliminar' },
+                { label: isEs ? 'Ordenar PDF' : 'Reorder PDF', path: '/organizar?tool=reordenar' },
+                { label: isEs ? 'Rotar PDF' : 'Rotate PDF', path: '/organizar?tool=rotar' },
+                { label: isEs ? 'Recortar PDF' : 'Crop PDF', path: '/organizar?tool=recortar' }
+              ]} 
+            />
+            <DropdownMenu 
+              title={isEs ? 'Convertir PDF' : 'Convert PDF'} 
+              basePath="/convertir" 
+              items={[
+                { label: isEs ? 'PDF ↔ Word' : 'PDF ↔ Word', path: '/convertir?tool=pdf-word' },
+                { label: isEs ? 'PDF ↔ Excel' : 'PDF ↔ Excel', path: '/convertir?tool=pdf-excel' },
+                { label: isEs ? 'PDF ↔ PowerPoint' : 'PDF ↔ PowerPoint', path: '/convertir?tool=pdf-powerpoint' },
+                { label: isEs ? 'PDF ↔ JPG / Imagen' : 'PDF ↔ JPG / Image', path: '/convertir?tool=pdf-jpg' },
+                { label: isEs ? 'PDF ↔ HTML' : 'PDF ↔ HTML', path: '/convertir?tool=pdf-html' },
+                { label: isEs ? 'PDF ↔ Texto' : 'PDF ↔ Text', path: '/convertir?tool=pdf-texto' }
+              ]} 
+            />
+            <DropdownMenu 
+              title={isEs ? 'Optimizar PDF' : 'Optimize PDF'} 
+              basePath="/optimizar" 
+              items={[
+                { label: isEs ? 'Comprimir PDF' : 'Compress PDF', path: '/optimizar?tool=comprimir' },
+                { label: isEs ? 'Reparar PDF' : 'Repair PDF', path: '/optimizar?tool=reparar' },
+                { label: isEs ? 'Desbloquear PDF' : 'Unlock PDF', path: '/optimizar?tool=desbloquear' },
+                { label: isEs ? 'Proteger PDF' : 'Protect PDF', path: '/optimizar?tool=proteger' },
+                { label: isEs ? 'Censurar PDF' : 'Redact PDF', path: '/optimizar?tool=censurar' },
+                { label: isEs ? 'Comparar PDF' : 'Compare PDF', path: '/optimizar?tool=comparar' }
+              ]} 
+            />
           </div>
 
           {/* AÑADIDO: flex-shrink-0 para que los botones de la derecha no se aplasten */}

@@ -1,17 +1,21 @@
 'use client';
 
 import { useFileStore } from '../../store/useFileStore';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  ArrowRight, Zap, Sliders, Activity, EyeOff,
-  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock 
+  ArrowRight, Zap, Sliders, Activity, EyeOff, Lock, Unlock, GitCompare,
+  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, CheckCircle2 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function OptimizarPage() {
+function OptimizarContent() {
+  const searchParams = useSearchParams();
+  const selectedToolParam = searchParams.get('tool');
+
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const [mounted, setMounted] = useState(false);
@@ -83,12 +87,12 @@ export default function OptimizarPage() {
 
   const optimizationTools = [
     { 
-      id: 'compresion-basica', 
+      id: 'comprimir', 
       tagEs: '⚡ RECOMENDADO', tagEn: '⚡ RECOMMENDED', 
-      titleEs: 'Compresión Básica', titleEn: 'Basic Compression', 
-      descEs: 'Reduce el peso de tu archivo de forma equilibrada sin sacrificar la calidad de lectura.', 
-      descEn: 'Reduce file size with a perfect balance, without sacrificing reading quality.', 
-      icon: Sliders, path: '/optimizar/compresion-basica',
+      titleEs: 'Comprimir PDF', titleEn: 'Compress PDF', 
+      descEs: 'Reduce el peso de tu archivo optimizando la calidad máxima del documento.', 
+      descEn: 'Reduce file size while optimizing for maximal PDF quality.', 
+      icon: Sliders, path: '/optimizar/comprimir',
       borderColor: 'border-purple-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(168,85,247,0.2)]',
       hoverBorder: 'group-hover/card:border-purple-300',
@@ -99,27 +103,11 @@ export default function OptimizarPage() {
       iconBg: 'from-purple-500/30 to-violet-500/20 border-purple-400/50 text-purple-300'
     },
     { 
-      id: 'compresion-extrema', 
-      tagEs: '🔥 MÁXIMO AHORRO', tagEn: '🔥 MAXIMUM SAVINGS', 
-      titleEs: 'Compresión Extrema', titleEn: 'Extreme Compression', 
-      descEs: 'Máxima optimización de tamaño, ideal para envíos con límites de tamaño rigurosos.', 
-      descEn: 'Maximum size optimization, ideal for strict file size limit restrictions.', 
-      icon: Zap, path: '/optimizar/compresion-extrema',
-      borderColor: 'border-orange-500/40',
-      shadowColor: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
-      hoverBorder: 'group-hover/card:border-orange-300',
-      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(249,115,22,0.9),0_0_15px_rgba(249,115,22,0.5)]',
-      hoverBg: 'group-hover/card:from-orange-950/90 group-hover/card:to-slate-900',
-      badgeBg: 'bg-orange-500/20 text-orange-300 border-orange-400/40',
-      btnGradient: 'from-orange-400 to-red-500 group-hover/card:from-orange-300 group-hover/card:to-red-400',
-      iconBg: 'from-orange-500/30 to-red-500/20 border-orange-400/50 text-orange-300'
-    },
-    { 
       id: 'reparar', 
       tagEs: '🛠️ RECUPERACIÓN', tagEn: '🛠️ RECOVERY', 
       titleEs: 'Reparar PDF', titleEn: 'Repair PDF', 
-      descEs: 'Analiza, reestructura y recupera documentos PDF dañados o corruptos.', 
-      descEn: 'Analyze, rebuild, and recover damaged or corrupted PDF documents.', 
+      descEs: 'Sube un PDF dañado o corrupto e intentaremos reparar e integrar sus datos.', 
+      descEn: 'Upload a corrupt PDF and we will try to fix and recover it.', 
       icon: Activity, path: '/optimizar/reparar',
       borderColor: 'border-cyan-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(6,182,212,0.2)]',
@@ -131,12 +119,28 @@ export default function OptimizarPage() {
       iconBg: 'from-cyan-500/30 to-blue-500/20 border-cyan-400/50 text-cyan-300'
     },
     { 
-      id: 'metadatos', 
-      tagEs: '🛡️ PRIVACIDAD', tagEn: '🛡️ PRIVACY', 
-      titleEs: 'Limpiar Metadatos', titleEn: 'Clear Metadata', 
-      descEs: 'Elimina información oculta como creador, fechas de edición y software para privacidad.', 
-      descEn: 'Remove hidden author, edit date, and software info for maximum privacy.', 
-      icon: EyeOff, path: '/optimizar/metadatos',
+      id: 'desbloquear', 
+      tagEs: '🔓 ACCESO LIBRE', tagEn: '🔓 UNLOCK ACCESS', 
+      titleEs: 'Desbloquear PDF', titleEn: 'Unlock PDF', 
+      descEs: 'Remueve la seguridad y contraseñas para usar y copiar tus PDFs libremente.', 
+      descEn: 'Remove PDF password security, giving freedom to use your PDFs.', 
+      icon: Unlock, path: '/optimizar/desbloquear',
+      borderColor: 'border-amber-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(245,158,11,0.2)]',
+      hoverBorder: 'group-hover/card:border-amber-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(245,158,11,0.9),0_0_15px_rgba(245,158,11,0.5)]',
+      hoverBg: 'group-hover/card:from-amber-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+      btnGradient: 'from-amber-400 to-yellow-500 group-hover/card:from-amber-300 group-hover/card:to-yellow-400',
+      iconBg: 'from-amber-500/30 to-yellow-500/20 border-amber-400/50 text-amber-300'
+    },
+    { 
+      id: 'proteger', 
+      tagEs: '🔒 ENCRIPTACIÓN', tagEn: '🔒 ENCRYPTION', 
+      titleEs: 'Proteger PDF', titleEn: 'Protect PDF', 
+      descEs: 'Encripta tu archivo PDF con contraseña para proteger datos confidenciales.', 
+      descEn: 'Encrypt your PDF with a password to keep sensitive data confidential.', 
+      icon: Lock, path: '/optimizar/proteger',
       borderColor: 'border-emerald-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
       hoverBorder: 'group-hover/card:border-emerald-300',
@@ -145,6 +149,38 @@ export default function OptimizarPage() {
       badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
       btnGradient: 'from-emerald-400 to-teal-500 group-hover/card:from-emerald-300 group-hover/card:to-teal-400',
       iconBg: 'from-emerald-500/30 to-teal-500/20 border-emerald-400/50 text-emerald-300'
+    },
+    { 
+      id: 'censurar', 
+      tagEs: '👁️‍🗨️ REMOVER PRIVADO', tagEn: '👁️‍🗨️ REMOVE SENSITIVE', 
+      titleEs: 'Censurar PDF', titleEn: 'Redact PDF', 
+      descEs: 'Remueve contenido confidencial o sensible de las páginas de tu PDF.', 
+      descEn: 'Remove sensitive content and text from PDF documents.', 
+      icon: EyeOff, path: '/optimizar/censurar',
+      borderColor: 'border-rose-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(244,63,94,0.2)]',
+      hoverBorder: 'group-hover/card:border-rose-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(244,63,94,0.9),0_0_15px_rgba(244,63,94,0.5)]',
+      hoverBg: 'group-hover/card:from-rose-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-400/40',
+      btnGradient: 'from-rose-400 to-red-500 group-hover/card:from-rose-300 group-hover/card:to-red-400',
+      iconBg: 'from-rose-500/30 to-red-500/20 border-rose-400/50 text-rose-300'
+    },
+    { 
+      id: 'comparar', 
+      tagEs: '🔍 COMPARATIVA', tagEn: '🔍 COMPARISON', 
+      titleEs: 'Comparar PDF', titleEn: 'Compare PDF', 
+      descEs: 'Muestra fácilmente las diferencias y cambios entre dos archivos PDF similares.', 
+      descEn: 'Easily display the differences between two similar PDF files.', 
+      icon: GitCompare, path: '/optimizar/comparar',
+      borderColor: 'border-blue-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(59,130,246,0.2)]',
+      hoverBorder: 'group-hover/card:border-blue-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(59,130,246,0.9),0_0_15px_rgba(59,130,246,0.5)]',
+      hoverBg: 'group-hover/card:from-blue-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-400/40',
+      btnGradient: 'from-blue-400 to-indigo-500 group-hover/card:from-blue-300 group-hover/card:to-indigo-400',
+      iconBg: 'from-blue-500/30 to-indigo-500/20 border-blue-400/50 text-blue-300'
     }
   ];
 
@@ -186,7 +222,7 @@ export default function OptimizarPage() {
                   </div>
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                      {isEs ? "OPTIMIZAR DOCUMENTO" : "OPTIMIZE DOCUMENT"}
+                      {isEs ? "HERRAMIENTAS DE OPTIMIZAR PDF" : "PDF OPTIMIZATION TOOLS"}
                     </h1>
                     <p className="text-neutral-400 text-xs sm:text-sm font-medium">
                       {isEs ? "Reduce el peso o repara la integridad de tu archivo PDF:" : "Reduce file size or repair the integrity of your PDF file:"}
@@ -201,23 +237,23 @@ export default function OptimizarPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-5 flex flex-col justify-start">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6">
+                <div className="lg:col-span-5 flex flex-col h-full">
                   {!globalFile ? (
                     <div 
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-[560px] bg-purple-950/10 hover:bg-purple-950/30 border-2 border-dashed border-purple-500/30 hover:border-purple-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(168,85,247,0.25)]"
+                      className="w-full flex-1 h-full min-h-[500px] bg-purple-950/10 hover:bg-purple-950/30 border-2 border-dashed border-purple-500/30 hover:border-purple-400 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(168,85,247,0.25)]"
                     >
                       <motion.div 
                         animate={{ y: [0, -8, 0] }}
                         transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                        className="bg-gradient-to-tr from-purple-500/20 to-pink-500/20 p-6 rounded-full border border-purple-500/30 group-hover:scale-110 group-hover:bg-purple-500/30 group-hover:border-purple-400 shadow-[0_0_30px_rgba(168,85,247,0.2)] transition-all duration-300"
+                        className="bg-gradient-to-tr from-purple-500/20 to-pink-500/20 p-7 rounded-full border border-purple-500/30 group-hover:scale-110 group-hover:bg-purple-500/30 group-hover:border-purple-400 shadow-[0_0_35px_rgba(168,85,247,0.25)] transition-all duration-300"
                       >
-                        <UploadCloud className="w-16 h-16 text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.6)]" />
+                        <UploadCloud className="w-20 h-20 text-purple-400 drop-shadow-[0_0_20px_rgba(168,85,247,0.6)]" />
                       </motion.div>
 
-                      <div className="text-center flex flex-col items-center gap-1.5">
-                        <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-purple-200 transition-colors">
+                      <div className="text-center flex flex-col items-center gap-2">
+                        <h3 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight group-hover:text-purple-200 transition-colors">
                           {isEs ? "Arrastra tu PDF aquí para optimizar" : "Drop your PDF here to optimize"}
                         </h3>
                         <p className="text-purple-400 text-sm font-semibold flex items-center justify-center gap-1.5">
@@ -225,17 +261,17 @@ export default function OptimizarPage() {
                         </p>
                       </div>
 
-                      <button className="flex items-center justify-center gap-2.5 bg-purple-500 hover:bg-purple-400 text-white px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(168,85,247,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(168,85,247,0.7)] transition-all mt-1 cursor-pointer border border-purple-300/40">
-                        <FilePlus className="w-4 h-4 text-white" /> {isEs ? "Subir Archivo" : "Upload File"}
+                      <button className="flex items-center justify-center gap-2.5 bg-purple-500 hover:bg-purple-400 text-white px-9 py-4 rounded-full font-black text-base shadow-[0_0_25px_rgba(168,85,247,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(168,85,247,0.7)] transition-all mt-2 cursor-pointer border border-purple-300/40">
+                        <FilePlus className="w-5 h-5 text-white" /> {isEs ? "Subir Archivo" : "Upload File"}
                       </button>
 
-                      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-2">
+                        <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
                         <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-[560px] bg-purple-950/20 hover:bg-purple-950/30 border-2 border-purple-500/40 hover:border-purple-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(168,85,247,0.25)] hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] transition-all duration-300 flex flex-col relative">
+                    <div className="w-full flex-1 h-full min-h-[500px] bg-purple-950/20 hover:bg-purple-950/30 border-2 border-purple-500/40 hover:border-purple-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(168,85,247,0.25)] hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] transition-all duration-300 flex flex-col relative">
                       <div className="bg-[#030712] border-b border-white/[0.06] p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="bg-purple-500/20 p-2 rounded-xl border border-purple-500/30 flex-shrink-0">
@@ -268,61 +304,120 @@ export default function OptimizarPage() {
                   )}
                 </div>
 
-                <div className="lg:col-span-7 flex flex-col justify-between h-[560px]">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 h-full max-h-[560px] group/grid">
-                    {optimizationTools.map((tool) => (
-                      <Link 
-                        key={tool.id} 
-                        href={globalFile ? tool.path : "#"} 
-                        onClick={(e) => { 
-                          if (!globalFile) { 
-                            e.preventDefault(); 
-                            toast.error(isEs ? "Sube un archivo primero para usar la herramienta." : "Upload a file first to use the tool."); 
-                          } 
-                        }} 
-                        className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
-                      >
-                        <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${tool.borderColor} ${tool.shadowColor} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
-                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+                <div className="lg:col-span-7 flex flex-col h-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 h-full group/grid">
+                    {optimizationTools.map((tool) => {
+                      const isSelected = selectedToolParam === tool.id || (selectedToolParam && tool.path.endsWith(selectedToolParam));
 
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
-                                <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                      return (
+                        <Link 
+                          key={tool.id} 
+                          href={globalFile ? tool.path : "#"} 
+                          onClick={(e) => { 
+                            if (!globalFile) { 
+                              e.preventDefault(); 
+                              toast.error(isEs ? "Sube un archivo en la casilla de la izquierda para usar esta herramienta." : "Upload a file in the left dropzone first to use this tool."); 
+                            } 
+                          }} 
+                          className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
+                        >
+                          <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${isSelected ? 'border-purple-400 ring-4 ring-purple-400/50 shadow-[0_0_35px_rgba(168,85,247,0.8)] scale-[1.02]' : `${tool.borderColor} ${tool.shadowColor}`} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
+                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
+                                  <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                                </div>
+
+                                <div className={`bg-gradient-to-r ${isSelected ? 'from-purple-300 to-pink-400 animate-pulse text-slate-950' : tool.btnGradient} font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
+                                  <span>{isSelected ? (isEs ? "SELECCIONADO" : "SELECTED") : (isEs ? "Usar Ahora" : "Use Now")}</span>
+                                  <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
+                                </div>
                               </div>
 
-                              <div className={`bg-gradient-to-r ${tool.btnGradient} text-slate-950 font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
-                                <span>{isEs ? "Usar Ahora" : "Use Now"}</span>
-                                <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border shadow-sm`}>
+                                  {isEs ? tool.tagEs : tool.tagEn}
+                                </span>
+                                {isSelected && (
+                                  <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-purple-400 text-slate-950 flex items-center gap-1 shadow-md animate-pulse">
+                                    <CheckCircle2 className="w-3 h-3" /> {isEs ? 'ELEGIDO EN MENÚ' : 'MENU SELECTED'}
+                                  </span>
+                                )}
                               </div>
+
+                              <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
+                                {isEs ? tool.titleEs : tool.titleEn}
+                              </h3>
+                              <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
+                                {isEs ? tool.descEs : tool.descEn}
+                              </p>
                             </div>
 
-                            <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border mb-1 inline-block shadow-sm`}>
-                              {isEs ? tool.tagEs : tool.tagEn}
-                            </span>
+                            <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                {isEs ? "100% Local" : "100% Local"}
+                              </span>
 
-                            <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
-                              {isEs ? tool.titleEs : tool.titleEn}
-                            </h3>
-                            <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
-                              {isEs ? tool.descEs : tool.descEn}
-                            </p>
+                              <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
+                                {isEs ? "Iniciar" : "Start"}
+                                <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
+                              </span>
+                            </div>
                           </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
 
-                          <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                              {isEs ? "100% Local" : "100% Local"}
-                            </span>
+              {/* SECCIÓN: 3 PASOS PARA TRABAJAR PDF */}
+              <div className="w-full mt-10 pt-8 border-t border-white/10 flex flex-col items-center">
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                  {isEs ? "Solo 3 pasos para optimizar tu PDF" : "Only 3 steps to optimize your PDF"}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                  {/* PASO 1 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(6,182,212,0.3)] group-hover:scale-110 transition-transform">
+                      1
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      📁 {isEs ? "1. Sube tu PDF" : "1. Upload your PDF"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "Arrastra o selecciona tu archivo PDF en el recuadro principal." : "Drag or select your PDF file in the main dropzone box."}
+                    </p>
+                  </div>
 
-                            <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
-                              {isEs ? "Iniciar" : "Start"}
-                              <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                  {/* PASO 2 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(168,85,247,0.3)] group-hover:scale-110 transition-transform">
+                      2
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      🛠️ {isEs ? "2. Usa la herramienta" : "2. Use the tool"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "En la página especializada, elige la función exacta (Unir, Dividir, Foliar, etc.)." : "In the specialized page, select the exact function (Compress, Repair, Unlock, Protect, etc.)."}
+                    </p>
+                  </div>
+
+                  {/* PASO 3 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(16,185,129,0.3)] group-hover:scale-110 transition-transform">
+                      3
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      ⬇️ {isEs ? "3. Descarga lista" : "3. Download ready"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "Obtén tu documento final 100% procesado de forma local en tu navegador." : "Get your final document 100% processed locally in your browser."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -331,6 +426,14 @@ export default function OptimizarPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+export default function OptimizarPage() {
+  return (
+    <Suspense fallback={null}>
+      <OptimizarContent />
+    </Suspense>
   );
 }
 

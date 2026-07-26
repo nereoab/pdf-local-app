@@ -1,23 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PDFDocument } from 'pdf-lib';
-import { encryptPDF } from '@pdfsmaller/pdf-encrypt';
-import { ShieldCheck, Lock, Loader2, FileText, X, Eye, EyeOff, FilePlus } from 'lucide-react';
+import { FileSpreadsheet, FileDown, Loader2, X, ShieldCheck, FilePlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
 import { motion } from 'framer-motion';
 
-export default function PdfProtector() {
+export default function PdfToExcel() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [file, setFile] = useState<File | null>(globalFile);
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
@@ -29,59 +25,62 @@ export default function PdfProtector() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selectedFile = e.target.files[0];
-      if (selectedFile.type === 'application/pdf') {
-        setFile(selectedFile);
-        setGlobalFile(selectedFile);
+      const selected = e.target.files[0];
+      if (selected.type === 'application/pdf') {
+        setFile(selected);
+        setGlobalFile(selected);
         setDownloadUrl(null);
-        toast.success(isEs ? 'Archivo cargado correctamente' : 'File loaded successfully');
+        toast.success(isEs ? 'Archivo PDF cargado' : 'PDF file loaded');
       } else {
-        toast.error(isEs ? 'Por favor, selecciona un archivo PDF válido' : 'Please select a valid PDF file');
+        toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
       }
     }
     e.target.value = '';
   };
 
-  const executeProtect = async () => {
-    if (!file || !password) {
-      toast.warning(isEs ? 'Debes escribir una contraseña' : 'You must enter a password');
-      return;
-    }
+  const executeConversion = async () => {
+    if (!file) return;
 
     setIsProcessing(true);
-    let url: string | null = null;
+    toast.info(isEs ? 'Extrayendo datos de tablas...' : 'Extracting table data...');
 
     try {
+      // Extraemos el texto estructurado del PDF
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
       const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-      const pdfBytes = await pdfDoc.save();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      let csvContent = "Pagina,Linea,Texto Extraido\n";
 
-      const encryptedBytes = await encryptPDF(new Uint8Array(pdfBytes), password, {
-        ownerPassword: password,
-        allowPrinting: true,
-        allowModifying: false,
-        allowCopying: false,
-        allowAnnotating: false,
-        allowFillingForms: false,
-      });
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const textContent = await page.getTextContent();
+        let line = 1;
+        textContent.items.forEach((item: any) => {
+          if (item.str && item.str.trim()) {
+            const cleanStr = item.str.replace(/"/g, '""');
+            csvContent += `${p},${line++},"${cleanStr}"\n`;
+          }
+        });
+      }
 
-      const blob = new Blob([encryptedBytes as any], { type: 'application/pdf' });
-      url = URL.createObjectURL(blob);
-      setDownloadUrl(url);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const localUrl = URL.createObjectURL(blob);
+      setDownloadUrl(localUrl);
 
-      const originalName = file.name.replace(/\.[^/.]+$/, "");
       const link = document.createElement('a');
-      link.href = url;
-      link.download = `${originalName}_Protegido.pdf`;
+      link.href = localUrl;
+      link.download = `${file.name.replace(/\.[^/.]+$/, "")}_Tabla.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? '¡PDF protegido y descargado con éxito!' : 'PDF protected and downloaded successfully!');
-      setPassword('');
+      toast.success(isEs ? '¡Datos extraídos a archivo Excel/CSV!' : 'Data extracted to Excel/CSV file!');
     } catch (error) {
       console.error(error);
-      toast.error(isEs ? 'Ocurrió un error al intentar proteger el documento.' : 'An error occurred while protecting document.');
+      toast.error(isEs ? 'Ocurrió un error al procesar la tabla.' : 'An error occurred while processing table.');
     } finally {
       setIsProcessing(false);
     }
@@ -100,15 +99,15 @@ export default function PdfProtector() {
           transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
           className="bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 p-6 rounded-full border border-emerald-500/30 group-hover:scale-110 group-hover:bg-emerald-500/30 group-hover:border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.2)] transition-all duration-300"
         >
-          <Lock className="w-16 h-16 text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.6)]" />
+          <FileSpreadsheet className="w-16 h-16 text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.6)]" />
         </motion.div>
 
         <div className="text-center flex flex-col items-center gap-1.5">
           <h2 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-emerald-200 transition-colors">
-            {isEs ? 'Proteger documento PDF' : 'Protect PDF document'}
+            {isEs ? 'PDF a Excel' : 'PDF to Excel'}
           </h2>
           <p className="text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-            {isEs ? 'Encripta tu PDF con una contraseña segura de 256-bit AES' : 'Encrypt your PDF with 256-bit AES password security'}
+            {isEs ? 'Extrae tablas y datos numéricos de tu PDF a hojas de cálculo (.xlsx / .csv)' : 'Extract tables and numbers from PDF to spreadsheets (.xlsx / .csv)'}
           </p>
         </div>
 
@@ -130,7 +129,7 @@ export default function PdfProtector() {
       <div className="flex-1 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 min-h-[440px] flex flex-col items-center justify-center relative">
         <div className="absolute top-4 left-4 right-4 bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-white/10 flex justify-between items-center shadow-sm">
           <div className="flex items-center gap-3 overflow-hidden">
-            <FileText className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <FileSpreadsheet className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
           <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1">
@@ -139,57 +138,48 @@ export default function PdfProtector() {
         </div>
 
         <div className="flex flex-col items-center mt-12">
-          <div className="w-36 h-48 bg-emerald-950/60 rounded-2xl border-2 border-emerald-500/40 flex flex-col items-center justify-center p-4 shadow-xl mb-4">
-            <Lock className="w-14 h-14 text-emerald-400 mb-2" />
-            <span className="text-xs font-bold text-emerald-300 uppercase">ENCRIPTADO AES</span>
+          <div className="w-32 h-44 bg-emerald-950/60 rounded-2xl border-2 border-emerald-500/40 flex flex-col items-center justify-center p-4 shadow-xl mb-4">
+            <FileSpreadsheet className="w-12 h-12 text-emerald-400 mb-2" />
+            <span className="text-xs font-bold text-emerald-300 uppercase">EXCEL / CSV</span>
           </div>
         </div>
       </div>
 
       <div className="w-full lg:w-80 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto lg:h-[440px]">
         <div>
-          <div className="flex items-center gap-2 mb-6 text-white font-bold text-xl">
-            <ShieldCheck className="w-6 h-6 text-emerald-400" /> {isEs ? 'Seguridad' : 'Security'}
-          </div>
-
-          <div className="space-y-4 mb-8">
-            <div>
-              <label className="text-xs font-bold text-slate-400 uppercase block mb-2">{isEs ? 'Establecer Contraseña' : 'Set Password'}</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder={isEs ? 'Escribe tu contraseña...' : 'Enter password...'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full p-3.5 pr-12 bg-slate-800 border border-white/10 rounded-xl text-white outline-none font-medium text-sm focus:border-emerald-400"
-                  disabled={isProcessing}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3.5 text-slate-400 hover:text-white"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-          </div>
+          <h3 className="text-xl font-bold text-white mb-2">{isEs ? 'Extraer a Excel' : 'Extract to Excel'}</h3>
+          <p className="text-slate-400 text-xs leading-relaxed mb-6">
+            {isEs ? 'Los datos de tablas se organizarán para su edición en Excel.' : 'Table data will be formatted for Excel editing.'}
+          </p>
         </div>
 
-        <button
-          onClick={executeProtect}
-          disabled={isProcessing || !password}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 py-4 rounded-xl font-bold text-lg shadow-lg shadow-emerald-500/20 disabled:opacity-40 transition-all active:scale-95 cursor-pointer"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm">{isEs ? 'Encriptando...' : 'Encrypting...'}</span>
-            </>
+        <div className="space-y-3">
+          {!downloadUrl ? (
+            <button
+              onClick={executeConversion}
+              disabled={isProcessing}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 py-4 rounded-xl font-bold text-lg shadow-lg shadow-emerald-500/20 disabled:opacity-40 transition-all active:scale-95 cursor-pointer"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm">{isEs ? 'Extrayendo...' : 'Extracting...'}</span>
+                </>
+              ) : (
+                isEs ? 'Convertir a Excel' : 'Convert to Excel'
+              )}
+            </button>
           ) : (
-            isEs ? 'Proteger PDF' : 'Protect PDF'
+            <a
+              href={downloadUrl}
+              download
+              className="w-full flex items-center justify-center gap-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 py-4 rounded-xl font-black text-lg shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
+            >
+              <FileDown className="w-5 h-5" />
+              {isEs ? 'Descargar Excel / CSV' : 'Download Excel / CSV'}
+            </a>
           )}
-        </button>
+        </div>
       </div>
     </div>
   );

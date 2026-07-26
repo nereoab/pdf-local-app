@@ -1,17 +1,21 @@
 'use client';
 
 import { useFileStore } from '../../store/useFileStore';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  ArrowRight, FolderOpen, Merge, Scissors, Trash2, LayoutGrid, ExternalLink,
-  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock 
+  ArrowRight, FolderOpen, Merge, Scissors, Trash2, LayoutGrid, RotateCw, Crop,
+  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, CheckCircle2 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function OrganizarPage() {
+function OrganizarContent() {
+  const searchParams = useSearchParams();
+  const selectedToolParam = searchParams.get('tool');
+
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const [mounted, setMounted] = useState(false);
@@ -40,37 +44,34 @@ export default function OrganizarPage() {
     }
   }, [globalFile]);
 
-  const procesarArchivo = (archivoSeleccionado: File) => {
-    if (archivoSeleccionado.type !== "application/pdf") {
-      toast.error(isEs ? "Por favor, sube un archivo PDF válido." : "Please upload a valid PDF file.");
+  const handleFileSelect = (file: File) => {
+    if (file.type !== 'application/pdf') {
+      toast.error(isEs ? 'Por favor sube solo archivos PDF' : 'Please upload PDF files only');
       return;
     }
+
     setIsUploading(true);
     setUploadProgress(0);
-    
+
     const interval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
           setTimeout(() => {
-            setGlobalFile(archivoSeleccionado); 
             setIsUploading(false);
-            setUploadProgress(0);
-            toast.success(isEs ? "Archivo cargado en el organizador." : "File loaded into the organizer.");
-          }, 400);
+            setGlobalFile(file);
+            toast.success(isEs ? `Archivo "${file.name}" cargado exitosamente.` : `File "${file.name}" uploaded successfully.`);
+          }, 300);
           return 100;
         }
-        return prev + Math.floor(Math.random() * 20) + 15; 
+        return prev + 15;
       });
-    }, 100);
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) procesarArchivo(e.target.files[0]);
+    }, 60);
   };
 
   const handleRemoveFile = () => {
     setGlobalFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const formatFileSize = (bytes: number) => {
@@ -84,10 +85,10 @@ export default function OrganizarPage() {
   const organizingTools = [
     { 
       id: 'unir', 
-      tagEs: '📄+📄 UNIR ARCHIVOS', tagEn: '📄+📄 MERGE FILES', 
-      titleEs: 'Unir PDFs', titleEn: 'Merge PDFs', 
-      descEs: 'Combina múltiples archivos PDF en un único documento de forma ordenada.', 
-      descEn: 'Combine multiple PDF files into a single structured document.', 
+      tagEs: '📄 COMBINAR ARCHIVOS', tagEn: '📄 MERGE FILES', 
+      titleEs: 'Unir Archivos PDF', titleEn: 'Merge PDF Files', 
+      descEs: 'Une múltiples archivos PDF en un solo documento organizado en segundos.', 
+      descEn: 'Combine multiple PDF files into one organized document in seconds.', 
       icon: Merge, path: '/organizar/unir',
       borderColor: 'border-emerald-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
@@ -100,10 +101,10 @@ export default function OrganizarPage() {
     },
     { 
       id: 'dividir', 
-      tagEs: '✂️ SEPARAR HOJAS', tagEn: '✂️ SPLIT PAGES', 
-      titleEs: 'Dividir PDF', titleEn: 'Split PDF', 
-      descEs: 'Extrae rangos de páginas o separa cada página en archivos individuales.', 
-      descEn: 'Extract page ranges or separate each page into individual files.', 
+      tagEs: '✂️ SEPARAR EN PARTES', tagEn: '✂️ SPLIT PAGES', 
+      titleEs: 'Dividir Archivo PDF', titleEn: 'Split PDF File', 
+      descEs: 'Separa un PDF en varias partes de una o varias páginas según necesites.', 
+      descEn: 'Extract one or multiple pages into separate PDF files as needed.', 
       icon: Scissors, path: '/organizar/dividir',
       borderColor: 'border-teal-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(20,184,166,0.2)]',
@@ -116,26 +117,26 @@ export default function OrganizarPage() {
     },
     { 
       id: 'eliminar', 
-      tagEs: '🗑️ QUITAR PÁGINAS', tagEn: '🗑️ DELETE PAGES', 
-      titleEs: 'Eliminar Páginas', titleEn: 'Delete Pages', 
-      descEs: 'Remueve páginas innecesarias de tu documento de forma visual e instantánea.', 
-      descEn: 'Remove unnecessary pages from your document visually and instantly.', 
+      tagEs: '🗑️ BORRAR PÁGINAS', tagEn: '🗑️ REMOVE PAGES', 
+      titleEs: 'Eliminar Páginas PDF', titleEn: 'Delete PDF Pages', 
+      descEs: 'Selecciona y elimina las páginas no deseadas de tu archivo PDF fácilmente.', 
+      descEn: 'Select and remove unwanted pages from your PDF file easily.', 
       icon: Trash2, path: '/organizar/eliminar',
-      borderColor: 'border-red-500/40',
-      shadowColor: 'shadow-[0_0_20px_rgba(239,68,68,0.2)]',
-      hoverBorder: 'group-hover/card:border-red-300',
-      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(239,68,68,0.9),0_0_15px_rgba(239,68,68,0.5)]',
-      hoverBg: 'group-hover/card:from-red-950/90 group-hover/card:to-slate-900',
-      badgeBg: 'bg-red-500/20 text-red-300 border-red-400/40',
+      borderColor: 'border-rose-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(244,63,94,0.2)]',
+      hoverBorder: 'group-hover/card:border-rose-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(244,63,94,0.9),0_0_15px_rgba(244,63,94,0.5)]',
+      hoverBg: 'group-hover/card:from-rose-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-400/40',
       btnGradient: 'from-red-400 to-rose-500 group-hover/card:from-red-300 group-hover/card:to-rose-400',
       iconBg: 'from-red-500/30 to-rose-500/20 border-red-400/50 text-red-300'
     },
     { 
       id: 'reordenar', 
-      tagEs: '🔄 MOVER Y ROTAR', tagEn: '🔄 MOVE & ROTATE', 
-      titleEs: 'Reordenar y Rotar', titleEn: 'Reorder & Rotate', 
-      descEs: 'Arrastra para cambiar la posición de las hojas o girarlas 90°/180°.', 
-      descEn: 'Drag to change page order or rotate them 90°/180°.', 
+      tagEs: '🔄 REORDENAR', tagEn: '🔄 REORDER', 
+      titleEs: 'Reordenar PDF', titleEn: 'Reorder PDF', 
+      descEs: 'Arrastra y suelta páginas para cambiar su orden en el documento.', 
+      descEn: 'Drag and drop pages to change their order in the document.', 
       icon: LayoutGrid, path: '/organizar/reordenar',
       borderColor: 'border-blue-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(59,130,246,0.2)]',
@@ -147,12 +148,28 @@ export default function OrganizarPage() {
       iconBg: 'from-blue-500/30 to-indigo-500/20 border-blue-400/50 text-blue-300'
     },
     { 
-      id: 'extraer', 
-      tagEs: '📥 EXTRAER SELECCIÓN', tagEn: '📥 EXTRACT SELECTION', 
-      titleEs: 'Extraer Páginas', titleEn: 'Extract Pages', 
-      descEs: 'Guarda únicamente las hojas seleccionadas en un nuevo archivo independiente.', 
-      descEn: 'Save only selected pages into a new independent file.', 
-      icon: ExternalLink, path: '/organizar/extraer',
+      id: 'rotar', 
+      tagEs: '↻ ROTAR', tagEn: '↻ ROTATE', 
+      titleEs: 'Rotar PDF', titleEn: 'Rotate PDF', 
+      descEs: 'Gira las páginas de tu PDF fácilmente.', 
+      descEn: 'Rotate your PDF pages easily.', 
+      icon: RotateCw, path: '/organizar/rotar',
+      borderColor: 'border-amber-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(245,158,11,0.2)]',
+      hoverBorder: 'group-hover/card:border-amber-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(245,158,11,0.9),0_0_15px_rgba(245,158,11,0.5)]',
+      hoverBg: 'group-hover/card:from-amber-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+      btnGradient: 'from-amber-400 to-yellow-500 group-hover/card:from-amber-300 group-hover/card:to-yellow-400',
+      iconBg: 'from-amber-500/30 to-yellow-500/20 border-amber-400/50 text-amber-300'
+    },
+    { 
+      id: 'recortar', 
+      tagEs: '📐 RECORTAR', tagEn: '📐 CROP', 
+      titleEs: 'Recortar PDF', titleEn: 'Crop PDF', 
+      descEs: 'Recorta márgenes de tu documento PDF.', 
+      descEn: 'Crop margins from your PDF document.', 
+      icon: Crop, path: '/organizar/recortar',
       borderColor: 'border-purple-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(168,85,247,0.2)]',
       hoverBorder: 'group-hover/card:border-purple-300',
@@ -173,14 +190,27 @@ export default function OrganizarPage() {
       </div>
 
       <div className="w-full max-w-7xl relative z-10">
-        <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileInput} />
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])} 
+          accept="application/pdf" 
+          className="hidden" 
+        />
 
         <AnimatePresence mode="wait">
           {isUploading && (
-            <motion.div key="loading-view" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full bg-black/60 border border-emerald-500/30 rounded-3xl p-12 shadow-[0_0_40px_rgba(16,185,129,0.15)] mt-10">
-              <div className="max-w-md mx-auto">
-                <div className="flex justify-between items-end mb-4">
-                  <h3 className="text-white font-bold text-xl flex items-center gap-2">Cargando documento...</h3>
+            <motion.div key="uploading-state" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full h-[450px] bg-slate-900/90 border border-emerald-500/30 rounded-3xl p-8 flex flex-col items-center justify-center gap-6 shadow-[0_0_50px_rgba(16,185,129,0.2)]">
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }} className="p-4 bg-emerald-500/20 rounded-full border border-emerald-400/50">
+                <FolderOpen className="w-12 h-12 text-emerald-400" />
+              </motion.div>
+              <div className="text-center space-y-2">
+                <h3 className="text-2xl font-bold text-white tracking-tight">{isEs ? "Cargando tu archivo PDF..." : "Loading your PDF file..."}</h3>
+                <p className="text-emerald-400 text-sm font-medium">{isEs ? "Procesando en tu navegador de forma 100% segura" : "Processing safely in your browser"}</p>
+              </div>
+              <div className="w-full max-w-md space-y-2">
+                <div className="flex justify-between text-xs font-semibold text-slate-400">
+                  <span>{isEs ? "Progreso de carga" : "Upload progress"}</span>
                   <span className="text-emerald-400 font-bold text-3xl tabular-nums">{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-900 rounded-full h-3 overflow-hidden border border-white/10">
@@ -194,7 +224,6 @@ export default function OrganizarPage() {
 
           {!isUploading && (
             <motion.div key="workspace-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full">
-              {/* TÍTULO DE PÁGINA Y KPI STATS */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 mt-2 pb-4 border-b border-white/5">
                 <div className="flex items-center gap-3.5">
                   <div className="bg-gradient-to-tr from-emerald-500/30 to-teal-500/20 p-3 sm:p-3.5 rounded-2xl border border-emerald-400/40 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -202,7 +231,7 @@ export default function OrganizarPage() {
                   </div>
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                      {isEs ? "ORGANIZAR DOCUMENTO" : "ORGANIZE DOCUMENT"}
+                      {isEs ? "HERRAMIENTAS DE ORGANIZAR PDF" : "PDF ORGANIZATION TOOLS"}
                     </h1>
                     <p className="text-neutral-400 text-xs sm:text-sm font-medium">
                       {isEs ? "Administra las páginas y la estructura de tu documento PDF:" : "Manage the pages and structure of your PDF document:"}
@@ -217,23 +246,23 @@ export default function OrganizarPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-5 flex flex-col justify-start">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6">
+                <div className="lg:col-span-5 flex flex-col h-full">
                   {!globalFile ? (
                     <div 
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-[560px] bg-emerald-950/10 hover:bg-emerald-950/30 border-2 border-dashed border-emerald-500/30 hover:border-emerald-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(16,185,129,0.25)]"
+                      className="w-full flex-1 h-full min-h-[500px] bg-emerald-950/10 hover:bg-emerald-950/30 border-2 border-dashed border-emerald-500/30 hover:border-emerald-400 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(16,185,129,0.25)]"
                     >
                       <motion.div 
                         animate={{ y: [0, -8, 0] }}
                         transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                        className="bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 p-6 rounded-full border border-emerald-500/30 group-hover:scale-110 group-hover:bg-emerald-500/30 group-hover:border-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.2)] transition-all duration-300"
+                        className="bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 p-7 rounded-full border border-emerald-500/30 group-hover:scale-110 group-hover:bg-emerald-500/30 group-hover:border-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.25)] transition-all duration-300"
                       >
-                        <UploadCloud className="w-16 h-16 text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.6)]" />
+                        <UploadCloud className="w-20 h-20 text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.6)]" />
                       </motion.div>
 
-                      <div className="text-center flex flex-col items-center gap-1.5">
-                        <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-emerald-200 transition-colors">
+                      <div className="text-center flex flex-col items-center gap-2">
+                        <h3 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight group-hover:text-emerald-200 transition-colors">
                           {isEs ? "Arrastra tu PDF aquí para organizar" : "Drop your PDF here to organize"}
                         </h3>
                         <p className="text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
@@ -241,17 +270,17 @@ export default function OrganizarPage() {
                         </p>
                       </div>
 
-                      <button className="flex items-center justify-center gap-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(16,185,129,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(16,185,129,0.7)] transition-all mt-1 cursor-pointer border border-emerald-300/40">
-                        <FilePlus className="w-4 h-4 text-slate-950" /> {isEs ? "Subir Archivo" : "Upload File"}
+                      <button className="flex items-center justify-center gap-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 px-9 py-4 rounded-full font-black text-base shadow-[0_0_25px_rgba(16,185,129,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(16,185,129,0.7)] transition-all mt-2 cursor-pointer border border-emerald-300/40">
+                        <FilePlus className="w-5 h-5 text-slate-950" /> {isEs ? "Subir Archivo" : "Upload File"}
                       </button>
 
-                      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-2">
+                        <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
                         <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-[560px] bg-emerald-950/20 hover:bg-emerald-950/30 border-2 border-emerald-500/40 hover:border-emerald-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.25)] hover:shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all duration-300 flex flex-col relative">
+                    <div className="w-full flex-1 h-full min-h-[500px] bg-emerald-950/20 hover:bg-emerald-950/30 border-2 border-emerald-500/40 hover:border-emerald-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.25)] hover:shadow-[0_0_50px_rgba(16,185,129,0.4)] transition-all duration-300 flex flex-col relative">
                       <div className="bg-[#030712] border-b border-white/[0.06] p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 flex-shrink-0">
@@ -284,61 +313,120 @@ export default function OrganizarPage() {
                   )}
                 </div>
 
-                <div className="lg:col-span-7 flex flex-col justify-between h-[560px]">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 h-full max-h-[560px] group/grid">
-                    {organizingTools.map((tool) => (
-                      <Link 
-                        key={tool.id} 
-                        href={globalFile ? tool.path : "#"} 
-                        onClick={(e) => { 
-                          if (!globalFile) { 
-                            e.preventDefault(); 
-                            toast.error(isEs ? "Sube un archivo primero para usar la herramienta." : "Upload a file first to use the tool."); 
-                          } 
-                        }} 
-                        className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
-                      >
-                        <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${tool.borderColor} ${tool.shadowColor} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
-                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+                <div className="lg:col-span-7 flex flex-col h-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 h-full group/grid">
+                    {organizingTools.map((tool) => {
+                      const isSelected = selectedToolParam === tool.id || (selectedToolParam && tool.path.endsWith(selectedToolParam));
 
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
-                                <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                      return (
+                        <Link 
+                          key={tool.id} 
+                          href={globalFile ? tool.path : "#"} 
+                          onClick={(e) => { 
+                            if (!globalFile) { 
+                              e.preventDefault(); 
+                              toast.error(isEs ? "Sube un archivo en la casilla de la izquierda para usar esta herramienta." : "Upload a file in the left dropzone first to use this tool."); 
+                            } 
+                          }} 
+                          className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
+                        >
+                          <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${isSelected ? 'border-emerald-400 ring-4 ring-emerald-400/50 shadow-[0_0_35px_rgba(16,185,129,0.8)] scale-[1.02]' : `${tool.borderColor} ${tool.shadowColor}`} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
+                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
+                                  <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                                </div>
+
+                                <div className={`bg-gradient-to-r ${isSelected ? 'from-emerald-300 to-teal-400 animate-pulse' : tool.btnGradient} text-slate-950 font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
+                                  <span>{isSelected ? (isEs ? "SELECCIONADO" : "SELECTED") : (isEs ? "Usar Ahora" : "Use Now")}</span>
+                                  <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
+                                </div>
                               </div>
 
-                              <div className={`bg-gradient-to-r ${tool.btnGradient} text-slate-950 font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
-                                <span>{isEs ? "Usar Ahora" : "Use Now"}</span>
-                                <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border shadow-sm`}>
+                                  {isEs ? tool.tagEs : tool.tagEn}
+                                </span>
+                                {isSelected && (
+                                  <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-emerald-400 text-slate-950 flex items-center gap-1 shadow-md animate-pulse">
+                                    <CheckCircle2 className="w-3 h-3" /> {isEs ? 'ELEGIDO EN MENÚ' : 'MENU SELECTED'}
+                                  </span>
+                                )}
                               </div>
+
+                              <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
+                                {isEs ? tool.titleEs : tool.titleEn}
+                              </h3>
+                              <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
+                                {isEs ? tool.descEs : tool.descEn}
+                              </p>
                             </div>
 
-                            <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border mb-1 inline-block shadow-sm`}>
-                              {isEs ? tool.tagEs : tool.tagEn}
-                            </span>
+                            <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                {isEs ? "100% Local" : "100% Local"}
+                              </span>
 
-                            <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
-                              {isEs ? tool.titleEs : tool.titleEn}
-                            </h3>
-                            <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
-                              {isEs ? tool.descEs : tool.descEn}
-                            </p>
+                              <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
+                                {isEs ? "Iniciar" : "Start"}
+                                <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
+                              </span>
+                            </div>
                           </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
 
-                          <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                              {isEs ? "100% Local" : "100% Local"}
-                            </span>
+              {/* SECCIÓN: 3 PASOS PARA TRABAJAR PDF */}
+              <div className="w-full mt-10 pt-8 border-t border-white/10 flex flex-col items-center">
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  {isEs ? "Solo 3 pasos para organizar tu PDF" : "Only 3 steps to organize your PDF"}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                  {/* PASO 1 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(6,182,212,0.3)] group-hover:scale-110 transition-transform">
+                      1
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      📁 {isEs ? "1. Sube tu PDF" : "1. Upload your PDF"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "Arrastra o selecciona tu archivo PDF en el recuadro principal." : "Drag or select your PDF file in the main dropzone box."}
+                    </p>
+                  </div>
 
-                            <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
-                              {isEs ? "Iniciar" : "Start"}
-                              <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                  {/* PASO 2 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(16,185,129,0.3)] group-hover:scale-110 transition-transform">
+                      2
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      🛠️ {isEs ? "2. Usa la herramienta" : "2. Use the tool"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "En la página especializada, elige la función exacta (Unir, Dividir, Foliar, etc.)." : "In the specialized page, select the exact function (Merge, Split, Reorder, etc.)."}
+                    </p>
+                  </div>
+
+                  {/* PASO 3 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(168,85,247,0.3)] group-hover:scale-110 transition-transform">
+                      3
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      ⬇️ {isEs ? "3. Descarga lista" : "3. Download ready"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "Obtén tu documento final 100% procesado de forma local en tu navegador." : "Get your final document 100% processed locally in your browser."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -359,5 +447,13 @@ function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = "", tooltip,
         <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">{title}</span>
       </div>
     </div>
+  );
+}
+
+export default function OrganizarPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrganizarContent />
+    </Suspense>
   );
 }

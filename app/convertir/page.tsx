@@ -1,17 +1,21 @@
 'use client';
 
 import { useFileStore } from '../../store/useFileStore';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  ArrowRight, RefreshCw, FileText, FileSpreadsheet, Image as ImageIcon, FileCode, Upload,
-  UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock 
+  ArrowRight, RefreshCw, FileText, FileSpreadsheet, Image as ImageIcon, FileCode, Presentation, AlignLeft,
+  UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, CheckCircle2 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function ConvertirPage() {
+function ConvertirContent() {
+  const searchParams = useSearchParams();
+  const selectedToolParam = searchParams.get('tool');
+
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const [mounted, setMounted] = useState(false);
@@ -84,10 +88,10 @@ export default function ConvertirPage() {
   const conversionTools = [
     { 
       id: 'pdf-word', 
-      tagEs: '⭐ MÁS POPULAR', tagEn: '⭐ MOST POPULAR', 
-      titleEs: 'PDF a Word', titleEn: 'PDF to Word', 
-      descEs: 'Convierte tus documentos PDF a archivos de Microsoft Word (.docx) editables.', 
-      descEn: 'Convert your PDF documents into editable Microsoft Word (.docx) files.', 
+      tagEs: '📘 PDF ↔ WORD', tagEn: '📘 PDF ↔ WORD', 
+      titleEs: 'PDF y Word', titleEn: 'PDF & Word', 
+      descEs: 'Convierte PDF a Word (.docx) o convierte documentos Word a PDF.', 
+      descEn: 'Convert PDF to Word (.docx) or convert Word documents to PDF.', 
       icon: FileText, path: '/convertir/pdf-word',
       borderColor: 'border-blue-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(59,130,246,0.2)]',
@@ -100,10 +104,10 @@ export default function ConvertirPage() {
     },
     { 
       id: 'pdf-excel', 
-      tagEs: '📊 MÁXIMA PRECISIÓN', tagEn: '📊 HIGH ACCURACY', 
-      titleEs: 'PDF a Excel', titleEn: 'PDF to Excel', 
-      descEs: 'Extrae tablas y datos numéricos de tu PDF hacia hojas de cálculo (.xlsx).', 
-      descEn: 'Extract tables and numerical data from your PDF to spreadsheets (.xlsx).', 
+      tagEs: '📊 PDF ↔ EXCEL', tagEn: '📊 PDF ↔ EXCEL', 
+      titleEs: 'PDF y Excel', titleEn: 'PDF & Excel', 
+      descEs: 'Extrae tablas a Excel (.xlsx) o convierte hojas de cálculo Excel a PDF.', 
+      descEn: 'Extract tables to Excel (.xlsx) or convert Excel spreadsheets to PDF.', 
       icon: FileSpreadsheet, path: '/convertir/pdf-excel',
       borderColor: 'border-emerald-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(16,185,129,0.2)]',
@@ -115,11 +119,27 @@ export default function ConvertirPage() {
       iconBg: 'from-emerald-500/30 to-teal-500/20 border-emerald-400/50 text-emerald-300'
     },
     { 
+      id: 'pdf-powerpoint', 
+      tagEs: '📙 PDF ↔ POWERPOINT', tagEn: '📙 PDF ↔ POWERPOINT', 
+      titleEs: 'PDF y PowerPoint', titleEn: 'PDF & PowerPoint', 
+      descEs: 'Convierte PDF a diapositivas PowerPoint (.pptx) o presentaciones PPT a PDF.', 
+      descEn: 'Convert PDF into PowerPoint (.pptx) slides or PPT presentations to PDF.', 
+      icon: Presentation, path: '/convertir/pdf-powerpoint',
+      borderColor: 'border-orange-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(249,115,22,0.2)]',
+      hoverBorder: 'group-hover/card:border-orange-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(249,115,22,0.9),0_0_15px_rgba(249,115,22,0.5)]',
+      hoverBg: 'group-hover/card:from-orange-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-orange-500/20 text-orange-300 border-orange-400/40',
+      btnGradient: 'from-orange-400 to-amber-500 group-hover/card:from-orange-300 group-hover/card:to-amber-400',
+      iconBg: 'from-orange-500/30 to-amber-500/20 border-orange-400/50 text-orange-300'
+    },
+    { 
       id: 'pdf-jpg', 
-      tagEs: '🖼️ ALTA RESOLUCIÓN', tagEn: '🖼️ HIGH RES', 
-      titleEs: 'PDF a JPG', titleEn: 'PDF to JPG', 
-      descEs: 'Convierte cada página del PDF en imágenes JPG de alta calidad visual.', 
-      descEn: 'Convert each PDF page into high quality visual JPG images.', 
+      tagEs: '🖼️ PDF ↔ JPG / IMAGEN', tagEn: '🖼️ PDF ↔ JPG / IMAGE', 
+      titleEs: 'PDF e Imágenes JPG', titleEn: 'PDF & JPG Images', 
+      descEs: 'Convierte páginas PDF a imágenes JPG o agrupa fotos JPG/PNG en un documento PDF.', 
+      descEn: 'Convert PDF pages to JPG images or combine JPG/PNG photos into a PDF.', 
       icon: ImageIcon, path: '/convertir/pdf-jpg',
       borderColor: 'border-amber-500/40',
       shadowColor: 'shadow-[0_0_20px_rgba(245,158,11,0.2)]',
@@ -131,36 +151,36 @@ export default function ConvertirPage() {
       iconBg: 'from-amber-500/30 to-yellow-500/20 border-amber-400/50 text-amber-300'
     },
     { 
-      id: 'word-pdf', 
-      tagEs: '📄 A FORMATO PDF', tagEn: '📄 TO PDF FORMAT', 
-      titleEs: 'Word a PDF', titleEn: 'Word to PDF', 
-      descEs: 'Transforma tus archivos .docx a formato PDF estándar con compatibilidad total.', 
-      descEn: 'Transform your .docx files into standard PDF format with full compatibility.', 
-      icon: FileCode, path: '/convertir/word-pdf',
-      borderColor: 'border-indigo-500/40',
-      shadowColor: 'shadow-[0_0_20px_rgba(99,102,241,0.2)]',
-      hoverBorder: 'group-hover/card:border-indigo-300',
-      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(99,102,241,0.9),0_0_15px_rgba(99,102,241,0.5)]',
-      hoverBg: 'group-hover/card:from-indigo-950/90 group-hover/card:to-slate-900',
-      badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40',
-      btnGradient: 'from-indigo-400 to-violet-500 group-hover/card:from-indigo-300 group-hover/card:to-violet-400',
-      iconBg: 'from-indigo-500/30 to-violet-500/20 border-indigo-400/50 text-indigo-300'
+      id: 'pdf-html', 
+      tagEs: '🌐 PDF ↔ HTML', tagEn: '🌐 PDF ↔ HTML', 
+      titleEs: 'PDF y HTML', titleEn: 'PDF & HTML', 
+      descEs: 'Convierte archivos PDF a código HTML estructurado o genera PDF a partir de HTML.', 
+      descEn: 'Convert PDF files into structured HTML code or generate PDF from HTML.', 
+      icon: FileCode, path: '/convertir/pdf-html',
+      borderColor: 'border-cyan-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(6,182,212,0.2)]',
+      hoverBorder: 'group-hover/card:border-cyan-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(6,182,212,0.9),0_0_15px_rgba(6,182,212,0.5)]',
+      hoverBg: 'group-hover/card:from-cyan-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
+      btnGradient: 'from-cyan-400 to-teal-500 group-hover/card:from-cyan-300 group-hover/card:to-teal-400',
+      iconBg: 'from-cyan-500/30 to-teal-500/20 border-cyan-400/50 text-cyan-300'
     },
     { 
-      id: 'imagen-pdf', 
-      tagEs: '🌄 FOTOS A PDF', tagEn: '🌄 PHOTOS TO PDF',
-      titleEs: 'Imagen a PDF', titleEn: 'Image to PDF', 
-      descEs: 'Combina tus fotos en JPG, PNG o WebP en un único archivo PDF consolidado.', 
-      descEn: 'Combine your JPG, PNG, or WebP photos into a single consolidated PDF file.', 
-      icon: Upload, path: '/convertir/imagen-a-pdf',
-      borderColor: 'border-pink-500/40',
-      shadowColor: 'shadow-[0_0_20px_rgba(236,72,153,0.2)]',
-      hoverBorder: 'group-hover/card:border-pink-300',
-      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(236,72,153,0.9),0_0_15px_rgba(236,72,153,0.5)]',
-      hoverBg: 'group-hover/card:from-pink-950/90 group-hover/card:to-slate-900',
-      badgeBg: 'bg-pink-500/20 text-pink-300 border-pink-400/40',
-      btnGradient: 'from-pink-400 to-rose-500 group-hover/card:from-pink-300 group-hover/card:to-rose-400',
-      iconBg: 'from-pink-500/30 to-rose-500/20 border-pink-400/50 text-pink-300'
+      id: 'pdf-texto', 
+      tagEs: '📝 PDF ↔ TEXTO', tagEn: '📝 PDF ↔ TEXT', 
+      titleEs: 'PDF y Texto Plano', titleEn: 'PDF & Plain Text', 
+      descEs: 'Extrae todo el texto plano (.txt) de un PDF o convierte archivos de texto a PDF.', 
+      descEn: 'Extract plain text (.txt) from a PDF or convert text files into a PDF.', 
+      icon: AlignLeft, path: '/convertir/pdf-texto',
+      borderColor: 'border-purple-500/40',
+      shadowColor: 'shadow-[0_0_20px_rgba(168,85,247,0.2)]',
+      hoverBorder: 'group-hover/card:border-purple-300',
+      hoverGlow: 'group-hover/card:shadow-[0_0_40px_rgba(168,85,247,0.9),0_0_15px_rgba(168,85,247,0.5)]',
+      hoverBg: 'group-hover/card:from-purple-950/90 group-hover/card:to-slate-900',
+      badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-400/40',
+      btnGradient: 'from-purple-400 to-violet-500 group-hover/card:from-purple-300 group-hover/card:to-violet-400',
+      iconBg: 'from-purple-500/30 to-violet-500/20 border-purple-400/50 text-purple-300'
     }
   ];
 
@@ -202,7 +222,7 @@ export default function ConvertirPage() {
                   </div>
                   <div>
                     <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                      {isEs ? "CONVERTIR DOCUMENTO" : "CONVERT DOCUMENT"}
+                      {isEs ? "HERRAMIENTAS DE CONVERTIR PDF" : "PDF CONVERSION TOOLS"}
                     </h1>
                     <p className="text-neutral-400 text-xs sm:text-sm font-medium">
                       {isEs ? "Exporta y transforma tu PDF a múltiples formatos estándar:" : "Export and transform your PDF into multiple standard formats:"}
@@ -217,23 +237,23 @@ export default function ConvertirPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-5 flex flex-col justify-start">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6">
+                <div className="lg:col-span-5 flex flex-col h-full">
                   {!globalFile ? (
                     <div 
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-[560px] bg-orange-950/10 hover:bg-orange-950/30 border-2 border-dashed border-orange-500/30 hover:border-orange-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(249,115,22,0.25)]"
+                      className="w-full flex-1 h-full min-h-[500px] bg-orange-950/10 hover:bg-orange-950/30 border-2 border-dashed border-orange-500/30 hover:border-orange-400 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(249,115,22,0.25)]"
                     >
                       <motion.div 
                         animate={{ y: [0, -8, 0] }}
                         transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                        className="bg-gradient-to-tr from-orange-500/20 to-amber-500/20 p-6 rounded-full border border-orange-500/30 group-hover:scale-110 group-hover:bg-orange-500/30 group-hover:border-orange-400 shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all duration-300"
+                        className="bg-gradient-to-tr from-orange-500/20 to-amber-500/20 p-7 rounded-full border border-orange-500/30 group-hover:scale-110 group-hover:bg-orange-500/30 group-hover:border-orange-400 shadow-[0_0_35px_rgba(249,115,22,0.25)] transition-all duration-300"
                       >
-                        <UploadCloud className="w-16 h-16 text-orange-400 drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]" />
+                        <UploadCloud className="w-20 h-20 text-orange-400 drop-shadow-[0_0_20px_rgba(249,115,22,0.6)]" />
                       </motion.div>
 
-                      <div className="text-center flex flex-col items-center gap-1.5">
-                        <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-orange-200 transition-colors">
+                      <div className="text-center flex flex-col items-center gap-2">
+                        <h3 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight group-hover:text-orange-200 transition-colors">
                           {isEs ? "Arrastra tu PDF aquí para convertir" : "Drop your PDF here to convert"}
                         </h3>
                         <p className="text-orange-400 text-sm font-semibold flex items-center justify-center gap-1.5">
@@ -241,17 +261,17 @@ export default function ConvertirPage() {
                         </p>
                       </div>
 
-                      <button className="flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-400 text-white px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(249,115,22,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(249,115,22,0.7)] transition-all mt-1 cursor-pointer border border-orange-300/40">
-                        <FilePlus className="w-4 h-4 text-white" /> {isEs ? "Subir Archivo" : "Upload File"}
+                      <button className="flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-400 text-white px-9 py-4 rounded-full font-black text-base shadow-[0_0_25px_rgba(249,115,22,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(249,115,22,0.7)] transition-all mt-2 cursor-pointer border border-orange-300/40">
+                        <FilePlus className="w-5 h-5 text-white" /> {isEs ? "Subir Archivo" : "Upload File"}
                       </button>
 
-                      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
-                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-2">
+                        <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
                         <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-[560px] bg-orange-950/20 hover:bg-orange-950/30 border-2 border-orange-500/40 hover:border-orange-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(249,115,22,0.25)] hover:shadow-[0_0_50px_rgba(249,115,22,0.4)] transition-all duration-300 flex flex-col relative">
+                    <div className="w-full flex-1 h-full min-h-[500px] bg-orange-950/20 hover:bg-orange-950/30 border-2 border-orange-500/40 hover:border-orange-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(249,115,22,0.25)] hover:shadow-[0_0_50px_rgba(249,115,22,0.4)] transition-all duration-300 flex flex-col relative">
                       <div className="bg-[#030712] border-b border-white/[0.06] p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="bg-orange-500/20 p-2 rounded-xl border border-orange-500/30 flex-shrink-0">
@@ -284,61 +304,120 @@ export default function ConvertirPage() {
                   )}
                 </div>
 
-                <div className="lg:col-span-7 flex flex-col justify-between h-[560px]">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1 h-full max-h-[560px] group/grid">
-                    {conversionTools.map((tool) => (
-                      <Link 
-                        key={tool.id} 
-                        href={globalFile ? tool.path : "#"} 
-                        onClick={(e) => { 
-                          if (!globalFile) { 
-                            e.preventDefault(); 
-                            toast.error(isEs ? "Sube un archivo primero para usar la herramienta." : "Upload a file first to use the tool."); 
-                          } 
-                        }} 
-                        className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
-                      >
-                        <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${tool.borderColor} ${tool.shadowColor} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
-                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+                <div className="lg:col-span-7 flex flex-col h-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 h-full group/grid">
+                    {conversionTools.map((tool) => {
+                      const isSelected = selectedToolParam === tool.id || (selectedToolParam && tool.path.endsWith(selectedToolParam));
 
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
-                                <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                      return (
+                        <Link 
+                          key={tool.id} 
+                          href={globalFile ? tool.path : "#"} 
+                          onClick={(e) => { 
+                            if (!globalFile) { 
+                              e.preventDefault(); 
+                              toast.error(isEs ? "Sube un archivo en la casilla de la izquierda para usar esta herramienta." : "Upload a file in the left dropzone first to use this tool."); 
+                            } 
+                          }} 
+                          className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
+                        >
+                          <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${isSelected ? 'border-orange-400 ring-4 ring-orange-400/50 shadow-[0_0_35px_rgba(249,115,22,0.8)] scale-[1.02]' : `${tool.borderColor} ${tool.shadowColor}`} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
+                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
+                                  <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                                </div>
+
+                                <div className={`bg-gradient-to-r ${isSelected ? 'from-orange-300 to-amber-400 animate-pulse text-slate-950' : tool.btnGradient} font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
+                                  <span>{isSelected ? (isEs ? "SELECCIONADO" : "SELECTED") : (isEs ? "Usar Ahora" : "Use Now")}</span>
+                                  <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
+                                </div>
                               </div>
 
-                              <div className={`bg-gradient-to-r ${tool.btnGradient} text-slate-950 font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
-                                <span>{isEs ? "Usar Ahora" : "Use Now"}</span>
-                                <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border shadow-sm`}>
+                                  {isEs ? tool.tagEs : tool.tagEn}
+                                </span>
+                                {isSelected && (
+                                  <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-orange-400 text-slate-950 flex items-center gap-1 shadow-md animate-pulse">
+                                    <CheckCircle2 className="w-3 h-3" /> {isEs ? 'ELEGIDO EN MENÚ' : 'MENU SELECTED'}
+                                  </span>
+                                )}
                               </div>
+
+                              <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
+                                {isEs ? tool.titleEs : tool.titleEn}
+                              </h3>
+                              <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
+                                {isEs ? tool.descEs : tool.descEn}
+                              </p>
                             </div>
 
-                            <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border mb-1 inline-block shadow-sm`}>
-                              {isEs ? tool.tagEs : tool.tagEn}
-                            </span>
+                            <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                {isEs ? "100% Local" : "100% Local"}
+                              </span>
 
-                            <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
-                              {isEs ? tool.titleEs : tool.titleEn}
-                            </h3>
-                            <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
-                              {isEs ? tool.descEs : tool.descEn}
-                            </p>
+                              <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
+                                {isEs ? "Iniciar" : "Start"}
+                                <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
+                              </span>
+                            </div>
                           </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
 
-                          <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                              {isEs ? "100% Local" : "100% Local"}
-                            </span>
+              {/* SECCIÓN: 3 PASOS PARA TRABAJAR PDF */}
+              <div className="w-full mt-10 pt-8 border-t border-white/10 flex flex-col items-center">
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                  {isEs ? "Solo 3 pasos para convertir tu PDF" : "Only 3 steps to convert your PDF"}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+                  {/* PASO 1 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(6,182,212,0.3)] group-hover:scale-110 transition-transform">
+                      1
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      📁 {isEs ? "1. Sube tu PDF" : "1. Upload your PDF"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "Arrastra o selecciona tu archivo PDF en el recuadro principal." : "Drag or select your PDF file in the main dropzone box."}
+                    </p>
+                  </div>
 
-                            <span className="text-[10px] font-extrabold text-slate-400 group-hover/card:text-white transition-colors flex items-center gap-1">
-                              {isEs ? "Iniciar" : "Start"}
-                              <ArrowRight className="w-3 h-3 group-hover/card:translate-x-0.5 transition-transform" />
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                  {/* PASO 2 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-orange-500/30 hover:border-orange-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(249,115,22,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(249,115,22,0.3)] group-hover:scale-110 transition-transform">
+                      2
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      🛠️ {isEs ? "2. Usa la herramienta" : "2. Use the tool"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "En la página especializada, elige la función exacta (Unir, Dividir, Foliar, etc.)." : "In the specialized page, select the exact function (PDF to Word, Excel, JPG, etc.)."}
+                    </p>
+                  </div>
+
+                  {/* PASO 3 */}
+                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.25)] group">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(168,85,247,0.3)] group-hover:scale-110 transition-transform">
+                      3
+                    </div>
+                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
+                      ⬇️ {isEs ? "3. Descarga lista" : "3. Download ready"}
+                    </h4>
+                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                      {isEs ? "Obtén tu documento final 100% procesado de forma local en tu navegador." : "Get your final document 100% processed locally in your browser."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -347,6 +426,14 @@ export default function ConvertirPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+export default function ConvertirPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConvertirContent />
+    </Suspense>
   );
 }
 

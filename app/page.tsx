@@ -30,7 +30,7 @@ function AnimatedCounter({ from = 0, to, decimals = 0, suffix = '' }: { from?: n
 
 const categories = [
   {
-    id: 'editar', index: '001 / Direct visual editing', titleEs: 'Editar PDF', titleEn: 'Edit PDF',
+    id: 'editar', indexEs: '001 / Edición visual directa', indexEn: '001 / Direct visual editing', titleEs: 'Editar PDF', titleEn: 'Edit PDF',
     descEs: 'Edición directa de texto, firmas digitales, folios correlativos y marcas de agua sobre el documento.',
     descEn: 'Direct text editing, digital signatures, page numbering, and watermarks.',
     toolsListEs: ['1. Añadir Texto', '2. Firmar PDF', '3. Numerar Páginas', '4. Marca de Agua', '5. Dibujar / Anotar', '6. Formas y Figuras'],
@@ -46,7 +46,7 @@ const categories = [
     peakBorderValue: 'rgba(255,255,255,0.4)'
   },
   {
-    id: 'organizar', index: '002 / Structure & page builder', titleEs: 'Organizar PDF', titleEn: 'Organize PDF',
+    id: 'organizar', indexEs: '002 / Estructura y organizador', indexEn: '002 / Structure & page builder', titleEs: 'Organizar PDF', titleEn: 'Organize PDF',
     descEs: 'Gestión completa de estructura: unir múltiples archivos, dividir por rangos, rotar y recortar.',
     descEn: 'Full structure management: merge multiple files, split by range, rotate and crop.',
     toolsListEs: ['1. Unir PDF', '2. Dividir PDF', '3. Eliminar Páginas', '4. Reordenar PDF', '5. Rotar PDF', '6. Recortar PDF'],
@@ -62,7 +62,7 @@ const categories = [
     peakBorderValue: 'rgba(255,255,255,0.4)'
   },
   {
-    id: 'convertir', index: '003 / High precision conversion', titleEs: 'Convertir PDF', titleEn: 'Convert PDF',
+    id: 'convertir', indexEs: '003 / Conversión de alta precisión', indexEn: '003 / High precision conversion', titleEs: 'Convertir PDF', titleEn: 'Convert PDF',
     descEs: 'Conversión bidireccional de alta precisión entre PDF y formatos Word, Excel, PowerPoint e imágenes.',
     descEn: 'High-precision bidirectional conversion between PDF and Word, Excel, PowerPoint, and images.',
     toolsListEs: ['1. PDF ↔ Word', '2. PDF ↔ Excel', '3. PDF ↔ PowerPoint', '4. PDF ↔ JPG', '5. PDF ↔ HTML', '6. PDF ↔ Texto'],
@@ -78,7 +78,7 @@ const categories = [
     peakBorderValue: 'rgba(255,255,255,0.4)'
   },
   {
-    id: 'optimizar', index: '004 / Local security & compression', titleEs: 'Optimizar PDF', titleEn: 'Optimize PDF',
+    id: 'optimizar', indexEs: '004 / Seguridad local y compresión', indexEn: '004 / Local security & compression', titleEs: 'Optimizar PDF', titleEn: 'Optimize PDF',
     descEs: 'Algoritmos locales de compresión de tamaño, cifrado de seguridad, censura y reparación.',
     descEn: 'Local algorithms for size compression, security encryption, redaction, and repair.',
     toolsListEs: ['1. Comprimir PDF', '2. Reparar PDF', '3. Desbloquear PDF', '4. Proteger PDF', '5. Censurar PDF', '6. Comparar PDF'],
@@ -361,7 +361,7 @@ export default function DashboardPage() {
                           <div>
                             <div className="mb-3 flex items-center justify-between font-mono">
                               <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors font-medium">
-                                {cat.index}
+                                {isEs ? cat.indexEs : cat.indexEn}
                               </span>
                               {cat.badgeEs && (
                                 <span className="px-2 py-0.5 text-[9px] font-semibold border border-white/10 bg-zinc-900 text-zinc-400 rounded-full">

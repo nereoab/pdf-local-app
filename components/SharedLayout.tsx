@@ -166,7 +166,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
 
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-zinc-300 text-[11px]">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isEs ? 'ENGINE: 100% LOCAL BROWSER PROCESSING' : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}</span>
+            <span>{isEs ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR' : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}</span>
           </div>
 
           <div className="flex items-center gap-5 text-zinc-400">

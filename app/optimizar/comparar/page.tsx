@@ -2,7 +2,7 @@
 
 import PdfComparator from '../../../components/PdfComparator';
 import { useLanguage } from '../../../context/LanguageContext';
-import { GitCompare } from 'lucide-react';
+import { GitCompare, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CompararPdfPage() {
@@ -10,23 +10,30 @@ export default function CompararPdfPage() {
   const isEs = lang === 'es';
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start min-h-[calc(100vh-80px)] bg-[#030712]">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start min-h-[calc(100vh-80px)] bg-[#09090b] font-sans">
       <div className="w-full max-w-7xl">
-        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
-          <div className="bg-gradient-to-tr from-blue-500/30 to-indigo-500/20 p-3 rounded-2xl border border-blue-400/40 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-            <GitCompare className="w-7 h-7 text-blue-300" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <Link href="/optimizar" className="text-xs font-bold text-slate-400 hover:text-blue-400 transition-colors">
-                {isEs ? 'Optimizar PDF' : 'Optimize PDF'}
-              </Link>
-              <span className="text-slate-600 text-xs">/</span>
-              <span className="text-blue-400 text-xs font-bold">{isEs ? 'Comparar PDF' : 'Compare PDF'}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/10 font-mono">
+          <div className="flex items-center gap-3.5">
+            <div className="bg-zinc-900 p-3 rounded-2xl border border-white/10">
+              <GitCompare className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              {isEs ? 'COMPARAR 2 ARCHIVOS PDF' : 'COMPARE 2 PDF FILES'}
-            </h1>
+            <div>
+              <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+                <Link href="/optimizar" className="hover:text-white transition-colors">
+                  {isEs ? '004 / OPTIMIZAR' : '004 / OPTIMIZE'}
+                </Link>
+                <span>/</span>
+                <span className="text-white font-bold">{isEs ? 'COMPARAR PDF' : 'COMPARE PDF'}</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight font-sans">
+                {isEs ? '006 / COMPARAR 2 ARCHIVOS PDF' : '006 / COMPARE 2 PDF FILES'}
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 rounded-full text-xs text-zinc-300 font-mono">
+            <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
+            <span>{isEs ? 'Detección Visual & Semántica' : 'Visual & Semantic Detection'}</span>
           </div>
         </div>
 

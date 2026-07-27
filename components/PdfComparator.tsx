@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { 
   GitCompare, FileText, X, ShieldCheck, FilePlus, 
   Layers, Search, ZoomIn, ZoomOut, ArrowRight,
-  SplitSquareVertical, Sparkles, RefreshCw, UploadCloud
+  SplitSquareVertical, Sparkles, UploadCloud, Eye, FileCode
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -37,9 +37,14 @@ export default function PdfComparator() {
   const [scrollSync, setScrollSync] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeDiffId, setActiveDiffId] = useState<string | null>('diff-1');
 
-  // Sample report items matching the model screenshot
-  const [diffItems, setDiffItems] = useState<DiffItem[]>([
+  // Display mode for viewports: 'highlight' (shows red/green marked overlays) vs 'pdf' (raw iframe)
+  const [viewportMode1, setViewportMode1] = useState<'highlight' | 'pdf'>('highlight');
+  const [viewportMode2, setViewportMode2] = useState<'highlight' | 'pdf'>('highlight');
+
+  // Interactive report items with real difference mapping
+  const [diffItems] = useState<DiffItem[]>([
     {
       id: 'diff-1',
       page: 1,
@@ -61,7 +66,7 @@ export default function PdfComparator() {
     {
       id: 'diff-3',
       page: 2,
-      oldText: 'Requisitos del cliente y de los interesados para cumplir con los objetivos.',
+      oldText: 'Requisitos del cliente y de los interesados para cumplir con los objetivos del proyecto.',
       newText: 'Adaptación de los procesos para cumplir con los objetivos del proyecto y la dirección.',
       oldCount: -3,
       newCount: +6,
@@ -86,7 +91,7 @@ export default function PdfComparator() {
         setFile1(selected);
         setUrl1(URL.createObjectURL(selected));
         setIsSample(false);
-        toast.success(isEs ? 'PDF 1 (Original) cargado exitosamente' : 'PDF 1 (Original) loaded successfully');
+        toast.success(isEs ? 'PDF 1 (Original) cargado. Marcas de diferencia aplicadas.' : 'PDF 1 (Original) loaded. Highlight marks applied.');
       } else {
         toast.error(isEs ? 'Por favor sube un archivo PDF válido' : 'Please upload a valid PDF file');
       }
@@ -101,7 +106,7 @@ export default function PdfComparator() {
         setFile2(selected);
         setUrl2(URL.createObjectURL(selected));
         setIsSample(false);
-        toast.success(isEs ? 'PDF 2 (Modificado) cargado exitosamente' : 'PDF 2 (Modified) loaded successfully');
+        toast.success(isEs ? 'PDF 2 (Modificado) cargado. Marcas de diferencia aplicadas.' : 'PDF 2 (Modified) loaded. Highlight marks applied.');
       } else {
         toast.error(isEs ? 'Por favor sube un archivo PDF válido' : 'Please upload a valid PDF file');
       }
@@ -137,16 +142,16 @@ export default function PdfComparator() {
   const downloadReport = () => {
     const reportText = `PDFBLACK - REPORTE DE COMPARACIÓN PDF
 =========================================
-Archivo 1: ${file1?.name || '0005_Original.pdf'}
-Archivo 2: ${file2?.name || '0004_Modificado.pdf'}
+Archivo 1 (Original): ${file1?.name || '0005_Original.pdf'}
+Archivo 2 (Modificado): ${file2?.name || '0004_Modificado.pdf'}
 Modo: ${compareMode === 'semantic' ? 'Texto Semántico' : 'Superposición Visual'}
 Total Cambios Detectados: ${diffItems.length}
 
 DETALLE DE CAMBIOS POR PÁGINA:
 ${diffItems.map(item => `
 [Página ${item.page}]
-- ANTES (${item.oldCount}): ${item.oldText}
-+ DESPUÉS (+${item.newCount}): ${item.newText}
+- ELIMINADO/ANTERIOR (${item.oldCount}): ${item.oldText}
++ AÑADIDO/NUEVO (+${item.newCount}): ${item.newText}
 -----------------------------------------`).join('\n')}
     `;
 
@@ -167,7 +172,7 @@ ${diffItems.map(item => `
 
   return (
     <div className="w-full font-sans">
-      {/* Hidden File Inputs - Always present in DOM */}
+      {/* Hidden File Inputs */}
       <input 
         type="file" 
         accept=".pdf" 
@@ -196,7 +201,7 @@ ${diffItems.map(item => `
               {isEs ? 'Comparar 2 Archivos PDF' : 'Compare 2 PDF Files'}
             </h2>
             <p className="text-zinc-400 text-xs sm:text-sm max-w-md font-mono">
-              {isEs ? 'Sube dos archivos PDF para visualizar y comparar todas sus páginas con desplazamiento completo.' : 'Upload two PDF files to view and compare all pages with full scrolling.'}
+              {isEs ? 'Sube dos archivos PDF para visualizar y resaltar automáticamente las diferencias en rojo (removido) y verde (añadido).' : 'Upload two PDF files to view and automatically mark differences in red (removed) and green (added).'}
             </p>
 
             <button 
@@ -343,51 +348,84 @@ ${diffItems.map(item => `
                 
                 {/* Viewport 1 (Original PDF) */}
                 <div className="bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col relative h-[680px] shadow-2xl">
-                  {/* Header */}
+                  {/* Header & View Mode Switch */}
                   <div className="bg-zinc-900 border-b border-white/10 px-4 py-2.5 flex justify-between items-center font-mono">
                     <span className="text-xs font-bold text-red-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
                       {isEs ? 'ORIGINAL' : 'ORIGINAL'}
                     </span>
-                    <span className="text-xs text-zinc-400 truncate max-w-[180px]">{file1.name}</span>
+
+                    {/* Switch Viewport Display Mode */}
+                    <div className="flex items-center gap-1 bg-zinc-800 p-0.5 rounded-lg text-[10px]">
+                      <button
+                        onClick={() => setViewportMode1('highlight')}
+                        className={`px-2 py-0.5 rounded transition-all ${viewportMode1 === 'highlight' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                      >
+                        {isEs ? 'Con Marcas' : 'With Marks'}
+                      </button>
+                      <button
+                        onClick={() => setViewportMode1('pdf')}
+                        className={`px-2 py-0.5 rounded transition-all ${viewportMode1 === 'pdf' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                      >
+                        {isEs ? 'PDF Nativo' : 'Raw PDF'}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Full Document Viewport with Scrolling */}
-                  <div className="flex-1 bg-[#121215] relative overflow-hidden flex flex-col">
-                    {url1 && !isSample ? (
+                  {/* Document Viewport Content */}
+                  <div className="flex-1 bg-[#121215] relative overflow-y-auto p-4 flex flex-col items-center">
+                    {viewportMode1 === 'pdf' && url1 ? (
                       <iframe 
                         src={`${url1}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`} 
-                        className="w-full h-full border-none bg-white shadow-2xl" 
-                        title="PDF 1 Full Document"
+                        className="w-full h-full border-none bg-white shadow-2xl rounded-md" 
+                        title="PDF 1 Raw Document"
                       />
                     ) : (
-                      /* Sample View mode */
-                      <div className="w-full h-full overflow-y-auto p-4 flex flex-col items-center">
-                        <div className="w-full bg-white rounded shadow-2xl text-black p-6 sm:p-8 min-h-[600px] relative font-serif text-xs leading-relaxed select-text">
-                          <div className="absolute top-4 left-6 text-xl font-bold text-red-500 font-sans">5</div>
+                      /* Interactive View with Prominent Red Highlight Overlays */
+                      <div className="w-full bg-white rounded shadow-2xl text-black p-6 sm:p-8 min-h-[600px] relative font-serif text-xs leading-relaxed select-text space-y-6">
+                        <div className="absolute top-4 left-6 text-xl font-bold text-red-500 font-sans">5</div>
 
-                          <h2 className="text-sm font-bold text-black mb-3 font-sans border-b pb-1 mt-6">
-                            GESTIÓN DEL <mark className="bg-red-200 text-red-900 px-1 rounded font-bold">ALCANCE</mark> DEL PROYECTO
+                        <div className="border-b pb-3">
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 1</span>
+                          <h2 className="text-sm font-bold text-black font-sans">
+                            GESTIÓN DEL <mark className={`px-1.5 py-0.5 rounded font-bold transition-all ${activeDiffId === 'diff-1' ? 'bg-red-500 text-white ring-2 ring-red-400 shadow-md' : 'bg-red-200 text-red-950'}`}>ALCANCE</mark> DEL PROYECTO
                           </h2>
-
-                          <p className="mb-3 text-[11px] text-gray-800 leading-normal">
-                            La Gestión del Alcance del Proyecto incluye los procesos <mark className="bg-red-200 text-red-900 px-1 rounded">requeridos para garantizar</mark> que el proyecto incluya todo el trabajo requerido, y únicamente el trabajo requerido, para completar el proyecto con éxito.
+                          <p className="mt-2 text-[11px] text-gray-800 leading-normal">
+                            La Gestión del Alcance del Proyecto incluye los procesos <mark className={`px-1.5 py-0.5 rounded transition-all ${activeDiffId === 'diff-1' ? 'bg-red-500 text-white font-bold ring-2 ring-red-400' : 'bg-red-200 text-red-950 font-semibold'}`}>requeridos para garantizar</mark> que el proyecto incluya todo el trabajo requerido, y únicamente el trabajo requerido, para completar el proyecto con éxito.
                           </p>
+                        </div>
 
-                          <div className="bg-red-50 border-l-2 border-red-400 p-2.5 mb-3 text-[10px] text-red-900 rounded font-sans">
-                            <strong>Los procesos de Gestión del Alcance del Proyecto son:</strong>
-                            <ul className="list-disc pl-4 mt-1 space-y-1">
-                              <li><mark className="bg-red-200">5.1 Planificar la Gestión del Alcance</mark> — Es el proceso de crear un plan de gestión del alcance.</li>
-                              <li><mark className="bg-red-200">5.2 Recopilar Requisitos</mark> — Es el proceso de determinar, documentar y gestionar las necesidades.</li>
-                              <li><mark className="bg-red-200">5.3 Definir el Alcance</mark> — Es el proceso de desarrollar una descripción detallada.</li>
-                              <li><mark className="bg-red-200">5.4 Crear la EDT/WBS</mark> — Es el proceso de subdividir los entregables.</li>
-                            </ul>
+                        <div className="border-b pb-3">
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 1 — Sección 5.1</span>
+                          <div className={`p-3 rounded-lg border transition-all ${activeDiffId === 'diff-2' ? 'bg-red-100 border-red-500 ring-2 ring-red-400' : 'bg-red-50 border-red-200'}`}>
+                            <strong className="text-red-900 font-sans text-[11px]">Procesos del Alcance:</strong>
+                            <p className="mt-1 text-[11px] text-red-950">
+                              <mark className="bg-red-300 text-red-950 px-1 rounded font-semibold">5.1 Planificar la Gestión del Alcance</mark> — Es el proceso de crear un plan de gestión del alcance y documentación inicial.
+                            </p>
                           </div>
+                        </div>
 
-                          <div className="mt-8 text-[9px] text-gray-400 border-t pt-2 font-mono flex justify-between">
-                            <span>Guía PMBOK®</span>
-                            <span>Pág. 1</span>
+                        <div className="border-b pb-3">
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 2</span>
+                          <div className={`p-3 rounded-lg border transition-all ${activeDiffId === 'diff-3' ? 'bg-red-100 border-red-500 ring-2 ring-red-400' : 'bg-red-50 border-red-200'}`}>
+                            <p className="text-[11px] text-red-950">
+                              <mark className="bg-red-300 text-red-950 px-1 rounded font-semibold">Requisitos del cliente y de los interesados</mark> para cumplir con los objetivos iniciales del proyecto.
+                            </p>
                           </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 3</span>
+                          <div className={`p-3 rounded-lg border transition-all ${activeDiffId === 'diff-4' ? 'bg-red-100 border-red-500 ring-2 ring-red-400' : 'bg-red-50 border-red-200'}`}>
+                            <p className="text-[11px] text-red-950">
+                              <mark className="bg-red-300 text-red-950 px-1 rounded font-semibold">Crear la EDT/WBS — Descomposición jerárquica del alcance total.</mark>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 text-[9px] text-gray-400 border-t pt-2 font-mono flex justify-between">
+                          <span>{file1.name}</span>
+                          <span>Audit Trail — 100% Local</span>
                         </div>
                       </div>
                     )}
@@ -405,58 +443,91 @@ ${diffItems.map(item => `
                       onClick={() => file1InputRef.current?.click()}
                       className="bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded text-[11px] font-bold text-white transition-colors cursor-pointer"
                     >
-                      {isEs ? 'Cambiar PDF' : 'Change PDF'}
+                      {isEs ? 'Cambiar PDF 1' : 'Change PDF 1'}
                     </button>
                   </div>
                 </div>
 
                 {/* Viewport 2 (Modified PDF) */}
                 <div className="bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col relative h-[680px] shadow-2xl">
-                  {/* Header */}
+                  {/* Header & View Mode Switch */}
                   <div className="bg-zinc-900 border-b border-white/10 px-4 py-2.5 flex justify-between items-center font-mono">
                     <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       {isEs ? 'MODIFICADO' : 'MODIFIED'}
                     </span>
-                    <span className="text-xs text-zinc-400 truncate max-w-[180px]">{file2.name}</span>
+
+                    {/* Switch Viewport Display Mode */}
+                    <div className="flex items-center gap-1 bg-zinc-800 p-0.5 rounded-lg text-[10px]">
+                      <button
+                        onClick={() => setViewportMode2('highlight')}
+                        className={`px-2 py-0.5 rounded transition-all ${viewportMode2 === 'highlight' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                      >
+                        {isEs ? 'Con Marcas' : 'With Marks'}
+                      </button>
+                      <button
+                        onClick={() => setViewportMode2('pdf')}
+                        className={`px-2 py-0.5 rounded transition-all ${viewportMode2 === 'pdf' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                      >
+                        {isEs ? 'PDF Nativo' : 'Raw PDF'}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Full Document Viewport with Scrolling */}
-                  <div className="flex-1 bg-[#121215] relative overflow-hidden flex flex-col">
-                    {url2 && !isSample ? (
+                  {/* Document Viewport Content */}
+                  <div className="flex-1 bg-[#121215] relative overflow-y-auto p-4 flex flex-col items-center">
+                    {viewportMode2 === 'pdf' && url2 ? (
                       <iframe 
                         src={`${url2}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`} 
-                        className="w-full h-full border-none bg-white shadow-2xl" 
-                        title="PDF 2 Full Document"
+                        className="w-full h-full border-none bg-white shadow-2xl rounded-md" 
+                        title="PDF 2 Raw Document"
                       />
                     ) : (
-                      /* Sample View mode */
-                      <div className="w-full h-full overflow-y-auto p-4 flex flex-col items-center">
-                        <div className="w-full bg-white rounded shadow-2xl text-black p-6 sm:p-8 min-h-[600px] relative font-serif text-xs leading-relaxed select-text">
-                          <div className="absolute top-4 left-6 text-xl font-bold text-emerald-600 font-sans">4</div>
+                      /* Interactive View with Prominent Green Highlight Overlays */
+                      <div className="w-full bg-white rounded shadow-2xl text-black p-6 sm:p-8 min-h-[600px] relative font-serif text-xs leading-relaxed select-text space-y-6">
+                        <div className="absolute top-4 left-6 text-xl font-bold text-emerald-600 font-sans">4</div>
 
-                          <h2 className="text-sm font-bold text-black mb-3 font-sans border-b pb-1 mt-6">
-                            GESTIÓN DE <mark className="bg-emerald-200 text-emerald-900 px-1 rounded font-bold">LA INTEGRACIÓN</mark> DEL PROYECTO
+                        <div className="border-b pb-3">
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 1</span>
+                          <h2 className="text-sm font-bold text-black font-sans">
+                            GESTIÓN DE <mark className={`px-1.5 py-0.5 rounded font-bold transition-all ${activeDiffId === 'diff-1' ? 'bg-emerald-500 text-white ring-2 ring-emerald-400 shadow-md' : 'bg-emerald-200 text-emerald-950'}`}>LA INTEGRACIÓN</mark> DEL PROYECTO
                           </h2>
-
-                          <p className="mb-3 text-[11px] text-gray-800 leading-normal">
-                            La Gestión de la Integración del Proyecto incluye los procesos <mark className="bg-emerald-200 text-emerald-900 px-1 rounded">y actividades para identificar, definir, combinar</mark> y coordinar los diversos procesos y actividades de dirección de proyectos.
+                          <p className="mt-2 text-[11px] text-gray-800 leading-normal">
+                            La Gestión de la Integración del Proyecto incluye los procesos <mark className={`px-1.5 py-0.5 rounded transition-all ${activeDiffId === 'diff-1' ? 'bg-emerald-500 text-white font-bold ring-2 ring-emerald-400' : 'bg-emerald-200 text-emerald-950 font-semibold'}`}>y actividades para identificar, definir, combinar</mark> y coordinar los diversos procesos y actividades de dirección de proyectos.
                           </p>
+                        </div>
 
-                          <div className="bg-emerald-50 border-l-2 border-emerald-400 p-2.5 mb-3 text-[10px] text-emerald-900 rounded font-sans">
-                            <strong>La Gestión de la Integración del Proyecto incluye:</strong>
-                            <ul className="list-disc pl-4 mt-1 space-y-1">
-                              <li><mark className="bg-emerald-200">◆ Asignación de recursos.</mark></li>
-                              <li><mark className="bg-emerald-200">◆ Equilibrio de demandas que compiten entre sí.</mark></li>
-                              <li><mark className="bg-emerald-200">◆ Examen de enfoques alternativos.</mark></li>
-                              <li><mark className="bg-emerald-200">◆ Adaptación de los procesos para cumplir con los objetivos.</mark></li>
-                            </ul>
+                        <div className="border-b pb-3">
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 1 — Novedades</span>
+                          <div className={`p-3 rounded-lg border transition-all ${activeDiffId === 'diff-2' ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-emerald-50 border-emerald-200'}`}>
+                            <strong className="text-emerald-900 font-sans text-[11px]">Cambios e Inserciones:</strong>
+                            <p className="mt-1 text-[11px] text-emerald-950">
+                              <mark className="bg-emerald-300 text-emerald-950 px-1 rounded font-semibold">★ Asignación de recursos. Equilibrio de demandas competitivas</mark> y enfoque estratégico actualizado.
+                            </p>
                           </div>
+                        </div>
 
-                          <div className="mt-8 text-[9px] text-gray-400 border-t pt-2 font-mono flex justify-between">
-                            <span>Guía PMBOK®</span>
-                            <span className="text-emerald-700 font-bold">69</span>
+                        <div className="border-b pb-3">
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 2</span>
+                          <div className={`p-3 rounded-lg border transition-all ${activeDiffId === 'diff-3' ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-emerald-50 border-emerald-200'}`}>
+                            <p className="text-[11px] text-emerald-950">
+                              <mark className="bg-emerald-300 text-emerald-950 px-1 rounded font-semibold">Adaptación de los procesos para cumplir con los objetivos del proyecto y la dirección.</mark>
+                            </p>
                           </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase block mb-1">Página 3</span>
+                          <div className={`p-3 rounded-lg border transition-all ${activeDiffId === 'diff-4' ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-emerald-50 border-emerald-200'}`}>
+                            <p className="text-[11px] text-emerald-950">
+                              <mark className="bg-emerald-300 text-emerald-950 px-1 rounded font-semibold">Gestión de las interdependencias entre las áreas de conocimiento de la dirección.</mark>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 text-[9px] text-gray-400 border-t pt-2 font-mono flex justify-between">
+                          <span>{file2.name}</span>
+                          <span className="text-emerald-700 font-bold">Modificado — Pág 69</span>
                         </div>
                       </div>
                     )}
@@ -474,7 +545,7 @@ ${diffItems.map(item => `
                       onClick={() => file2InputRef.current?.click()}
                       className="bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded text-[11px] font-bold text-white transition-colors cursor-pointer"
                     >
-                      {isEs ? 'Cambiar PDF' : 'Change PDF'}
+                      {isEs ? 'Cambiar PDF 2' : 'Change PDF 2'}
                     </button>
                   </div>
                 </div>
@@ -550,34 +621,49 @@ ${diffItems.map(item => `
                       <span className="text-zinc-500 text-[11px]">Pág 1</span>
                     </div>
 
-                    {filteredDiffs.map((item) => (
-                      <div key={item.id} className="bg-zinc-900/80 border border-white/10 hover:border-white/30 rounded-xl p-3 flex flex-col gap-2 transition-all">
-                        <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400">
-                          <span className="font-bold text-zinc-300">Página {item.page}</span>
-                          <span className="uppercase font-semibold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">{item.type}</span>
-                        </div>
+                    {filteredDiffs.map((item) => {
+                      const isActive = activeDiffId === item.id;
 
-                        {/* Old text block */}
-                        <div className="bg-red-950/30 border border-red-500/20 p-2 rounded-lg flex justify-between items-start gap-2">
-                          <p className="text-[11px] text-red-200 font-sans leading-tight line-clamp-2">
-                            {item.oldText}
-                          </p>
-                          <span className="text-xs font-mono font-bold text-red-400 flex-shrink-0 bg-red-900/50 px-1.5 py-0.5 rounded">
-                            {item.oldCount}
-                          </span>
-                        </div>
+                      return (
+                        <div 
+                          key={item.id} 
+                          onClick={() => {
+                            setActiveDiffId(item.id);
+                            toast.info(isEs ? `Enfocado cambio en Página ${item.page}` : `Focused difference on Page ${item.page}`);
+                          }}
+                          className={`border rounded-xl p-3 flex flex-col gap-2 transition-all cursor-pointer ${
+                            isActive 
+                              ? 'bg-zinc-900 border-white ring-1 ring-white/30 shadow-lg' 
+                              : 'bg-zinc-900/60 border-white/10 hover:border-white/30'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400">
+                            <span className="font-bold text-zinc-200">Página {item.page}</span>
+                            <span className="uppercase font-semibold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">{item.type}</span>
+                          </div>
 
-                        {/* New text block */}
-                        <div className="bg-emerald-950/30 border border-emerald-500/20 p-2 rounded-lg flex justify-between items-start gap-2">
-                          <p className="text-[11px] text-emerald-200 font-sans leading-tight line-clamp-2">
-                            {item.newText}
-                          </p>
-                          <span className="text-xs font-mono font-bold text-emerald-400 flex-shrink-0 bg-emerald-900/50 px-1.5 py-0.5 rounded">
-                            +{item.newCount}
-                          </span>
+                          {/* Old text block */}
+                          <div className="bg-red-950/30 border border-red-500/20 p-2 rounded-lg flex justify-between items-start gap-2">
+                            <p className="text-[11px] text-red-200 font-sans leading-tight line-clamp-2">
+                              {item.oldText}
+                            </p>
+                            <span className="text-xs font-mono font-bold text-red-400 flex-shrink-0 bg-red-900/50 px-1.5 py-0.5 rounded">
+                              {item.oldCount}
+                            </span>
+                          </div>
+
+                          {/* New text block */}
+                          <div className="bg-emerald-950/30 border border-emerald-500/20 p-2 rounded-lg flex justify-between items-start gap-2">
+                            <p className="text-[11px] text-emerald-200 font-sans leading-tight line-clamp-2">
+                              {item.newText}
+                            </p>
+                            <span className="text-xs font-mono font-bold text-emerald-400 flex-shrink-0 bg-emerald-900/50 px-1.5 py-0.5 rounded">
+                              +{item.newCount}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

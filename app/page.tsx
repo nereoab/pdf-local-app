@@ -247,10 +247,10 @@ export default function DashboardPage() {
               className={`relative ${file ? 'z-[50]' : 'z-10'}`}
             >
               {/* HERO CONTENT ARCHITECTURE STYLING */}
-              <div className="mb-12 text-center md:text-left">
+              <div className="mb-10 text-center md:text-left">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-zinc-900 border border-white/10 rounded-full text-zinc-300 text-xs font-mono mb-5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  <span>{isEs ? '001 / Local-first PDF architecture' : '001 / Local-first PDF architecture'}</span>
+                  <span>{isEs ? '001 / Arquitectura PDF local 100% gratuita' : '001 / 100% Free local PDF engine'}</span>
                 </div>
                 <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold text-white tracking-tight leading-[1.05] antialiased">
                   {isEs ? 'Procesamiento PDF local. ' : 'Local PDF engine. '}
@@ -258,9 +258,29 @@ export default function DashboardPage() {
                     {isEs ? 'Sin servidores, privacidad total.' : 'Zero servers, absolute privacy.'}
                   </span>
                 </h1>
-                <p className="text-zinc-400 text-sm sm:text-base font-normal mt-4 max-w-2xl leading-relaxed">
-                  {isEs ? 'Edita, une, convierte y optimiza tus documentos PDF directamente en tu navegador sin subir tus datos a ningún servidor externo.' : 'Edit, merge, convert, and optimize PDF documents directly inside your browser without transmitting data to external servers.'}
+                
+                {/* SUBTÍTULO CLARO CON GRATUIDAD, SIN TARJETA Y SIN REGISTRO */}
+                <p className="text-zinc-300 text-sm sm:text-base font-normal mt-4 max-w-3xl leading-relaxed">
+                  {isEs 
+                    ? 'Edita, une, convierte y optimiza tus documentos PDF 100% GRATIS. No necesitas ingresar ninguna tarjeta de crédito ni crear una cuenta para usar nuestras herramientas. Todo se procesa de forma rápida y privada en tu propio navegador.' 
+                    : 'Edit, merge, convert, and optimize your PDF documents 100% FREE. No credit card required and no account creation needed. Everything is processed quickly and privately in your own browser.'}
                 </p>
+
+                {/* PILLS DE GARANTÍA */}
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-5 font-mono text-[11px]">
+                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-white rounded-full flex items-center gap-1.5">
+                    <span className="text-emerald-400">✓</span> {isEs ? '100% GRATIS' : '100% FREE'}
+                  </span>
+                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full flex items-center gap-1.5">
+                    <span className="text-emerald-400">✓</span> {isEs ? 'SIN TARJETA DE CRÉDITO' : 'NO CREDIT CARD NEEDED'}
+                  </span>
+                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full flex items-center gap-1.5">
+                    <span className="text-emerald-400">✓</span> {isEs ? 'SIN REGISTRO DE CUENTA' : 'NO SIGN-UP REQUIRED'}
+                  </span>
+                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-400 rounded-full flex items-center gap-1.5">
+                    <span className="text-emerald-400">✓</span> {isEs ? 'PROCESAMIENTO 100% LOCAL' : '100% LOCAL PROCESSING'}
+                  </span>
+                </div>
               </div>
 
               {/* KPI PILLS */}
@@ -303,7 +323,7 @@ export default function DashboardPage() {
 
                       <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-2">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{isEs ? '100% PRIVACIDAD LOCAL' : '100% LOCAL PRIVACY'}</span>
+                        <span>{isEs ? '100% GRATIS • SIN REGISTRO • SIN TARJETA' : '100% FREE • NO SIGN-UP • NO CREDIT CARD'}</span>
                       </div>
                     </div>
                   ) : (

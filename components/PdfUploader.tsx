@@ -144,7 +144,7 @@ export default function PdfUploader() {
         {/* LEYENDA DE PRIVACIDAD DENTRO DEL CUADRO DE CARGA */}
         <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-1">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{isEs ? '100% LOCAL • SIN SERVIDORES' : '100% LOCAL • ZERO SERVERS'}</span>
+          <span>{isEs ? '100% GRATIS • SIN REGISTRO • SIN TARJETA' : '100% FREE • NO SIGN-UP • NO CREDIT CARD'}</span>
         </div>
       </motion.div>
     );

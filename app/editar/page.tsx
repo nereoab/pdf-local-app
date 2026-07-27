@@ -190,25 +190,21 @@ function EditarContent() {
   if (!mounted) return null;
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#0a0400]">
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-start">
-        <motion.div animate={{ opacity: [0.03, 0.05, 0.03] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[10%] left-[15%] w-[60vw] h-[40vw] rounded-full bg-blue-500 blur-[130px]" />
-      </div>
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
 
       <div className="w-full max-w-7xl relative z-10">
         <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileInput} />
 
         <AnimatePresence mode="wait">
           {isUploading && (
-            <motion.div key="loading-view" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full bg-black/60 border border-blue-500/30 rounded-3xl p-12 shadow-[0_0_40px_rgba(59,130,246,0.15)] mt-10">
+            <motion.div key="loading-view" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-12 shadow-2xl mt-10 font-mono">
               <div className="max-w-md mx-auto">
                 <div className="flex justify-between items-end mb-4">
-                  <h3 className="text-white font-bold text-xl flex items-center gap-2">Cargando documento...</h3>
-                  <span className="text-blue-400 font-bold text-3xl tabular-nums">{uploadProgress}%</span>
+                  <h3 className="text-white font-bold text-xl flex items-center gap-2 font-sans">{isEs ? "Cargando documento..." : "Loading document..."}</h3>
+                  <span className="text-white font-bold text-3xl tabular-nums">{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-gray-900 rounded-full h-3 overflow-hidden border border-white/10">
-                  <motion.div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-full rounded-full relative" initial={{ width: 0 }} animate={{ width: `${uploadProgress}%` }} transition={{ ease: "linear", duration: 0.1 }}>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-[shimmer_1.5s_infinite]"></div>
+                <div className="w-full bg-zinc-900 rounded-full h-3 overflow-hidden border border-white/10">
+                  <motion.div className="bg-white h-full rounded-full relative" initial={{ width: 0 }} animate={{ width: `${uploadProgress}%` }} transition={{ ease: "linear", duration: 0.1 }}>
                   </motion.div>
                 </div>
               </div>
@@ -274,24 +270,23 @@ function EditarContent() {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full flex-1 h-full min-h-[500px] bg-cyan-950/20 hover:bg-cyan-950/30 border-2 border-blue-500/40 hover:border-blue-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.25)] hover:shadow-[0_0_50px_rgba(59,130,246,0.4)] transition-all duration-300 flex flex-col relative">
-                      <div className="bg-[#030712] border-b border-white/[0.06] p-4 flex justify-between items-center z-10">
+                    <div className="w-full flex-1 h-full min-h-[500px] bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative font-mono">
+                      <div className="bg-zinc-900 border-b border-white/10 p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="bg-blue-500/20 p-2 rounded-xl border border-blue-500/30 flex-shrink-0">
-                            <FileText className="w-4 h-4 text-blue-400" />
+                          <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0">
+                            <FileText className="w-4 h-4 text-white" />
                           </div>
                           <div className="flex flex-col overflow-hidden">
                             <span className="text-white font-bold text-xs truncate w-32 sm:w-48">{globalFile.name}</span>
-                            <span className="text-blue-400/80 text-[10px] font-medium">{formatFileSize(globalFile.size)}</span>
+                            <span className="text-zinc-400 text-[10px]">{formatFileSize(globalFile.size)}</span>
                           </div>
                         </div>
-                        <button onClick={handleRemoveFile} className="flex-shrink-0 p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all duration-300" title={isEs ? "Quitar archivo" : "Remove file"}>
-                          <X className="w-4 h-4 hover:rotate-90 transition-transform duration-300" />
+                        <button onClick={handleRemoveFile} className="flex-shrink-0 p-2 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all" title={isEs ? "Quitar archivo" : "Remove file"}>
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                       
-                      <div className="w-full flex-1 bg-[#0a0a0a] relative pointer-events-none overflow-hidden">
-                        <div className="absolute inset-0 bg-black/5 z-10" />
+                      <div className="w-full flex-1 bg-[#09090b] relative pointer-events-none overflow-hidden">
                         {pdfUrl && (
                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[75%] aspect-[1/1.414]">
                             <iframe 
@@ -308,7 +303,7 @@ function EditarContent() {
                 </div>
 
                 <div className="lg:col-span-7 flex flex-col h-full">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 h-full group/grid">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 h-full">
                     {editingTools.map((tool) => {
                       const isSelected = selectedToolParam === tool.id || (selectedToolParam && tool.path.endsWith(selectedToolParam));
 
@@ -322,49 +317,43 @@ function EditarContent() {
                               toast.error(isEs ? "Sube un archivo en la casilla de la izquierda para usar esta herramienta." : "Upload a file in the left dropzone first to use this tool."); 
                             } 
                           }} 
-                          className={`outline-none group/card block h-full ${!globalFile ? 'opacity-85 hover:opacity-100 cursor-pointer' : 'transition-opacity duration-300 group-hover/grid:opacity-65 hover:!opacity-100'}`}
+                          className="outline-none group/card block h-full"
                         >
-                          <div className={`bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-950 border-2 ${isSelected ? 'border-cyan-400 ring-4 ring-cyan-400/50 shadow-[0_0_35px_rgba(6,182,212,0.8)] scale-[1.02]' : `${tool.borderColor} ${tool.shadowColor}`} ${tool.hoverBorder} ${tool.hoverBg} rounded-2xl p-3.5 lg:p-4 transition-all duration-300 flex flex-col justify-between group-hover/card:-translate-y-1 ${tool.hoverGlow} relative overflow-hidden h-full`}>
-                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover/card:bg-white/15 transition-all duration-500 pointer-events-none" />
+                          <div className={`bg-[#09090b] border ${isSelected ? 'border-white ring-2 ring-white/20 bg-zinc-900/80' : 'border-white/10 hover:border-white/30'} rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between group-hover/card:bg-zinc-900/40 relative overflow-hidden h-full shadow-2xl`}>
 
                             <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className={`bg-gradient-to-tr ${tool.iconBg} p-2.5 rounded-2xl border shadow-md group-hover/card:scale-110 transition-transform duration-300`}>
-                                  <tool.icon className="w-4.5 h-4.5 drop-shadow-[0_0_8px_currentColor]" />
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+                                  <tool.icon className="w-5 h-5 text-white" />
                                 </div>
 
-                                <div className={`bg-gradient-to-r ${isSelected ? 'from-cyan-300 to-blue-400 animate-pulse text-slate-950' : tool.btnGradient} font-black text-xs px-3.5 py-1 rounded-full shadow-md group-hover/card:scale-105 group-hover/card:shadow-lg flex items-center gap-1.5 transition-all duration-300`}>
+                                <div className="bg-white text-black hover:bg-zinc-200 font-semibold text-xs px-3.5 py-1 rounded-full font-sans flex items-center gap-1.5 transition-all shadow-md">
                                   <span>{isSelected ? (isEs ? "SELECCIONADO" : "SELECTED") : (isEs ? "Usar Ahora" : "Use Now")}</span>
-                                  <ArrowRight className="w-3.5 h-3.5 group-hover/card:translate-x-1 transition-transform" />
+                                  <ArrowRight className="w-3.5 h-3.5 text-black group-hover/card:translate-x-1 transition-transform" />
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${tool.badgeBg} border shadow-sm`}>
+                              <div className="mb-2 font-mono">
+                                <span className="text-xs text-zinc-400 font-medium">
                                   {isEs ? tool.tagEs : tool.tagEn}
                                 </span>
-                                {isSelected && (
-                                  <span className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-cyan-400 text-slate-950 flex items-center gap-1 shadow-md animate-pulse">
-                                    <CheckCircle2 className="w-3 h-3" /> {isEs ? 'ELEGIDO EN MENÚ' : 'MENU SELECTED'}
-                                  </span>
-                                )}
                               </div>
 
-                              <h3 className="text-sm font-black text-white mb-0.5 tracking-tight group-hover/card:text-white transition-colors">
+                              <h3 className="text-base font-bold text-white mb-1.5 tracking-tight font-sans">
                                 {isEs ? tool.titleEs : tool.titleEn}
                               </h3>
-                              <p className="text-slate-300 text-[11px] font-medium leading-normal line-clamp-2">
+                              <p className="text-zinc-400 text-xs font-normal leading-relaxed font-sans line-clamp-2">
                                 {isEs ? tool.descEs : tool.descEn}
                               </p>
                             </div>
 
-                            <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                            <div className="pt-3 mt-4 border-t border-white/10 flex items-center justify-between font-mono text-xs text-zinc-400">
+                              <span className="flex items-center gap-1.5 text-[11px]">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
                                 {isEs ? "100% Local" : "100% Local"}
                               </span>
-                              <span className="text-[11px] font-black text-white group-hover/card:translate-x-0.5 transition-transform flex items-center gap-1">
-                                {isEs ? "Iniciar" : "Start"} &rarr;
+                              <span className="text-white group-hover/card:translate-x-0.5 transition-transform flex items-center gap-1">
+                                {isEs ? "Iniciar →" : "Start →"}
                               </span>
                             </div>
                           </div>
@@ -376,47 +365,50 @@ function EditarContent() {
               </div>
 
               {/* SECCIÓN: 3 PASOS PARA TRABAJAR PDF */}
-              <div className="w-full mt-10 pt-8 border-t border-white/10 flex flex-col items-center">
-                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <div className="w-full mt-12 pt-10 border-t border-white/10 flex flex-col items-center font-mono">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold rounded-full mb-6">
+                  <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
+                  {isEs ? "000 / PASOS DE EDICIÓN" : "000 / EDITING STEPS"}
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-8 font-sans">
                   {isEs ? "Solo 3 pasos para editar tu PDF" : "Only 3 steps to edit your PDF"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
                   {/* PASO 1 */}
-                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.25)] group">
-                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(6,182,212,0.3)] group-hover:scale-110 transition-transform">
+                  <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group font-mono">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 text-white font-bold text-sm flex items-center justify-center mb-3">
                       1
                     </div>
-                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
-                      📁 {isEs ? "1. Sube tu PDF" : "1. Upload your PDF"}
+                    <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
+                      {isEs ? "1. Sube tu PDF" : "1. Upload your PDF"}
                     </h4>
-                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                    <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                       {isEs ? "Arrastra o selecciona tu archivo PDF en el recuadro principal." : "Drag or select your PDF file in the main dropzone box."}
                     </p>
                   </div>
 
                   {/* PASO 2 */}
-                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-blue-500/30 hover:border-blue-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(59,130,246,0.25)] group">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(59,130,246,0.3)] group-hover:scale-110 transition-transform">
+                  <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group font-mono">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 text-white font-bold text-sm flex items-center justify-center mb-3">
                       2
                     </div>
-                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
-                      🛠️ {isEs ? "2. Usa la herramienta" : "2. Use the tool"}
+                    <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
+                      {isEs ? "2. Usa la herramienta" : "2. Use the tool"}
                     </h4>
-                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                      {isEs ? "En la página especializada, elige la función exacta (Unir, Dividir, Foliar, etc.)." : "In the specialized page, select the exact function (Text edit, Watermark, Sign, etc.)."}
+                    <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                      {isEs ? "En la página especializada, elige la función exacta (Texto, Foliar, Firma, etc.)." : "In the specialized page, select the exact function (Text, Folio, Signature, etc.)."}
                     </p>
                   </div>
 
                   {/* PASO 3 */}
-                  <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-[#0b1120]/80 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 transition-all duration-300 shadow-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.25)] group">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(168,85,247,0.3)] group-hover:scale-110 transition-transform">
+                  <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group font-mono">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 text-white font-bold text-sm flex items-center justify-center mb-3">
                       3
                     </div>
-                    <h4 className="text-base font-extrabold text-white mb-2 flex items-center gap-1.5">
-                      ⬇️ {isEs ? "3. Descarga lista" : "3. Download ready"}
+                    <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
+                      {isEs ? "3. Descarga lista" : "3. Download ready"}
                     </h4>
-                    <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                    <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                       {isEs ? "Obtén tu documento final 100% procesado de forma local en tu navegador." : "Get your final document 100% processed locally in your browser."}
                     </p>
                   </div>

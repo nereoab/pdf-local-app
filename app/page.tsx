@@ -499,34 +499,44 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
-        {/* TABLA DE ARCHIVOS RECIENTES (Con separación amplia respecto a "Cómo Funciona") */}
-        <div className="relative z-10 mt-12 sm:mt-16">
-          <div className="w-full bg-white/[0.02] backdrop-blur-xl border border-white/[0.06] rounded-3xl p-6 shadow-2xl mb-12 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <FolderOpen className="w-5 h-5 text-cyan-400" /> {isEs ? 'Archivos Recientes' : 'Recent Files'}
-              </h3>
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input type="text" placeholder={isEs ? "Buscar archivos..." : "Search files..."} className="w-full bg-black/50 border border-white/10 rounded-full py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-cyan-500/50 transition-colors" />
+        {/* TABLA DE ARCHIVOS RECIENTES */}
+        <div className="relative z-10 mt-12 sm:mt-16 font-sans">
+          <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl mb-12">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-white/10 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                  <FolderOpen className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="text-base font-bold text-white font-mono tracking-tight flex items-center gap-2">
+                  <span>005 /</span> {isEs ? 'ARCHIVOS RECIENTES' : 'RECENT FILES'}
+                </h3>
+              </div>
+              
+              <div className="relative w-full sm:w-72 font-mono">
+                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input 
+                  type="text" 
+                  placeholder={isEs ? "Buscar archivos..." : "Search files..."} 
+                  className="w-full bg-zinc-900 border border-white/10 rounded-full py-2 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition-colors" 
+                />
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-xs font-mono whitespace-nowrap">
                 <thead>
-                  <tr className="border-b border-white/[0.08]">
-                    <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500 pl-2">{isEs ? 'Nombre del Archivo' : 'File Name'}</th>
-                    <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Tamaño' : 'Size'}</th>
-                    <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Acción Realizada' : 'Action Performed'}</th>
-                    <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500">{isEs ? 'Estado' : 'Status'}</th>
-                    <th className="pb-4 font-bold text-[11px] uppercase tracking-wider text-gray-500 text-right pr-2">{isEs ? 'Acciones' : 'Actions'}</th>
+                  <tr className="border-b border-white/10">
+                    <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider pl-2">{isEs ? 'NOMBRE DEL ARCHIVO' : 'FILE NAME'}</th>
+                    <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'TAMAÑO' : 'SIZE'}</th>
+                    <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'ACCIÓN REALIZADA' : 'ACTION PERFORMED'}</th>
+                    <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'ESTADO' : 'STATUS'}</th>
+                    <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider text-right pr-2">{isEs ? 'ACCIONES' : 'ACTIONS'}</th>
                   </tr>
                 </thead>
-                <tbody className="text-gray-300">
-                  <TableRow name="CAO_Presupuesto_Final.pdf" size="2.4 MB" action={isEs ? "Convertido a Excel" : "Converted to Excel"} status={isEs ? "Completado" : "Completed"} icon={FileText} color="text-blue-400" />
-                  <TableRow name="Planos_Estructurales_v2.pdf" size="15.1 MB" action={isEs ? "Comprimido (-45%)" : "Compressed (-45%)"} status={isEs ? "Completado" : "Completed"} icon={FileArchive} color="text-amber-400" />
-                  <TableRow name="Contrato_Firmado.pdf" size="840 KB" action={isEs ? "Protegido (AES-256)" : "Protected (AES-256)"} status={isEs ? "Completado" : "Completed"} icon={ShieldCheck} color="text-emerald-400" />
+                <tbody className="divide-y divide-white/5 text-zinc-300">
+                  <TableRow name="CAO_Presupuesto_Final.pdf" size="2.4 MB" action={isEs ? "Convertido a Excel" : "Converted to Excel"} status={isEs ? "Completado" : "Completed"} icon={FileText} />
+                  <TableRow name="Planos_Estructurales_v2.pdf" size="15.1 MB" action={isEs ? "Comprimido (-45%)" : "Compressed (-45%)"} status={isEs ? "Completado" : "Completed"} icon={FileArchive} />
+                  <TableRow name="Contrato_Firmado.pdf" size="840 KB" action={isEs ? "Protegido (AES-256)" : "Protected (AES-256)"} status={isEs ? "Completado" : "Completed"} icon={ShieldCheck} />
                 </tbody>
               </table>
             </div>
@@ -536,35 +546,36 @@ export default function DashboardPage() {
       </div>
 
       {/* ASISTENTE IA */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
         <AnimatePresence>
           {isAiOpen && (
-            <motion.div initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.9 }} className="mb-4 w-80 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-cyan-900/50 to-blue-900/50 p-4 border-b border-white/10 flex justify-between items-center">
+            <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.95 }} className="mb-4 w-80 sm:w-96 bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden font-mono">
+              <div className="bg-zinc-900 p-4 border-b border-white/10 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
-                  <span className="font-bold text-white text-sm">{isEs ? 'Asistente PDFBlack' : 'PDFBlack Assistant'}</span>
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <Sparkles className="w-4 h-4 text-white" />
+                  <span className="font-bold text-white text-xs tracking-wider">{isEs ? '006 / ASISTENTE LOCAL' : '006 / LOCAL ASSISTANT'}</span>
                 </div>
-                <button onClick={() => setIsAiOpen(false)} className="text-gray-400 hover:text-white"><X className="w-4 h-4"/></button>
+                <button onClick={() => setIsAiOpen(false)} className="text-zinc-400 hover:text-white transition-colors"><X className="w-4 h-4"/></button>
               </div>
-              <div className="p-4 h-48 flex flex-col justify-end bg-black/50">
-                <div className="bg-white/10 p-3 rounded-xl rounded-bl-none w-[85%] mb-2">
-                  <p className="text-xs text-gray-200">{isEs ? '¡Hola! Todo el procesamiento es local. ¿Qué necesitas hacer hoy?' : 'Hello! All processing is local. What do you need to do today?'}</p>
+              <div className="p-4 h-44 flex flex-col justify-end bg-[#09090b]">
+                <div className="bg-zinc-900 border border-white/10 p-3.5 rounded-xl rounded-bl-none w-[90%] mb-2">
+                  <p className="text-xs text-zinc-300 font-sans">{isEs ? '¡Hola! Todo el procesamiento es local. ¿Qué necesitas transformar hoy?' : 'Hello! All processing is local. What do you need to transform today?'}</p>
                 </div>
               </div>
-              <div className="p-3 border-t border-white/5 bg-[#0a0a0a]">
-                <input type="text" placeholder={isEs ? "Escribe tu consulta..." : "Type your query..."} className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" />
+              <div className="p-3 border-t border-white/10 bg-zinc-900">
+                <input type="text" placeholder={isEs ? "$ Escribe una consulta..." : "$ Type a command..."} className="w-full bg-[#09090b] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-white/30" />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
         
         <div className="relative group">
-          <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-black border border-white/10 rounded-lg text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            {isEs ? 'Asistente IA' : 'AI Assistant'}
+          <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-xs font-mono text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            {isEs ? '$ asistente-local' : '$ local-assistant'}
           </div>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsAiOpen(!isAiOpen)} className="bg-cyan-500 hover:bg-cyan-400 text-black p-3.5 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-colors flex items-center justify-center">
-            <Bot className="w-5 h-5" />
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setIsAiOpen(!isAiOpen)} className="bg-white text-black hover:bg-zinc-200 p-3.5 rounded-full shadow-2xl transition-all cursor-pointer border border-white/20">
+            <Bot className="w-5 h-5 text-black" />
           </motion.button>
         </div>
       </div>
@@ -573,19 +584,19 @@ export default function DashboardPage() {
   );
 }
 
-function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip, color }: any) {
+function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip }: any) {
   return (
     <div className="relative group/kpi">
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white/[0.03] border border-white/[0.08] hover:border-cyan-500/40 rounded-full hover:bg-white/[0.06] transition-all cursor-help shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-        <Icon className={`w-3.5 h-3.5 ${color}`} />
-        <span className="text-xs font-black text-white">
+      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-full transition-all cursor-help font-mono">
+        <Icon className="w-3.5 h-3.5 text-white" />
+        <span className="text-xs font-bold text-white">
           <AnimatedCounter to={value} decimals={decimals} suffix={suffix} />
         </span>
-        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{title}</span>
+        <span className="text-[10px] text-zinc-400 font-semibold uppercase">{title}</span>
       </div>
 
       {tooltip && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900 border border-slate-700/80 rounded-xl text-[10px] font-semibold text-cyan-300 opacity-0 group-hover/kpi:opacity-100 transition-opacity duration-200 pointer-events-none shadow-xl whitespace-nowrap z-50">
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-[10px] font-mono text-zinc-300 opacity-0 group-hover/kpi:opacity-100 transition-opacity duration-200 pointer-events-none shadow-2xl whitespace-nowrap z-50">
           {tooltip}
         </div>
       )}
@@ -593,33 +604,33 @@ function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip, color }:
   );
 }
 
-function TableRow({ name, size, action, status, icon: Icon, color }: any) {
+function TableRow({ name, size, action, status, icon: Icon }: any) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
   return (
-    <tr className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
-      <td className="py-4 pl-2">
+    <tr className="border-b border-white/10 hover:bg-zinc-900/40 transition-colors group">
+      <td className="py-3.5 pl-2">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-black/50 rounded-lg border border-white/5 group-hover:border-white/10 transition-colors">
-            <Icon className={`w-4 h-4 ${color}`} />
+          <div className="p-2 bg-zinc-900 rounded-xl border border-white/10 group-hover:border-white/30 transition-colors">
+            <Icon className="w-4 h-4 text-white" />
           </div>
-          <span className="font-medium text-gray-200 group-hover:text-white transition-colors">{name}</span>
+          <span className="font-sans font-medium text-xs text-white group-hover:text-white transition-colors">{name}</span>
         </div>
       </td>
-      <td className="py-4 text-gray-400">{size}</td>
-      <td className="py-4 text-gray-400">{action}</td>
-      <td className="py-4">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-transparent border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-          <CheckCircle2 className="w-3 h-3" /> {status}
+      <td className="py-3.5 text-zinc-400 text-xs font-mono">{size}</td>
+      <td className="py-3.5 text-zinc-400 text-xs font-mono">{action}</td>
+      <td className="py-3.5">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-emerald-400 text-xs font-mono">
+          <CheckCircle2 className="w-3 h-3 text-emerald-400" /> {status}
         </span>
       </td>
-      <td className="py-4 pr-2 text-right">
-        <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity duration-300">
-          <button className="p-1.5 text-gray-400 hover:text-yellow-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Favorito" : "Favorite"}><Star className="w-4 h-4" /></button>
-          <button className="p-1.5 text-gray-400 hover:text-cyan-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Vista Previa" : "Preview"}><Eye className="w-4 h-4" /></button>
-          <button className="p-1.5 text-gray-400 hover:text-blue-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Descargar" : "Download"}><Download className="w-4 h-4" /></button>
-          <button className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-md transition-colors" title={isEs ? "Eliminar" : "Delete"}><Trash2 className="w-4 h-4" /></button>
+      <td className="py-3.5 pr-2 text-right">
+        <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+          <button className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer" title={isEs ? "Favorito" : "Favorite"}><Star className="w-3.5 h-3.5" /></button>
+          <button className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer" title={isEs ? "Vista Previa" : "Preview"}><Eye className="w-3.5 h-3.5" /></button>
+          <button className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer" title={isEs ? "Descargar" : "Download"}><Download className="w-3.5 h-3.5" /></button>
+          <button className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer" title={isEs ? "Eliminar" : "Delete"}><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </td>
     </tr>

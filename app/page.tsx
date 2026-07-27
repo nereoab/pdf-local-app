@@ -263,17 +263,6 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              {/* CÁPSULA 001 Y KPI PILLS EN LÍNEA (POR ENCIMA DE LOS 4 BOTONES PRINCIPALES) */}
-              <div className="flex flex-wrap items-center justify-start gap-3 mb-8 mt-4 font-mono">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 rounded-full text-zinc-300 text-xs font-mono">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  <span>{isEs ? '001 / Arquitectura PDF local 100% gratuita' : '001 / 100% Free local PDF engine'}</span>
-                </div>
-                <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={12} tooltip={isEs ? "Tus archivos procesados esta semana" : "Files processed this week"} color="text-white" />
-                <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={1.2} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-zinc-300" />
-                <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={45} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-zinc-400" />
-              </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6">
                 
                 {/* DROPZONE / FILE PREVIEW */}
@@ -415,6 +404,17 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+              </div>
+
+              {/* CÁPSULAS Y KPIS UBICADOS DEBAJO DE LA CAJA DE CARGA Y DE LOS 4 BOTONES PRINCIPALES */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 my-6 font-mono">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 rounded-full text-zinc-300 text-xs font-mono">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  <span>{isEs ? '001 / Arquitectura PDF local 100% gratuita' : '001 / 100% Free local PDF engine'}</span>
+                </div>
+                <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={12} tooltip={isEs ? "Tus archivos procesados esta semana" : "Files processed this week"} color="text-white" />
+                <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={1.2} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-zinc-300" />
+                <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={45} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-zinc-400" />
               </div>
 
               {/* SECCIÓN 4 PASOS STYLE CONTENT ARCHITECTURE */}

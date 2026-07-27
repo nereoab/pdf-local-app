@@ -202,7 +202,7 @@ export default function PdfUploader() {
             <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform mb-2">
               <Plus className="w-6 h-6 text-blue-600" />
             </div>
-            <span className="text-xs font-semibold text-slate-500 group-hover:text-blue-600">Añadir más</span>
+            <span className="text-xs font-semibold text-slate-500 group-hover:text-blue-600">{isEs ? "Añadir más" : "Add more"}</span>
             <input type="file" multiple accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
           </label>
 
@@ -212,16 +212,16 @@ export default function PdfUploader() {
       {/* PANEL DERECHO: Acciones (Sidebar) */}
       <div className="w-full lg:w-80 flex flex-col gap-4">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex-1 flex flex-col">
-          <h3 className="text-xl font-bold text-slate-800 mb-4">Unir PDF</h3>
+          <h3 className="text-xl font-bold text-slate-800 mb-4">{isEs ? "Unir PDF" : "Merge PDF"}</h3>
           
           <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm flex gap-3 mb-6">
             <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <p>Para cambiar el orden de tus PDFs, <strong>arrastra y suelta</strong> los archivos como quieras.</p>
+            <p>{isEs ? "Para cambiar el orden de tus PDFs, arrastra y suelta los archivos como quieras." : "To change the order of your PDFs, drag and drop the files as you wish."}</p>
           </div>
 
           <div className="mt-auto space-y-4">
             <div className="flex justify-between text-sm text-slate-500 font-medium px-1">
-              <span>Total archivos:</span>
+              <span>{isEs ? "Total archivos:" : "Total files:"}</span>
               <span className="text-slate-800">{files.length}</span>
             </div>
             
@@ -233,10 +233,10 @@ export default function PdfUploader() {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  <span className="text-base">{progressMsg || 'Procesando...'}</span>
+                  <span className="text-base">{progressMsg || (isEs ? 'Procesando...' : 'Processing...')}</span>
                 </>
               ) : (
-                'Unir PDF'
+                isEs ? 'Unir PDF' : 'Merge PDF'
               )}
             </button>
           </div>

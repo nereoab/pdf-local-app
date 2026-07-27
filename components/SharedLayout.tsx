@@ -177,10 +177,19 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <span>{isEs ? 'Procesamiento 100% Local & Privado en tu Navegador' : '100% Local & Private Browser Processing'}</span>
           </div>
 
-          <div className="flex gap-6">
-            <button className="text-xs text-slate-500 hover:text-white transition-colors">API</button>
-            <button className="text-xs text-slate-500 hover:text-white transition-colors">{isEs ? 'Privacidad' : 'Privacy'}</button>
-            <button className="text-xs text-slate-500 hover:text-white transition-colors">{isEs ? 'Términos' : 'Terms'}</button>
+          <div className="flex items-center gap-4 text-xs">
+            <Link href="/privacidad" className="text-slate-400 hover:text-white transition-colors font-medium">
+              {isEs ? 'Privacidad' : 'Privacy'}
+            </Link>
+            <Link href="/terminos" className="text-slate-400 hover:text-white transition-colors font-medium">
+              {isEs ? 'Términos' : 'Terms'}
+            </Link>
+            <Link href="/faq" className="text-slate-400 hover:text-white transition-colors font-medium">
+              {isEs ? 'FAQ' : 'FAQ'}
+            </Link>
+            <Link href="/contacto" className="text-slate-400 hover:text-white transition-colors font-medium">
+              {isEs ? 'Contacto' : 'Contact'}
+            </Link>
           </div>
         </div>
       </footer>

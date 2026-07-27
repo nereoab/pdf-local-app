@@ -21,11 +21,11 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
       <header className="w-full bg-[#09090b]/90 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
           
-          {/* LOGO TECHNICAL */}
+          {/* LOGO TECHNICAL - AS DE ESPADAS */}
           <Link href="/" className="flex-shrink-0">
             <motion.div whileHover={{ opacity: 0.8 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-3 cursor-pointer group">
-              <div className="bg-white text-black p-1.5 rounded-md font-mono font-bold text-xs">
-                CA
+              <div className="bg-white text-black p-2 rounded-xl flex items-center justify-center shadow-md border border-white/20">
+                <Spade className="w-5 h-5 text-black fill-black" />
               </div>
               <div className="flex items-baseline gap-2 font-mono">
                 <span className="text-base tracking-tight text-white font-bold">

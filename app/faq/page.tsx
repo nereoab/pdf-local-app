@@ -51,29 +51,28 @@ export default function FaqPage() {
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12 font-sans">
       <div className="max-w-4xl mx-auto">
-        
         {/* ENCABEZADO Y REGRESO */}
-        <div className="mb-8 flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-cyan-400 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/10 transition-all">
-            <ArrowLeft className="w-4 h-4" />
+        <div className="mb-8 flex items-center justify-between font-mono">
+          <Link href="/" className="inline-flex items-center gap-2 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 px-4 py-1.5 rounded-full border border-white/10 transition-all">
+            <ArrowLeft className="w-3.5 h-3.5" />
             {isEs ? 'Volver al Inicio' : 'Back to Home'}
           </Link>
-          <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-            <ShieldCheck className="w-3.5 h-3.5" />
+          <span className="text-xs font-mono text-zinc-300 bg-zinc-900 border border-white/10 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             {isEs ? 'Soporte y Respuestas' : 'Support & Answers'}
           </span>
         </div>
 
         {/* HERO TITULO */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-black tracking-wider uppercase mb-4 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12 font-mono">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold mb-4">
             <HelpCircle className="w-3.5 h-3.5" />
-            {isEs ? 'PREGUNTAS FRECUENTES (FAQ)' : 'FREQUENTLY ASKED QUESTIONS'}
+            {isEs ? '006 / PREGUNTAS FRECUENTES (FAQ)' : '006 / FREQUENTLY ASKED QUESTIONS'}
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight mb-4 leading-tight font-sans">
             {isEs ? 'Resolvemos tus dudas en segundos' : 'We answer your questions in seconds'}
           </h1>
-          <p className="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+          <p className="text-zinc-400 text-xs sm:text-sm font-sans max-w-2xl mx-auto leading-relaxed">
             {isEs 
               ? 'Conoce todos los detalles técnicos sobre cómo PDFBlack garantiza tu privacidad, funcionamiento sin conexión y rendimiento de archivos.'
               : 'Discover all technical details about how PDFBlack ensures your privacy, offline operation, and file performance.'}
@@ -81,25 +80,25 @@ export default function FaqPage() {
         </motion.div>
 
         {/* LISTADO ACORDEÓN DE PREGUNTAS FRECUENTES */}
-        <div className="space-y-4 mb-12">
+        <div className="space-y-4 mb-12 font-mono">
           {faqs.map((faq, idx) => {
             const isOpen = openIndex === idx;
 
             return (
               <div 
                 key={idx} 
-                className="bg-[#0b1120]/90 border border-slate-800 hover:border-slate-700 rounded-3xl overflow-hidden shadow-xl transition-all"
+                className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl overflow-hidden shadow-xl transition-all"
               >
                 <button 
                   onClick={() => toggleFaq(idx)}
-                  className="w-full p-6 text-left flex items-center justify-between gap-4 font-extrabold text-base text-white focus:outline-none"
+                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-semibold text-xs sm:text-sm text-white focus:outline-none cursor-pointer"
                 >
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-white flex-shrink-0" />
                     {isEs ? faq.qEs : faq.qEn}
                   </span>
-                  <div className={`p-2 rounded-full bg-white/5 border border-white/10 transition-transform duration-300 ${isOpen ? 'rotate-180 bg-cyan-500/20 border-cyan-500/40 text-cyan-400' : 'text-slate-400'}`}>
-                    <ChevronDown className="w-4 h-4" />
+                  <div className={`p-1.5 rounded-full bg-zinc-900 border border-white/10 transition-transform duration-300 ${isOpen ? 'rotate-180 text-white' : 'text-zinc-400'}`}>
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </div>
                 </button>
 
@@ -110,7 +109,7 @@ export default function FaqPage() {
                       animate={{ height: 'auto', opacity: 1 }} 
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="px-6 pb-6 pt-1 text-slate-300 text-xs sm:text-sm leading-relaxed border-t border-white/5 bg-slate-950/40"
+                      className="px-6 pb-5 pt-3 text-zinc-300 text-xs font-sans leading-relaxed border-t border-white/10 bg-zinc-900/40"
                     >
                       {isEs ? faq.aEs : faq.aEn}
                     </motion.div>

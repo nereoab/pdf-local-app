@@ -265,22 +265,6 @@ export default function DashboardPage() {
                     ? '100% Gratis • Sin tarjeta de crédito • Sin registro • Procesamiento 100% local en tu navegador.' 
                     : '100% Free • No credit card needed • No sign-up • 100% local browser engine.'}
                 </p>
-
-                {/* PILLS DE GARANTÍA */}
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-5 font-mono text-[11px]">
-                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-white rounded-full flex items-center gap-1.5">
-                    <span className="text-emerald-400">✓</span> {isEs ? '100% GRATIS' : '100% FREE'}
-                  </span>
-                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full flex items-center gap-1.5">
-                    <span className="text-emerald-400">✓</span> {isEs ? 'SIN TARJETA DE CRÉDITO' : 'NO CREDIT CARD NEEDED'}
-                  </span>
-                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full flex items-center gap-1.5">
-                    <span className="text-emerald-400">✓</span> {isEs ? 'SIN REGISTRO DE CUENTA' : 'NO SIGN-UP REQUIRED'}
-                  </span>
-                  <span className="px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-400 rounded-full flex items-center gap-1.5">
-                    <span className="text-emerald-400">✓</span> {isEs ? 'PROCESAMIENTO 100% LOCAL' : '100% LOCAL PROCESSING'}
-                  </span>
-                </div>
               </div>
 
               {/* KPI PILLS */}

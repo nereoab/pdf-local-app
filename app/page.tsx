@@ -423,60 +423,68 @@ export default function DashboardPage() {
                   <div className="text-center mb-10 max-w-2xl">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold rounded-full mb-3">
                       <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
-                      {isEs ? "000 / WORKFLOW_INGESTION" : "000 / WORKFLOW_INGESTION"}
+                      {isEs ? "000 / ¿CÓMO FUNCIONA PDFBLACK?" : "000 / HOW PDFBLACK WORKS"}
                     </div>
                     <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-2 font-sans">
-                      {isEs ? "Procesamiento en 4 etapas locales" : "4-Stage local processing"}
+                      {isEs ? "Procesamiento en 4 pasos sencillos" : "Simple 4-Step Process"}
                     </h2>
                     <p className="text-zinc-400 text-xs sm:text-sm font-sans leading-relaxed">
                       {isEs 
-                        ? "Garantía absoluta de privacidad. Tus documentos nunca salen de tu equipo ni tocan servidores."
-                        : "Absolute privacy guarantee. Your documents never leave your device."}
+                        ? "Garantía absoluta de privacidad. Tus documentos nunca salen de tu equipo ni tocan servidores externos."
+                        : "Absolute privacy guarantee. Your documents never leave your device or touch external servers."}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
                     {/* PASO 1 */}
                     <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group">
-                      <span className="text-xs text-zinc-500 font-bold mb-3">001 / INPUT</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3">001 / CARGAR</span>
                       <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
-                        {isEs ? "1. Ingesta de Archivo" : "1. File Ingestion"}
+                        {isEs ? "1. Carga tu Archivo PDF" : "1. Upload your PDF File"}
                       </h4>
                       <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                        {isEs ? "Carga del buffer PDF en la memoria local." : "Load PDF buffer into local memory."}
+                        {isEs 
+                          ? "Arrastra tu documento a la zona de carga o selecciónalo de tu equipo. Sin registro ni tarjeta de crédito." 
+                          : "Drag your document into the dropzone or select it from your device. No sign-up or credit card needed."}
                       </p>
                     </div>
 
                     {/* PASO 2 */}
                     <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group">
-                      <span className="text-xs text-zinc-500 font-bold mb-3">002 / MODULE</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3">002 / HERRAMIENTA</span>
                       <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
-                        {isEs ? "2. Selección de Módulo" : "2. Module Selection"}
+                        {isEs ? "2. Selecciona la Función" : "2. Choose your Function"}
                       </h4>
                       <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                        {isEs ? "Elección del transformador requerido." : "Selection of the required transformer."}
+                        {isEs 
+                          ? "Elige si deseas editar texto, unir varios PDF, convertir a Word/Excel, comprimir, firmar o proteger tu archivo." 
+                          : "Choose whether to edit text, merge PDFs, convert to Word/Excel, compress, sign, or protect your file."}
                       </p>
                     </div>
 
                     {/* PASO 3 */}
                     <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group">
-                      <span className="text-xs text-zinc-500 font-bold mb-3">003 / TRANSFORM</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3">003 / EDICIÓN</span>
                       <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
-                        {isEs ? "3. Transformación WASM" : "3. WASM Transform"}
+                        {isEs ? "3. Procesa al Instante" : "3. Process Instantly"}
                       </h4>
                       <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                        {isEs ? "Ejecución visual de cambios en vivo." : "Live visual execution of changes."}
+                        {isEs 
+                          ? "Aplica los cambios en tiempo real. Todo el trabajo se ejecuta rápido y seguro directamente en tu navegador." 
+                          : "Apply changes in real time. All processing runs quickly and securely inside your browser."}
                       </p>
                     </div>
 
                     {/* PASO 4 */}
                     <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group">
-                      <span className="text-xs text-zinc-500 font-bold mb-3">004 / EXPORT</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3">004 / DESCARGAR</span>
                       <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
-                        {isEs ? "4. Exportación Final" : "4. Final Export"}
+                        {isEs ? "4. Descarga tu PDF Listo" : "4. Download your Ready PDF"}
                       </h4>
                       <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                        {isEs ? "Descarga inmediata del PDF optimizado." : "Instant download of optimized PDF."}
+                        {isEs 
+                          ? "Obtén tu documento modificado inmediatamente con un solo clic, 100% privado y listo para usar." 
+                          : "Get your modified document immediately with a single click, 100% private and ready to use."}
                       </p>
                     </div>
                   </div>

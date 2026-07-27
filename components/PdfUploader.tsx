@@ -117,45 +117,45 @@ export default function PdfUploader() {
         initial={{ opacity: 0, y: 15 }} 
         animate={{ opacity: 1, y: 0 }}
         onClick={() => fileInputRef.current?.click()}
-        className="w-full max-w-3xl bg-[#0a0400] border border-[#fff0e6]/20 hover:border-[#ff4d00] p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[440px] relative overflow-hidden"
+        className="w-full max-w-3xl bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[440px] relative overflow-hidden font-mono"
       >
         <motion.div 
-          animate={{ y: [0, -8, 0] }}
+          animate={{ y: [0, -5, 0] }}
           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-          className="bg-[#ff4d00]/10 p-6 rounded-none border border-[#ff4d00]/30 group-hover:scale-110 group-hover:bg-[#ff4d00] transition-all duration-300"
+          className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors"
         >
-          <UploadCloud className="w-16 h-16 text-[#ff4d00] group-hover:text-[#0a0400] transition-colors" />
+          <UploadCloud className="w-12 h-12 text-white" />
         </motion.div>
 
-        <div className="text-center flex flex-col items-center gap-1.5">
-          <h2 className="text-2xl font-black text-[#fff0e6] uppercase tracking-wider group-hover:text-[#ff4d00] transition-colors">
-            {isEs ? "UNIR ARCHIVOS PDF" : "MERGE PDF FILES"}
+        <div className="text-center flex flex-col items-center gap-1.5 font-sans">
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            {isEs ? "Unir archivos PDF" : "Merge PDF files"}
           </h2>
-          <p className="text-[#fff0e6]/60 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5">
+          <p className="text-zinc-400 text-xs font-mono flex items-center justify-center gap-1.5">
             {isEs ? "Arrastra múltiples archivos PDF aquí o haz clic para explorar" : "Drag multiple PDF files here or click to browse"}
           </p>
         </div>
 
-        <label className="flex items-center justify-center gap-2.5 bg-[#ff4d00] hover:bg-[#fff0e6] text-[#fff0e6] hover:text-[#0a0400] px-8 py-3.5 font-black text-xs uppercase tracking-widest transition-all mt-1 cursor-pointer border border-[#ff4d00]">
-          <FilePlus className="w-4 h-4" /> {isEs ? "SELECCIONAR PDFS" : "SELECT PDFS"}
+        <label className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all mt-1 cursor-pointer shadow-md">
+          <FilePlus className="w-4 h-4 text-black" /> {isEs ? "Seleccionar PDFs" : "Select PDFs"}
           <input type="file" multiple accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} />
         </label>
 
         {/* LEYENDA DE PRIVACIDAD DENTRO DEL CUADRO DE CARGA */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-[#ff4d00]/10 border border-[#ff4d00]/30 text-[#ff4d00] text-xs font-black uppercase tracking-wider mt-1">
-          <ShieldCheck className="w-4 h-4 text-[#ff4d00]" />
-          <span>{isEs ? 'PRIVACIDAD ABSOLUTA • 100% LOCAL' : 'ABSOLUTE PRIVACY • 100% LOCAL'}</span>
+        <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <span>{isEs ? '100% LOCAL • SIN SERVIDORES' : '100% LOCAL • ZERO SERVERS'}</span>
         </div>
       </motion.div>
     );
   }
 
-  // VISTA 2: Espacio de trabajo (Estilo iLovePDF)
+  // VISTA 2: Espacio de trabajo (Content Architecture Workspace)
   return (
-    <div className="w-full flex flex-col lg:flex-row gap-6">
+    <div className="w-full flex flex-col lg:flex-row gap-6 font-mono">
       
       {/* PANEL IZQUIERDO: Cuadrícula de archivos (Workspace) */}
-      <div className="flex-1 bg-[#0a0400] p-6 border border-[#fff0e6]/20 min-h-[400px]">
+      <div className="flex-1 bg-[#09090b] p-6 border border-white/10 rounded-2xl min-h-[400px]">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           
           {files.map((file, index) => (
@@ -166,42 +166,42 @@ export default function PdfUploader() {
               onDragEnter={() => handleDragEnter(index)}
               onDragEnd={handleDragEnd}
               onDragOver={(e) => e.preventDefault()}
-              className={`relative group flex flex-col items-center p-4 bg-[#0a0400] border transition-all cursor-grab active:cursor-grabbing
-                ${draggedIndex === index ? 'opacity-50 border-[#ff4d00] scale-95' : 'border-[#fff0e6]/20 hover:border-[#ff4d00] shadow-sm'}
+              className={`relative group flex flex-col items-center p-4 bg-zinc-900/60 border rounded-2xl transition-all cursor-grab active:cursor-grabbing
+                ${draggedIndex === index ? 'opacity-50 border-white scale-95' : 'border-white/10 hover:border-white/30 shadow-sm'}
               `}
             >
               {/* Botón de eliminar (Aparece al hacer hover) */}
               <button 
                 onClick={() => removeFile(index)}
                 disabled={isProcessing}
-                className="absolute -top-2 -right-2 bg-[#ff4d00] text-[#0a0400] p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm disabled:hidden"
+                className="absolute -top-2 -right-2 bg-red-500/20 text-red-400 border border-red-500/30 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white shadow-sm disabled:hidden"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
 
               {/* Icono de Documento */}
-              <div className="w-16 h-20 bg-[#ff4d00]/10 border border-[#ff4d00]/30 flex items-center justify-center mb-3 relative overflow-hidden">
-                <FileText className="w-8 h-8 text-[#ff4d00]" />
+              <div className="w-16 h-20 bg-zinc-950 border border-white/10 rounded-xl flex items-center justify-center mb-3 relative overflow-hidden">
+                <FileText className="w-8 h-8 text-white" />
               </div>
 
               {/* Nombre del archivo */}
-              <span className="text-xs font-black uppercase text-[#fff0e6] text-center w-full truncate px-1" title={file.name}>
+              <span className="text-xs font-mono text-zinc-300 text-center w-full truncate px-1" title={file.name}>
                 {file.name}
               </span>
               
               {/* Número de orden */}
-              <div className="absolute bottom-2 left-2 bg-[#ff4d00] text-[#0a0400] text-[10px] font-black px-2 py-0.5">
-                {index + 1}
+              <div className="absolute bottom-2 left-2 bg-zinc-950 border border-white/10 text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
+                0{index + 1}
               </div>
             </div>
           ))}
 
           {/* Botón para añadir más archivos a la cuadrícula */}
-          <label className="flex flex-col items-center justify-center p-4 bg-transparent border-2 border-dashed border-[#fff0e6]/20 hover:border-[#ff4d00] transition-all cursor-pointer min-h-[140px] group">
-            <div className="bg-[#ff4d00]/10 p-2 border border-[#ff4d00]/30 group-hover:bg-[#ff4d00] transition-colors mb-2">
-              <Plus className="w-6 h-6 text-[#ff4d00] group-hover:text-[#0a0400]" />
+          <label className="flex flex-col items-center justify-center p-4 bg-transparent border-2 border-dashed border-white/10 hover:border-white/30 rounded-2xl transition-all cursor-pointer min-h-[140px] group">
+            <div className="bg-zinc-900 p-2 border border-white/10 rounded-xl group-hover:border-white/30 transition-colors mb-2">
+              <Plus className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xs font-black uppercase text-[#fff0e6]/60 group-hover:text-[#ff4d00]">{isEs ? "Añadir más" : "Add more"}</span>
+            <span className="text-xs font-mono text-zinc-400 group-hover:text-white">{isEs ? "+ Añadir" : "+ Add"}</span>
             <input type="file" multiple accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
           </label>
 
@@ -210,32 +210,32 @@ export default function PdfUploader() {
 
       {/* PANEL DERECHO: Acciones (Sidebar) */}
       <div className="w-full lg:w-80 flex flex-col gap-4">
-        <div className="bg-[#0a0400] p-6 border border-[#fff0e6]/20 flex-1 flex flex-col">
-          <h3 className="text-lg font-black uppercase text-[#fff0e6] mb-4 tracking-wider">{isEs ? "UNIR PDF" : "MERGE PDF"}</h3>
+        <div className="bg-[#09090b] p-6 border border-white/10 rounded-2xl flex-1 flex flex-col">
+          <h3 className="text-sm font-mono font-bold text-white mb-4 tracking-wider uppercase">{isEs ? "002 / UNIR_PDF" : "002 / MERGE_PDF"}</h3>
           
-          <div className="bg-[#ff4d00]/10 border border-[#ff4d00]/30 text-[#ff4d00] p-4 text-xs font-semibold uppercase leading-relaxed flex gap-3 mb-6">
-            <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <p>{isEs ? "Para cambiar el orden de tus PDFs, arrastra y suelta los archivos como quieras." : "To change the order of your PDFs, drag and drop the files as you wish."}</p>
+          <div className="bg-zinc-900 border border-white/10 text-zinc-400 p-4 text-xs font-mono leading-relaxed flex gap-3 mb-6 rounded-xl">
+            <Info className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
+            <p>{isEs ? "Arrastra y reordena los archivos en la cuadrícula para definir la secuencia final." : "Drag and reorder files in grid to arrange final sequence."}</p>
           </div>
 
-          <div className="mt-auto space-y-4">
-            <div className="flex justify-between text-xs font-black uppercase text-[#fff0e6]/60 px-1">
+          <div className="mt-auto space-y-4 font-mono">
+            <div className="flex justify-between text-xs text-zinc-400 px-1">
               <span>{isEs ? "Total archivos:" : "Total files:"}</span>
-              <span className="text-[#ff4d00]">{files.length}</span>
+              <span className="text-white font-bold">{files.length}</span>
             </div>
             
             <button 
               onClick={mergePdfs} 
               disabled={isProcessing || files.length < 2} 
-              className="w-full flex items-center justify-center gap-2 bg-[#ff4d00] text-[#fff0e6] hover:bg-[#fff0e6] hover:text-[#0a0400] py-4 font-black text-sm uppercase tracking-widest border border-[#ff4d00] disabled:bg-[#fff0e6]/10 disabled:text-[#fff0e6]/40 disabled:border-[#fff0e6]/10 transition-all shadow-lg active:scale-95"
+              className="w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 py-3 rounded-full font-sans text-xs font-bold uppercase tracking-wider disabled:opacity-40 disabled:pointer-events-none transition-all shadow-md active:scale-95 cursor-pointer"
             >
               {isProcessing ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
                   <span className="text-xs">{progressMsg || (isEs ? 'PROCESANDO...' : 'PROCESSING...')}</span>
                 </>
               ) : (
-                isEs ? 'UNIR PDF' : 'MERGE PDF'
+                isEs ? 'Unir PDF' : 'Merge PDF'
               )}
             </button>
           </div>

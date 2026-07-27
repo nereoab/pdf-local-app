@@ -26,28 +26,28 @@ export default function ContactoPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#030712] text-slate-200 px-4 sm:px-6 lg:px-8 py-12">
+    <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12">
       <div className="max-w-3xl mx-auto">
         
         {/* ENCABEZADO Y REGRESO */}
-        <div className="mb-8 flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-cyan-400 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/10 transition-all">
-            <ArrowLeft className="w-4 h-4" />
+        <div className="mb-8 flex items-center justify-between font-mono">
+          <Link href="/" className="inline-flex items-center gap-2 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 px-4 py-1.5 rounded-full border border-white/10 transition-all">
+            <ArrowLeft className="w-3.5 h-3.5" />
             {isEs ? 'Volver al Inicio' : 'Back to Home'}
           </Link>
-          <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-            <Mail className="w-3.5 h-3.5" />
+          <span className="text-xs font-mono text-zinc-300 bg-zinc-900 border border-white/10 px-3 py-1 rounded-full flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5 text-white" />
             soporte@pdfblack.com
           </span>
         </div>
 
         {/* HERO TITULO */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-black tracking-wider uppercase mb-4 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10 font-mono">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold mb-4">
             <MessageSquare className="w-3.5 h-3.5" />
-            {isEs ? 'SOPORTE Y RETROALIMENTACIÓN' : 'SUPPORT & FEEDBACK'}
+            {isEs ? '005 / SOPORTE Y RETROALIMENTACIÓN' : '005 / SUPPORT & FEEDBACK'}
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight mb-4 leading-tight font-sans">
             {isEs ? '¿Tienes dudas, sugerencias o reportes de errores?' : 'Questions, suggestions, or bug reports?'}
           </h1>
           <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">

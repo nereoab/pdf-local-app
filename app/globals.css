@@ -1,33 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import url('https://cdn.syncfusion.com/ej2/material.css');
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #0a0400;
-  --foreground: #fff0e6;
-  --accent-orange: #ff4d00;
-  --font-outfit: 'Outfit', sans-serif;
+  --background: #09090b;
+  --foreground: #ffffff;
   --font-inter: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-orange-accent: #ff4d00;
-  --color-cream: #fff0e6;
-  --font-sans: var(--font-outfit);
-  --font-body: var(--font-inter);
+  --color-obsidian: #09090b;
+  --color-zinc-card: #121215;
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-outfit);
-  letter-spacing: -0.01em;
+  background-color: #09090b;
+  color: #ffffff;
+  font-family: var(--font-inter);
+  letter-spacing: -0.02em;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-outfit);
+  font-family: var(--font-inter);
+  letter-spacing: -0.03em;
 }
 

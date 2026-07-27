@@ -10,7 +10,7 @@ export default function RotarPdfPage() {
   const isEs = lang === 'es';
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start min-h-[calc(100vh-80px)] bg-[#030712]">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start min-h-[calc(100vh-80px)] bg-[#09090b]">
       <div className="w-full max-w-7xl">
         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
           <div className="bg-gradient-to-tr from-amber-500/30 to-yellow-500/20 p-3 rounded-2xl border border-amber-400/40 shadow-[0_0_20px_rgba(245,158,11,0.3)]">

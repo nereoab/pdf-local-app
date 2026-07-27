@@ -215,25 +215,25 @@ function ConvertirContent() {
           {!isUploading && (
             <motion.div key="workspace-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full">
               {/* TÍTULO DE PÁGINA Y KPI STATS */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 mt-2 pb-4 border-b border-white/5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 mt-2 pb-6 border-b border-white/10">
                 <div className="flex items-center gap-3.5">
-                  <div className="bg-gradient-to-tr from-orange-500/30 to-amber-500/20 p-3 sm:p-3.5 rounded-2xl border border-orange-400/40 shadow-[0_0_20px_rgba(249,115,22,0.3)]">
-                    <RefreshCw className="w-7 h-7 sm:w-8 sm:h-8 text-orange-300 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" />
+                  <div className="bg-zinc-900 p-3 rounded-2xl border border-white/10">
+                    <RefreshCw className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                      {isEs ? "HERRAMIENTAS DE CONVERTIR PDF" : "PDF CONVERSION TOOLS"}
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                      {isEs ? "003 / HERRAMIENTAS DE CONVERTIR PDF" : "003 / PDF CONVERSION TOOLS"}
                     </h1>
-                    <p className="text-neutral-400 text-xs sm:text-sm font-medium">
+                    <p className="text-zinc-400 text-xs sm:text-sm font-mono mt-1">
                       {isEs ? "Exporta y transforma tu PDF a múltiples formatos estándar:" : "Export and transform your PDF into multiple standard formats:"}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={24} tooltip={isEs ? "Tus archivos convertidos esta semana" : "Files converted this week"} color="text-orange-400" />
-                  <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={3.6} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-amber-400" />
-                  <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={50} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-cyan-400" />
+                <div className="flex flex-wrap items-center gap-3 font-mono">
+                  <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={24} tooltip={isEs ? "Tus archivos convertidos esta semana" : "Files converted this week"} color="text-white" />
+                  <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={3.6} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-zinc-300" />
+                  <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={50} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-zinc-400" />
                 </div>
               </div>
 
@@ -242,31 +242,31 @@ function ConvertirContent() {
                   {!globalFile ? (
                     <div 
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex-1 h-full min-h-[500px] bg-orange-950/10 hover:bg-orange-950/30 border-2 border-dashed border-orange-500/30 hover:border-orange-400 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(249,115,22,0.25)]"
+                      className="w-full flex-1 h-full min-h-[480px] bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl"
                     >
                       <motion.div 
-                        animate={{ y: [0, -8, 0] }}
+                        animate={{ y: [0, -5, 0] }}
                         transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                        className="bg-gradient-to-tr from-orange-500/20 to-amber-500/20 p-7 rounded-full border border-orange-500/30 group-hover:scale-110 group-hover:bg-orange-500/30 group-hover:border-orange-400 shadow-[0_0_35px_rgba(249,115,22,0.25)] transition-all duration-300"
+                        className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors"
                       >
-                        <UploadCloud className="w-20 h-20 text-orange-400 drop-shadow-[0_0_20px_rgba(249,115,22,0.6)]" />
+                        <UploadCloud className="w-12 h-12 text-white" />
                       </motion.div>
 
-                      <div className="text-center flex flex-col items-center gap-2">
-                        <h3 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight group-hover:text-orange-200 transition-colors">
+                      <div className="text-center flex flex-col items-center gap-2 font-sans">
+                        <h3 className="text-xl font-bold text-white tracking-tight">
                           {isEs ? "Arrastra tu PDF aquí para convertir" : "Drop your PDF here to convert"}
                         </h3>
-                        <p className="text-orange-400 text-sm font-semibold flex items-center justify-center gap-1.5">
+                        <p className="text-zinc-400 text-xs font-mono">
                           {isEs ? "O haz clic para explorar tus archivos" : "Or click to browse your files"}
                         </p>
                       </div>
 
-                      <button className="flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-400 text-white px-9 py-4 rounded-full font-black text-base shadow-[0_0_25px_rgba(249,115,22,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(249,115,22,0.7)] transition-all mt-2 cursor-pointer border border-orange-300/40">
-                        <FilePlus className="w-5 h-5 text-white" /> {isEs ? "Subir Archivo" : "Upload File"}
+                      <button className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all mt-2 cursor-pointer shadow-md">
+                        <FilePlus className="w-4 h-4 text-black" /> {isEs ? "Subir Archivo" : "Upload File"}
                       </button>
 
-                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-2">
-                        <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
+                      <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-2">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                         <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
                       </div>
                     </div>

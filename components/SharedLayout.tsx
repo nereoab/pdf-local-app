@@ -14,30 +14,29 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   const isHome = pathname === '/';
 
   return (
-    <div className="flex min-h-screen flex-col transition-colors duration-700 selection:bg-blue-500/30 selection:text-blue-200 relative overflow-x-hidden font-sans text-slate-200 bg-black">
+    <div className="flex min-h-screen flex-col transition-colors duration-700 selection:bg-[#ff4d00]/30 selection:text-[#fff0e6] relative overflow-x-hidden font-sans text-[#fff0e6] bg-[#0a0400]">
       <Toaster position="bottom-right" richColors closeButton theme="dark" />
 
-      {/* ENCABEZADO GLOBAL SAAS */}
-      <header className="w-full bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-50 transition-all duration-500">
-        {/* AÑADIDO: gap-4 para que los 3 bloques principales nunca se toquen */}
+      {/* ENCABEZADO NEO-BRUTALIST */}
+      <header className="w-full bg-[#0a0400]/95 backdrop-blur-2xl border-b border-[#fff0e6]/15 sticky top-0 z-50 transition-all duration-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
           
-          {/* AÑADIDO: flex-shrink-0 para que el logo no se aplaste */}
+          {/* LOGO NEO-BRUTALIST */}
           <Link href="/" className="flex-shrink-0">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-3 cursor-pointer group">
-              <div className="bg-gradient-to-b from-slate-700 to-slate-900 border border-slate-600 p-2.5 rounded-xl shadow-lg transition-all">
-                <Spade className="w-5 h-5 text-white" fill="currentColor" />
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2.5 cursor-pointer group">
+              <div className="bg-[#fff0e6] text-[#0a0400] border border-[#fff0e6] p-2 rounded-lg transition-transform group-hover:rotate-6">
+                <Spade className="w-4 h-4" fill="currentColor" />
               </div>
-              <span className="text-3xl tracking-tight text-white font-light whitespace-nowrap">
-                PDF<span className="font-black">Black</span>
+              <span className="text-xl tracking-wider text-[#fff0e6] font-black uppercase">
+                THE NC-PDF
               </span>
             </motion.div>
           </Link>
 
-          {/* AÑADIDO: gap-4 xl:gap-8 para que sea responsivo en laptops */}
+          {/* MENÚ DE NAVEGACIÓN */}
           <div className="hidden lg:flex items-center gap-4 xl:gap-8">
             <DropdownMenu 
-              title={isEs ? 'Editar PDF' : 'Edit PDF'} 
+              title={isEs ? 'EDITAR PDF' : 'EDIT PDF'} 
               basePath="/editar" 
               items={[
                 { label: isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images', path: '/editar?tool=texto' },
@@ -49,7 +48,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               ]} 
             />
             <DropdownMenu 
-              title={isEs ? 'Organizar PDF' : 'Organize PDF'} 
+              title={isEs ? 'ORGANIZAR PDF' : 'ORGANIZE PDF'} 
               basePath="/organizar" 
               items={[
                 { label: isEs ? 'Unir PDF' : 'Merge PDF', path: '/organizar?tool=unir' },
@@ -61,7 +60,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               ]} 
             />
             <DropdownMenu 
-              title={isEs ? 'Convertir PDF' : 'Convert PDF'} 
+              title={isEs ? 'CONVERTIR PDF' : 'CONVERT PDF'} 
               basePath="/convertir" 
               items={[
                 { label: isEs ? 'PDF ↔ Word' : 'PDF ↔ Word', path: '/convertir?tool=pdf-word' },
@@ -73,7 +72,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               ]} 
             />
             <DropdownMenu 
-              title={isEs ? 'Optimizar PDF' : 'Optimize PDF'} 
+              title={isEs ? 'OPTIMIZAR PDF' : 'OPTIMIZE PDF'} 
               basePath="/optimizar" 
               items={[
                 { label: isEs ? 'Comprimir PDF' : 'Compress PDF', path: '/optimizar?tool=comprimir' },
@@ -86,74 +85,62 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             />
           </div>
 
-          {/* AÑADIDO: flex-shrink-0 para que los botones de la derecha no se aplasten */}
+          {/* ACCIONES DE LA DERECHA */}
           <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
             
             <AnimatePresence mode="wait">
               {!isHome && (
                 <Link href="/">
-                  <motion.button initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="hidden sm:flex items-center gap-2 text-sm font-semibold text-slate-300 hover:text-white bg-white/5 px-4 py-2 rounded-lg transition-all backdrop-blur-md border border-white/5 hover:border-white/10 whitespace-nowrap">
-                    <ArrowLeft className="w-4 h-4" /> {isEs ? 'Volver al Inicio' : 'Back to Home'}
+                  <motion.button initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="hidden sm:flex items-center gap-2 text-xs font-black uppercase text-[#fff0e6] hover:text-[#0a0400] bg-[#fff0e6]/10 hover:bg-[#fff0e6] px-4 py-2 rounded-none transition-all border border-[#fff0e6]/20 whitespace-nowrap">
+                    <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? 'INICIO' : 'HOME'}
                   </motion.button>
                 </Link>
               )}
             </AnimatePresence>
 
-            {/* MOSTRAR BOTÓN 'NUEVO' SOLO EN LA PÁGINA INICIAL Y OCULTARLO EN LAS SUBPÁGINAS */}
+            {/* BOTÓN NUEVO CON ESTILO NARANJA ELÉCTRICO */}
             {isHome && (
               <div className="relative group cursor-pointer hidden sm:block">
                 <motion.button 
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black px-4 py-2 rounded-full font-bold text-sm transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] whitespace-nowrap"
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  className="flex items-center gap-2 bg-[#ff4d00] hover:bg-[#fff0e6] text-[#fff0e6] hover:text-[#0a0400] border border-[#ff4d00] px-4 py-2 rounded-none font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(255,77,0,0.3)] whitespace-nowrap"
                 >
-                  <Plus className="w-4 h-4" /> {isEs ? 'Nuevo' : 'New'}
+                  <Plus className="w-3.5 h-3.5" /> {isEs ? 'NUEVO' : 'NEW'}
                 </motion.button>
                 
                 <div className="absolute right-0 top-10 pt-4 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50">
-                  <div className="bg-[#0a0a0a] border border-slate-800 rounded-xl shadow-2xl p-2 flex flex-col gap-1 backdrop-blur-xl">
-                    <div className="px-3 py-2 border-b border-white/5 mb-1">
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isEs ? 'Selecciona una acción' : 'Select an action'}</p>
+                  <div className="bg-[#0a0400] border border-[#fff0e6]/30 p-2 flex flex-col gap-1 shadow-2xl">
+                    <div className="px-3 py-2 border-b border-[#fff0e6]/15 mb-1">
+                      <p className="text-[10px] font-black text-[#ff4d00] uppercase tracking-widest">{isEs ? 'ACCIONES RÁPIDAS' : 'QUICK ACTIONS'}</p>
                     </div>
-                    <Link href="/editar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-blue-500/10 rounded-lg group/item transition-colors">
-                      <Edit3 className="w-4 h-4 text-blue-400" />
-                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-blue-400">{isEs ? 'Editar PDF' : 'Edit PDF'}</span>
+                    <Link href="/editar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#ff4d00] hover:text-[#0a0400] group/item transition-colors">
+                      <Edit3 className="w-4 h-4 text-[#ff4d00] group-hover/item:text-[#0a0400]" />
+                      <span className="text-xs font-black uppercase text-[#fff0e6] group-hover/item:text-[#0a0400]">{isEs ? 'Editar PDF' : 'Edit PDF'}</span>
                     </Link>
-                    <Link href="/organizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-emerald-500/10 rounded-lg group/item transition-colors">
-                      <FolderOpen className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-emerald-400">{isEs ? 'Organizar PDF' : 'Organize PDF'}</span>
+                    <Link href="/organizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#ff4d00] hover:text-[#0a0400] group/item transition-colors">
+                      <FolderOpen className="w-4 h-4 text-[#ff4d00] group-hover/item:text-[#0a0400]" />
+                      <span className="text-xs font-black uppercase text-[#fff0e6] group-hover/item:text-[#0a0400]">{isEs ? 'Organizar PDF' : 'Organize PDF'}</span>
                     </Link>
-                    <Link href="/convertir" className="flex items-center gap-3 px-3 py-2.5 hover:bg-orange-500/10 rounded-lg group/item transition-colors">
-                      <RefreshCw className="w-4 h-4 text-orange-400" />
-                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-orange-400">{isEs ? 'Convertir PDF' : 'Convert PDF'}</span>
+                    <Link href="/convertir" className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#ff4d00] hover:text-[#0a0400] group/item transition-colors">
+                      <RefreshCw className="w-4 h-4 text-[#ff4d00] group-hover/item:text-[#0a0400]" />
+                      <span className="text-xs font-black uppercase text-[#fff0e6] group-hover/item:text-[#0a0400]">{isEs ? 'Convertir PDF' : 'Convert PDF'}</span>
                     </Link>
-                    <Link href="/optimizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-purple-500/10 rounded-lg group/item transition-colors">
-                      <Zap className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm font-medium text-slate-300 group-hover/item:text-purple-400">{isEs ? 'Optimizar PDF' : 'Optimize PDF'}</span>
+                    <Link href="/optimizar" className="flex items-center gap-3 px-3 py-2.5 hover:bg-[#ff4d00] hover:text-[#0a0400] group/item transition-colors">
+                      <Zap className="w-4 h-4 text-[#ff4d00] group-hover/item:text-[#0a0400]" />
+                      <span className="text-xs font-black uppercase text-[#fff0e6] group-hover/item:text-[#0a0400]">{isEs ? 'Optimizar PDF' : 'Optimize PDF'}</span>
                     </Link>
                   </div>
                 </div>
               </div>
             )}
 
-            <motion.button onClick={toggleLanguage} className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-2 rounded-full font-semibold text-xs transition-all border border-white/5 flex-shrink-0">
-              <Globe className="w-4 h-4" /> {lang === 'es' ? 'EN' : 'ES'}
+            <motion.button onClick={toggleLanguage} className="flex items-center gap-2 bg-[#fff0e6]/5 hover:bg-[#fff0e6] text-[#fff0e6] hover:text-[#0a0400] px-3 py-2 rounded-none font-black text-xs tracking-wider transition-all border border-[#fff0e6]/15 flex-shrink-0 uppercase">
+              <Globe className="w-3.5 h-3.5" /> {lang === 'es' ? 'EN' : 'ES'}
             </motion.button>
 
             <div className="relative group cursor-pointer flex-shrink-0">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 p-[2px]">
-                <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">JD</span>
-                </div>
-              </div>
-              <div className="absolute right-0 top-10 pt-4 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50">
-                <div className="bg-[#0a0a0a] border border-slate-800 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5">
-                  <div className="px-3 py-2 border-b border-white/5 mb-1">
-                    <p className="text-sm font-bold text-white">John Doe</p>
-                    <p className="text-xs text-gray-500">Plan Gratuito</p>
-                  </div>
-                  <button className="flex items-center gap-2 text-left px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><Settings className="w-4 h-4"/> Configuración</button>
-                  <button className="flex items-center gap-2 text-left px-3 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"><LogOut className="w-4 h-4"/> Cerrar Sesión</button>
-                </div>
+              <div className="w-9 h-9 bg-[#ff4d00] text-[#0a0400] border border-[#ff4d00] flex items-center justify-center font-black text-xs">
+                JD
               </div>
             </div>
 
@@ -165,29 +152,29 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
 
-      <footer className="w-full border-t border-white/5 py-8 z-10 mt-auto bg-black/40 backdrop-blur-lg">
+      <footer className="w-full border-t border-[#fff0e6]/15 py-8 z-10 mt-auto bg-[#0a0400]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <Spade className="w-5 h-5 text-slate-500" fill="currentColor" />
-            <span className="font-medium text-slate-400 text-sm">PDFBlack © {new Date().getFullYear()}</span>
+            <Spade className="w-4 h-4 text-[#ff4d00]" fill="currentColor" />
+            <span className="font-black text-[#fff0e6]/60 text-xs uppercase tracking-widest">THE NC-PDF © {new Date().getFullYear()}</span>
           </div>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>{isEs ? 'Procesamiento 100% Local & Privado en tu Navegador' : '100% Local & Private Browser Processing'}</span>
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-none bg-[#ff4d00]/10 border border-[#ff4d00]/30 text-[#ff4d00] text-xs font-black uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-[#ff4d00]" />
+            <span>{isEs ? 'Procesamiento 100% Local & Privado' : '100% Local & Private Processing'}</span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
-            <Link href="/privacidad" className="text-slate-400 hover:text-white transition-colors font-medium">
+          <div className="flex items-center gap-4 text-xs font-black uppercase tracking-wider">
+            <Link href="/privacidad" className="text-[#fff0e6]/60 hover:text-[#ff4d00] transition-colors">
               {isEs ? 'Privacidad' : 'Privacy'}
             </Link>
-            <Link href="/terminos" className="text-slate-400 hover:text-white transition-colors font-medium">
+            <Link href="/terminos" className="text-[#fff0e6]/60 hover:text-[#ff4d00] transition-colors">
               {isEs ? 'Términos' : 'Terms'}
             </Link>
-            <Link href="/faq" className="text-slate-400 hover:text-white transition-colors font-medium">
+            <Link href="/faq" className="text-[#fff0e6]/60 hover:text-[#ff4d00] transition-colors">
               {isEs ? 'FAQ' : 'FAQ'}
             </Link>
-            <Link href="/contacto" className="text-slate-400 hover:text-white transition-colors font-medium">
+            <Link href="/contacto" className="text-[#fff0e6]/60 hover:text-[#ff4d00] transition-colors">
               {isEs ? 'Contacto' : 'Contact'}
             </Link>
           </div>
@@ -203,23 +190,22 @@ function DropdownMenu({ title, basePath, items }: any) {
 
   return (
     <div className="relative group">
-      <Link href={basePath} className="flex items-center gap-1 py-6 outline-none">
-        {/* AÑADIDO: whitespace-nowrap AQUÍ ES LA CLAVE PARA QUE NO SE ROMPA EL TEXTO */}
+      <Link href={basePath} className="flex items-center gap-1.5 py-5 outline-none">
         <span className={`
-          whitespace-nowrap font-black text-[15px] tracking-wide drop-shadow-sm transition-all
-          ${isActive ? 'bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-300 bg-clip-text text-transparent' : 'bg-gradient-to-b from-white via-slate-200 to-slate-400 bg-clip-text text-transparent group-hover:from-white group-hover:via-white group-hover:to-slate-200'}
+          whitespace-nowrap font-black text-xs tracking-widest uppercase transition-all
+          ${isActive ? 'text-[#ff4d00]' : 'text-[#fff0e6]/80 group-hover:text-[#ff4d00]'}
         `}>
           {title}
         </span>
-        <ChevronDown className={`w-4 h-4 transition-transform duration-300 group-hover:rotate-180 flex-shrink-0 ${isActive ? 'text-cyan-400' : 'text-slate-400 group-hover:text-white'}`} />
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 group-hover:rotate-180 flex-shrink-0 ${isActive ? 'text-[#ff4d00]' : 'text-[#fff0e6]/60 group-hover:text-[#ff4d00]'}`} />
       </Link>
       
-      <div className="absolute top-[70px] left-1/2 -translate-x-1/2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top scale-95 group-hover:scale-100 z-50">
-        <div className="bg-[#0a0a0a] border border-slate-800 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5">
+      <div className="absolute top-[58px] left-1/2 -translate-x-1/2 w-52 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top scale-95 group-hover:scale-100 z-50">
+        <div className="bg-[#0a0400] border border-[#fff0e6]/30 p-1.5 flex flex-col gap-0.5 shadow-2xl">
           {items.map((item: any) => {
             const isItemActive = pathname === item.path;
             return (
-              <Link key={item.path} href={item.path} className={`text-left px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isItemActive ? 'bg-blue-500/10 text-blue-400' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}>
+              <Link key={item.path} href={item.path} className={`text-left px-3 py-2 text-xs font-black uppercase transition-colors ${isItemActive ? 'bg-[#ff4d00] text-[#0a0400]' : 'text-[#fff0e6]/80 hover:bg-[#ff4d00] hover:text-[#0a0400]'}`}>
                 {item.label}
               </Link>
             );

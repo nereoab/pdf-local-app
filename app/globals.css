@@ -4,8 +4,9 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #030712;
-  --foreground: #f3f4f6;
+  --background: #0a0400;
+  --foreground: #fff0e6;
+  --accent-orange: #ff4d00;
   --font-outfit: 'Outfit', sans-serif;
   --font-inter: 'Inter', sans-serif;
 }
@@ -13,6 +14,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-orange-accent: #ff4d00;
+  --color-cream: #fff0e6;
   --font-sans: var(--font-outfit);
   --font-body: var(--font-inter);
 }

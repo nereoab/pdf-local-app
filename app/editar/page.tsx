@@ -190,7 +190,7 @@ function EditarContent() {
   if (!mounted) return null;
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#030712]">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#0a0400]">
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-start">
         <motion.div animate={{ opacity: [0.03, 0.05, 0.03] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[10%] left-[15%] w-[60vw] h-[40vw] rounded-full bg-blue-500 blur-[130px]" />
       </div>

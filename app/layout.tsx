@@ -8,7 +8,7 @@ import { LanguageProvider } from '../context/LanguageContext';
 import SharedLayout from '../components/SharedLayout'; 
 
 export const viewport: Viewport = {
-  themeColor: '#030712',
+  themeColor: '#0a0400',
   colorScheme: 'dark',
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className="dark" style={{ colorScheme: 'dark' }}>
-      <body className="bg-[#030712] text-gray-100 antialiased min-h-screen">
+      <body className="bg-[#0a0400] text-gray-100 antialiased min-h-screen">
         
         <LanguageProvider>
           {/* 3. RESTAURAMOS EL LAYOUT COMPARTIDO (Header + Footer) */}

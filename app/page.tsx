@@ -2,13 +2,13 @@
 
 import { useFileStore } from '../store/useFileStore';
 import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence, animate, Variants } from 'framer-motion';
+import { motion, AnimatePresence, animate, type Variants } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { 
   ShieldCheck, Edit3, RefreshCw, Zap, FolderOpen, 
-  FileText, CheckCircle2, FileArchive, Download, Trash2, Search, Star, 
-  Clock, HardDrive, Bot, Eye, Sparkles, X, ArrowRight, UploadCloud, FilePlus
+  FileText, Clock, HardDrive, Sparkles, X, ArrowRight, UploadCloud, FilePlus,
+  Search, FileArchive, Bot, CheckCircle2, Star, Eye, Download, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,72 +30,68 @@ function AnimatedCounter({ from = 0, to, decimals = 0, suffix = '' }: { from?: n
 
 const categories = [
   {
-    id: 'editar', titleEs: 'Editar PDF', titleEn: 'Edit PDF',
+    id: 'editar', index: '01', titleEs: 'EDITAR PDF', titleEn: 'EDIT PDF',
     descEs: 'Herramientas de edición visual directa sobre tu documento PDF:',
     descEn: 'Direct visual editing tools on your PDF document:',
     toolsListEs: ['1. Añadir Texto', '2. Firmar PDF', '3. Numerar Páginas', '4. Marca de Agua', '5. Dibujar / Anotar', '6. Formas y Figuras'],
     toolsListEn: ['1. Add Text', '2. Sign PDF', '3. Number Pages', '4. Watermark', '5. Draw / Annotate', '6. Shapes & Figures'],
-    badgeEs: '🔥 El Más Usado', badgeEn: '🔥 Most Used',
-    badgeStyle: 'bg-blue-500/10 border-blue-500/30 text-blue-300',
-    icon: Edit3, path: '/editar', color: 'text-blue-400',
-    borderColor: 'border-blue-500/40',
-    shadowColor: 'shadow-[0_0_25px_rgba(59,130,246,0.2)]',
-    hoverGlow: 'group-hover:shadow-[0_0_40px_rgba(59,130,246,0.45)] group-hover:border-blue-400',
-    shadowColorValue: '0 0 25px rgba(59,130,246,0.2)',
-    peakShadowValue: '0 0 50px rgba(59,130,246,0.95)',
-    borderColorValue: 'rgba(59,130,246,0.4)',
-    peakBorderValue: 'rgba(96,165,250,1)'
+    badgeEs: 'EL MÁS USADO', badgeEn: 'MOST USED',
+    icon: Edit3, path: '/editar', color: 'text-[#ff4d00]',
+    borderColor: 'border-[#fff0e6]/20',
+    shadowColor: 'shadow-lg',
+    hoverGlow: 'group-hover:border-[#ff4d00]',
+    shadowColorValue: '0 0 15px rgba(255,77,0,0.2)',
+    peakShadowValue: '0 0 35px rgba(255,77,0,0.8)',
+    borderColorValue: 'rgba(255,77,0,0.4)',
+    peakBorderValue: 'rgba(255,77,0,1)'
   },
   {
-    id: 'organizar', titleEs: 'Organizar PDF', titleEn: 'Organize PDF',
+    id: 'organizar', index: '02', titleEs: 'ORGANIZAR PDF', titleEn: 'ORGANIZE PDF',
     descEs: 'Herramientas de organización de páginas y documentos:',
     descEn: 'Document and page organization tools:',
     toolsListEs: ['1. Unir PDF', '2. Dividir PDF', '3. Eliminar Páginas', '4. Reordenar PDF', '5. Rotar PDF', '6. Recortar PDF'],
     toolsListEn: ['1. Merge PDF', '2. Split PDF', '3. Delete Pages', '4. Reorder PDF', '5. Rotate PDF', '6. Crop PDF'],
-    badgeEs: '⚡ Indispensable', badgeEn: '⚡ Essential',
-    badgeStyle: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300',
-    icon: FolderOpen, path: '/organizar', color: 'text-emerald-400',
-    borderColor: 'border-emerald-500/40',
-    shadowColor: 'shadow-[0_0_25px_rgba(16,185,129,0.2)]',
-    hoverGlow: 'group-hover:shadow-[0_0_40px_rgba(16,185,129,0.45)] group-hover:border-emerald-400',
-    shadowColorValue: '0 0 25px rgba(16,185,129,0.2)',
-    peakShadowValue: '0 0 50px rgba(16,185,129,0.95)',
-    borderColorValue: 'rgba(16,185,129,0.4)',
-    peakBorderValue: 'rgba(52,211,153,1)'
+    badgeEs: 'INDISPENSABLE', badgeEn: 'ESSENTIAL',
+    icon: FolderOpen, path: '/organizar', color: 'text-[#ff4d00]',
+    borderColor: 'border-[#fff0e6]/20',
+    shadowColor: 'shadow-lg',
+    hoverGlow: 'group-hover:border-[#ff4d00]',
+    shadowColorValue: '0 0 15px rgba(255,77,0,0.2)',
+    peakShadowValue: '0 0 35px rgba(255,77,0,0.8)',
+    borderColorValue: 'rgba(255,77,0,0.4)',
+    peakBorderValue: 'rgba(255,77,0,1)'
   },
   {
-    id: 'convertir', titleEs: 'Convertir PDF', titleEn: 'Convert PDF',
+    id: 'convertir', index: '03', titleEs: 'CONVERTIR PDF', titleEn: 'CONVERT PDF',
     descEs: 'Conversiones bidireccionales entre PDF y múltiples formatos:',
     descEn: 'Bidirectional conversion between PDF and formats:',
     toolsListEs: ['1. PDF ↔ Word', '2. PDF ↔ Excel', '3. PDF ↔ PowerPoint', '4. PDF ↔ JPG', '5. PDF ↔ HTML', '6. PDF ↔ Texto'],
     toolsListEn: ['1. PDF ↔ Word', '2. PDF ↔ Excel', '3. PDF ↔ PowerPoint', '4. PDF ↔ JPG', '5. PDF ↔ HTML', '6. PDF ↔ Text'],
-    badgeEs: '🎯 Alta Precisión', badgeEn: '🎯 High Precision',
-    badgeStyle: 'bg-orange-500/10 border-orange-500/30 text-orange-300',
-    icon: RefreshCw, path: '/convertir', color: 'text-orange-400',
-    borderColor: 'border-orange-500/40',
-    shadowColor: 'shadow-[0_0_25px_rgba(249,115,22,0.2)]',
-    hoverGlow: 'group-hover:shadow-[0_0_40px_rgba(249,115,22,0.45)] group-hover:border-orange-400',
-    shadowColorValue: '0 0 25px rgba(249,115,22,0.2)',
-    peakShadowValue: '0 0 50px rgba(249,115,22,0.95)',
-    borderColorValue: 'rgba(249,115,22,0.4)',
-    peakBorderValue: 'rgba(251,146,60,1)'
+    badgeEs: 'ALTA PRECISIÓN', badgeEn: 'HIGH PRECISION',
+    icon: RefreshCw, path: '/convertir', color: 'text-[#ff4d00]',
+    borderColor: 'border-[#fff0e6]/20',
+    shadowColor: 'shadow-lg',
+    hoverGlow: 'group-hover:border-[#ff4d00]',
+    shadowColorValue: '0 0 15px rgba(255,77,0,0.2)',
+    peakShadowValue: '0 0 35px rgba(255,77,0,0.8)',
+    borderColorValue: 'rgba(255,77,0,0.4)',
+    peakBorderValue: 'rgba(255,77,0,1)'
   },
   {
-    id: 'optimizar', titleEs: 'Optimizar PDF', titleEn: 'Optimize PDF',
+    id: 'optimizar', index: '04', titleEs: 'OPTIMIZAR PDF', titleEn: 'OPTIMIZE PDF',
     descEs: 'Herramientas de optimización, seguridad y reparación:',
     descEn: 'Optimization, security, and repair tools:',
     toolsListEs: ['1. Comprimir PDF', '2. Reparar PDF', '3. Desbloquear PDF', '4. Proteger PDF', '5. Censurar PDF', '6. Comparar PDF'],
     toolsListEn: ['1. Compress PDF', '2. Repair PDF', '3. Unlock PDF', '4. Protect PDF', '5. Redact PDF', '6. Compare PDF'],
-    badgeEs: '📉 Reduce hasta 90%', badgeEn: '📉 Save up to 90%',
-    badgeStyle: 'bg-purple-500/10 border-purple-500/30 text-purple-300',
-    icon: Zap, path: '/optimizar', color: 'text-purple-400',
-    borderColor: 'border-purple-500/40',
-    shadowColor: 'shadow-[0_0_25px_rgba(168,85,247,0.2)]',
-    hoverGlow: 'group-hover:shadow-[0_0_40px_rgba(168,85,247,0.45)] group-hover:border-purple-400',
-    shadowColorValue: '0 0 25px rgba(168,85,247,0.2)',
-    peakShadowValue: '0 0 50px rgba(168,85,247,0.95)',
-    borderColorValue: 'rgba(168,85,247,0.4)',
-    peakBorderValue: 'rgba(192,132,252,1)'
+    badgeEs: 'REDUCE 90%', badgeEn: 'SAVE 90%',
+    icon: Zap, path: '/optimizar', color: 'text-[#ff4d00]',
+    borderColor: 'border-[#fff0e6]/20',
+    shadowColor: 'shadow-lg',
+    hoverGlow: 'group-hover:border-[#ff4d00]',
+    shadowColorValue: '0 0 15px rgba(255,77,0,0.2)',
+    peakShadowValue: '0 0 35px rgba(255,77,0,0.8)',
+    borderColorValue: 'rgba(255,77,0,0.4)',
+    peakBorderValue: 'rgba(255,77,0,1)'
   }
 ];
 
@@ -250,21 +246,24 @@ export default function DashboardPage() {
               transition={{ duration: 0.3 }} 
               className={`relative ${file ? 'z-[50]' : 'z-10'}`}
             >
-              {/* FILA 1: TÍTULO Y SUBTÍTULO PRINCIPAL */}
-              <div className="mb-4 text-center md:text-left">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#F4F4F5] tracking-tight drop-shadow-lg leading-[1.25] antialiased">
-                  {isEs ? 'Herramientas PDF gratuitas, ' : 'Completely free PDF tools, '}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-                    {isEs ? 'sin tarjeta, sin registro.' : 'no credit card, no sign-up.'}
+              {/* FILA 1: TÍTULO PRINCIPAL NEO-BRUTALIST */}
+              <div className="mb-6 text-center md:text-left">
+                <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-[#fff0e6] tracking-tight uppercase leading-none antialiased">
+                  {isEs ? 'HERRAMIENTAS PDF DE ALTO NIVEL, ' : 'HIGH-PERFORMANCE PDF TOOLS, '}
+                  <span className="text-[#ff4d00]">
+                    {isEs ? 'SIN REGISTRO.' : 'NO SIGN-UP.'}
                   </span>
                 </h1>
+                <p className="text-[#fff0e6]/60 text-xs sm:text-sm font-semibold uppercase tracking-widest mt-3">
+                  {isEs ? 'DISEÑADO PARA PROCESAR DOCUMENTOS 100% LOCALMENTE EN TU NAVEGADOR' : 'BUILT TO PROCESS DOCUMENTS 100% LOCALLY IN YOUR BROWSER'}
+                </p>
               </div>
 
               {/* FILA 2: ESTADÍSTICAS KPI */}
               <div className="flex flex-wrap items-center justify-start gap-3 mb-8 mt-5">
-                <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={12} tooltip={isEs ? "Tus archivos procesados esta semana" : "Files processed this week"} color="text-blue-400" />
-                <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={1.2} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-emerald-400" />
-                <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={45} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-orange-400" />
+                <KpiPill icon={FileText} title={isEs ? "Archivos" : "Files"} value={12} tooltip={isEs ? "Tus archivos procesados esta semana" : "Files processed this week"} color="text-[#ff4d00]" />
+                <KpiPill icon={HardDrive} title={isEs ? "Ahorrado" : "Saved"} value={1.2} decimals={1} suffix=" GB" tooltip={isEs ? "Almacenamiento optimizado localmente" : "Locally optimized storage"} color="text-[#fff0e6]" />
+                <KpiPill icon={Clock} title={isEs ? "Tiempo" : "Time"} value={45} suffix=" min" tooltip={isEs ? "Tiempo ahorrado en tu sesión actual" : "Time saved in current session"} color="text-[#ff4d00]" />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6">
@@ -274,57 +273,57 @@ export default function DashboardPage() {
                   {!file ? (
                     <div 
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex-1 h-full min-h-[500px] bg-cyan-950/10 hover:bg-cyan-950/30 border-2 border-dashed border-cyan-500/30 hover:border-cyan-400 rounded-3xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(6,182,212,0.25)]"
+                      className="w-full flex-1 h-full min-h-[500px] bg-[#0a0400] border border-[#fff0e6]/20 hover:border-[#ff4d00] p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-xl"
                     >
                       <motion.div 
                         animate={{ y: [0, -8, 0] }}
                         transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                        className="bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 p-7 rounded-full border border-cyan-500/30 group-hover:scale-110 group-hover:bg-cyan-500/30 group-hover:border-cyan-400 shadow-[0_0_35px_rgba(6,182,212,0.25)] transition-all duration-300"
+                        className="bg-[#ff4d00]/10 p-7 rounded-none border border-[#ff4d00]/40 group-hover:scale-110 group-hover:bg-[#ff4d00] transition-all duration-300"
                       >
-                        <UploadCloud className="w-20 h-20 text-cyan-400 drop-shadow-[0_0_20px_rgba(6,182,212,0.6)]" />
+                        <UploadCloud className="w-16 h-16 text-[#ff4d00] group-hover:text-[#0a0400] transition-colors" />
                       </motion.div>
 
                       <div className="text-center flex flex-col items-center gap-2">
-                        <h3 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight group-hover:text-cyan-200 transition-colors">
-                          {isEs ? "Arrastra tu PDF aquí para empezar" : "Drop your PDF here to start"}
+                        <h3 className="text-xl lg:text-2xl font-black text-[#fff0e6] uppercase tracking-wider group-hover:text-[#ff4d00] transition-colors">
+                          {isEs ? "ARRASTRA TU PDF AQUÍ PARA EMPEZAR" : "DROP YOUR PDF HERE TO START"}
                         </h3>
-                        <p className="text-cyan-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-cyan-300 animate-pulse" />
-                          {isEs ? "O haz clic para explorar tus archivos" : "Or click to browse your files"}
+                        <p className="text-[#fff0e6]/60 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#ff4d00] animate-pulse" />
+                          {isEs ? "O HAZ CLIC PARA EXPLORAR ARCHIVOS" : "OR CLICK TO BROWSE FILES"}
                         </p>
                       </div>
 
-                      <button className="flex items-center justify-center gap-2.5 bg-cyan-400 hover:bg-cyan-300 text-slate-950 px-9 py-4 rounded-full font-black text-base shadow-[0_0_25px_rgba(6,182,212,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(6,182,212,0.7)] transition-all mt-2 cursor-pointer border border-cyan-300/40">
-                        <FilePlus className="w-5 h-5 text-slate-950" /> {isEs ? "Subir Archivo" : "Upload File"}
+                      <button className="flex items-center justify-center gap-2.5 bg-[#ff4d00] hover:bg-[#fff0e6] text-[#fff0e6] hover:text-[#0a0400] px-8 py-3.5 font-black text-xs uppercase tracking-widest transition-all mt-2 cursor-pointer border border-[#ff4d00]">
+                        <FilePlus className="w-4 h-4" /> {isEs ? "SUBIR ARCHIVO" : "UPLOAD FILE"}
                       </button>
 
                       {/* LEYENDA DE PRIVACIDAD DENTRO DEL CUADRO DE CARGA */}
-                      <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-2">
-                        <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
-                        <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
+                      <div className="flex items-center gap-2 px-4 py-2 bg-[#ff4d00]/10 border border-[#ff4d00]/30 text-[#ff4d00] text-xs font-black uppercase tracking-wider mt-2">
+                        <ShieldCheck className="w-4 h-4 text-[#ff4d00]" />
+                        <span>{isEs ? 'PRIVACIDAD ABSOLUTA • 100% LOCAL' : 'ABSOLUTE PRIVACY • 100% LOCAL'}</span>
                       </div>
                     </div>
                   ) : (
                     /* VISOR DEL PDF */
-                    <div className="w-full flex-1 h-full min-h-[500px] bg-cyan-950/20 hover:bg-cyan-950/30 border-2 border-cyan-500/40 hover:border-cyan-400 rounded-3xl overflow-hidden shadow-[0_0_40px_rgba(6,182,212,0.25)] hover:shadow-[0_0_50px_rgba(6,182,212,0.4)] transition-all duration-300 flex flex-col relative">
-                      <div className="bg-cyan-950/80 backdrop-blur-xl border-b border-cyan-500/30 p-4 flex justify-between items-center z-10">
+                    <div className="w-full flex-1 h-full min-h-[500px] bg-[#0a0400] border border-[#ff4d00]/50 overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative">
+                      <div className="bg-[#0a0400] border-b border-[#fff0e6]/15 p-4 flex justify-between items-center z-10">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="bg-cyan-500/20 p-2 rounded-xl border border-cyan-500/40 flex-shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-                            <FileText className="w-4 h-4 text-cyan-400" />
+                          <div className="bg-[#ff4d00]/20 p-2 border border-[#ff4d00]/40 flex-shrink-0">
+                            <FileText className="w-4 h-4 text-[#ff4d00]" />
                           </div>
                           <div className="flex flex-col overflow-hidden">
-                            <span className="text-white font-extrabold text-xs truncate w-32 sm:w-48">{file.name}</span>
-                            <span className="text-cyan-400 font-semibold text-[10px]">{formatFileSize(file.size)}</span>
+                            <span className="text-[#fff0e6] font-black text-xs uppercase tracking-wider truncate w-32 sm:w-48">{file.name}</span>
+                            <span className="text-[#ff4d00] font-black text-[10px] uppercase">{formatFileSize(file.size)}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-[10px] font-extrabold shadow-[0_0_10px_rgba(16,185,129,0.15)]">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>100% Local</span>
+                          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#ff4d00]/10 border border-[#ff4d00]/30 text-[#ff4d00] text-[10px] font-black uppercase">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#ff4d00]" />
+                            <span>100% LOCAL</span>
                           </div>
                           <button 
                             onClick={handleRemoveFile} 
-                            className="flex-shrink-0 p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all duration-300 cursor-pointer"
+                            className="flex-shrink-0 p-2 bg-[#ff4d00]/10 hover:bg-[#ff4d00] text-[#ff4d00] hover:text-[#0a0400] border border-[#ff4d00]/30 transition-all duration-300 cursor-pointer"
                             title={isEs ? "Quitar archivo" : "Remove file"}
                           >
                             <X className="w-4 h-4 hover:rotate-90 transition-transform duration-300" />
@@ -332,13 +331,13 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       
-                      <div className="w-full flex-1 bg-[#0a0a0a]/90 relative pointer-events-none overflow-hidden">
+                      <div className="w-full flex-1 bg-[#0a0400] relative pointer-events-none overflow-hidden">
                         <div className="absolute inset-0 bg-black/5 z-10"></div>
                         
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[75%] aspect-[1/1.414]">
                           <iframe 
                             src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
-                            className="w-full h-full border-none bg-white shadow-2xl rounded-md" 
+                            className="w-full h-full border-none bg-white shadow-2xl rounded-none" 
                             scrolling="no"
                             title="PDF Preview" 
                           />
@@ -348,13 +347,13 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* LADO DERECHO: Botones de herramientas con la lista explícita de sus 6 funciones */}
+                {/* LADO DERECHO: Categorías con Inversión Hover & Índices 01-04 */}
                 <div className="lg:col-span-7 flex flex-col justify-between">
                   {file && (
-                    <div className="mb-3 flex items-center gap-2.5 bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 border border-cyan-400/40 px-4 py-2.5 rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)] animate-pulse">
-                      <Zap className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                      <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white">
-                        {isEs ? '¡Archivo listo! Selecciona una opción para empezar:' : 'File ready! Select an option to start:'}
+                    <div className="mb-3 flex items-center gap-2.5 bg-[#ff4d00] text-[#0a0400] border border-[#ff4d00] px-4 py-2.5 shadow-xl animate-pulse">
+                      <Zap className="w-5 h-5 text-[#0a0400]" />
+                      <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest">
+                        {isEs ? '¡ARCHIVO LISTO! SELECCIONA UNA OPCIÓN PARA EMPEZAR:' : 'FILE READY! SELECT AN OPTION TO START:'}
                       </h3>
                     </div>
                   )}
@@ -363,67 +362,46 @@ export default function DashboardPage() {
                     {categories.map((cat, index) => (
                       <Link key={cat.id} href={cat.path} className="outline-none group">
                         <motion.div 
-                          animate={file ? {
-                            scale: [1, 1.03, 1],
-                            boxShadow: [
-                              cat.shadowColorValue,
-                              cat.peakShadowValue,
-                              cat.shadowColorValue
-                            ],
-                            borderColor: [
-                              cat.borderColorValue,
-                              cat.peakBorderValue,
-                              cat.borderColorValue
-                            ]
-                          } : {}}
-                          transition={file ? {
-                            repeat: Infinity,
-                            duration: 1.6,
-                            delay: index * 0.4,
-                            ease: "easeInOut"
-                          } : {}}
-                          className={`bg-white/[0.02] backdrop-blur-2xl border ${cat.borderColor} ${cat.shadowColor} rounded-3xl p-6 lg:p-7 transition-all duration-500 h-full min-h-[295px] flex flex-col justify-between relative overflow-hidden ${cat.hoverGlow}`}
+                          className={`bg-[#0a0400] border border-[#fff0e6]/20 group-hover:border-[#ff4d00] group-hover:bg-[#ff4d00] p-6 lg:p-7 transition-all duration-300 h-full min-h-[295px] flex flex-col justify-between relative overflow-hidden group-hover:shadow-[0_0_30px_rgba(255,77,0,0.3)]`}
                         >
                           <div>
-                            <div className="mb-3 flex items-center justify-between">
-                              <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl blur-sm group-hover:blur-md transition-all"></div>
-                                <div className={`relative bg-black/50 border ${cat.borderColor} p-2.5 rounded-xl w-fit shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500`}>
-                                  <cat.icon className={`w-6 h-6 ${cat.color} drop-shadow-[0_0_8px_currentColor]`} />
-                                </div>
-                              </div>
+                            <div className="mb-4 flex items-center justify-between">
+                              <span className="text-2xl font-black text-[#ff4d00] group-hover:text-[#0a0400] transition-colors tracking-tighter">
+                                {cat.index}
+                              </span>
                               {cat.badgeEs && (
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border shadow-sm ${cat.badgeStyle}`}>
+                                <span className="px-2.5 py-1 text-[10px] font-black uppercase border border-[#fff0e6]/20 group-hover:border-[#0a0400] bg-[#fff0e6]/10 text-[#fff0e6] group-hover:bg-[#0a0400] group-hover:text-[#fff0e6] transition-colors">
                                   {isEs ? cat.badgeEs : cat.badgeEn}
                                 </span>
                               )}
                             </div>
 
-                            <h2 className="text-lg font-extrabold text-white mb-1 group-hover:text-cyan-300 transition-colors">
+                            <h2 className="text-xl font-black text-[#fff0e6] uppercase tracking-wider mb-2 group-hover:text-[#0a0400] transition-colors">
                               {isEs ? cat.titleEs : cat.titleEn}
                             </h2>
 
-                            <p className="text-[11px] text-gray-400 mb-3 font-medium">
+                            <p className="text-xs text-[#fff0e6]/70 group-hover:text-[#0a0400]/90 mb-4 font-semibold leading-relaxed transition-colors">
                               {isEs ? cat.descEs : cat.descEn}
                             </p>
 
                             {/* LISTA DE 6 HERRAMIENTAS EN LA TARJETA */}
                             <div className="grid grid-cols-2 gap-1.5 mb-2">
                               {(isEs ? cat.toolsListEs : cat.toolsListEn).map((toolName, tIdx) => (
-                                <div key={tIdx} className="bg-slate-900/80 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-300 flex items-center gap-1 group-hover:border-cyan-500/30 group-hover:text-cyan-200 transition-colors truncate">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
+                                <div key={tIdx} className="bg-[#fff0e6]/5 border border-[#fff0e6]/15 group-hover:bg-[#0a0400]/20 group-hover:border-[#0a0400]/40 px-2 py-1 text-[10px] font-black uppercase text-[#fff0e6] group-hover:text-[#0a0400] transition-colors truncate">
                                   <span className="truncate">{toolName}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
 
-                          <div className={`mt-2 ${file ? 'opacity-100 translate-y-0' : 'opacity-80 group-hover:opacity-100'} transition-all duration-300`}>
-                            <span className="text-xs font-black text-cyan-400 group-hover:text-cyan-300 flex items-center gap-1.5">
-                              {file 
-                                ? (isEs ? '¡Haz clic para iniciar aquí!' : 'Click to start here!') 
-                                : (isEs ? 'Explorar 6 herramientas' : 'Explore 6 tools')}{' '}
-                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          <div className="mt-4 pt-3 border-t border-[#fff0e6]/15 group-hover:border-[#0a0400]/30 transition-colors">
+                            <span className="text-xs font-black uppercase tracking-wider text-[#ff4d00] group-hover:text-[#0a0400] flex items-center justify-between transition-colors">
+                              <span>
+                                {file 
+                                  ? (isEs ? '¡INICIAR AQUÍ!' : 'START HERE!') 
+                                  : (isEs ? 'EXPLORAR HERRAMIENTAS' : 'EXPLORE TOOLS')}
+                              </span>
+                              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </span>
                           </div>
                         </motion.div>
@@ -434,82 +412,74 @@ export default function DashboardPage() {
 
               </div>
 
-              {/* SECCIÓN: 4 PASOS VISUALES */}
+              {/* SECCIÓN: 4 PASOS VISUALES NEO-BRUTALIST */}
               {!file && (
-                <div className="w-full mt-12 pt-10 border-t border-white/10 flex flex-col items-center">
+                <div className="w-full mt-12 pt-10 border-t border-[#fff0e6]/15 flex flex-col items-center">
                   <div className="text-center mb-8 max-w-2xl">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-black tracking-wider uppercase mb-3 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-                      <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                      {isEs ? "¿CÓMO FUNCIONA PDFBLACK?" : "HOW PDFBLACK WORKS"}
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#ff4d00]/10 border border-[#ff4d00]/30 text-[#ff4d00] text-xs font-black tracking-widest uppercase mb-3">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {isEs ? "¿CÓMO FUNCIONA THE NC-PDF?" : "HOW THE NC-PDF WORKS"}
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
-                      {isEs ? "Procesa tus archivos PDF en 4 sencillos pasos" : "Process your PDF files in 4 simple steps"}
+                    <h2 className="text-2xl sm:text-4xl font-black text-[#fff0e6] uppercase tracking-tight mb-2">
+                      {isEs ? "PROCESA TUS ARCHIVOS EN 4 PASOS" : "PROCESS YOUR FILES IN 4 STEPS"}
                     </h2>
-                    <p className="text-slate-300 text-xs sm:text-sm font-medium leading-relaxed">
+                    <p className="text-[#fff0e6]/70 text-xs sm:text-sm font-semibold uppercase tracking-wider leading-relaxed">
                       {isEs 
-                        ? "Nuestra plataforma trabaja de forma 100% local en tu navegador. Tus documentos nunca salen de tu equipo, garantizando máxima privacidad, privacidad absoluta y velocidad instantánea."
-                        : "Our platform works 100% locally in your browser. Your documents never leave your device, ensuring maximum privacy and instant speed."}
+                        ? "Nuestra plataforma trabaja 100% local en tu navegador. Tus documentos nunca salen de tu equipo, garantizando máxima velocidad y privacidad absoluta."
+                        : "Our platform works 100% locally in your browser. Your documents never leave your device, ensuring maximum speed and absolute privacy."}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
                     {/* PASO 1 */}
-                    <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] group">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(6,182,212,0.25)] group-hover:scale-110 transition-transform">
-                        1
+                    <div className="flex flex-col items-center text-center p-6 bg-[#0a0400] border border-[#fff0e6]/20 hover:border-[#ff4d00] transition-all group">
+                      <div className="w-12 h-12 bg-[#ff4d00] text-[#0a0400] font-black text-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        01
                       </div>
-                      <h4 className="text-sm font-extrabold text-white mb-1.5 flex items-center gap-1.5">
-                        📁 {isEs ? '1. Sube tu PDF' : '1. Upload your PDF'}
+                      <h4 className="text-sm font-black uppercase text-[#fff0e6] mb-2 tracking-wider">
+                        {isEs ? "1. SUBE TU PDF" : "1. UPLOAD PDF"}
                       </h4>
-                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                        {isEs 
-                          ? 'Arrastra o selecciona tu archivo PDF en el recuadro principal.' 
-                          : 'Drag or select your PDF file in the main dropzone box.'}
+                      <p className="text-xs text-[#fff0e6]/60 font-semibold leading-relaxed uppercase">
+                        {isEs ? "Arrastra tu archivo PDF al área de carga." : "Drag your PDF file into the upload dropzone."}
                       </p>
                     </div>
 
                     {/* PASO 2 */}
-                    <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-blue-500/30 hover:border-blue-400 transition-all shadow-xl hover:shadow-[0_0_30px_rgba(59,130,246,0.2)] group">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500/20 to-cyan-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(59,130,246,0.25)] group-hover:scale-110 transition-transform">
-                        2
+                    <div className="flex flex-col items-center text-center p-6 bg-[#0a0400] border border-[#fff0e6]/20 hover:border-[#ff4d00] transition-all group">
+                      <div className="w-12 h-12 bg-[#ff4d00] text-[#0a0400] font-black text-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        02
                       </div>
-                      <h4 className="text-sm font-extrabold text-white mb-1.5 flex items-center gap-1.5">
-                        ⚡ {isEs ? '2. Elige la categoría' : '2. Choose category'}
+                      <h4 className="text-sm font-black uppercase text-[#fff0e6] mb-2 tracking-wider">
+                        {isEs ? "2. ELIGE LA HERRAMIENTA" : "2. SELECT TOOL"}
                       </h4>
-                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                        {isEs 
-                          ? 'Haz clic en uno de los 4 botones: Editar, Organizar, Convertir u Optimizar.' 
-                          : 'Click one of the 4 main buttons: Edit, Organize, Convert, or Optimize.'}
+                      <p className="text-xs text-[#fff0e6]/60 font-semibold leading-relaxed uppercase">
+                        {isEs ? "Selecciona la acción requerida de la cuadrícula." : "Select the required action from the grid."}
                       </p>
                     </div>
 
                     {/* PASO 3 */}
-                    <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-emerald-500/30 hover:border-emerald-400 transition-all shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.2)] group">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(16,185,129,0.25)] group-hover:scale-110 transition-transform">
-                        3
+                    <div className="flex flex-col items-center text-center p-6 bg-[#0a0400] border border-[#fff0e6]/20 hover:border-[#ff4d00] transition-all group">
+                      <div className="w-12 h-12 bg-[#ff4d00] text-[#0a0400] font-black text-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        03
                       </div>
-                      <h4 className="text-sm font-extrabold text-white mb-1.5 flex items-center gap-1.5">
-                        🛠️ {isEs ? '3. Usa la herramienta' : '3. Use the tool'}
+                      <h4 className="text-sm font-black uppercase text-[#fff0e6] mb-2 tracking-wider">
+                        {isEs ? "3. PROCESA AL INSTANTE" : "3. INSTANT PROCESS"}
                       </h4>
-                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                        {isEs 
-                          ? 'En la página especializada, elige la función exacta (Unir, Dividir, Foliar, etc.).' 
-                          : 'On the specialized page, select the exact function (Merge, Split, Page numbers, etc.).'}
+                      <p className="text-xs text-[#fff0e6]/60 font-semibold leading-relaxed uppercase">
+                        {isEs ? "Visualiza y edita los cambios de inmediato." : "Preview and edit changes immediately."}
                       </p>
                     </div>
 
                     {/* PASO 4 */}
-                    <div className="flex flex-col items-center text-center p-6 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 transition-all shadow-xl hover:shadow-[0_0_30px_rgba(168,85,247,0.2)] group">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500/20 to-pink-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 font-black text-lg mb-3 shadow-[0_0_15px_rgba(168,85,247,0.25)] group-hover:scale-110 transition-transform">
-                        4
+                    <div className="flex flex-col items-center text-center p-6 bg-[#0a0400] border border-[#fff0e6]/20 hover:border-[#ff4d00] transition-all group">
+                      <div className="w-12 h-12 bg-[#ff4d00] text-[#0a0400] font-black text-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        04
                       </div>
-                      <h4 className="text-sm font-extrabold text-white mb-1.5 flex items-center gap-1.5">
-                        ⬇️ {isEs ? '4. Descarga lista' : '4. Instant download'}
+                      <h4 className="text-sm font-black uppercase text-[#fff0e6] mb-2 tracking-wider">
+                        {isEs ? "4. DESCARGA TU PDF" : "4. DOWNLOAD PDF"}
                       </h4>
-                      <p className="text-xs text-slate-300 font-medium leading-relaxed">
-                        {isEs 
-                          ? 'Obtén tu documento final 100% procesado de forma local en tu navegador.' 
-                          : 'Get your final document 100% processed locally in your browser.'}
+                      <p className="text-xs text-[#fff0e6]/60 font-semibold leading-relaxed uppercase">
+                        {isEs ? "Obtén tu documento final 100% procesado." : "Get your 100% processed final document."}
                       </p>
                     </div>
                   </div>

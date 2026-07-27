@@ -451,14 +451,14 @@ export default function DashboardPage() {
 
                     {/* PASO 2 */}
                     <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group">
-                      <span className="text-xs text-zinc-500 font-bold mb-3">002 / HERRAMIENTA</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3">002 / CATEGORÍA</span>
                       <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
-                        {isEs ? "2. Selecciona la Función" : "2. Choose your Function"}
+                        {isEs ? "2. Selecciona la Categoría" : "2. Choose your Category"}
                       </h4>
                       <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                         {isEs 
-                          ? "Elige si deseas editar texto, unir varios PDF, convertir a Word/Excel, comprimir, firmar o proteger tu archivo." 
-                          : "Choose whether to edit text, merge PDFs, convert to Word/Excel, compress, sign, or protect your file."}
+                          ? "Elige uno de los 4 botones principales (Editar, Organizar, Convertir u Optimizar) según la herramienta que necesites." 
+                          : "Select one of the 4 main buttons (Edit, Organize, Convert, or Optimize) depending on the tool group you need."}
                       </p>
                     </div>
 
@@ -466,12 +466,12 @@ export default function DashboardPage() {
                     <div className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group">
                       <span className="text-xs text-zinc-500 font-bold mb-3">003 / EDICIÓN</span>
                       <h4 className="text-sm font-bold text-white mb-1.5 font-sans">
-                        {isEs ? "3. Procesa al Instante" : "3. Process Instantly"}
+                        {isEs ? "3. Trabaja en la Sub-Página" : "3. Work in Tool Sub-Page"}
                       </h4>
                       <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                         {isEs 
-                          ? "Aplica los cambios en tiempo real. Todo el trabajo se ejecuta rápido y seguro directamente en tu navegador." 
-                          : "Apply changes in real time. All processing runs quickly and securely inside your browser."}
+                          ? "Serás llevado a la página específica de la herramienta para personalizar, modificar y procesar tu PDF en vivo." 
+                          : "You will be taken to your selected tool sub-page to customize, modify, and process your PDF live."}
                       </p>
                     </div>
 

@@ -259,11 +259,11 @@ export default function DashboardPage() {
                   </span>
                 </h1>
                 
-                {/* SUBTÍTULO CLARO CON GRATUIDAD, SIN TARJETA Y SIN REGISTRO */}
-                <p className="text-zinc-300 text-sm sm:text-base font-normal mt-4 max-w-3xl leading-relaxed">
+                {/* SUBTÍTULO RESUMIDO EN UNA SOLA LÍNEA */}
+                <p className="text-zinc-300 text-xs sm:text-sm font-mono mt-4 leading-normal truncate">
                   {isEs 
-                    ? 'Edita, une, convierte y optimiza tus documentos PDF 100% GRATIS. No necesitas ingresar ninguna tarjeta de crédito ni crear una cuenta para usar nuestras herramientas. Todo se procesa de forma rápida y privada en tu propio navegador.' 
-                    : 'Edit, merge, convert, and optimize your PDF documents 100% FREE. No credit card required and no account creation needed. Everything is processed quickly and privately in your own browser.'}
+                    ? '100% Gratis • Sin tarjeta de crédito • Sin registro • Procesamiento 100% local en tu navegador.' 
+                    : '100% Free • No credit card needed • No sign-up • 100% local browser engine.'}
                 </p>
 
                 {/* PILLS DE GARANTÍA */}

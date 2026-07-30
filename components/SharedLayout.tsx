@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
-import { Globe, ArrowLeft, ShieldCheck, Spade, Plus, Settings, LogOut, Edit3, FolderOpen, RefreshCw, Zap, ChevronDown } from 'lucide-react';
+import { Globe, ArrowLeft, ShieldCheck, Spade, Plus, Edit3, FolderOpen, RefreshCw, Zap, ChevronDown } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
-  const { t, lang, toggleLanguage } = useLanguage();
+  const { lang, toggleLanguage } = useLanguage();
   const pathname = usePathname();
   const isEs = lang === 'es';
   const isHome = pathname === '/';
@@ -189,7 +189,12 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   );
 }
 
-function DropdownMenu({ title, basePath, items }: any) {
+interface DropdownItem {
+  path: string;
+  label: string;
+}
+
+function DropdownMenu({ title, basePath, items }: { title: string; basePath: string; items: DropdownItem[] }) {
   const pathname = usePathname();
   const isActive = pathname.startsWith(basePath);
 
@@ -207,7 +212,7 @@ function DropdownMenu({ title, basePath, items }: any) {
       
       <div className="absolute top-[52px] left-1/2 -translate-x-1/2 w-52 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top scale-95 group-hover:scale-100 z-50">
         <div className="bg-[#09090b] border border-white/10 rounded-xl p-1.5 flex flex-col gap-0.5 shadow-2xl">
-          {items.map((item: any) => {
+          {items.map((item) => {
             const isItemActive = pathname === item.path;
             return (
               <Link key={item.path} href={item.path} className={`text-left px-3 py-2 text-xs font-mono transition-colors rounded-lg ${isItemActive ? 'bg-white/10 text-white font-bold' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}>

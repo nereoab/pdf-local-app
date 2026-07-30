@@ -4,12 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import { 
   ShieldAlert, Loader2, Settings2, ShieldCheck, Download, ArrowLeft, Sparkles, 
-  FileText, Trash2, Plus, LayoutGrid, Check, Image as ImageIcon, Type, Sliders 
+  FileText, Trash2, Plus, LayoutGrid, Check, Image as ImageIcon, Type, Sliders,
+  ChevronDown, ChevronUp, UploadCloud
 } from 'lucide-react';
 import { useFileStore } from '@/store/useFileStore';
 import { useLanguage } from '@/context/LanguageContext';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type WatermarkType = 'text' | 'image';
 type Position9 = 
@@ -33,11 +35,13 @@ export default function PdfWatermark() {
   const [pageThumbnails, setPageThumbnails] = useState<string[]>([]);
   const [isLoadingThumbs, setIsLoadingThumbs] = useState<boolean>(false);
 
-  // Opciones de Marca de Agua
+  // Opciones de Marca de Agua Principales
   const [wmType, setWmType] = useState<WatermarkType>('text');
   const [wmText, setWmText] = useState<string>('CONFIDENCIAL');
   const [imageFile, setImageFile] = useState<File | null>(null);
 
+  // Opciones Avanzadas
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
   const [position, setPosition] = useState<Position9>('center');
   const [rotation, setRotation] = useState<number>(-45);
   const [opacity, setOpacity] = useState<number>(30); // 10% a 100%
@@ -197,6 +201,7 @@ export default function PdfWatermark() {
       if (fontColor === 'dark') colorRgb = rgb(0.15, 0.15, 0.15);
       if (fontColor === 'blue') colorRgb = rgb(0.1, 0.35, 0.85);
       if (fontColor === 'emerald') colorRgb = rgb(0.05, 0.65, 0.35);
+      if (fontColor === 'white') colorRgb = rgb(0.95, 0.95, 0.95);
 
       let embeddedImg: any = null;
       if (wmType === 'image' && imageFile) {
@@ -279,7 +284,7 @@ export default function PdfWatermark() {
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? '¡Sello de agua estampado y descargado!' : 'Watermark stamped and downloaded!');
+      toast.success(isEs ? '¡Sello de agua estampado con éxito!' : 'Watermark stamped successfully!');
     } catch (error) {
       console.error(error);
       toast.error(isEs ? 'Error al aplicar marca de agua.' : 'Failed to apply watermark.');
@@ -293,30 +298,39 @@ export default function PdfWatermark() {
   const selectedPagesSet = parseSelectedPages();
 
   return (
-    <div className="w-full max-w-[1550px] mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
+    <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
       <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
       <input type="file" accept="image/png, image/jpeg" className="hidden" ref={imageInputRef} onChange={handleImageChange} />
 
       {/* HEADER SUPERIOR */}
-      <div className="w-full flex items-center justify-between bg-slate-900/90 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-lg">
+      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
-          <Link href="/editar" className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-white/10">
-            <ArrowLeft className="w-4 h-4" /> {isEs ? "Volver" : "Back"}
+          <Link href="/editar" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
+            <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
           </Link>
-          <div className="h-5 w-px bg-white/10" />
-          <h1 className="text-lg font-black text-white flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-amber-400" />
-            {isEs ? "Poner Sello de Agua en PDF" : "Add Watermark to PDF"}
-          </h1>
+          <div className="hidden sm:block h-5 w-px bg-white/10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+              {isEs ? "003 / SELLO DE AGUA Y MARCAS DE PROPIEDAD" : "003 / WATERMARK & BRANDING"}
+            </span>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+              <ShieldAlert className="w-6 h-6 text-white flex-shrink-0" />
+              {isEs ? "PONER SELLO DE AGUA EN DOCUMENTOS PDF" : "ADD WATERMARK TO PDF DOCUMENTS"}
+            </h1>
+          </div>
         </div>
 
         {file && (
           <div className="flex items-center gap-3">
-            <div className="bg-slate-950 border border-amber-500/30 px-4 py-1.5 rounded-xl flex items-center gap-2.5 shadow-sm">
-              <FileText className="w-4 h-4 text-amber-400" />
-              <span className="text-white font-extrabold text-xs truncate max-w-[180px] sm:max-w-[280px]">{file.name}</span>
+            <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
+              <FileText className="w-4 h-4 text-zinc-400" />
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
             </div>
-            <button onClick={handleRemoveFile} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl transition-all" title={isEs ? "Quitar archivo" : "Remove file"}>
+            <button 
+              onClick={handleRemoveFile} 
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
+              title={isEs ? "Quitar archivo" : "Remove file"}
+            >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -324,39 +338,58 @@ export default function PdfWatermark() {
       </div>
 
       {!file ? (
-        <div className="flex-1 border-2 border-dashed border-amber-500/40 hover:border-amber-400 rounded-3xl p-16 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-xl shadow-[0_0_50px_rgba(245,158,11,0.15)] min-h-[500px]">
-          <div className="bg-gradient-to-tr from-amber-500/20 to-orange-500/20 p-6 rounded-full border border-amber-500/30 mb-6 shadow-[0_0_30px_rgba(245,158,11,0.2)]">
-            <ShieldAlert className="w-16 h-16 text-amber-400 drop-shadow-[0_0_15px_rgba(245,158,11,0.6)]" />
+        /* VISTA DROPZONE VACÍA */
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+        >
+          <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
+            <UploadCloud className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-3xl font-extrabold text-white mb-2">{isEs ? "Arrastra tu PDF para aplicar sello de agua" : "Drop your PDF to add watermark"}</h2>
-          <p className="text-slate-400 text-sm mb-8 text-center max-w-md">{isEs ? "Estampa logotipos, sellos de 'Confidencial' o marcas de propiedad en todo el documento o páginas específicas." : "Stamp logos or 'Confidential' watermarks across the document 100% locally."}</p>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+            {isEs ? "PONER SELLO DE AGUA EN DOCUMENTOS PDF" : "ADD WATERMARK TO PDF DOCUMENTS"}
+          </h2>
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+            {isEs ? "Estampa logotipos, sellos de 'Confidencial' o marcas de propiedad 100% de forma local." : "Stamp logos or 'Confidential' watermarks across the document 100% locally."}
+          </p>
           <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-slate-950 px-10 py-4 rounded-full font-black text-sm transition-all shadow-[0_0_30px_rgba(245,158,11,0.5)] hover:scale-105 cursor-pointer flex items-center gap-2"
+            type="button"
+            className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
-            <Plus className="w-5 h-5 text-slate-950" /> {isEs ? "Seleccionar Archivo PDF" : "Select PDF File"}
+            <Plus className="w-4 h-4 text-black" />
+            <span>{isEs ? "Seleccionar Archivo PDF" : "Select PDF File"}</span>
           </button>
-        </div>
+
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+          </div>
+        </motion.div>
       ) : (
-        /* ESTRUCTURA ILOVEPDF: GRILLA A LA IZQUIERDA + BARRA DE OPCIONES A LA DERECHA */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start">
-          
-          {/* LADO IZQUIERDO: GRILLA VISUAL DE PÁGINAS CON STAMP DE VISTA PREVIA */}
-          <div className="lg:col-span-8 bg-slate-950/80 border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col min-h-[680px]">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2 text-slate-300 text-xs font-bold">
-                <LayoutGrid className="w-4 h-4 text-amber-400" />
-                <span>{isEs ? `Vista previa del sello (${totalPages} páginas)` : `Watermark preview (${totalPages} pages)`}</span>
+        /* VISTA PRINCIPAL CON PANEL DE CONTROL */
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+        >
+          {/* LADO IZQUIERDO: GRILLA VISUAL DE PÁGINAS */}
+          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
+              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold font-mono">
+                <LayoutGrid className="w-4 h-4 text-white" />
+                <span>{isEs ? `001 / VISTA PREVIA DEL SELLO (${totalPages} PÁGINAS)` : `001 / WATERMARK PREVIEW (${totalPages} PAGES)`}</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-[10px] font-extrabold">
-                <ShieldCheck className="w-3.5 h-3.5" /> 100% Local
+              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
             {isLoadingThumbs ? (
-              <div className="flex-1 flex flex-col items-center justify-center min-h-[400px] gap-3">
-                <Loader2 className="w-10 h-10 animate-spin text-amber-400" />
-                <p className="text-slate-400 text-xs font-semibold">{isEs ? "Generando vista previa..." : "Generating page preview..."}</p>
+              <div className="flex-1 flex flex-col items-center justify-center min-h-[400px] gap-3 font-mono">
+                <Loader2 className="w-8 h-8 animate-spin text-white" />
+                <p className="text-zinc-400 text-xs">{isEs ? "Generando vista previa de miniaturas..." : "Generating page preview..."}</p>
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto max-h-[650px] pr-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -367,16 +400,16 @@ export default function PdfWatermark() {
                   return (
                     <div 
                       key={idx}
-                      className={`relative group bg-slate-900 border-2 ${isStamped ? 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.15)]' : 'border-slate-800 opacity-40'} rounded-2xl p-2.5 flex flex-col items-center justify-center transition-all aspect-[1/1.414] overflow-hidden`}
+                      className={`relative group bg-zinc-950 border ${isStamped ? 'border-white/40 ring-1 ring-white/20' : 'border-white/5 opacity-30'} rounded-xl p-2.5 flex flex-col items-center justify-center transition-all aspect-[1/1.414] overflow-hidden`}
                     >
-                      <span className="absolute top-2 left-2 z-20 bg-slate-950/90 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-md border border-white/10">
+                      <span className="absolute top-2 left-2 z-20 bg-zinc-900/90 text-white font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-white/10 shadow-sm">
                         {pageNum}
                       </span>
 
                       {typeof thumb === 'string' ? (
-                        <img src={thumb} alt={`Página ${pageNum}`} className="w-full h-full object-contain rounded-lg bg-white shadow-inner" />
+                        <img src={thumb} alt={`Página ${pageNum}`} className="w-full h-full object-contain rounded-md bg-white shadow-inner" />
                       ) : (
-                        <div className="w-full h-full bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 text-xs font-bold">
+                        <div className="w-full h-full bg-zinc-900 rounded-md flex items-center justify-center text-zinc-600 text-xs font-mono font-bold">
                           {pageNum}
                         </div>
                       )}
@@ -390,7 +423,7 @@ export default function PdfWatermark() {
                                 transform: `rotate(${rotation}deg)`, 
                                 opacity: opacity / 100 
                               }}
-                              className="font-black text-red-600 text-sm tracking-widest uppercase border-2 border-red-600 px-2 py-0.5 rounded shadow-lg text-center break-all select-none"
+                              className="font-black text-red-500 text-xs tracking-widest uppercase border-2 border-red-500 px-2 py-0.5 rounded shadow-lg text-center break-all select-none font-mono"
                             >
                               {wmText || 'CONFIDENCIAL'}
                             </span>
@@ -404,27 +437,33 @@ export default function PdfWatermark() {
             )}
           </div>
 
-          {/* LADO DERECHO: BARRA LATERAL DE OPCIONES ESTILO ILOVEPDF */}
-          <div className="lg:col-span-4 bg-slate-950/90 border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          {/* LADO DERECHO: PANEL DE CONTROL */}
+          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
-              <h2 className="text-xl font-black text-white mb-5 pb-3 border-b border-white/10 flex items-center gap-2">
-                <Settings2 className="w-5 h-5 text-amber-400" />
-                {isEs ? "Opciones del Sello" : "Watermark options"}
-              </h2>
+              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
+              <div className="mb-5 pb-3 border-b border-white/10">
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
+                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                </span>
+                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                  <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
+                  <Sliders className="w-5 h-5 text-white" />
+                </h2>
+              </div>
 
-              {/* TIPO: TEXTO O IMAGEN */}
+              {/* 1. TIPO DE SELLO (TEXTO O IMAGEN) */}
               <div className="mb-5">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">{isEs ? "Tipo de Sello" : "Stamp Type"}</label>
+                <label className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block mb-2">{isEs ? "Tipo de Sello" : "Stamp Type"}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button 
                     type="button" onClick={() => setWmType('text')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-extrabold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${wmType === 'text' ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-mono font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${wmType === 'text' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'}`}
                   >
                     <Type className="w-4 h-4" /> {isEs ? "Texto" : "Text"}
                   </button>
                   <button 
                     type="button" onClick={() => setWmType('image')}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-extrabold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${wmType === 'image' ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-slate-900 border-slate-800 text-slate-400'}`}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-mono font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${wmType === 'image' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'}`}
                   >
                     <ImageIcon className="w-4 h-4" /> {isEs ? "Imagen / Logo" : "Image / Logo"}
                   </button>
@@ -432,18 +471,18 @@ export default function PdfWatermark() {
               </div>
 
               {wmType === 'text' ? (
-                <div className="mb-5 space-y-3">
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">{isEs ? "Texto del Sello:" : "Watermark text:"}</label>
+                <div className="mb-5 space-y-3 font-mono">
+                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block">{isEs ? "Texto del Sello:" : "Watermark text:"}</label>
                   <input 
                     type="text" value={wmText} onChange={e => setWmText(e.target.value)}
                     placeholder="CONFIDENCIAL"
-                    className="w-full p-3 bg-slate-900 border border-amber-500/30 rounded-xl text-sm font-black text-white outline-none focus:border-amber-400"
+                    className="w-full p-2.5 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30"
                   />
                   <div className="flex flex-wrap gap-1.5">
                     {['CONFIDENCIAL', 'BORRADOR', 'COPIA', 'RESERVADO'].map(preset => (
                       <button 
                         key={preset} type="button" onClick={() => setWmText(preset)}
-                        className="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-amber-300 border border-white/10"
+                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/10 transition-colors"
                       >
                         {preset}
                       </button>
@@ -451,87 +490,162 @@ export default function PdfWatermark() {
                   </div>
                 </div>
               ) : (
-                <div className="mb-5">
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">{isEs ? "Seleccionar Logotipo:" : "Select Logo Image:"}</label>
+                <div className="mb-5 font-mono">
+                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">{isEs ? "Seleccionar Logotipo:" : "Select Logo Image:"}</label>
                   <button 
                     type="button" onClick={() => imageInputRef.current?.click()}
-                    className="w-full p-3 bg-slate-900 border border-amber-500/30 rounded-xl text-xs font-bold text-amber-300 flex items-center justify-center gap-2 hover:bg-slate-800"
+                    className="w-full p-3 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors cursor-pointer"
                   >
-                    <ImageIcon className="w-4 h-4" /> {imageFile ? imageFile.name : (isEs ? "Cargar imagen PNG/JPG" : "Upload PNG/JPG image")}
+                    <ImageIcon className="w-4 h-4 text-zinc-400" /> {imageFile ? imageFile.name : (isEs ? "Cargar imagen PNG/JPG" : "Upload PNG/JPG image")}
                   </button>
                 </div>
               )}
 
-              {/* ROTACIÓN Y OPACIDAD */}
-              <div className="grid grid-cols-2 gap-4 mb-5">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isEs ? "Ángulo" : "Angle"}</label>
-                    <span className="text-xs font-bold text-amber-300">{rotation}°</span>
-                  </div>
-                  <input 
-                    type="range" min={-90} max={90} step={15} value={rotation} onChange={e => setRotation(Number(e.target.value))}
-                    className="w-full accent-amber-400 cursor-pointer"
-                  />
+              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
+              <button 
+                type="button" 
+                onClick={() => setShowAdvanced(!showAdvanced)} 
+                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer my-4 shadow-sm"
+              >
+                <div className="flex items-center gap-2 font-bold">
+                  <Settings2 className="w-4 h-4 text-white" />
+                  <span>{isEs ? "Opciones Avanzadas" : "Advanced Options"}</span>
                 </div>
+                {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+              </button>
 
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{isEs ? "Opacidad" : "Opacity"}</label>
-                    <span className="text-xs font-bold text-amber-300">{opacity}%</span>
-                  </div>
-                  <input 
-                    type="range" min={10} max={100} step={5} value={opacity} onChange={e => setOpacity(Number(e.target.value))}
-                    className="w-full accent-amber-400 cursor-pointer"
-                  />
-                </div>
-              </div>
+              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
+              <AnimatePresence>
+                {showAdvanced && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-4 pt-1 border-t border-white/5 font-mono overflow-hidden"
+                  >
+                    {/* A. MATRIZ 3x3 DE POSICIÓN */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[11px] text-zinc-400 uppercase tracking-wider">{isEs ? "Posición:" : "Position:"}</label>
+                        <span className="text-[10px] text-zinc-300 font-bold">{position.replace('-', ' ').toUpperCase()}</span>
+                      </div>
 
-              {/* SELECCIÓN DE PÁGINAS OBJETIVO */}
-              <div className="mb-5">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">{isEs ? "Páginas a estampar:" : "Pages to stamp:"}</label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2.5 text-xs font-bold text-slate-300 cursor-pointer">
-                    <input 
-                      type="radio" name="scope" checked={pageScope === 'all'} onChange={() => setPageScope('all')}
-                      className="accent-amber-400"
-                    />
-                    <span>{isEs ? "Todo el documento (Todas las páginas)" : "All pages"}</span>
-                  </label>
-                  <label className="flex items-center gap-2.5 text-xs font-bold text-slate-300 cursor-pointer">
-                    <input 
-                      type="radio" name="scope" checked={pageScope === 'custom'} onChange={() => setPageScope('custom')}
-                      className="accent-amber-400"
-                    />
-                    <span>{isEs ? "Páginas específicas (Ej: 1, 3-5, 8)" : "Specific pages (e.g. 1, 3-5, 8)"}</span>
-                  </label>
-                </div>
+                      <div className="grid grid-cols-3 gap-2 p-2 bg-zinc-950 border border-white/10 rounded-xl shadow-inner">
+                        {(['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'] as Position9[]).map((pos) => {
+                          const isSelected = position === pos;
+                          return (
+                            <button
+                              key={pos}
+                              type="button"
+                              onClick={() => setPosition(pos)}
+                              className={`h-10 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${isSelected ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 hover:border-white/30'}`}
+                            >
+                              <span className={`w-2.5 h-2.5 rounded-full transition-transform ${isSelected ? 'bg-red-600 scale-110' : 'bg-zinc-600'}`} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                {pageScope === 'custom' && (
-                  <input 
-                    type="text" value={customPageRange} onChange={e => setCustomPageRange(e.target.value)}
-                    placeholder="1, 3-5, 8"
-                    className="w-full mt-2.5 p-3 bg-slate-900 border border-amber-500/30 rounded-xl text-xs font-bold text-white outline-none focus:border-amber-400"
-                  />
+                    {/* B. ROTACIÓN Y OPACIDAD */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-[10px] text-zinc-400 uppercase tracking-wider">{isEs ? "Ángulo" : "Angle"}</label>
+                          <span className="text-xs font-bold text-white">{rotation}°</span>
+                        </div>
+                        <input 
+                          type="range" min={-90} max={90} step={15} value={rotation} onChange={e => setRotation(Number(e.target.value))}
+                          className="w-full accent-white cursor-pointer"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-[10px] text-zinc-400 uppercase tracking-wider">{isEs ? "Opacidad" : "Opacity"}</label>
+                          <span className="text-xs font-bold text-white">{opacity}%</span>
+                        </div>
+                        <input 
+                          type="range" min={10} max={100} step={5} value={opacity} onChange={e => setOpacity(Number(e.target.value))}
+                          className="w-full accent-white cursor-pointer"
+                        />
+                      </div>
+                    </div>
+
+                    {/* C. TAMAÑO Y COLOR DE TEXTO */}
+                    {wmType === 'text' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Tamaño Letra:" : "Font Size:"}</label>
+                          <input 
+                            type="number" min={12} max={120} value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 text-center"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Color Texto:" : "Text Color:"}</label>
+                          <select 
+                            value={fontColor} onChange={e => setFontColor(e.target.value)}
+                            className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs text-white outline-none cursor-pointer focus:border-white/30"
+                          >
+                            <option value="red">{isEs ? "Rojo" : "Red"}</option>
+                            <option value="dark">{isEs ? "Negro / Oscuro" : "Dark / Black"}</option>
+                            <option value="blue">{isEs ? "Azul" : "Blue"}</option>
+                            <option value="emerald">{isEs ? "Verde Esmeralda" : "Emerald"}</option>
+                            <option value="white">{isEs ? "Blanco" : "White"}</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* D. SELECCIÓN DE PÁGINAS OBJETIVO */}
+                    <div>
+                      <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">{isEs ? "Páginas a estampar:" : "Pages to stamp:"}</label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                          <input 
+                            type="radio" name="scope" checked={pageScope === 'all'} onChange={() => setPageScope('all')}
+                            className="accent-white"
+                          />
+                          <span>{isEs ? "Todo el documento (Todas)" : "All pages"}</span>
+                        </label>
+                        <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                          <input 
+                            type="radio" name="scope" checked={pageScope === 'custom'} onChange={() => setPageScope('custom')}
+                            className="accent-white"
+                          />
+                          <span>{isEs ? "Páginas específicas (Ej: 1, 3-5, 8)" : "Specific pages (e.g. 1, 3-5, 8)"}</span>
+                        </label>
+                      </div>
+
+                      {pageScope === 'custom' && (
+                        <input 
+                          type="text" value={customPageRange} onChange={e => setCustomPageRange(e.target.value)}
+                          placeholder="1, 3-5, 8"
+                          className="w-full mt-2.5 p-2.5 bg-zinc-900 border border-white/20 rounded-xl text-xs font-bold text-white outline-none focus:border-white/50"
+                        />
+                      )}
+                    </div>
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN */}
-            <div className="pt-4 border-t border-white/10">
+            <div className="pt-4 border-t border-white/10 font-sans">
               <button 
                 onClick={executeWatermark} 
                 disabled={isProcessing} 
-                className="w-full flex items-center justify-center gap-2.5 bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 py-4.5 rounded-2xl font-black text-base transition-all shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:shadow-[0_0_45px_rgba(245,158,11,0.7)] hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5 text-slate-950" />}
+                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
                 <span>{isProcessing ? progressMsg : (isEs ? 'Poner Sello de Agua →' : 'Add Watermark →')}</span>
               </button>
             </div>
 
           </div>
-
-        </div>
+        </motion.div>
       )}
     </div>
   );

@@ -88,8 +88,21 @@ const translations = {
   }
 };
 
-// 2. Creamos el Contexto
-const LanguageContext = createContext<any>(null);
+interface LanguageContextType {
+  lang: Language;
+  t: typeof translations.es;
+  toggleLanguage: () => void;
+  setLang: (lang: Language) => void;
+}
+
+const defaultContextValue: LanguageContextType = {
+  lang: 'es',
+  t: translations.es,
+  toggleLanguage: () => {},
+  setLang: () => {}
+};
+
+const LanguageContext = createContext<LanguageContextType>(defaultContextValue);
 
 // 3. Proveedor del Contexto (Envuelve la app)
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -102,7 +115,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ lang, t, toggleLanguage }}>
+    <LanguageContext.Provider value={{ lang, t, toggleLanguage, setLang }}>
       {children}
     </LanguageContext.Provider>
   );

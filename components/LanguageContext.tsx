@@ -1,17 +1,21 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 
-const ThemeContext = createContext<any>({ theme: 'light', setTheme: () => {} });
+interface ThemeContextType {
+  theme: string;
+  setTheme: (theme: string) => void;
+}
+
+const ThemeContext = createContext<ThemeContextType>({ theme: 'light', setTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState('light');
-
-  useEffect(() => {
-    // Al cargar, revisamos qué tema inyectó el servidor
-    const isDark = document.documentElement.classList.contains('dark');
-    setThemeState(isDark ? 'dark' : 'light');
-  }, []);
+  const [theme, setThemeState] = useState(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    }
+    return 'light';
+  });
 
   const setTheme = (newTheme: string) => {
     setThemeState(newTheme);

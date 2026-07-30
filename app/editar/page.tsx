@@ -1,15 +1,14 @@
 'use client';
 
 import { useFileStore } from '../../store/useFileStore';
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
-import { animate } from 'framer-motion';
 import { 
-  ArrowLeft, ArrowRight, ShieldCheck, Edit3, Type, PenTool, Hash, ShieldAlert, Lock, 
-  FileText, UploadCloud, FilePlus, X, Zap, HardDrive, Clock, Search, Star, Eye, 
+  ArrowRight, ShieldCheck, Edit3, Type, PenTool, Hash, ShieldAlert, 
+  FileText, UploadCloud, FilePlus, X, HardDrive, Clock, Search, Star, Eye, 
   Download, Trash2, Bot, CheckCircle2, FolderOpen, Sparkles 
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,31 +19,17 @@ function EditarContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
-  const [mounted, setMounted] = useState(false);
 
   const globalFile = useFileStore((state) => state.globalFile);
   const setGlobalFile = useFileStore((state) => state.setGlobalFile);
 
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (globalFile) {
-      const url = URL.createObjectURL(globalFile);
-      setPdfUrl(url);
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    } else {
-      setPdfUrl(null);
-    }
+  const pdfUrl = useMemo(() => {
+    return globalFile ? URL.createObjectURL(globalFile) : null;
   }, [globalFile]);
 
   const procesarArchivo = (archivoSeleccionado: File) => {
@@ -186,8 +171,6 @@ function EditarContent() {
       iconBg: 'bg-zinc-900 border-white/10 text-white'
     }
   ];
-
-  if (!mounted) return null;
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
@@ -509,7 +492,7 @@ function AnimatedCounter({ from = 0, to, decimals = 0, suffix = "" }: { from?: n
       const controls = animate(from, to, {
         duration: 1.5,
         ease: "easeOut",
-        onUpdate(value) { node.textContent = value.toFixed(decimals) + suffix; },
+        onUpdate(value: number) { node.textContent = value.toFixed(decimals) + suffix; },
       });
       return () => controls.stop();
     }
@@ -517,11 +500,11 @@ function AnimatedCounter({ from = 0, to, decimals = 0, suffix = "" }: { from?: n
   return <span ref={nodeRef}>{from.toFixed(decimals)}{suffix}</span>;
 }
 
-function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip }: any) {
+function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = '', tooltip, color }: { icon: React.ElementType; title: string; value: number; decimals?: number; suffix?: string; tooltip?: string; color?: string }) {
   return (
     <div className="relative group/kpi">
       <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-full transition-all cursor-help font-mono">
-        <Icon className="w-3.5 h-3.5 text-white" />
+        <Icon className={`w-3.5 h-3.5 ${color || 'text-white'}`} />
         <span className="text-xs font-bold text-white">
           <AnimatedCounter to={value} decimals={decimals} suffix={suffix} />
         </span>
@@ -537,7 +520,7 @@ function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip }: any) {
   );
 }
 
-function TableRow({ name, size, action, status, icon: Icon }: any) {
+function TableRow({ name, size, action, status, icon: Icon }: { name: string; size: string; action: string; status: string; icon: React.ElementType }) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 

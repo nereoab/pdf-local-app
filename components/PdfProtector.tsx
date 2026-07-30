@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import { encryptPDF } from '@pdfsmaller/pdf-encrypt';
 import { 
-  ShieldCheck, Lock, Loader2, FileText, X, Eye, EyeOff, 
+  ArrowLeft, ShieldCheck, Lock, Loader2, FileText, X, Eye, EyeOff, 
   Settings, ArrowRight, UploadCloud, AlertCircle, ZoomIn, ZoomOut, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -192,7 +193,7 @@ export default function PdfProtector() {
 
   // DUAL WORKSPACE: LEFT = Document Viewer | RIGHT = Security Options Form
   return (
-    <div className="w-full font-sans">
+    <div className="w-full max-w-7xl mx-auto font-sans">
       <input 
         type="file" 
         accept=".pdf" 
@@ -201,6 +202,47 @@ export default function PdfProtector() {
         onChange={handleFileChange} 
         onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
       />
+
+      {/* CONTENEDOR SUPERIOR DE TÍTULO Y HERRAMIENTA */}
+      <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <Link
+            href="/#herramientas"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{isEs ? 'Volver' : 'Back'}</span>
+          </Link>
+
+          <div className="hidden sm:block h-5 w-px bg-white/10" />
+
+          <div>
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+              004 / PROTECCIÓN Y CIFRADO DE ARCHIVOS PDF
+            </span>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+              <Lock className="w-6 h-6 text-white flex-shrink-0" />
+              <span>{isEs ? 'PROTEGER Y CIFRAR DOCUMENTOS PDF CON CONTRASEÑA' : 'PROTECT AND ENCRYPT PDF DOCUMENTS WITH PASSWORD'}</span>
+            </h1>
+          </div>
+        </div>
+
+        {file && (
+          <div className="flex items-center gap-3 font-mono">
+            <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs text-white">
+              <FileText className="w-4 h-4 text-zinc-400" />
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
+            </div>
+            <button
+              onClick={removeFile}
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
+              title={isEs ? 'Quitar archivo' : 'Remove file'}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
@@ -285,8 +327,23 @@ export default function PdfProtector() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: SECURITY OPTIONS FORM (7 Cols) (Matching Screenshot 1 & 2) */}
+        {/* RIGHT COLUMN: SECURITY OPTIONS FORM (7 Cols) */}
         <div className="lg:col-span-7 flex flex-col gap-5">
+
+          {/* CABECERA CON TÍTULO PANEL DE CONTROL */}
+          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex items-center justify-between shadow-2xl font-sans">
+            <div>
+              <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
+                002 / CONFIGURACIÓN
+              </span>
+              <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
+                PANEL DE CONTROL
+              </h2>
+            </div>
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+              <Lock className="w-5 h-5 text-white" />
+            </div>
+          </div>
           
           {/* SECCIÓN 1: Establecer contraseña para abrir el documento */}
           <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-7 flex flex-col gap-4 shadow-2xl">

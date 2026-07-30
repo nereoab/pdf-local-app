@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useRef } from 'react';
 import { PDFDocument, rgb } from 'pdf-lib';
 import { 
-  EyeOff, FileText, X, Loader2, ShieldCheck, UploadCloud, 
+  ArrowLeft, EyeOff, FileText, X, Loader2, ShieldCheck, UploadCloud, 
   Hand, Square, Eraser, Search, CreditCard, Phone, Mail, 
-  Type, ArrowRight, ZoomIn, ZoomOut, AlertTriangle, Sparkles, Check
+  Type, ArrowRight, ZoomIn, ZoomOut, AlertTriangle, Sparkles, Check, SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFileStore } from '../store/useFileStore';
@@ -63,6 +64,14 @@ export default function PdfRedacter() {
       heightPercent: 4.5
     }
   ]);
+
+  const formatFileSize = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 KB';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   const cargarPdf = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -262,66 +271,8 @@ export default function PdfRedacter() {
     }
   };
 
-  // VIEW 1: Dropzone Initial Upload View
-  if (!file) {
-    return (
-      <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-8 font-sans">
-        <input 
-          type="file" 
-          accept=".pdf" 
-          className="hidden" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
-          onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-        />
-
-        <div className="text-center flex flex-col items-center gap-3">
-          <div className="bg-zinc-900 p-4 rounded-2xl border border-white/10 shadow-2xl">
-            <EyeOff className="w-10 h-10 text-white" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            {isEs ? 'Censurar Palabras en Todo el PDF' : 'Redact Words Across PDF'}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm max-w-md font-mono">
-            {isEs ? 'Escribe una palabra o selecciona una categoría para cubrirla automáticamente con rectángulos negros en todas las páginas del documento.' : 'Type a word or category to cover it automatically with black patches across all document pages.'}
-          </p>
-
-          <button 
-            onClick={loadSampleDocument} 
-            className="inline-flex items-center gap-2 px-4 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 text-xs text-zinc-300 rounded-full font-mono transition-all cursor-pointer mt-1"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
-            <span>{isEs ? '⚡ Probar con documento de muestra (0002.pdf)' : '⚡ Try with sample document (0002.pdf)'}</span>
-          </button>
-        </div>
-
-        <div 
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-[#09090b] border-2 border-dashed border-white/10 hover:border-white/30 rounded-2xl p-10 flex flex-col items-center justify-center gap-5 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[300px]"
-        >
-          <div className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors">
-            <UploadCloud className="w-10 h-10 text-white" />
-          </div>
-          <div className="text-center font-sans">
-            <h3 className="text-lg font-bold text-white tracking-tight">{isEs ? 'Arrastra tu PDF aquí para censurar' : 'Drop your PDF here to redact'}</h3>
-            <p className="text-zinc-400 text-xs font-mono mt-1">{isEs ? 'O haz clic para explorar tus archivos' : 'Or click to browse your files'}</p>
-          </div>
-          <button className="bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full text-xs font-semibold shadow-md transition-all">
-            {isEs ? 'Subir Archivo PDF' : 'Upload PDF File'}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 rounded-full text-zinc-300 text-xs font-mono">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>{isEs ? 'Procesamiento 100% Local • Tus datos privados no tocan servidores' : '100% Local Processing • Private data never leaves your device'}</span>
-        </div>
-      </div>
-    );
-  }
-
-  // VIEW 2: Full Document Scroll Workspace with Page Thumbnails
   return (
-    <div className="w-full flex flex-col gap-4 font-sans">
+    <div className="w-full max-w-7xl mx-auto flex flex-col gap-4 font-sans">
       <input 
         type="file" 
         accept=".pdf" 
@@ -331,371 +282,433 @@ export default function PdfRedacter() {
         onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
-        {/* LEFT SIDEBAR: Page Thumbnails Navigator (2 Cols) */}
-        <div className="hidden lg:flex lg:col-span-2 flex-col gap-3 font-mono">
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-3 flex flex-col gap-2 shadow-2xl">
-            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-1 px-1">
-              {isEs ? 'Páginas' : 'Pages'} ({totalPages})
+      {/* CONTENEDOR SUPERIOR DE TÍTULO Y HERRAMIENTA */}
+      <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-2 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <Link
+            href="/#herramientas"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{isEs ? 'Volver' : 'Back'}</span>
+          </Link>
+
+          <div className="hidden sm:block h-5 w-px bg-white/10" />
+
+          <div>
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+              004 / CENSURA Y REDACCIÓN PERMANENTE DE ARCHIVOS PDF
             </span>
-            
-            <div className="flex flex-col gap-3 max-h-[640px] overflow-y-auto pr-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                const pageRedactions = redactions.filter(r => r.page === pageNum);
-
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => scrollToPage(pageNum)}
-                    className={`relative p-2 rounded-xl border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                      activePage === pageNum
-                        ? 'bg-zinc-900 border-white ring-1 ring-white/30 shadow-lg'
-                        : 'bg-zinc-900/50 border-white/10 hover:border-white/30'
-                    }`}
-                  >
-                    {/* Page Thumbnail Simulation */}
-                    <div className="w-20 h-26 bg-white rounded border border-gray-300 flex flex-col justify-between p-2 text-[8px] text-gray-700 font-sans shadow-inner relative overflow-hidden">
-                      <div className="font-bold text-gray-900 border-b pb-0.5">Pág {pageNum}</div>
-                      
-                      {/* Blackout patches indicators on thumbnail */}
-                      {pageRedactions.length > 0 && (
-                        <div className="w-full h-3 bg-black rounded my-1 flex items-center justify-center text-[7px] text-white font-mono">
-                          ██████
-                        </div>
-                      )}
-
-                      <div className="text-[7px] text-gray-400 font-mono">PDFBLACK</div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-zinc-300">
-                        {pageNum === 1 ? 'i' : pageNum === 2 ? 'ii' : pageNum === 3 ? 'iii' : pageNum === 4 ? 'iv' : pageNum}
-                      </span>
-                      {pageRedactions.length > 0 && (
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title={`${pageRedactions.length} censuras`} />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+              <EyeOff className="w-6 h-6 text-white flex-shrink-0" />
+              <span>{isEs ? 'CENSURAR Y OCULTAR INFORMACIÓN SENSIBLE EN PDF' : 'REDACT AND HIDE SENSITIVE INFORMATION IN PDF'}</span>
+            </h1>
           </div>
         </div>
 
-        {/* CENTER VIEWPORT: Full Document Scroll Stack (6 Cols) */}
-        <div className="lg:col-span-6 flex flex-col gap-4">
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col relative h-[680px] shadow-2xl">
-            
-            {/* Top Toolbar */}
-            <div className="bg-zinc-900 border-b border-white/10 p-3 flex items-center justify-between font-mono">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setActiveTool('pan')}
-                  className={`p-2 rounded-lg border transition-all cursor-pointer ${
-                    activeTool === 'pan' ? 'bg-white text-black border-white' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                  }`}
-                  title={isEs ? 'Herramienta Desplazar' : 'Pan tool'}
-                >
-                  <Hand className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => setActiveTool('redact')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                    activeTool === 'redact' ? 'bg-red-600 text-white border-red-500 shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                  }`}
-                  title={isEs ? 'Herramienta de Censura' : 'Redact tool'}
-                >
-                  <Square className="w-3.5 h-3.5 fill-current" />
-                  <span>{isEs ? 'Redact / Censurar' : 'Redact'}</span>
-                </button>
-
-                <button
-                  onClick={clearAllRedactions}
-                  className="p-2 bg-zinc-900 border border-white/10 text-zinc-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
-                  title={isEs ? 'Borrar todas las censuras' : 'Clear all redactions'}
-                >
-                  <Eraser className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Active Redaction Count Badge */}
-              <div className="flex items-center gap-3">
-                {redactions.length > 0 && (
-                  <span className="bg-red-600 text-white font-bold text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-white" />
-                    {redactions.length} {isEs ? 'Censuras Activas' : 'Active Redactions'}
-                  </span>
-                )}
-
-                <button 
-                  onClick={resetRedacter}
-                  className="text-xs text-zinc-400 hover:text-white underline font-mono"
-                >
-                  {isEs ? 'Cambiar PDF' : 'Change PDF'}
-                </button>
-              </div>
+        {file && (
+          <div className="flex items-center gap-3 font-mono">
+            <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs text-white">
+              <FileText className="w-4 h-4 text-zinc-400" />
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
             </div>
-
-            {/* FULL DOCUMENT CONTINUOUS SCROLL VIEWPORT */}
-            <div 
-              ref={scrollContainerRef}
-              className={`flex-1 bg-[#121215] relative overflow-y-auto p-4 sm:p-6 flex flex-col items-center gap-6 ${activeTool === 'redact' ? 'cursor-crosshair' : 'cursor-default'}`}
+            <button
+              onClick={resetRedacter}
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
+              title={isEs ? 'Quitar archivo' : 'Remove file'}
             >
-              {/* STACK OF ALL PAGES */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                const pageBoxes = redactions.filter(r => r.page === pageNum);
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
 
-                return (
-                  <div
-                    key={pageNum}
-                    id={`page-card-${pageNum}`}
-                    onClick={(e) => handlePageClick(pageNum, e)}
-                    className="w-full bg-white rounded shadow-2xl text-black p-6 sm:p-8 min-h-[580px] relative font-serif text-xs leading-relaxed select-none border border-gray-200"
+      {!file ? (
+        /* DROPZONE ESTÁNDAR PDFBLACK CUANDO NO HAY ARCHIVO CARGADO */
+        <div 
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full bg-[#09090b] hover:bg-zinc-900/60 border border-white/10 hover:border-white/30 rounded-2xl p-8 lg:p-14 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[480px] relative overflow-hidden my-4"
+        >
+          <div className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors">
+            <UploadCloud className="w-12 h-12 text-white" />
+          </div>
+
+          <div className="text-center flex flex-col items-center gap-2 font-sans">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              {isEs ? 'Arrastra tu PDF aquí para censurar información sensible' : 'Drop your PDF here to redact sensitive info'}
+            </h2>
+            <p className="text-zinc-400 text-xs sm:text-sm font-mono">
+              {isEs ? 'O haz clic para explorar tus archivos localmente' : 'Or click to browse your local files'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all shadow-md cursor-pointer">
+              <UploadCloud className="w-4 h-4 text-black" /> {isEs ? 'Subir Archivo PDF' : 'Upload PDF File'}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO REGISTRATION • LOCAL PROCESSING'}</span>
+          </div>
+        </div>
+      ) : (
+        /* WORKSPACE EN 2 COLUMNAS (6 COLUMNAS IZQ / 6 COLUMNAS DER) MATCHING IMAGE 1 */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
+          
+          {/* LADO IZQUIERDO: VISOR Y HERRAMIENTAS DE CENSURA (col-span-6) */}
+          <div className="lg:col-span-6 flex flex-col">
+            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative font-mono h-[540px]">
+              
+              {/* BARRA SUPERIOR DE ARCHIVO */}
+              <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0">
+                    <FileText className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-white font-bold text-xs truncate w-32 sm:w-48">{file.name}</span>
+                    <span className="text-zinc-400 text-[10px]">{formatFileSize(file.size)}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={resetRedacter} 
+                  disabled={isProcessing}
+                  className="flex-shrink-0 p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-white/10 rounded-xl transition-all cursor-pointer" 
+                  title={isEs ? "Quitar archivo" : "Remove file"}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* TOOLBAR SECUNDARIA DE HERRAMIENTAS */}
+              <div className="bg-zinc-900/90 border-b border-white/10 px-4 py-2 flex items-center justify-between font-mono text-xs z-10">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setActiveTool('pan')}
+                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                      activeTool === 'pan' ? 'bg-white text-black border-white' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                    }`}
+                    title={isEs ? 'Herramienta Desplazar' : 'Pan tool'}
                   >
-                    {/* Page Header */}
-                    <div className="flex justify-between items-center border-b pb-2 mb-4 font-sans text-gray-400 text-[10px] font-mono">
-                      <span>DOCUMENTO {file.name}</span>
-                      <span className="bg-gray-100 text-gray-800 font-bold px-2 py-0.5 rounded">PÁGINA {pageNum} DE {totalPages}</span>
-                    </div>
+                    <Hand className="w-3.5 h-3.5" />
+                  </button>
 
-                    <div className="absolute top-8 left-8 text-2xl font-bold text-black font-sans">{pageNum}</div>
+                  <button
+                    onClick={() => setActiveTool('redact')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                      activeTool === 'redact' ? 'bg-red-600 text-white border-red-500 shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                    }`}
+                    title={isEs ? 'Herramienta de Censura' : 'Redact tool'}
+                  >
+                    <Square className="w-3.5 h-3.5 fill-current" />
+                    <span>{isEs ? 'Redact / Censurar' : 'Redact'}</span>
+                  </button>
 
-                    {/* Page Content Variations based on Page Number */}
-                    {pageNum === 1 && (
-                      <div className="mt-8 space-y-4">
-                        <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                          1. GESTIÓN DE LA INTEGRACIÓN DEL PROYECTO
-                        </h2>
-                        <p className="text-xs text-gray-800 leading-relaxed">
-                          La Gestión de la Integración del Proyecto incluye los procesos y actividades para identificar, definir, combinar, unificar y coordinar los diversos procesos y actividades de dirección de proyectos dentro de los Grupos de Procesos.
-                        </p>
-                        <div className="bg-gray-50 border-l-2 border-gray-400 p-3 text-xs text-gray-900 space-y-1 font-sans">
-                          <p>◆ Asignación de recursos clave para el proyecto.</p>
-                          <p>◆ Equilibrio de demandas competitivas entre interesados.</p>
-                          <p>◆ Examen de enfoques y metodologías alternativas.</p>
-                        </div>
+                  <button
+                    onClick={clearAllRedactions}
+                    className="p-1.5 bg-zinc-900 border border-white/10 text-zinc-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                    title={isEs ? 'Borrar todas las censuras' : 'Clear all redactions'}
+                  >
+                    <Eraser className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Active Redaction Count Badge */}
+                <div className="flex items-center gap-3">
+                  {redactions.length > 0 && (
+                    <span className="bg-red-600 text-white font-bold text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                      {redactions.length} {isEs ? 'Censuras' : 'Redactions'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* FULL DOCUMENT CONTINUOUS SCROLL VIEWPORT */}
+              <div 
+                ref={scrollContainerRef}
+                className={`flex-1 bg-[#121215] relative overflow-y-auto p-4 flex flex-col items-center gap-6 ${activeTool === 'redact' ? 'cursor-crosshair' : 'cursor-default'}`}
+              >
+                {/* STACK OF ALL PAGES */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                  const pageBoxes = redactions.filter(r => r.page === pageNum);
+
+                  return (
+                    <div
+                      key={pageNum}
+                      id={`page-card-${pageNum}`}
+                      onClick={(e) => handlePageClick(pageNum, e)}
+                      className="w-full bg-white rounded shadow-2xl text-black p-5 sm:p-6 min-h-[480px] relative font-serif text-xs leading-relaxed select-none border border-gray-200"
+                    >
+                      {/* Page Header */}
+                      <div className="flex justify-between items-center border-b pb-2 mb-4 font-sans text-gray-400 text-[10px] font-mono">
+                        <span>DOCUMENTO {file.name}</span>
+                        <span className="bg-gray-100 text-gray-800 font-bold px-2 py-0.5 rounded">PÁGINA {pageNum} DE {totalPages}</span>
                       </div>
-                    )}
 
-                    {pageNum === 2 && (
-                      <div className="mt-8 space-y-4">
-                        <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                          2. EL ENTORNO EN EL QUE OPERAN LOS PROYECTOS
-                        </h2>
-                        <p className="text-xs text-gray-800 leading-relaxed">
-                          2.1 DESCRIPCIÓN GENERAL. Los proyectos existen y operan en entornos que pueden influir en ellos. Estas influencias pueden tener un impacto favorable o desfavorable en el proyecto.
-                        </p>
-                        <div className="bg-gray-50 border p-4 rounded text-center font-sans space-y-2">
-                          <div className="font-bold text-gray-900 text-xs">Estructura Organizacional & Factores Ambientales (EEFs)</div>
-                          <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-600">
-                            <div className="bg-white p-2 border rounded">Factores Ambientales (EEFs)</div>
-                            <div className="bg-white p-2 border rounded">Activos de Procesos (OPAs)</div>
+                      <div className="absolute top-8 left-8 text-2xl font-bold text-black font-sans">{pageNum}</div>
+
+                      {/* Page Content Variations based on Page Number */}
+                      {pageNum === 1 && (
+                        <div className="mt-8 space-y-4">
+                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
+                            1. GESTIÓN DE LA INTEGRACIÓN DEL PROYECTO
+                          </h2>
+                          <p className="text-xs text-gray-800 leading-relaxed">
+                            La Gestión de la Integración del Proyecto incluye los procesos y actividades para identificar, definir, combinar, unificar y coordinar los diversos procesos y actividades de dirección de proyectos dentro de los Grupos de Procesos.
+                          </p>
+                          <div className="bg-gray-50 border-l-2 border-gray-400 p-3 text-xs text-gray-900 space-y-1 font-sans">
+                            <p>◆ Asignación de recursos clave para el proyecto.</p>
+                            <p>◆ Equilibrio de demandas competitivas entre interesados.</p>
+                            <p>◆ Examen de enfoques y metodologías alternativas.</p>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {pageNum === 3 && (
-                      <div className="mt-8 space-y-4">
-                        <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                          3. EL ROL DEL DIRECTOR DEL PROYECTO
-                        </h2>
-                        <p className="text-xs text-gray-800 leading-relaxed">
-                          El director del proyecto juega un rol crítico en el liderazgo de un equipo de proyecto para alcanzar los objetivos definidos. Este rol es claramente visible a lo largo del proceso.
-                        </p>
-                        <div className="bg-gray-50 border-l-2 border-gray-400 p-3 text-xs text-gray-900 space-y-1 font-sans">
-                          <p>◆ Competencias de Gestión Estratégica y de Negocio.</p>
-                          <p>◆ Habilidades de Liderazgo y Adaptación.</p>
+                      {pageNum === 2 && (
+                        <div className="mt-8 space-y-4">
+                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
+                            2. EL ENTORNO EN EL QUE OPERAN LOS PROYECTOS
+                          </h2>
+                          <p className="text-xs text-gray-800 leading-relaxed">
+                            2.1 DESCRIPCIÓN GENERAL. Los proyectos existen y operan en entornos que pueden influir en ellos. Estas influencias pueden tener un impacto favorable o desfavorable en el proyecto.
+                          </p>
+                          <div className="bg-gray-50 border p-4 rounded text-center font-sans space-y-2">
+                            <div className="font-bold text-gray-900 text-xs">Estructura Organizacional & Factores Ambientales (EEFs)</div>
+                            <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-600">
+                              <div className="bg-white p-2 border rounded">Factores Ambientales (EEFs)</div>
+                              <div className="bg-white p-2 border rounded">Activos de Procesos (OPAs)</div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {pageNum === 4 && (
-                      <div className="mt-8 space-y-4">
-                        <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                          4. GESTIÓN DEL ALCANCE DEL PROYECTO
-                        </h2>
-                        <p className="text-xs text-gray-800 leading-relaxed">
-                          Incluye los procesos requeridos para garantizar que el proyecto incluya todo el trabajo requerido y únicamente el trabajo requerido para completar el proyecto con éxito.
-                        </p>
-                        <div className="bg-gray-50 border p-3 rounded text-xs text-gray-900 font-sans">
-                          <p>5.1 Planificar la Gestión del Alcance del Proyecto</p>
-                          <p>5.2 Recopilar Requisitos del Cliente</p>
+                      {pageNum === 3 && (
+                        <div className="mt-8 space-y-4">
+                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
+                            3. EL ROL DEL DIRECTOR DEL PROYECTO
+                          </h2>
+                          <p className="text-xs text-gray-800 leading-relaxed">
+                            El director del proyecto juega un rol crítico en el liderazgo de un equipo de proyecto para alcanzar los objetivos definidos. Este rol es claramente visible a lo largo del proceso.
+                          </p>
+                          <div className="bg-gray-50 border-l-2 border-gray-400 p-3 text-xs text-gray-900 space-y-1 font-sans">
+                            <p>◆ Competencias de Gestión Estratégica y de Negocio.</p>
+                            <p>◆ Habilidades de Liderazgo y Adaptación.</p>
+                          </div>
                         </div>
+                      )}
+
+                      {pageNum === 4 && (
+                        <div className="mt-8 space-y-4">
+                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
+                            4. GESTIÓN DEL ALCANCE DEL PROYECTO
+                          </h2>
+                          <p className="text-xs text-gray-800 leading-relaxed">
+                            Incluye los procesos requeridos para garantizar que el proyecto incluya todo el trabajo requerido y únicamente el trabajo requerido para completar el proyecto con éxito.
+                          </p>
+                          <div className="bg-gray-50 border p-3 rounded text-xs text-gray-900 font-sans">
+                            <p>5.1 Planificar la Gestión del Alcance del Proyecto</p>
+                            <p>5.2 Recopilar Requisitos del Cliente</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Footer indicator */}
+                      <div className="mt-12 text-[10px] text-gray-400 border-t pt-2 font-mono flex justify-between">
+                        <span>{file.name}</span>
+                        <span>Guía PMBOK® — Pág. {pageNum}</span>
                       </div>
-                    )}
 
-                    {/* Footer indicator */}
-                    <div className="mt-12 text-[10px] text-gray-400 border-t pt-2 font-mono flex justify-between">
-                      <span>{file.name}</span>
-                      <span>Guía PMBOK® — Pág. {pageNum}</span>
-                    </div>
-
-                    {/* LIVE BLACKOUT REDACTION PATCHES FOR THIS PAGE */}
-                    {pageBoxes.map((box) => (
-                      <div
-                        key={box.id}
-                        style={{
-                          left: `${box.xPercent}%`,
-                          top: `${box.yPercent}%`,
-                          width: `${box.widthPercent}%`,
-                          height: `${box.heightPercent}%`
-                        }}
-                        className="absolute bg-black rounded border border-red-500/50 shadow-2xl flex items-center justify-between px-2 text-white font-mono text-[10px] group transition-all z-20"
-                        title={isEs ? 'Haz clic para remover este parche de censura' : 'Click to remove patch'}
-                      >
-                        <span className="truncate font-bold opacity-80">{box.word}</span>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); removeRedaction(box.id); }}
-                          className="text-red-400 hover:text-white p-0.5 transition-colors"
+                      {/* LIVE BLACKOUT REDACTION PATCHES FOR THIS PAGE */}
+                      {pageBoxes.map((box) => (
+                        <div
+                          key={box.id}
+                          style={{
+                            left: `${box.xPercent}%`,
+                            top: `${box.yPercent}%`,
+                            width: `${box.widthPercent}%`,
+                            height: `${box.heightPercent}%`
+                          }}
+                          className="absolute bg-black rounded border border-red-500/50 shadow-2xl flex items-center justify-between px-2 text-white font-mono text-[10px] group transition-all z-20"
+                          title={isEs ? 'Haz clic para remover este parche de censura' : 'Click to remove patch'}
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                          <span className="truncate font-bold opacity-80">{box.word}</span>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); removeRedaction(box.id); }}
+                            className="text-red-400 hover:text-white p-0.5 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bottom Viewport Bar */}
+              <div className="bg-zinc-900 border-t border-white/10 px-4 py-2 flex items-center justify-between font-mono text-xs text-zinc-400">
+                <div className="flex items-center gap-2">
+                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] text-white font-bold">{zoomLevel}%</span>
+                  <button onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))} className="hover:text-white"><ZoomOut className="w-3.5 h-3.5"/></button>
+                  <button onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))} className="hover:text-white"><ZoomIn className="w-3.5 h-3.5"/></button>
+                </div>
+                <span className="truncate max-w-[140px] text-[11px] font-bold text-white">{file.name}</span>
+                <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] font-bold text-white">
+                  {totalPages} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+
+            </div>
+          </div>
+
+          {/* LADO DERECHO: PANEL DE CONTROL (col-span-6) COMPACTO Y CON SCROLL INTERNO */}
+          <div className="lg:col-span-6 flex flex-col">
+            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans h-[540px]">
+              
+              {/* CABECERA FIJA DEL PANEL */}
+              <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-3 flex-shrink-0">
+                <div>
+                  <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-0.5">
+                    002 / CONFIGURACIÓN
+                  </span>
+                  <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
+                    PANEL DE CONTROL
+                  </h2>
+                </div>
+                <div className="bg-zinc-900 p-2 rounded-xl border border-white/10 text-white">
+                  <SlidersHorizontal className="w-4 h-4 text-white" />
+                </div>
+              </div>
+
+              {/* CUERPO CON DESPLAZAMIENTO INTERNO */}
+              <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 font-sans">
+                <div className="font-mono">
+                  <span className="text-[11px] text-zinc-400 font-medium">
+                    003 / CENSURA Y BÚSQUEDA DE TEXTO
+                  </span>
+                  <h3 className="text-base font-bold text-white tracking-tight font-sans mt-0.5">
+                    {isEs ? 'Censura Automática en Todo el Documento' : 'Automatic Document Redaction'}
+                  </h3>
+                </div>
+
+                {/* Target Word Input Box */}
+                <div className="relative font-mono">
+                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={isEs ? 'Escribe la palabra a cubrir (ej. gestion)...' : 'Search text'}
+                    className="w-full bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white transition-colors"
+                  />
+                </div>
+
+                {/* Preset Search Categories */}
+                <div>
+                  <span className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
+                    {isEs ? 'Categorías Rápidas de Censura' : 'Quick Redaction Categories'}
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                    <button
+                      onClick={() => setSelectedPreset('text')}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
+                        selectedPreset === 'text' ? 'bg-zinc-800 border-white text-white font-bold shadow' : 'bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <Type className="w-3.5 h-3.5 text-zinc-300" />
+                      <span className="truncate">{isEs ? '[T] Texto Libre' : '[T] Custom Text'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedPreset('card')}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
+                        selectedPreset === 'card' ? 'bg-zinc-800 border-white text-white font-bold shadow' : 'bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <CreditCard className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="truncate">{isEs ? '💳 Tarjeta Crédito' : '💳 Credit Card'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedPreset('phone')}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
+                        selectedPreset === 'phone' ? 'bg-zinc-800 border-white text-white font-bold shadow' : 'bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <Phone className="w-3.5 h-3.5 text-cyan-400" />
+                      <span className="truncate">{isEs ? '📱 Telefónico' : '📱 Phone'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedPreset('email')}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
+                        selectedPreset === 'email' ? 'bg-zinc-800 border-white text-white font-bold shadow' : 'bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="truncate">{isEs ? '✉️ Correo Elec.' : '✉️ Email'}</span>
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                </div>
 
-            {/* Bottom Viewport Bar */}
-            <div className="bg-zinc-900 border-t border-white/10 px-4 py-2.5 flex items-center justify-between font-mono text-xs text-zinc-400">
-              <div className="flex items-center gap-2">
-                <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] text-white font-bold">{zoomLevel}%</span>
-                <button onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))} className="hover:text-white"><ZoomOut className="w-3.5 h-3.5"/></button>
-                <button onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))} className="hover:text-white"><ZoomIn className="w-3.5 h-3.5"/></button>
+                {/* Cancel / Accept Buttons */}
+                <div className="flex justify-end gap-2 font-mono text-xs">
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="px-3 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 text-zinc-300 rounded-xl transition-all cursor-pointer text-[11px]"
+                  >
+                    {isEs ? 'Cancelar' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={handleApplyWordSearch}
+                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5 text-[11px]"
+                  >
+                    <Check className="w-3.5 h-3.5 text-black" />
+                    <span>{isEs ? 'Cubrir en Todo el Documento' : 'Accept & Cover'}</span>
+                  </button>
+                </div>
+
+                {/* Security Warning Box */}
+                <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-200 font-sans leading-snug">
+                    {isEs 
+                      ? 'Recuerda revisar el resultado de tu documento antes de enviar o compartir información privada.' 
+                      : 'Remember to review the result of your document before sending private information.'}
+                  </p>
+                </div>
               </div>
-              <span className="truncate max-w-[140px] text-[11px] font-bold text-white">{file.name}</span>
-              <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] font-bold text-white">
-                {totalPages} {isEs ? 'Páginas cargadas' : 'Pages loaded'}
-              </span>
+
+              {/* BOTÓN DE ACCIÓN FIJO EN LA PARTE INFERIOR */}
+              <div className="pt-3 border-t border-white/10 mt-2 flex-shrink-0">
+                <button
+                  onClick={executeRedact}
+                  disabled={isProcessing}
+                  className="w-full bg-white text-black hover:bg-zinc-200 font-extrabold text-xs py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl group disabled:opacity-40"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>{progressMsg || (isEs ? 'Censurando...' : 'Redacting...')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="w-4 h-4 text-black" />
+                      <span>{isEs ? 'Censurar PDF' : 'Redact PDF'}</span>
+                      <ArrowRight className="w-4 h-4 text-black group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
+              </div>
+
             </div>
           </div>
+
         </div>
-
-        {/* RIGHT SIDEBAR: Control Panel & Target Word Redaction (4 Cols) */}
-        <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-4 h-full font-sans">
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex flex-col justify-between shadow-2xl min-h-[680px]">
-            
-            <div>
-              {/* Header Title */}
-              <h3 className="text-xl font-bold text-white mb-2 tracking-tight">
-                {isEs ? 'Redact PDF / Censurar' : 'Redact PDF'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono mb-4">
-                {isEs ? 'Cubre palabras sensibles en TODAS las hojas del documento.' : 'Cover sensitive words across ALL document pages.'}
-              </p>
-
-              {/* Target Word Input Box */}
-              <div className="relative mb-3 font-mono">
-                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={isEs ? 'Escribe la palabra a cubrir (ej. gestion)...' : 'Search text'}
-                  className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition-colors"
-                />
-              </div>
-
-              {/* Preset Search Categories */}
-              <div className="flex flex-col gap-2 mb-4 font-mono text-xs">
-                <button
-                  onClick={() => setSelectedPreset('text')}
-                  className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
-                    selectedPreset === 'text' ? 'bg-zinc-900 border-white text-white font-bold shadow' : 'bg-zinc-900/50 border-white/10 text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <Type className="w-4 h-4 text-zinc-300" />
-                  <span>{isEs ? '[T] Texto Personalizado' : '[T] Custom Text'}</span>
-                </button>
-
-                <button
-                  onClick={() => setSelectedPreset('card')}
-                  className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
-                    selectedPreset === 'card' ? 'bg-zinc-900 border-white text-white font-bold shadow' : 'bg-zinc-900/50 border-white/10 text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <CreditCard className="w-4 h-4 text-amber-400" />
-                  <span>{isEs ? '💳 Tarjeta de Crédito' : '💳 Credit Card'}</span>
-                </button>
-
-                <button
-                  onClick={() => setSelectedPreset('phone')}
-                  className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
-                    selectedPreset === 'phone' ? 'bg-zinc-900 border-white text-white font-bold shadow' : 'bg-zinc-900/50 border-white/10 text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <Phone className="w-4 h-4 text-cyan-400" />
-                  <span>{isEs ? '📱 Número Telefónico' : '📱 Phone Number'}</span>
-                </button>
-
-                <button
-                  onClick={() => setSelectedPreset('email')}
-                  className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
-                    selectedPreset === 'email' ? 'bg-zinc-900 border-white text-white font-bold shadow' : 'bg-zinc-900/50 border-white/10 text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <Mail className="w-4 h-4 text-emerald-400" />
-                  <span>{isEs ? '✉️ Correo Electrónico' : '✉️ Email'}</span>
-                </button>
-              </div>
-
-              {/* Cancel / Accept Buttons */}
-              <div className="flex justify-end gap-2 mb-5 font-mono text-xs">
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="px-3.5 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 text-zinc-300 rounded-lg transition-all cursor-pointer"
-                >
-                  {isEs ? 'Cancelar' : 'Cancel'}
-                </button>
-                <button
-                  onClick={handleApplyWordSearch}
-                  className="px-4 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg transition-all cursor-pointer shadow-md flex items-center gap-1"
-                >
-                  <Check className="w-3.5 h-3.5 text-black" />
-                  <span>{isEs ? 'Cubrir en Todo el Documento' : 'Accept & Cover'}</span>
-                </button>
-              </div>
-
-              {/* Security Warning Box */}
-              <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3.5 mb-5 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-200 font-sans leading-relaxed">
-                  {isEs 
-                    ? 'Recuerda revisar el resultado de tu documento antes de enviar o compartir información privada.' 
-                    : 'Remember to review the result of your document before sending private information.'}
-                </p>
-              </div>
-            </div>
-
-            {/* Bottom Primary Red Action Button */}
-            <div className="pt-4 border-t border-white/10 mt-4">
-              <button
-                onClick={executeRedact}
-                disabled={isProcessing}
-                className="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold text-sm py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl group disabled:opacity-40"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{progressMsg || (isEs ? 'Censurando...' : 'Redacting...')}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{isEs ? 'Censurar PDF' : 'Redact'}</span>
-                    <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }

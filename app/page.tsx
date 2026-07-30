@@ -1,8 +1,8 @@
 'use client';
 
 import { useFileStore } from '../store/useFileStore';
-import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence, animate, type Variants } from 'framer-motion';
+import { useEffect, useState, useRef, useSyncExternalStore } from 'react';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { 
@@ -95,22 +95,10 @@ const categories = [
   }
 ];
 
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.6 }
-  }
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.4 } }
-};
-
 export default function DashboardPage() {
   const { lang } = useLanguage();
-  const [mounted, setMounted] = useState(false);
+  const emptySubscribe = () => () => {};
+  const isMounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const isEs = lang === 'es';
 
@@ -122,8 +110,6 @@ export default function DashboardPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragCounter, setDragCounter] = useState(0); 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => setMounted(true), []);
 
   const handleDragEnter = (e: React.DragEvent) => { e.preventDefault(); setDragCounter(prev => prev + 1); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setDragCounter(prev => prev - 1); };
@@ -226,7 +212,7 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {mounted && (
+      {isMounted && (
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-start">
           <motion.div animate={{ opacity: [0.03, 0.06, 0.03] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[5%] w-[80vw] h-[50vw] rounded-full bg-cyan-500 blur-[150px]" />
           <motion.div animate={{ opacity: [0.02, 0.05, 0.02] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }} className="absolute top-[15%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-500 blur-[150px]" />
@@ -353,7 +339,7 @@ export default function DashboardPage() {
                   )}
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 h-full">
-                    {categories.map((cat, index) => (
+                    {categories.map((cat) => (
                       <Link key={cat.id} href={cat.path} className="outline-none group">
                         <motion.div 
                           className={`bg-[#09090b] border border-white/10 group-hover:border-white/30 rounded-2xl p-6 transition-all duration-300 h-full min-h-[285px] flex flex-col justify-between relative overflow-hidden group-hover:bg-zinc-900/40`}
@@ -488,8 +474,287 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* SECCIÓN DETALLADA DE GRUPOS DE HERRAMIENTAS: EDITAR, ORGANIZAR, CONVERTIR, OPTIMIZAR */}
+                  <div className="w-full mt-14 pt-12 border-t border-white/10 font-sans">
+                    <div className="text-center mb-10 max-w-3xl mx-auto">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold rounded-full mb-3 font-mono">
+                        <Sparkles className="w-3.5 h-3.5 text-zinc-300" />
+                        {isEs ? "GUÍA TÉCNICA Y DE SEGURIDAD" : "TECHNICAL & SECURITY GUIDE"}
+                      </div>
+                      <h3 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-3">
+                        {isEs ? "¿Qué le sucede a tu archivo PDF en cada grupo de herramientas?" : "What happens to your PDF in each tool group?"}
+                      </h3>
+                      <p className="text-zinc-400 text-xs sm:text-sm font-mono leading-relaxed">
+                        {isEs 
+                          ? "Transparencia absoluta. Conoce en detalle qué ocurre dentro de tu navegador al procesar tus documentos."
+                          : "Absolute transparency. Discover in detail what happens inside your browser when processing documents."}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
+                      
+                      {/* GRUPO 1: EDITAR */}
+                      <div className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
+                                <Edit3 className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <span className="text-xs font-mono text-zinc-500 font-bold block">001 / EDICIÓN DIRECTA</span>
+                                <h4 className="text-xl font-bold text-white tracking-tight">
+                                  {isEs ? 'Grupo EDITAR PDF' : 'EDIT PDF Group'}
+                                </h4>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                              {isEs ? 'Edición Visual' : 'Visual Editing'}
+                            </span>
+                          </div>
+
+                          {/* QUÉ SUCEDE A TU ARCHIVO */}
+                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
+                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
+                              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                              {isEs ? '🔒 Proceso Binario y Seguridad en EDITAR:' : '🔒 Binary Process & Security in EDIT:'}
+                            </strong>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'Al editar un documento, el archivo PDF se descompone en objetos en la memoria RAM aislada de tu navegador. Las modificaciones de texto, marcas de agua, números de folio o firmas trazadas no sobreescriben destructivamente el archivo; se inyectan como capas vectoriales nativas bajo la especificación PDF 1.7.' 
+                                : 'When editing, the PDF decodes into objects inside isolated browser RAM. Text edits, watermarks, page numbers, or drawn signatures embed as clean native vector streams under PDF 1.7 standard.'}
+                            </p>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'En OCR, el reconocimiento de caracteres se ejecuta mediante modelos WebAssembly locales que analizan píxeles sin transmitir ninguna imagen a servidores externos. Tu archivo original permanece 100% intacto en tu equipo.' 
+                                : 'In OCR, character recognition runs via local WebAssembly models analyzing image pixels with zero external API calls. Your original file remains untouched on your drive.'}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2 text-xs text-zinc-300 font-mono mb-6">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Editar Texto:</strong> {isEs ? 'Inserta texto nativo ajustando fuentes y alineación.' : 'Inserts native text adjusting fonts and alignment.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Foliar Páginas:</strong> {isEs ? 'Agrega numeración correlativa automatizada.' : 'Adds automated sequential page numbers.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Marcas de Agua:</strong> {isEs ? 'Aplica sellos o textos de seguridad sobre cada página.' : 'Applies security stamps or text across pages.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Firmar & OCR:</strong> {isEs ? 'Estampa firmas trazadas y convierte imágenes escaneadas en texto.' : 'Stamps drawn signatures and turns scanned images into text.'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Link href="/editar" className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group">
+                          <span>{isEs ? 'Ver herramientas de Editar →' : 'View Edit tools →'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </div>
+
+                      {/* GRUPO 2: ORGANIZAR */}
+                      <div className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
+                                <FolderOpen className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <span className="text-xs font-mono text-zinc-500 font-bold block">002 / ESTRUCTURA</span>
+                                <h4 className="text-xl font-bold text-white tracking-tight">
+                                  {isEs ? 'Grupo ORGANIZAR PDF' : 'ORGANIZE PDF Group'}
+                                </h4>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                              {isEs ? 'Gestor de Páginas' : 'Page Builder'}
+                            </span>
+                          </div>
+
+                          {/* QUÉ SUCEDE A TU ARCHIVO */}
+                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
+                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
+                              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                              {isEs ? '🔒 Proceso Binario y Seguridad en ORGANIZAR:' : '🔒 Binary Process & Security in ORGANIZE:'}
+                            </strong>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'El motor de organización manipula directamente el diccionario jerárquico de páginas (`PageTree`) en la RAM. Al reordenar, rotar, recortar o dividir, el navegador no recodifica las imágenes ni los textos; únicamente reorganiza los punteros lógicos en la tabla de referencias cruzadas.' 
+                                : 'Organize tools modify the document PageTree catalog in RAM. When reordering, rotating, cropping, or splitting, only logical pointers update without re-encoding images or reducing vector quality.'}
+                            </p>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'Al unir múltiples archivos, el sistema fusiona las tablas de recursos compartidas en un nuevo contenedor PDF unificado a máxima velocidad local, garantizando que planos técnicos, imágenes y documentos conserven 100% su nitidez.' 
+                                : 'When merging multiple files, shared resource tables merge into a unified PDF container at max local CPU speed, ensuring blueprints and images retain 100% sharpness.'}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2 text-xs text-zinc-300 font-mono mb-6">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Unir PDF:</strong> {isEs ? 'Combina árboles de páginas de varios PDFs sin pérdida de nitidez.' : 'Merges page trees from multiple PDFs without resolution loss.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Dividir & Eliminar:</strong> {isEs ? 'Corta por rangos exactos o quita páginas descartables.' : 'Splits by exact page ranges or removes unnecessary pages.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Reordenar & Rotar:</strong> {isEs ? 'Arrastra miniaturas e invierte ángulos a 90°/180°.' : 'Drag page thumbnails and adjust angles to 90°/180°.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Recortar Márgenes:</strong> {isEs ? 'Recorta los bordes a dimensiones estandarizadas.' : 'Crops document margins to standard dimensions.'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Link href="/organizar" className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group">
+                          <span>{isEs ? 'Ver herramientas de Organizar →' : 'View Organize tools →'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </div>
+
+                      {/* GRUPO 3: CONVERTIR */}
+                      <div className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
+                                <RefreshCw className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <span className="text-xs font-mono text-zinc-500 font-bold block">003 / CONVERSIÓN</span>
+                                <h4 className="text-xl font-bold text-white tracking-tight">
+                                  {isEs ? 'Grupo CONVERTIR PDF' : 'CONVERT PDF Group'}
+                                </h4>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                              {isEs ? 'Alta Fidelidad' : 'High Precision'}
+                            </span>
+                          </div>
+
+                          {/* QUÉ SUCEDE A TU ARCHIVO */}
+                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
+                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
+                              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                              {isEs ? '🔒 Proceso Binario y Seguridad en CONVERTIR:' : '🔒 Binary Process & Security in CONVERT:'}
+                            </strong>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'El motor cliente de conversión analiza las coordenadas tridimensionales (`x, y, z-index`) de párrafos, tablas de datos e imágenes en el PDF. Reconstruye el documento traduciendo su maquetación a estructuras de archivos XML compatibles con Word (DOCX), Excel (XLSX) o PowerPoint (PPTX) de forma instantánea.' 
+                                : 'The client-side conversion engine parses spatial coordinates (`x, y, z`) of text, table cells, and images from the PDF, recompiling them into OpenXML structures (DOCX, XLSX, PPTX) in real-time.'}
+                            </p>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'No existen servidores intermedios ni APIs de terceros procesando tus estados financieros, contratos o presentaciones comerciales. Todo el análisis sintáctico y empaquetado comprimido se realiza dentro de la memoria privada de tu navegador.' 
+                                : 'No intermediate cloud servers or third-party APIs process your financial sheets or contracts. Parsing and ZIP generation happen inside private browser memory.'}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2 text-xs text-zinc-300 font-mono mb-6">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>PDF ↔ Word:</strong> {isEs ? 'Convierte párrafos y estilos a formato editable DOCX.' : 'Converts paragraphs and formatting into editable DOCX.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>PDF ↔ Excel:</strong> {isEs ? 'Extrae tablas de datos directamente a hojas XLSX.' : 'Extracts data tables directly into XLSX spreadsheets.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>PDF ↔ PowerPoint:</strong> {isEs ? 'Transforma páginas en diapositivas PPTX.' : 'Transforms pages into PPTX slides.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>PDF ↔ JPG / HTML / TXT:</strong> {isEs ? 'Exporta láminas a imágenes HD, código web o texto plano.' : 'Exports pages into HD images, web code, or text.'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Link href="/convertir" className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group">
+                          <span>{isEs ? 'Ver herramientas de Convertir →' : 'View Convert tools →'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </div>
+
+                      {/* GRUPO 4: OPTIMIZAR */}
+                      <div className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
+                                <Zap className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <span className="text-xs font-mono text-zinc-500 font-bold block">004 / OPTIMIZACIÓN</span>
+                                <h4 className="text-xl font-bold text-white tracking-tight">
+                                  {isEs ? 'Grupo OPTIMIZAR PDF' : 'OPTIMIZE PDF Group'}
+                                </h4>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                              {isEs ? 'Seguridad & Peso' : 'Security & Size'}
+                            </span>
+                          </div>
+
+                          {/* QUÉ SUCEDE A TU ARCHIVO */}
+                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
+                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
+                              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                              {isEs ? '🔒 Proceso Binario y Seguridad en OPTIMIZAR:' : '🔒 Binary Process & Security in OPTIMIZE:'}
+                            </strong>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'Optimiza y re-comprime las fuentes de datos primarias. Al comprimir, re-codifica imágenes JPEG pesadas mediante resampling Canvas y elimina metadatos redundantes de la tabla XRef. Al cifrar o desbloquear, ejecuta algoritmos criptográficos nativos **AES-256** (`crypto.subtle`) sin enviar jamás tus contraseñas a la red.' 
+                                : 'Optimizes binary data streams in memory. Compression re-encodes heavy JPEG images via Canvas resampling and purges redundant XRef metadata. Encryption runs native **AES-256** cryptography (`crypto.subtle`) without sending passwords online.'}
+                            </p>
+                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                              {isEs 
+                                ? 'En censura confidencial, la información seleccionada se borra físicamente del código binario del archivo (a diferencia de marcar con recuadros negros editables). En reparación, se reconstruyen cabeceras `%PDF-` y estructuras dañadas.' 
+                                : 'In redaction, confidential text is permanently erased from the document binary code (unlike overlaying editable black boxes). Repair rebuilds corrupt headers and dictionaries.'}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2 text-xs text-zinc-300 font-mono mb-6">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Comprimir PDF:</strong> {isEs ? 'Reduce hasta un 90% el peso manteniendo textos legibles.' : 'Reduces file size up to 90% keeping text clear.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Reparar PDF:</strong> {isEs ? 'Reconstruye tablas XRef y arregla archivos corruptos.' : 'Rebuilds XRef tables and fixes corrupt files.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Proteger & Desbloquear:</strong> {isEs ? 'Cifra con contraseña o remueve contraseñas locales.' : 'Encrypts with password or removes local passwords.'}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                              <span><strong>Censurar & Comparar:</strong> {isEs ? 'Oculta datos confidenciales o compara visualmente PDFs.' : 'Redacts private data or compares PDFs visually.'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Link href="/optimizar" className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group">
+                          <span>{isEs ? 'Ver herramientas de Optimizar →' : 'View Optimize tools →'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </div>
+
+                    </div>
+                  </div>
                 </div>
               )}
+
             </motion.div>
           )}
 
@@ -596,11 +861,11 @@ export default function DashboardPage() {
   );
 }
 
-function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip }: any) {
+function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = '', tooltip, color }: { icon: React.ElementType; title: string; value: number; decimals?: number; suffix?: string; tooltip?: string; color?: string }) {
   return (
     <div className="relative group/kpi">
       <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-full transition-all cursor-help font-mono">
-        <Icon className="w-3.5 h-3.5 text-white" />
+        <Icon className={`w-3.5 h-3.5 ${color || 'text-white'}`} />
         <span className="text-xs font-bold text-white">
           <AnimatedCounter to={value} decimals={decimals} suffix={suffix} />
         </span>
@@ -616,7 +881,7 @@ function KpiPill({ icon: Icon, title, value, decimals, suffix, tooltip }: any) {
   );
 }
 
-function TableRow({ name, size, action, status, icon: Icon }: any) {
+function TableRow({ name, size, action, status, icon: Icon }: { name: string; size: string; action: string; status: string; icon: React.ElementType }) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 

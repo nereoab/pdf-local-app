@@ -2,8 +2,11 @@
 
 import { createContext, useContext, useEffect } from 'react';
 
-// Ya no necesitamos estado (useState) porque siempre será oscuro
-const ThemeContext = createContext<any>({ theme: 'dark' });
+interface ThemeContextType {
+  theme: 'dark';
+}
+
+const ThemeContext = createContext<ThemeContextType>({ theme: 'dark' });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   

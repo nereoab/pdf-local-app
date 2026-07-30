@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Spade, ArrowLeft, Search, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function NotFound() {

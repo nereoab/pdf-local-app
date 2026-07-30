@@ -1,14 +1,14 @@
 'use client';
 
 import { useFileStore } from '../../store/useFileStore';
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useState, useRef, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   ArrowRight, Zap, Sliders, Activity, EyeOff, Lock, Unlock, GitCompare,
-  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, CheckCircle2, Sparkles 
+  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, Sparkles 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,30 +18,16 @@ function OptimizarContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
-  const [mounted, setMounted] = useState(false);
 
   const globalFile = useFileStore((state) => state.globalFile);
   const setGlobalFile = useFileStore((state) => state.setGlobalFile);
 
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (globalFile) {
-      const url = URL.createObjectURL(globalFile);
-      setPdfUrl(url);
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    } else {
-      setPdfUrl(null);
-    }
+  const pdfUrl = useMemo(() => {
+    return globalFile ? URL.createObjectURL(globalFile) : null;
   }, [globalFile]);
 
   const procesarArchivo = (archivoSeleccionado: File) => {
@@ -184,8 +170,6 @@ function OptimizarContent() {
     }
   ];
 
-  if (!mounted) return null;
-
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
 
@@ -278,7 +262,7 @@ function OptimizarContent() {
                             <span className="text-zinc-400 text-[10px]">{formatFileSize(globalFile.size)}</span>
                           </div>
                         </div>
-                        <button onClick={handleRemoveFile} className="flex-shrink-0 p-2 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all" title={isEs ? "Quitar archivo" : "Remove file"}>
+                        <button onClick={handleRemoveFile} className="flex-shrink-0 p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-white/10 rounded-xl transition-all" title={isEs ? "Quitar archivo" : "Remove file"}>
                           <X className="w-4 h-4" />
                         </button>
                       </div>
@@ -427,7 +411,7 @@ export default function OptimizarPage() {
   );
 }
 
-function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = "", tooltip, color }: any) {
+function KpiPill({ icon: Icon, title, value, suffix = "", tooltip, color }: { icon: React.ElementType; title: string; value: number; decimals?: number; suffix?: string; tooltip?: string; color?: string }) {
   return (
     <div title={tooltip} className="flex items-center gap-2 bg-slate-900/90 border border-white/10 hover:border-white/20 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md transition-all cursor-default group">
       <Icon className={`w-3.5 h-3.5 ${color}`} />

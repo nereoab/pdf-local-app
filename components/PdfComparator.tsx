@@ -557,11 +557,22 @@ ${diffItems.map(item => `
             <div className="lg:col-span-4 xl:col-span-4 flex flex-col gap-4 h-full">
               <div className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex flex-col justify-between shadow-2xl min-h-[680px]">
                 
+                {/* CABECERA CON TÍTULO PANEL DE CONTROL */}
+                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
+                  <div>
+                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
+                      002 / CONFIGURACIÓN
+                    </span>
+                    <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
+                      PANEL DE CONTROL
+                    </h2>
+                  </div>
+                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+                    <GitCompare className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+
                 <div>
-                  {/* Header Title */}
-                  <h3 className="text-xl font-bold text-white mb-4 font-sans tracking-tight">
-                    {isEs ? 'Compare PDF' : 'Compare PDF'}
-                  </h3>
 
                   {/* Mode Switcher Tabs */}
                   <div className="grid grid-cols-2 gap-2 bg-zinc-900 p-1 rounded-xl border border-white/10 mb-4 font-mono text-xs">

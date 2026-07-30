@@ -1,15 +1,16 @@
 'use client';
 
 import { useFileStore } from '../../store/useFileStore';
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense, useMemo, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  ArrowRight, RefreshCw, FileText, FileSpreadsheet, Image as ImageIcon, FileCode, Presentation, AlignLeft,
-  UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, CheckCircle2, Sparkles 
+  ArrowRight, RefreshCw, FileText,
+  UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, Sparkles 
 } from 'lucide-react';
+import { WordIcon, ExcelIcon, PowerPointIcon, JpgIcon, HtmlIcon, TextIcon } from '../../components/ProgramIcons';
 import { toast } from 'sonner';
 
 function ConvertirContent() {
@@ -18,31 +19,27 @@ function ConvertirContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
-  const [mounted, setMounted] = useState(false);
+
+  const emptySubscribe = () => () => {};
+  const isMounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   const globalFile = useFileStore((state) => state.globalFile);
   const setGlobalFile = useFileStore((state) => state.setGlobalFile);
 
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const pdfUrl = useMemo(() => {
+    if (!globalFile) return null;
+    return URL.createObjectURL(globalFile);
+  }, [globalFile]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (globalFile) {
-      const url = URL.createObjectURL(globalFile);
-      setPdfUrl(url);
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    } else {
-      setPdfUrl(null);
-    }
-  }, [globalFile]);
 
   const procesarArchivo = (archivoSeleccionado: File) => {
     if (archivoSeleccionado.type !== "application/pdf") {
@@ -92,7 +89,7 @@ function ConvertirContent() {
       titleEs: 'PDF y Word', titleEn: 'PDF & Word', 
       descEs: 'Convierte PDF a Word (.docx) o convierte documentos Word a PDF.', 
       descEn: 'Convert PDF to Word (.docx) or convert Word documents to PDF.', 
-      icon: FileText, path: '/convertir/pdf-word',
+      icon: WordIcon, path: '/convertir/pdf-word',
       borderColor: 'border-white/10',
       shadowColor: 'shadow-lg',
       hoverBorder: 'group-hover/card:border-white/30',
@@ -108,7 +105,7 @@ function ConvertirContent() {
       titleEs: 'PDF y Excel', titleEn: 'PDF & Excel', 
       descEs: 'Extrae tablas a Excel (.xlsx) o convierte hojas de cálculo Excel a PDF.', 
       descEn: 'Extract tables to Excel (.xlsx) or convert Excel spreadsheets to PDF.', 
-      icon: FileSpreadsheet, path: '/convertir/pdf-excel',
+      icon: ExcelIcon, path: '/convertir/pdf-excel',
       borderColor: 'border-white/10',
       shadowColor: 'shadow-lg',
       hoverBorder: 'group-hover/card:border-white/30',
@@ -124,7 +121,7 @@ function ConvertirContent() {
       titleEs: 'PDF y PowerPoint', titleEn: 'PDF & PowerPoint', 
       descEs: 'Convierte PDF a diapositivas PowerPoint (.pptx) o presentaciones PPT a PDF.', 
       descEn: 'Convert PDF into PowerPoint (.pptx) slides or PPT presentations to PDF.', 
-      icon: Presentation, path: '/convertir/pdf-powerpoint',
+      icon: PowerPointIcon, path: '/convertir/pdf-powerpoint',
       borderColor: 'border-white/10',
       shadowColor: 'shadow-lg',
       hoverBorder: 'group-hover/card:border-white/30',
@@ -140,7 +137,7 @@ function ConvertirContent() {
       titleEs: 'PDF e Imágenes JPG', titleEn: 'PDF & JPG Images', 
       descEs: 'Convierte páginas PDF a imágenes JPG o agrupa fotos JPG/PNG en un documento PDF.', 
       descEn: 'Convert PDF pages to JPG images or combine JPG/PNG photos into a PDF.', 
-      icon: ImageIcon, path: '/convertir/pdf-jpg',
+      icon: JpgIcon, path: '/convertir/pdf-jpg',
       borderColor: 'border-white/10',
       shadowColor: 'shadow-lg',
       hoverBorder: 'group-hover/card:border-white/30',
@@ -156,7 +153,7 @@ function ConvertirContent() {
       titleEs: 'PDF y HTML', titleEn: 'PDF & HTML', 
       descEs: 'Convierte archivos PDF a código HTML estructurado o genera PDF a partir de HTML.', 
       descEn: 'Convert PDF files into structured HTML code or generate PDF from HTML.', 
-      icon: FileCode, path: '/convertir/pdf-html',
+      icon: HtmlIcon, path: '/convertir/pdf-html',
       borderColor: 'border-white/10',
       shadowColor: 'shadow-lg',
       hoverBorder: 'group-hover/card:border-white/30',
@@ -172,7 +169,7 @@ function ConvertirContent() {
       titleEs: 'PDF y Texto Plano', titleEn: 'PDF & Plain Text', 
       descEs: 'Extrae todo el texto plano (.txt) de un PDF o convierte archivos de texto a PDF.', 
       descEn: 'Extract plain text (.txt) from a PDF or convert text files into a PDF.', 
-      icon: AlignLeft, path: '/convertir/pdf-texto',
+      icon: TextIcon, path: '/convertir/pdf-texto',
       borderColor: 'border-white/10',
       shadowColor: 'shadow-lg',
       hoverBorder: 'group-hover/card:border-white/30',
@@ -184,7 +181,7 @@ function ConvertirContent() {
     }
   ];
 
-  if (!mounted) return null;
+  if (!isMounted) return null;
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
@@ -320,8 +317,8 @@ function ConvertirContent() {
 
                             <div>
                               <div className="flex items-center justify-between mb-3">
-                                <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
-                                  <tool.icon className="w-5 h-5 text-white" />
+                                <div className="p-0.5 rounded-xl group-hover/card:scale-105 transition-transform">
+                                  <tool.icon className="w-8 h-8 rounded-xl shadow-md" />
                                 </div>
 
                                 <div className="bg-white text-black hover:bg-zinc-200 font-semibold text-xs px-3.5 py-1 rounded-full font-sans flex items-center gap-1.5 transition-all shadow-md">
@@ -427,12 +424,12 @@ export default function ConvertirPage() {
   );
 }
 
-function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = "", tooltip, color }: any) {
+function KpiPill({ icon: Icon, title, value, decimals = 0, suffix = "", tooltip, color }: { icon: React.ElementType; title: string; value: number; decimals?: number; suffix?: string; tooltip: string; color: string }) {
   return (
     <div title={tooltip} className="flex items-center gap-2 bg-slate-900/90 border border-white/10 hover:border-white/20 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-md transition-all cursor-default group">
       <Icon className={`w-3.5 h-3.5 ${color}`} />
       <div className="flex items-baseline gap-1">
-        <span className="text-white font-extrabold text-xs">{value}{suffix}</span>
+        <span className="text-white font-extrabold text-xs">{value.toFixed(decimals)}{suffix}</span>
         <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider">{title}</span>
       </div>
     </div>

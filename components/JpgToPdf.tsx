@@ -76,7 +76,7 @@ export default function JpgToPdf() {
       }
 
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       localUrl = URL.createObjectURL(blob);
       setDownloadUrl(localUrl);
 

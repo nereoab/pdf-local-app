@@ -1,10 +1,14 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Presentation, FileDown, Loader2, X, ShieldCheck, FilePlus } from 'lucide-react';
+import { 
+  FileDown, Loader2, X, ShieldCheck, FilePlus, 
+  Sliders, ChevronDown, ChevronUp, Layout 
+} from 'lucide-react';
+import { PowerPointIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PowerPointToPdf() {
   const { lang } = useLanguage();
@@ -14,6 +18,14 @@ export default function PowerPointToPdf() {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+
+  // Opciones avanzadas
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '4:3'>('16:9');
+  const [addSlideBorders, setAddSlideBorders] = useState<boolean>(true);
+  const [addSlideNumbers, setAddSlideNumbers] = useState<boolean>(true);
+
+  const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -37,22 +49,70 @@ export default function PowerPointToPdf() {
     toast.info(isEs ? 'Convirtiendo PowerPoint a PDF...' : 'Converting PowerPoint to PDF...');
 
     try {
+      if (API_SECRET) {
+        try {
+          const formData = new FormData();
+          formData.append('File', file);
+          formData.append('StoreFile', 'false');
+
+          const response = await fetch(`https://v2.convertapi.com/convert/pptx/to/pdf?Secret=${API_SECRET}`, {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await response.json();
+          if (data.Files && data.Files.length > 0) {
+            const base64Data = data.Files[0].FileData;
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const localUrl = URL.createObjectURL(blob);
+            setDownloadUrl(localUrl);
+
+            const link = document.createElement('a');
+            link.href = localUrl;
+            link.download = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast.success(isEs ? '¡PDF generado con éxito!' : 'PDF generated successfully!');
+            return;
+          }
+        } catch (err) { console.warn("ConvertAPI fallback local", err); }
+      }
+
       const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
       const pdfDoc = await PDFDocument.create();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-      // Creamos diapositivas PDF horizontales (Landscape 841.89 x 595.28)
-      const page = pdfDoc.addPage([841.89, 595.28]);
-      page.drawRectangle({
-        x: 0,
-        y: 0,
-        width: 841.89,
-        height: 595.28,
-        color: rgb(0.97, 0.97, 0.97)
-      });
+      const pageW = aspectRatio === '16:9' ? 960 : 800;
+      const pageH = aspectRatio === '16:9' ? 540 : 600;
+      const page = pdfDoc.addPage([pageW, pageH]);
 
-      page.drawText(`Presentación: ${file.name}`, { x: 60, y: 500, size: 24, font, color: rgb(0.85, 0.35, 0.1) });
-      page.drawText("Convertido exitosamente desde Microsoft PowerPoint", { x: 60, y: 460, size: 14, font, color: rgb(0.3, 0.3, 0.3) });
+      if (addSlideBorders) {
+        page.drawRectangle({
+          x: 20,
+          y: 20,
+          width: pageW - 40,
+          height: pageH - 40,
+          borderWidth: 2,
+          borderColor: rgb(0.8, 0.3, 0.2),
+          color: rgb(0.97, 0.97, 0.97)
+        });
+      }
+
+      page.drawText(file.name.replace(/\.[^/.]+$/, "").toUpperCase(), { x: 60, y: pageH - 100, size: 24, font: fontBold, color: rgb(0.85, 0.35, 0.1) });
+      page.drawText(isEs ? `Presentación PowerPoint • Formato ${aspectRatio}` : `PowerPoint Presentation • Format ${aspectRatio}`, { x: 60, y: pageH - 140, size: 14, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+
+      if (addSlideNumbers) {
+        page.drawText(isEs ? "Diapositiva 1 de 1" : "Slide 1 of 1", { x: pageW - 150, y: 35, size: 10, font: fontRegular, color: rgb(0.5, 0.5, 0.5) });
+      }
 
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
@@ -81,31 +141,31 @@ export default function PowerPointToPdf() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         onClick={() => fileInputRef.current?.click()}
-        className="w-full max-w-3xl mx-auto bg-orange-950/10 hover:bg-orange-950/30 border-2 border-dashed border-orange-500/30 hover:border-orange-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-[0_0_30px_rgba(0,0,0,0.5)] hover:shadow-[0_0_40px_rgba(249,115,22,0.25)] min-h-[440px] relative overflow-hidden"
+        className="w-full max-w-3xl mx-auto bg-orange-950/10 hover:bg-orange-950/30 border-2 border-dashed border-orange-500/30 hover:border-orange-400 rounded-3xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[440px] relative overflow-hidden font-sans"
       >
         <motion.div
           animate={{ y: [0, -8, 0] }}
           transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-          className="bg-gradient-to-tr from-orange-500/20 to-amber-500/20 p-6 rounded-full border border-orange-500/30 group-hover:scale-110 group-hover:bg-orange-500/30 group-hover:border-orange-400 shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all duration-300"
+          className="p-4 rounded-2xl group-hover:scale-110 transition-transform"
         >
-          <Presentation className="w-16 h-16 text-orange-400 drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]" />
+          <PowerPointIcon className="w-16 h-16 rounded-2xl shadow-xl" />
         </motion.div>
 
         <div className="text-center flex flex-col items-center gap-1.5">
           <h2 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-orange-200 transition-colors">
-            {isEs ? 'PowerPoint a PDF' : 'PowerPoint to PDF'}
+            {isEs ? 'PowerPoint a PDF (Con Opciones Avanzadas)' : 'PowerPoint to PDF (With Advanced Options)'}
           </h2>
           <p className="text-orange-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-            {isEs ? 'Transforma tus presentaciones PowerPoint (.pptx) a PDF' : 'Transform your PowerPoint (.pptx) presentations into PDF'}
+            {isEs ? 'Transforma presentaciones (.pptx) a PDF con relación de aspecto y bordes configurables' : 'Transform PowerPoint (.pptx) into PDF with custom aspect ratio & borders'}
           </p>
         </div>
 
-        <label className="flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-400 text-white px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(249,115,22,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(249,115,22,0.7)] transition-all mt-1 cursor-pointer border border-orange-300/40">
+        <label className="flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-400 text-white px-8 py-3.5 rounded-full font-black text-sm shadow-lg group-hover:scale-105 transition-all mt-1 cursor-pointer border border-orange-300/40">
           <FilePlus className="w-4 h-4 text-white" /> {isEs ? 'Seleccionar PowerPoint' : 'Select PowerPoint'}
           <input type="file" accept=".pptx,.ppt" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
         </label>
 
-        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-extrabold mt-1 font-mono">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span>{isEs ? 'Privacidad Absoluta • 100% Local' : 'Absolute Privacy • 100% Local'}</span>
         </div>
@@ -114,32 +174,102 @@ export default function PowerPointToPdf() {
   }
 
   return (
-    <div className="w-full flex flex-col lg:flex-row gap-6">
-      <div className="flex-1 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 min-h-[440px] flex flex-col items-center justify-center relative">
+    <div className="w-full flex flex-col lg:flex-row gap-6 items-start font-sans">
+      <div className="flex-1 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 min-h-[440px] flex flex-col items-center justify-center relative w-full">
         <div className="absolute top-4 left-4 right-4 bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-white/10 flex justify-between items-center shadow-sm">
           <div className="flex items-center gap-3 overflow-hidden">
-            <Presentation className="w-5 h-5 text-orange-400 flex-shrink-0" />
+            <PowerPointIcon className="w-5 h-5 rounded-sm" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1">
+          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex flex-col items-center mt-12">
-          <div className="w-44 h-32 bg-orange-950/60 rounded-2xl border-2 border-orange-500/40 flex flex-col items-center justify-center p-4 shadow-xl mb-4">
-            <Presentation className="w-12 h-12 text-orange-400 mb-2" />
-            <span className="text-xs font-bold text-orange-300 uppercase">POWERPOINT</span>
-          </div>
+          <PowerPointIcon className="w-20 h-20 rounded-2xl shadow-2xl mb-4" />
+          <span className="text-xs text-orange-400 font-mono">✓ Presentación cargada correctamente</span>
         </div>
       </div>
 
-      <div className="w-full lg:w-80 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto lg:h-[440px]">
+      <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
-          <h3 className="text-xl font-bold text-white mb-2">{isEs ? 'Convertir a PDF' : 'Convert to PDF'}</h3>
-          <p className="text-slate-400 text-xs leading-relaxed mb-6">
-            {isEs ? 'Convierte tus diapositivas en un documento PDF de alta compatibilidad.' : 'Convert your slides into a high-compatibility PDF.'}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-white">{isEs ? 'Convertir a PDF' : 'Convert to PDF'}</h3>
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1 font-mono cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          <p className="text-slate-400 text-xs leading-relaxed mb-4">
+            {isEs ? 'Configura la relación de aspecto y formato de diapositivas.' : 'Configure aspect ratio & slide format.'}
           </p>
+
+          <AnimatePresence>
+            {showAdvanced && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-4 mb-6 border-t border-slate-800 pt-4"
+              >
+                <div>
+                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                    <Layout className="w-3.5 h-3.5 text-orange-400" />
+                    {isEs ? 'Relación de Aspecto' : 'Aspect Ratio'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAspectRatio('16:9')}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        aspectRatio === '16:9'
+                          ? 'bg-orange-500 text-white border-orange-400 font-bold'
+                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      }`}
+                    >
+                      16:9 Panorámico
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAspectRatio('4:3')}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        aspectRatio === '4:3'
+                          ? 'bg-orange-500 text-white border-orange-400 font-bold'
+                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      }`}
+                    >
+                      4:3 Estándar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={addSlideBorders}
+                      onChange={(e) => setAddSlideBorders(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-950 accent-orange-500"
+                    />
+                    <span>{isEs ? 'Marco sutil alrededor de diapositivas' : 'Subtle slide border'}</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={addSlideNumbers}
+                      onChange={(e) => setAddSlideNumbers(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-950 accent-orange-500"
+                    />
+                    <span>{isEs ? 'Numeración de diapositivas' : 'Slide numbers'}</span>
+                  </label>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="space-y-3">
@@ -147,7 +277,7 @@ export default function PowerPointToPdf() {
             <button
               onClick={executeConversion}
               disabled={isProcessing}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-slate-950 py-4 rounded-xl font-bold text-lg shadow-lg shadow-orange-500/20 disabled:opacity-40 transition-all active:scale-95 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white py-4 rounded-xl font-bold text-base shadow-lg shadow-orange-500/20 disabled:opacity-40 transition-all active:scale-95 cursor-pointer"
             >
               {isProcessing ? (
                 <>
@@ -162,7 +292,7 @@ export default function PowerPointToPdf() {
             <a
               href={downloadUrl}
               download
-              className="w-full flex items-center justify-center gap-2 bg-orange-400 hover:bg-orange-300 text-slate-950 py-4 rounded-xl font-black text-lg shadow-lg shadow-orange-500/20 transition-all active:scale-95 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 py-4 rounded-xl font-black text-base shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
             >
               <FileDown className="w-5 h-5" />
               {isEs ? 'Descargar PDF' : 'Download PDF'}

@@ -1,0 +1,2 @@
+import{e as c,f as p}from"./QAQ2OXCF.js";import{b as f}from"./NSGJGDTO.js";import{e as a,h as i,j as u,k as m}from"./VEWNHGBN.js";i();m();u();var d=a(f());p();var b=(n,r,o)=>{(0,d.useEffect)(()=>{let t=s=>{!n.current||n.current.contains(s.target)||r(s)},e=document;return window.isApryseWebViewerWebComponent&&(e=(o||c())?.getElementById("app")),e?(e.addEventListener("mousedown",t),e.addEventListener("touchstart",t),()=>{e.removeEventListener("mousedown",t),e.removeEventListener("touchstart",t)}):()=>{}},[n,r,o])};export{b as a};
+//# sourceMappingURL=32ILYGNR.js.map

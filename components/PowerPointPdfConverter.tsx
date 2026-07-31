@@ -567,6 +567,67 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
         </motion.div>
       )}
 
+      {/* ── GUÍA DE USO: POWERPOINT ↔ PDF ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <Presentation className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo convertir entre PowerPoint y PDF?' : 'How to convert between PowerPoint and PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para convertir presentaciones .pptx a PDF o extraer diapositivas de un PDF.' : 'Quick guide to convert .pptx presentations to PDF or extract slides from a PDF.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "PPT → PDF" para convertir tu presentación .pptx a PDF, o "PDF → PPT" para extraer las diapositivas de un PDF a un formato de presentación editable.', descEn: 'Select "PPT → PDF" to convert your .pptx presentation to PDF, or "PDF → PPT" to extract slides from a PDF into an editable presentation format.' },
+              { step: '02', titleEs: 'Sube tu archivo', titleEn: 'Upload your file', descEs: 'Arrastra el archivo .pptx o PDF a la zona de carga. El sistema analiza automáticamente el número de diapositivas y muestra un resumen de lo que será procesado.', descEn: 'Drag your .pptx or PDF file to the upload area. The system automatically analyzes the number of slides and shows a summary of what will be processed.' },
+              { step: '03', titleEs: 'Configura las opciones de diapositivas', titleEn: 'Configure slide options', descEs: 'Elige si incluir notas del presentador en el PDF, la relación de aspecto (16:9 vs 4:3), orientación landscape/portrait, y si exportar cada diapositiva en una página separada.', descEn: 'Choose whether to include presenter notes in the PDF, aspect ratio (16:9 vs 4:3), landscape/portrait orientation, and whether to export each slide on a separate page.' },
+              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor renderiza cada diapositiva localmente y genera el PDF al instante. Tu presentación nunca sale de tu equipo.', descEn: 'Click "Convert →". The engine renders each slide locally and generates the PDF instantly. Your presentation never leaves your device.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Grid className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Consejos para convertir presentaciones PowerPoint a PDF' : '💡 Tips for converting PowerPoint presentations to PDF'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Saca el máximo partido a las opciones de conversión de diapositivas.' : 'Get the most out of the slide conversion options.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'Fuentes y colores de la presentación', labelEn: 'Presentation fonts and colors', descEs: 'Al convertir PPT a PDF, el motor preserva los colores, degradados y fuentes del tema. Si usas fuentes muy específicas no estándar, podrían sustituirse por similares en el PDF.', descEn: 'When converting PPT to PDF, the engine preserves the theme\'s colors, gradients, and fonts. If you use very specific non-standard fonts, they may be substituted by similar ones in the PDF.' },
+              { labelEs: 'Animaciones y transiciones', labelEn: 'Animations and transitions', descEs: 'Las animaciones y transiciones de PowerPoint no se transfieren al PDF. El PDF captura el estado final de cada diapositiva como una imagen estática de alta resolución.', descEn: 'PowerPoint animations and transitions are not transferred to the PDF. The PDF captures the final state of each slide as a high-resolution static image.' },
+              { labelEs: 'Notas del presentador', labelEn: 'Presenter notes', descEs: 'Activa la opción de incluir notas para generar un PDF con el diseño de "vista de presentador": cada diapositiva acompañada de su texto de notas debajo.', descEn: 'Enable the option to include notes to generate a PDF with a "presenter view" layout: each slide accompanied by its note text below.' },
+              { labelEs: 'PDF → PPT: diapositivas como imágenes', labelEn: 'PDF → PPT: slides as images', descEs: 'Al convertir PDF a PPT, cada página del PDF se convierte en una diapositiva con la imagen de esa página como fondo. El contenido no es editable como texto, sino como imagen.', descEn: 'When converting PDF to PPT, each PDF page becomes a slide with that page\'s image as background. Content is not editable as text, but as an image.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
         {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}

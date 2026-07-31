@@ -124,11 +124,11 @@ export default function PdfUploader() {
           transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
           className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors"
         >
-          <UploadCloud className="w-12 h-12 text-white" />
+           <UploadCloud className="w-12 h-12 text-white" />
         </motion.div>
 
         <div className="text-center flex flex-col items-center gap-1.5 font-sans">
-          <h2 className="text-xl font-bold text-white tracking-tight">
+           <h2 className="text-xl font-bold text-white tracking-tight">
             {isEs ? "Unir archivos PDF" : "Merge PDF files"}
           </h2>
           <p className="text-zinc-400 text-xs font-mono flex items-center justify-center gap-1.5">

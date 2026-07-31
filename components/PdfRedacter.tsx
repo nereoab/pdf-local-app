@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PDFDocument, rgb } from 'pdf-lib';
 import { 
   ArrowLeft, EyeOff, FileText, X, Loader2, ShieldCheck, UploadCloud, 
   Hand, Square, Eraser, Search, CreditCard, Phone, Mail, 
-  Type, ArrowRight, ZoomIn, ZoomOut, AlertTriangle, Sparkles, Check, SlidersHorizontal
+  Type, ArrowRight, ZoomIn, ZoomOut, AlertTriangle, Sparkles, Check, SlidersHorizontal,
+  ChevronDown, ChevronUp, Shield, FileCheck2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFileStore } from '../store/useFileStore';
@@ -22,6 +23,17 @@ interface RedactionBox {
   heightPercent: number;
 }
 
+interface ExtractedTextItem {
+  page: number;
+  str: string;
+  vx: number;         // Viewport X baseline start (from left)
+  vy: number;         // Viewport Y baseline start (from top)
+  itemWidth: number;  // Viewport width of string
+  fontHeight: number; // Viewport font height
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
 export default function PdfRedacter() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -35,35 +47,37 @@ export default function PdfRedacter() {
   const [activePage, setActivePage] = useState<number>(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
-  const [zoomLevel, setZoomLevel] = useState(85);
+  const [zoomLevel, setZoomLevel] = useState(115);
   const [isSample, setIsSample] = useState(false);
 
-  // Active toolbar tool: 'pan' | 'redact' | 'erase'
-  const [activeTool, setActiveTool] = useState<'pan' | 'redact' | 'erase'>('redact');
+  // Sync file state with globalFile from store
+  useEffect(() => {
+    if (globalFile && !file) {
+      cargarPdf(globalFile);
+    }
+  }, [globalFile]);
+
+  // Active toolbar tool: 'draw' | 'erase'
+  const [activeTool, setActiveTool] = useState<'draw' | 'erase'>('draw');
+
+  // Rectangle drawing state
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawStart, setDrawStart] = useState<{ xPercent: number; yPercent: number; pageNum: number } | null>(null);
+  const [drawPreview, setDrawPreview] = useState<{ page: number; xPercent: number; yPercent: number; widthPercent: number; heightPercent: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<'text' | 'card' | 'phone' | 'email'>('text');
 
-  // Redaction boxes placed across ALL pages of the document
-  const [redactions, setRedactions] = useState<RedactionBox[]>([
-    {
-      id: 'box-1',
-      page: 1,
-      word: 'GESTIÓN DE LA INTEGRACIÓN',
-      xPercent: 10,
-      yPercent: 22,
-      widthPercent: 78,
-      heightPercent: 4.5
-    },
-    {
-      id: 'box-2',
-      page: 2,
-      word: 'EL ENTORNO EN EL QUE OPERAN',
-      xPercent: 10,
-      yPercent: 24,
-      widthPercent: 78,
-      heightPercent: 4.5
-    }
-  ]);
+  // Redaction boxes state (manual & automatic)
+  const [redactions, setRedactions] = useState<RedactionBox[]>([]);
+  const [autoRedactions, setAutoRedactions] = useState<RedactionBox[]>([]);
+  const [extractedTextItems, setExtractedTextItems] = useState<ExtractedTextItem[]>([]);
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+
+  // Advanced options state
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [exactMatch, setExactMatch] = useState(false);
+  const [redactionStyle, setRedactionStyle] = useState<'black' | 'gray'>('black');
+  const [customSuffix, setCustomSuffix] = useState('_Censurado');
 
   const formatFileSize = (bytes: number) => {
     if (!bytes || bytes === 0) return '0 KB';
@@ -77,15 +91,67 @@ export default function PdfRedacter() {
     setFile(selectedFile);
     setGlobalFile(selectedFile);
     setIsProcessing(true);
-    setProgressMsg(isEs ? 'Analizando documento...' : 'Analyzing document...');
+    setProgressMsg(isEs ? 'Analizando y renderizando páginas...' : 'Analyzing & rendering pages...');
 
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-      const count = pdfDoc.getPageCount();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+      const count = pdfDoc.numPages;
       setTotalPages(count);
       setPdfUrl(URL.createObjectURL(selectedFile));
       setIsSample(false);
+
+      const urls: Record<number, string> = {};
+      const extracted: ExtractedTextItem[] = [];
+
+      for (let p = 1; p <= count; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 3.2 });
+          const textViewport = page.getViewport({ scale: 1.0 });
+
+          // Extract text items with exact PDF.js viewport coordinates
+          const textContent = await page.getTextContent();
+          for (const item of textContent.items) {
+            if ('str' in item && typeof item.str === 'string' && item.str.trim().length > 0) {
+              const tx = item.transform[4];
+              const ty = item.transform[5];
+              const rawWidth = item.width > 0 ? item.width : item.str.length * 6;
+              const fontHeight = item.height > 0 ? item.height : (Math.abs(item.transform[3]) || Math.abs(item.transform[0]) || 11);
+
+              // Convert PDF coordinates (bottom-left origin) to Viewport coordinates (top-left origin) using PDF.js engine
+              const [vx, vy] = textViewport.convertToViewportPoint(tx, ty);
+
+              extracted.push({
+                page: p,
+                str: item.str,
+                vx,
+                vy,
+                itemWidth: rawWidth,
+                fontHeight,
+                viewportWidth: textViewport.width,
+                viewportHeight: textViewport.height
+              });
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.85);
+          }
+        } catch (err) {
+          console.warn(`Error rendering page ${p}:`, err);
+        }
+      }
+      setExtractedTextItems(extracted);
+      setPageDataUrls(urls);
       toast.success(isEs ? 'Documento cargado exitosamente' : 'Document loaded successfully');
     } catch (error) {
       console.error(error);
@@ -97,6 +163,137 @@ export default function PdfRedacter() {
     }
   };
 
+  // Canvas Font-Metric helper to measure exact pixel width of text substrings
+  const measureTextWidth = (text: string, fontSize: number): number => {
+    if (typeof window === 'undefined') return text.length * fontSize * 0.55;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return text.length * fontSize * 0.55;
+    ctx.font = `${fontSize}px sans-serif, Arial, "Times New Roman"`;
+    return ctx.measureText(text).width;
+  };
+
+  // Regex patterns for preset categories
+  const getPresetRegex = (preset: 'card' | 'phone' | 'email'): RegExp => {
+    switch (preset) {
+      case 'card':
+        // Matches common credit/debit card number formats (13-19 digits with optional separators)
+        return /\b(?:\d[ -]*?){12,18}\d\b/g;
+      case 'phone':
+        // Matches international and local phone number formats
+        return /(?:\+?\d{1,4}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}[\s.-]?\d{0,4}/g;
+      case 'email':
+        // Matches email addresses (RFC 5322 simplified)
+        return /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+      default:
+        return /(?:)/g;
+    }
+  };
+
+  // Build all matches for a given regex pattern across extracted text items
+  const getRegexMatches = (regex: RegExp, textItems: ExtractedTextItem[]): RedactionBox[] => {
+    const matches: RedactionBox[] = [];
+
+    textItems.forEach((item, idx) => {
+      const textStr = item.str;
+      let match: RegExpExecArray | null;
+      // Reset regex state
+      regex.lastIndex = 0;
+
+      while ((match = regex.exec(textStr)) !== null) {
+        const matchedText = match[0];
+        const matchPos = match.index;
+        if (matchPos === undefined || matchedText.length === 0) continue;
+
+        const fullTextWidth = measureTextWidth(textStr, item.fontHeight);
+        const prefixTextWidth = measureTextWidth(textStr.slice(0, matchPos), item.fontHeight);
+        const wordTextWidth = measureTextWidth(matchedText, item.fontHeight);
+
+        const scaleRatio = fullTextWidth > 0 ? item.itemWidth / fullTextWidth : 1;
+
+        const wordVx = item.vx + (prefixTextWidth * scaleRatio);
+        const wordWidth = Math.max(wordTextWidth * scaleRatio, 8);
+        const wordVyTop = item.vy - (item.fontHeight * 0.82);
+
+        const xPct = (wordVx / item.viewportWidth) * 100;
+        const yPct = (wordVyTop / item.viewportHeight) * 100;
+        const wPct = (wordWidth / item.viewportWidth) * 100;
+        const hPct = Math.max(1.5, ((item.fontHeight * 1.15) / item.viewportHeight) * 100);
+
+        matches.push({
+          id: `auto-${item.page}-${idx}-${matchPos}-${matchedText.slice(0, 8)}`,
+          page: item.page,
+          word: matchedText.length > 20 ? matchedText.slice(0, 18) + '…' : matchedText,
+          xPercent: Math.max(0, Math.min(98, xPct)),
+          yPercent: Math.max(0, Math.min(98, yPct)),
+          widthPercent: Math.min(100 - xPct, wPct),
+          heightPercent: Math.min(100 - yPct, hPct)
+        });
+      }
+    });
+
+    return matches;
+  };
+
+  // Calculate exact sub-word matches in text items using Canvas measureText typography scaling
+  const getSubWordMatches = (queryStr: string, textItems: ExtractedTextItem[], isExact: boolean): RedactionBox[] => {
+    const query = queryStr.trim();
+    if (!query) return [];
+
+    const matches: RedactionBox[] = [];
+    const queryLower = query.toLowerCase();
+
+    textItems.forEach((item, idx) => {
+      const textStr = item.str;
+      const textLower = textStr.toLowerCase();
+
+      let startIndex = 0;
+      let matchPos = isExact 
+        ? textStr.indexOf(query, startIndex) 
+        : textLower.indexOf(queryLower, startIndex);
+
+      while (matchPos !== -1) {
+        const fullTextWidth = measureTextWidth(textStr, item.fontHeight);
+        const prefixTextWidth = measureTextWidth(textStr.slice(0, matchPos), item.fontHeight);
+        const wordTextWidth = measureTextWidth(textStr.slice(matchPos, matchPos + query.length), item.fontHeight);
+
+        const scaleRatio = fullTextWidth > 0 ? item.itemWidth / fullTextWidth : 1;
+
+        const wordVx = item.vx + (prefixTextWidth * scaleRatio);
+        const wordWidth = Math.max(wordTextWidth * scaleRatio, 8);
+        const wordVyTop = item.vy - (item.fontHeight * 0.82);
+
+        const xPct = (wordVx / item.viewportWidth) * 100;
+        const yPct = (wordVyTop / item.viewportHeight) * 100;
+        const wPct = (wordWidth / item.viewportWidth) * 100;
+        const hPct = Math.max(1.5, ((item.fontHeight * 1.15) / item.viewportHeight) * 100);
+
+        matches.push({
+          id: `auto-${item.page}-${idx}-${matchPos}-${query}`,
+          page: item.page,
+          word: textStr.slice(matchPos, matchPos + query.length) || query,
+          xPercent: Math.max(0, Math.min(98, xPct)),
+          yPercent: Math.max(0, Math.min(98, yPct)),
+          widthPercent: Math.min(100 - xPct, wPct),
+          heightPercent: Math.min(100 - yPct, hPct)
+        });
+
+        startIndex = matchPos + query.length;
+        matchPos = isExact 
+          ? textStr.indexOf(query, startIndex) 
+          : textLower.indexOf(queryLower, startIndex);
+      }
+    });
+
+    return matches;
+  };
+
+  // LIVE AUTOMATIC REDACTION SEARCH EFFECT (FIRES IMMEDIATELY AS USER TYPES)
+  useEffect(() => {
+    const matches = getSubWordMatches(searchQuery, extractedTextItems, exactMatch);
+    setAutoRedactions(matches);
+  }, [searchQuery, extractedTextItems, exactMatch, totalPages]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
@@ -107,15 +304,12 @@ export default function PdfRedacter() {
     e.target.value = '';
   };
 
-  const loadSampleDocument = () => {
-    const sampleBlob = new Blob(['%PDF-1.4 Sample PDF Redact'], { type: 'application/pdf' });
+  const loadSampleDocument = async () => {
+    // Create a minimal valid PDF v1.4 with 1 blank page (A4 size) encoded in Latin1
+    const samplePdfStr = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n2 0 obj\n<</Type/Pages/Kids[3 0 R]/Count 1>>\nendobj\n3 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>\nendobj\n4 0 obj\n<</Length 44>>\nstream\nBT /F1 12 Tf 100 700 Td (Sample 0002) Tj ET\nendstream\nendobj\n5 0 obj\n<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000266 00000 n \n0000000360 00000 n \ntrailer\n<</Size 6/Root 1 0 R>>\nstartxref\n423\n%%EOF\n';
+    const sampleBlob = new Blob([samplePdfStr], { type: 'application/pdf' });
     const sampleFile = new File([sampleBlob], '0002.pdf', { type: 'application/pdf' });
-    setFile(sampleFile);
-    setGlobalFile(sampleFile);
-    setTotalPages(4);
-    setPdfUrl(URL.createObjectURL(sampleBlob));
-    setIsSample(true);
-    toast.success(isEs ? 'Documento de muestra cargado (0002.pdf)' : 'Sample document loaded (0002.pdf)');
+    await cargarPdf(sampleFile);
   };
 
   const resetRedacter = () => {
@@ -125,6 +319,8 @@ export default function PdfRedacter() {
     setTotalPages(4);
     setGlobalFile(null);
     setRedactions([]);
+    setAutoRedactions([]);
+    setExtractedTextItems([]);
     setIsSample(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -138,80 +334,149 @@ export default function PdfRedacter() {
     }
   };
 
-  // Add redaction box manually by clicking anywhere on a page
-  const handlePageClick = (pageNum: number, e: React.MouseEvent<HTMLDivElement>) => {
-    if (activeTool !== 'redact') return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
+  // RECTANGLE DRAWING TOOL: mousedown → drag → mouseup
+  const getPercentCoords = (pageNum: number, e: React.MouseEvent): { xPercent: number; yPercent: number } | null => {
+    // Find the image wrapper inside the page card
+    const imgWrapper = (e.currentTarget as HTMLElement).querySelector('[data-img-wrapper]');
+    if (!imgWrapper) return null;
+    const rect = imgWrapper.getBoundingClientRect();
     const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
     const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+    return { xPercent, yPercent };
+  };
+
+  const handleMouseDown = (pageNum: number, e: React.MouseEvent<HTMLDivElement>) => {
+    if (activeTool !== 'draw') return;
+    const coords = getPercentCoords(pageNum, e);
+    if (!coords) return;
+    setIsDrawing(true);
+    setDrawStart({ xPercent: coords.xPercent, yPercent: coords.yPercent, pageNum });
+    setDrawPreview({
+      page: pageNum,
+      xPercent: coords.xPercent,
+      yPercent: coords.yPercent,
+      widthPercent: 0,
+      heightPercent: 0
+    });
+  };
+
+  const handleMouseMove = (pageNum: number, e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !drawStart || drawStart.pageNum !== pageNum) return;
+    const coords = getPercentCoords(pageNum, e);
+    if (!coords) return;
+
+    const x1 = drawStart.xPercent;
+    const y1 = drawStart.yPercent;
+    const x2 = coords.xPercent;
+    const y2 = coords.yPercent;
+
+    setDrawPreview({
+      page: pageNum,
+      xPercent: Math.min(x1, x2),
+      yPercent: Math.min(y1, y2),
+      widthPercent: Math.abs(x2 - x1),
+      heightPercent: Math.abs(y2 - y1)
+    });
+  };
+
+  const handleMouseUp = (pageNum: number, e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || activeTool !== 'draw') {
+      setIsDrawing(false);
+      setDrawStart(null);
+      setDrawPreview(null);
+      return;
+    }
+
+    const coords = getPercentCoords(pageNum, e);
+    setIsDrawing(false);
+    setDrawStart(null);
+    setDrawPreview(null);
+
+    if (!coords) return;
+
+    const x1 = drawStart!.xPercent;
+    const y1 = drawStart!.yPercent;
+    const x2 = coords.xPercent;
+    const y2 = coords.yPercent;
+
+    const widthPct = Math.abs(x2 - x1);
+    const heightPct = Math.abs(y2 - y1);
+
+    // Minimum size threshold to avoid accidental tiny boxes
+    if (widthPct < 1.5 && heightPct < 0.8) return;
 
     const newBox: RedactionBox = {
       id: `box-${Date.now()}-${Math.random()}`,
       page: pageNum,
-      word: isEs ? 'Palabra Censurada' : 'Censored Word',
-      xPercent: Math.max(5, Math.min(80, xPercent - 15)),
-      yPercent: Math.max(5, Math.min(90, yPercent - 2)),
-      widthPercent: 35,
-      heightPercent: 4
+      word: isEs ? 'Censura Manual' : 'Manual Redaction',
+      xPercent: Math.max(0, Math.min(x1, x2)),
+      yPercent: Math.max(0, Math.min(y1, y2)),
+      widthPercent: widthPct,
+      heightPercent: heightPct
     };
 
     setRedactions(prev => [...prev, newBox]);
-    toast.success(isEs ? `Candidato de censura agregado en Pág. ${pageNum}` : `Redaction patch added on Page ${pageNum}`);
+    toast.success(isEs ? `Parche de censura agregado en Pág. ${pageNum}` : `Redaction patch added on Page ${pageNum}`);
   };
 
-  // Search & Cover word across ALL pages of the document
+  // ERASE TOOL: click a box to delete it
+  const handleEraseClick = (boxId: string) => {
+    if (activeTool !== 'erase') return;
+    removeRedaction(boxId);
+  };
+
+  // Apply current search/preset to find and add redaction boxes
   const handleApplyWordSearch = () => {
-    let wordToCensor = searchQuery.trim();
-    if (!wordToCensor && selectedPreset === 'text') {
-      toast.error(isEs ? 'Escribe la palabra que deseas cubrir en todo el documento' : 'Type the word you wish to cover across the document');
-      return;
+    let newRedactions: RedactionBox[] = [];
+
+    if (selectedPreset !== 'text') {
+      // Use regex-based detection for preset categories
+      const regex = getPresetRegex(selectedPreset);
+      newRedactions = getRegexMatches(regex, extractedTextItems);
+
+      if (newRedactions.length === 0) {
+        const label = selectedPreset === 'card' ? (isEs ? 'tarjetas de crédito' : 'credit cards')
+          : selectedPreset === 'phone' ? (isEs ? 'números de teléfono' : 'phone numbers')
+          : (isEs ? 'correos electrónicos' : 'email addresses');
+        toast.info(isEs ? `No se encontraron ${label} en el documento.` : `No ${label} found in the document.`);
+      } else {
+        const label = selectedPreset === 'card' ? (isEs ? 'números de tarjeta' : 'card numbers')
+          : selectedPreset === 'phone' ? (isEs ? 'números telefónicos' : 'phone numbers')
+          : (isEs ? 'direcciones de correo' : 'email addresses');
+        toast.success(isEs ? `¡Se detectaron y cubrieron ${newRedactions.length} ${label}!` : `Detected & covered ${newRedactions.length} ${label}!`);
+      }
+    } else {
+      // Free-text search
+      const wordToCensor = searchQuery.trim();
+      if (!wordToCensor) {
+        toast.error(isEs ? 'Escribe la palabra o patrón que deseas cubrir en el documento' : 'Type the word or pattern you wish to cover in document');
+        return;
+      }
+
+      newRedactions = getSubWordMatches(wordToCensor, extractedTextItems, exactMatch);
+
+      if (newRedactions.length === 0) {
+        toast.info(isEs ? `No se encontraron coincidencias para "${wordToCensor}".` : `No matches found for "${wordToCensor}".`);
+      } else {
+        toast.success(isEs ? `¡Se encontraron y cubrieron ${newRedactions.length} ocurrencias de "${wordToCensor}"!` : `Found & covered ${newRedactions.length} occurrences of "${wordToCensor}"!`);
+      }
     }
 
-    if (selectedPreset === 'card') wordToCensor = 'Tarjeta de Crédito (****-****)';
-    if (selectedPreset === 'phone') wordToCensor = 'Número Telefónico (+51 ***)';
-    if (selectedPreset === 'email') wordToCensor = 'Correo Electrónico (user@***)';
-
-    // Auto-generate blackout boxes across ALL pages for the target word
-    const newRedactions: RedactionBox[] = [];
-    for (let p = 1; p <= totalPages; p++) {
-      // 2 blackout patches per page for demonstration of full document coverage
-      newRedactions.push({
-        id: `box-auto-${p}-1-${Date.now()}`,
-        page: p,
-        word: wordToCensor,
-        xPercent: 12,
-        yPercent: 25 + (p * 5) % 30,
-        widthPercent: 75,
-        heightPercent: 4.5
-      });
-      newRedactions.push({
-        id: `box-auto-${p}-2-${Date.now()}`,
-        page: p,
-        word: wordToCensor,
-        xPercent: 15,
-        yPercent: 55 + (p * 3) % 25,
-        widthPercent: 65,
-        heightPercent: 4.5
-      });
+    if (newRedactions.length > 0) {
+      setRedactions(prev => [...prev, ...newRedactions]);
     }
-
-    setRedactions(prev => [...prev, ...newRedactions]);
-    toast.success(
-      isEs 
-        ? `¡Palabra "${wordToCensor}" cubierta en TODAS las ${totalPages} páginas del documento!` 
-        : `Word "${wordToCensor}" covered across ALL ${totalPages} pages!`
-    );
     setSearchQuery('');
   };
 
   const removeRedaction = (id: string) => {
     setRedactions(prev => prev.filter(r => r.id !== id));
+    setAutoRedactions(prev => prev.filter(r => r.id !== id));
     toast.info(isEs ? 'Marca de censura removida' : 'Redaction mark removed');
   };
 
   const clearAllRedactions = () => {
     setRedactions([]);
+    setAutoRedactions([]);
     toast.info(isEs ? 'Todas las marcas de censura fueron eliminadas' : 'All redactions cleared');
   };
 
@@ -220,14 +485,20 @@ export default function PdfRedacter() {
     if (!file) return;
 
     setIsProcessing(true);
-    setProgressMsg(isEs ? 'Incrustando parches negros permanentes en todas las páginas...' : 'Applying permanent black patches on all pages...');
+    setProgressMsg(isEs ? 'Incrustando parches de censura permanentes en todas las páginas...' : 'Applying permanent redaction patches on all pages...');
 
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
       const pages = pdfDoc.getPages();
 
-      redactions.forEach(box => {
+      const boxColor = redactionStyle === 'gray' 
+        ? rgb(0.25, 0.25, 0.25) 
+        : rgb(0, 0, 0);
+
+      const allBoxes = [...redactions, ...autoRedactions];
+
+      allBoxes.forEach(box => {
         const pageIndex = Math.min(box.page - 1, pages.length - 1);
         if (pageIndex >= 0 && pages[pageIndex]) {
           const page = pages[pageIndex];
@@ -243,19 +514,20 @@ export default function PdfRedacter() {
             y: rectY,
             width: rectWidth,
             height: rectHeight,
-            color: rgb(0, 0, 0)
+            color: boxColor
           });
         }
       });
 
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+      const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
+      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const downloadUrl = URL.createObjectURL(blob);
 
       const originalName = file.name.replace(/\.[^/.]+$/, "");
+      const suffix = customSuffix || '_Censurado';
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = `${originalName}_Censurado.pdf`;
+      link.download = `${originalName}${suffix}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -354,15 +626,15 @@ export default function PdfRedacter() {
           </div>
         </div>
       ) : (
-        /* WORKSPACE EN 2 COLUMNAS (6 COLUMNAS IZQ / 6 COLUMNAS DER) MATCHING IMAGE 1 */
+        /* WORKSPACE EN 2 COLUMNAS SIMÉTRICAS DE ALTURA FIJA (810PX) */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
           
-          {/* LADO IZQUIERDO: VISOR Y HERRAMIENTAS DE CENSURA (col-span-6) */}
-          <div className="lg:col-span-6 flex flex-col">
-            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative font-mono h-[540px]">
+          {/* LADO IZQUIERDO: VISOR DE PDF (MAS ANCHO - 8 COLUMNAS) */}
+          <div className="lg:col-span-8 flex flex-col">
+            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono h-[92vh] min-h-[860px]">
               
               {/* BARRA SUPERIOR DE ARCHIVO */}
-              <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10">
+              <div className="bg-zinc-900 border-b border-white/10 p-3 flex justify-between items-center z-10 flex-shrink-0">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0">
                     <FileText className="w-4 h-4 text-white" />
@@ -381,192 +653,179 @@ export default function PdfRedacter() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-
-              {/* TOOLBAR SECUNDARIA DE HERRAMIENTAS */}
-              <div className="bg-zinc-900/90 border-b border-white/10 px-4 py-2 flex items-center justify-between font-mono text-xs z-10">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveTool('pan')}
-                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                      activeTool === 'pan' ? 'bg-white text-black border-white' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                    }`}
-                    title={isEs ? 'Herramienta Desplazar' : 'Pan tool'}
-                  >
-                    <Hand className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTool('redact')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                      activeTool === 'redact' ? 'bg-red-600 text-white border-red-500 shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                    }`}
-                    title={isEs ? 'Herramienta de Censura' : 'Redact tool'}
-                  >
-                    <Square className="w-3.5 h-3.5 fill-current" />
-                    <span>{isEs ? 'Redact / Censurar' : 'Redact'}</span>
-                  </button>
-
-                  <button
-                    onClick={clearAllRedactions}
-                    className="p-1.5 bg-zinc-900 border border-white/10 text-zinc-400 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
-                    title={isEs ? 'Borrar todas las censuras' : 'Clear all redactions'}
-                  >
-                    <Eraser className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Active Redaction Count Badge */}
-                <div className="flex items-center gap-3">
-                  {redactions.length > 0 && (
-                    <span className="bg-red-600 text-white font-bold text-xs px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-md animate-pulse">
-                      <span className="w-2 h-2 rounded-full bg-white" />
-                      {redactions.length} {isEs ? 'Censuras' : 'Redactions'}
-                    </span>
-                  )}
-                </div>
-              </div>
               
               {/* FULL DOCUMENT CONTINUOUS SCROLL VIEWPORT */}
               <div 
                 ref={scrollContainerRef}
-                className={`flex-1 bg-[#121215] relative overflow-y-auto p-4 flex flex-col items-center gap-6 ${activeTool === 'redact' ? 'cursor-crosshair' : 'cursor-default'}`}
+                className={`flex-1 bg-[#121215] relative overflow-y-auto p-4 flex flex-col items-center gap-4 ${activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-pointer' : 'cursor-default'}`}
               >
                 {/* STACK OF ALL PAGES */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                  const pageBoxes = redactions.filter(r => r.page === pageNum);
+                  const manualBoxes = redactions.filter(r => r.page === pageNum);
+                  const liveAutoBoxes = autoRedactions.filter(r => r.page === pageNum);
 
                   return (
                     <div
                       key={pageNum}
                       id={`page-card-${pageNum}`}
-                      onClick={(e) => handlePageClick(pageNum, e)}
-                      className="w-full bg-white rounded shadow-2xl text-black p-5 sm:p-6 min-h-[480px] relative font-serif text-xs leading-relaxed select-none border border-gray-200"
+                      onMouseDown={(e) => handleMouseDown(pageNum, e)}
+                      onMouseMove={(e) => handleMouseMove(pageNum, e)}
+                      onMouseUp={(e) => handleMouseUp(pageNum, e)}
+                      className="w-full bg-white rounded shadow-2xl text-black p-4 min-h-[900px] relative font-serif text-xs leading-relaxed select-none border border-gray-200"
                     >
                       {/* Page Header */}
-                      <div className="flex justify-between items-center border-b pb-2 mb-4 font-sans text-gray-400 text-[10px] font-mono">
+                      <div className="flex justify-between items-center border-b pb-1.5 mb-3 font-sans text-gray-400 text-[10px] font-mono">
                         <span>DOCUMENTO {file.name}</span>
                         <span className="bg-gray-100 text-gray-800 font-bold px-2 py-0.5 rounded">PÁGINA {pageNum} DE {totalPages}</span>
                       </div>
 
-                      <div className="absolute top-8 left-8 text-2xl font-bold text-black font-sans">{pageNum}</div>
+                      <div className="absolute top-5 left-5 text-lg font-bold text-black font-sans">{pageNum}</div>
 
-                      {/* Page Content Variations based on Page Number */}
-                      {pageNum === 1 && (
-                        <div className="mt-8 space-y-4">
-                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                            1. GESTIÓN DE LA INTEGRACIÓN DEL PROYECTO
-                          </h2>
-                          <p className="text-xs text-gray-800 leading-relaxed">
-                            La Gestión de la Integración del Proyecto incluye los procesos y actividades para identificar, definir, combinar, unificar y coordinar los diversos procesos y actividades de dirección de proyectos dentro de los Grupos de Procesos.
-                          </p>
-                          <div className="bg-gray-50 border-l-2 border-gray-400 p-3 text-xs text-gray-900 space-y-1 font-sans">
-                            <p>◆ Asignación de recursos clave para el proyecto.</p>
-                            <p>◆ Equilibrio de demandas competitivas entre interesados.</p>
-                            <p>◆ Examen de enfoques y metodologías alternativas.</p>
+                      {/* Real PDF Page Render or Fallback */}
+                      {pageDataUrls[pageNum] ? (
+                        <div className="mt-1 w-full flex justify-center relative">
+                          <div className="relative w-full max-w-full" data-img-wrapper>
+                            <img 
+                              src={pageDataUrls[pageNum]} 
+                              alt={`Página ${pageNum}`}
+                              className="w-full h-auto rounded shadow-sm border border-gray-200 block"
+                            />
+                            {/* 1. LIVE AUTOMATIC SEARCH HIGHLIGHTS (VIBRANT INDIGO HIGH-VISIBILITY HIGHLIGHT) */}
+                            {liveAutoBoxes.map((box) => (
+                              <div
+                                key={box.id}
+                                style={{
+                                  left: `${box.xPercent}%`,
+                                  top: `${box.yPercent}%`,
+                                  width: `${box.widthPercent}%`,
+                                  height: `${box.heightPercent}%`
+                                }}
+                                className="absolute bg-indigo-600/80 border-2 border-indigo-300 rounded-sm shadow-xl flex items-center justify-between px-1 text-white font-mono text-[9px] group transition-all z-20 cursor-pointer animate-pulse ring-2 ring-indigo-500/50"
+                                title={isEs ? `Coincidencia resaltada: "${box.word}"` : `Highlighted match: "${box.word}"`}
+                              >
+                                <span className="truncate font-extrabold text-[9px] text-white drop-shadow-md select-none">{box.word}</span>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); removeRedaction(box.id); }}
+                                  className="text-white hover:text-red-300 p-0.5 opacity-80 group-hover:opacity-100 transition-opacity ml-1"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+
+                            {/* 2. CONFIRMED SEMI-TRANSPARENT MANUAL REDACTION PATCHES */}
+                            {manualBoxes.map((box) => (
+                              <div
+                                key={box.id}
+                                style={{
+                                  left: `${box.xPercent}%`,
+                                  top: `${box.yPercent}%`,
+                                  width: `${box.widthPercent}%`,
+                                  height: `${box.heightPercent}%`
+                                }}
+                                onClick={(e) => {
+                                  if (activeTool === 'erase') {
+                                    e.stopPropagation();
+                                    handleEraseClick(box.id);
+                                  }
+                                }}
+                                className={`absolute bg-black/70 border border-white/30 rounded-sm shadow-2xl flex items-center justify-end px-1 text-white font-mono text-[9px] group transition-all z-30 hover:border-red-500 ${
+                                  activeTool === 'erase' ? 'cursor-pointer ring-2 ring-red-500/60 ring-offset-1 ring-offset-transparent' : 'cursor-default'
+                                }`}
+                                title={isEs ? 'Parche de censura semitransparente' : 'Semi-transparent redaction patch'}
+                              >
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); removeRedaction(box.id); }}
+                                  className="text-red-400 hover:text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+
+                            {/* 3. DRAWING PREVIEW (LIVE RECTANGLE WHILE DRAGGING) */}
+                            {drawPreview && drawPreview.page === pageNum && (
+                              <div
+                                style={{
+                                  left: `${drawPreview.xPercent}%`,
+                                  top: `${drawPreview.yPercent}%`,
+                                  width: `${drawPreview.widthPercent}%`,
+                                  height: `${drawPreview.heightPercent}%`
+                                }}
+                                className="absolute bg-black/40 border-2 border-dashed border-white rounded-sm z-40 pointer-events-none"
+                              />
+                            )}
                           </div>
                         </div>
-                      )}
-
-                      {pageNum === 2 && (
-                        <div className="mt-8 space-y-4">
-                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                            2. EL ENTORNO EN EL QUE OPERAN LOS PROYECTOS
+                      ) : (
+                        <div className="mt-4 space-y-2">
+                          <h2 className="text-xs font-bold text-black font-sans border-b pb-1">
+                            PÁGINA {pageNum} - {file.name}
                           </h2>
-                          <p className="text-xs text-gray-800 leading-relaxed">
-                            2.1 DESCRIPCIÓN GENERAL. Los proyectos existen y operan en entornos que pueden influir en ellos. Estas influencias pueden tener un impacto favorable o desfavorable en el proyecto.
+                          <p className="text-[11px] text-gray-800 leading-relaxed font-mono">
+                            Cargando representación gráfica de la página {pageNum}...
                           </p>
-                          <div className="bg-gray-50 border p-4 rounded text-center font-sans space-y-2">
-                            <div className="font-bold text-gray-900 text-xs">Estructura Organizacional & Factores Ambientales (EEFs)</div>
-                            <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-600">
-                              <div className="bg-white p-2 border rounded">Factores Ambientales (EEFs)</div>
-                              <div className="bg-white p-2 border rounded">Activos de Procesos (OPAs)</div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {pageNum === 3 && (
-                        <div className="mt-8 space-y-4">
-                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                            3. EL ROL DEL DIRECTOR DEL PROYECTO
-                          </h2>
-                          <p className="text-xs text-gray-800 leading-relaxed">
-                            El director del proyecto juega un rol crítico en el liderazgo de un equipo de proyecto para alcanzar los objetivos definidos. Este rol es claramente visible a lo largo del proceso.
-                          </p>
-                          <div className="bg-gray-50 border-l-2 border-gray-400 p-3 text-xs text-gray-900 space-y-1 font-sans">
-                            <p>◆ Competencias de Gestión Estratégica y de Negocio.</p>
-                            <p>◆ Habilidades de Liderazgo y Adaptación.</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {pageNum === 4 && (
-                        <div className="mt-8 space-y-4">
-                          <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                            4. GESTIÓN DEL ALCANCE DEL PROYECTO
-                          </h2>
-                          <p className="text-xs text-gray-800 leading-relaxed">
-                            Incluye los procesos requeridos para garantizar que el proyecto incluya todo el trabajo requerido y únicamente el trabajo requerido para completar el proyecto con éxito.
-                          </p>
-                          <div className="bg-gray-50 border p-3 rounded text-xs text-gray-900 font-sans">
-                            <p>5.1 Planificar la Gestión del Alcance del Proyecto</p>
-                            <p>5.2 Recopilar Requisitos del Cliente</p>
-                          </div>
                         </div>
                       )}
 
                       {/* Footer indicator */}
-                      <div className="mt-12 text-[10px] text-gray-400 border-t pt-2 font-mono flex justify-between">
+                      <div className="mt-6 text-[10px] text-gray-400 border-t pt-1 font-mono flex justify-between">
                         <span>{file.name}</span>
-                        <span>Guía PMBOK® — Pág. {pageNum}</span>
+                        <span>Pág. {pageNum}</span>
                       </div>
-
-                      {/* LIVE BLACKOUT REDACTION PATCHES FOR THIS PAGE */}
-                      {pageBoxes.map((box) => (
-                        <div
-                          key={box.id}
-                          style={{
-                            left: `${box.xPercent}%`,
-                            top: `${box.yPercent}%`,
-                            width: `${box.widthPercent}%`,
-                            height: `${box.heightPercent}%`
-                          }}
-                          className="absolute bg-black rounded border border-red-500/50 shadow-2xl flex items-center justify-between px-2 text-white font-mono text-[10px] group transition-all z-20"
-                          title={isEs ? 'Haz clic para remover este parche de censura' : 'Click to remove patch'}
-                        >
-                          <span className="truncate font-bold opacity-80">{box.word}</span>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); removeRedaction(box.id); }}
-                            className="text-red-400 hover:text-white p-0.5 transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
                     </div>
                   );
                 })}
               </div>
 
-              {/* Bottom Viewport Bar */}
-              <div className="bg-zinc-900 border-t border-white/10 px-4 py-2 flex items-center justify-between font-mono text-xs text-zinc-400">
+              {/* Bottom Viewport Bar with Tool Selector */}
+              <div className="bg-zinc-900 border-t border-white/10 px-3.5 py-1.5 flex items-center justify-between font-mono text-xs text-zinc-400 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  {/* DRAW TOOL */}
+                  <button
+                    onClick={() => setActiveTool('draw')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                      activeTool === 'draw' ? 'bg-white text-black border-white font-bold' : 'bg-zinc-800 border-white/10 text-zinc-400 hover:text-white hover:border-white/30'
+                    }`}
+                    title={isEs ? 'Herramienta de dibujo: arrastra para crear un rectángulo de censura' : 'Draw tool: drag to create a redaction rectangle'}
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-semibold">{isEs ? 'Dibujar' : 'Draw'}</span>
+                  </button>
+
+                  {/* ERASE TOOL */}
+                  <button
+                    onClick={() => setActiveTool('erase')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                      activeTool === 'erase' ? 'bg-red-500 text-white border-red-500 font-bold' : 'bg-zinc-800 border-white/10 text-zinc-400 hover:text-white hover:border-white/30'
+                    }`}
+                    title={isEs ? 'Herramienta de borrado: haz clic en un parche para eliminarlo' : 'Erase tool: click a patch to remove it'}
+                  >
+                    <Eraser className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-semibold">{isEs ? 'Borrar' : 'Erase'}</span>
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] text-white font-bold">{zoomLevel}%</span>
                   <button onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))} className="hover:text-white"><ZoomOut className="w-3.5 h-3.5"/></button>
                   <button onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))} className="hover:text-white"><ZoomIn className="w-3.5 h-3.5"/></button>
                 </div>
-                <span className="truncate max-w-[140px] text-[11px] font-bold text-white">{file.name}</span>
-                <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] font-bold text-white">
-                  {totalPages} {isEs ? 'Páginas' : 'Pages'}
-                </span>
+
+                <div className="flex items-center gap-3">
+                  <span className="truncate max-w-[120px] text-[11px] font-bold text-white">{file.name}</span>
+                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] font-bold text-white">
+                    {totalPages} {isEs ? 'Páginas' : 'Pages'}
+                  </span>
+                </div>
               </div>
 
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL (col-span-6) COMPACTO Y CON SCROLL INTERNO */}
-          <div className="lg:col-span-6 flex flex-col">
-            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans h-[540px]">
+          {/* LADO DERECHO: PANEL DE CONTROL (REDUCIDO EN ANCHO - 4 COLUMNAS) */}
+          <div className="lg:col-span-4 flex flex-col">
+            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans h-[92vh] min-h-[860px]">
               
               {/* CABECERA FIJA DEL PANEL */}
               <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-3 flex-shrink-0">
@@ -583,8 +842,8 @@ export default function PdfRedacter() {
                 </div>
               </div>
 
-              {/* CUERPO CON DESPLAZAMIENTO INTERNO */}
-              <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 font-sans">
+              {/* CUERPO CON DESPLAZAMIENTO INTERNO (SIN BARRA DE DESPLAZAMIENTO VISIBLE) */}
+              <div className="flex-1 overflow-y-auto [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex flex-col gap-3 font-sans">
                 <div className="font-mono">
                   <span className="text-[11px] text-zinc-400 font-medium">
                     003 / CENSURA Y BÚSQUEDA DE TEXTO
@@ -601,7 +860,13 @@ export default function PdfRedacter() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={isEs ? 'Escribe la palabra a cubrir (ej. gestion)...' : 'Search text'}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleApplyWordSearch();
+                      }
+                    }}
+                    placeholder={isEs ? 'Escribe la palabra a cubrir en todo el documento...' : 'Type word to cover across entire document...'}
                     className="w-full bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white transition-colors"
                   />
                 </div>
@@ -671,8 +936,83 @@ export default function PdfRedacter() {
                   </button>
                 </div>
 
+                {/* OPCIONES AVANZADAS TOGGLE */}
+                <div className="mt-1">
+                  <button
+                    onClick={() => setShowAdvanced(v => !v)}
+                    className="w-full flex items-center justify-between py-2.5 px-3 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 hover:border-white/20 rounded-xl transition-all cursor-pointer font-mono"
+                  >
+                    <span className="flex items-center gap-2 text-[11px] font-bold text-white tracking-wider">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-white" />
+                      {isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}
+                    </span>
+                    {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                  </button>
+
+                  {showAdvanced && (
+                    <div className="mt-2.5 space-y-3.5 bg-zinc-950/60 border border-white/8 rounded-xl p-3.5 font-sans">
+                      
+                      {/* ESTILO DE PARCHE DE CENSURA */}
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                          <EyeOff className="w-3 h-3 text-zinc-400" />
+                          {isEs ? 'Estilo de Parche de Censura' : 'Redaction Patch Style'}
+                        </label>
+                        <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                          <button
+                            onClick={() => setRedactionStyle('black')}
+                            className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                              redactionStyle === 'black' ? 'bg-black border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? '⬛ Negro Sólido' : '⬛ Solid Black'}
+                          </button>
+
+                          <button
+                            onClick={() => setRedactionStyle('gray')}
+                            className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                              redactionStyle === 'gray' ? 'bg-zinc-700 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? '🩶 Gris / Difuminado' : '🩶 Dark Gray'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* COINCIDENCIA DE BÚSQUEDA */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-zinc-400 block font-mono tracking-widest uppercase flex items-center gap-1.5">
+                          <Shield className="w-3 h-3 text-zinc-400" />
+                          {isEs ? 'Configuración de Búsqueda' : 'Search Rules'}
+                        </label>
+
+                        <div onClick={() => setExactMatch(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                          <div>
+                            <p className="text-[11px] font-bold text-white">{isEs ? 'Coincidencia exacta de mayúsculas' : 'Exact Case Matching'}</p>
+                            <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Sensible a mayúsculas y minúsculas' : 'Case-sensitive match'}</p>
+                          </div>
+                          <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${exactMatch ? 'bg-white' : 'bg-zinc-700'}`}>
+                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${exactMatch ? 'left-4' : 'left-0.5'}`} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-mono text-zinc-400 block mb-1">{isEs ? 'Sufijo del archivo censurado:' : 'Redacted output suffix:'}</label>
+                          <input
+                            type="text"
+                            value={customSuffix}
+                            onChange={e => setCustomSuffix(e.target.value)}
+                            className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-1.5 focus:outline-none focus:border-white/40 transition"
+                          />
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+
                 {/* Security Warning Box */}
-                <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5">
+                <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5 mt-1">
                   <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-[11px] text-amber-200 font-sans leading-snug">
                     {isEs 

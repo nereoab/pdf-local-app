@@ -771,6 +771,67 @@ export default function PdfOrganizer() {
         </div>
       )}
 
+      {/* ── GUÍA DE USO: CÓMO REORDENAR PÁGINAS ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <LayoutGrid className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo reordenar o reorganizar las páginas de un PDF?' : 'How to reorder or reorganize the pages of a PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para cambiar el orden, rotar y gestionar páginas de tu PDF de forma visual.' : 'Quick guide to change the order, rotate, and manage pages of your PDF visually.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Sube tu PDF', titleEn: 'Upload your PDF', descEs: 'Arrastra el PDF a la zona de carga o haz clic para seleccionarlo. El visor mostrará las miniaturas de todas las páginas en el orden actual.', descEn: 'Drag the PDF to the upload zone or click to select it. The viewer shows thumbnails of all pages in their current order.' },
+              { step: '02', titleEs: 'Reorganiza las páginas', titleEn: 'Reorganize pages', descEs: 'Arrastra y suelta las miniaturas para reordenarlas como quieras. También puedes duplicar páginas, eliminarlas o rotarlas individualmente desde su menú contextual.', descEn: 'Drag and drop thumbnails to reorder them as you wish. You can also duplicate pages, delete them, or rotate them individually from their context menu.' },
+              { step: '03', titleEs: 'Aplica rotaciones globales', titleEn: 'Apply global rotations', descEs: 'Usa los controles del panel para rotar todas las páginas a la vez en incrementos de 90°, o selecciona páginas específicas para rotar solo esas.', descEn: 'Use the panel controls to rotate all pages at once in 90° increments, or select specific pages to rotate only those.' },
+              { step: '04', titleEs: 'Aplicar y Descargar', titleEn: 'Apply & Download', descEs: 'Haz clic en "Aplicar y Descargar →". El motor construye el nuevo PDF con el orden exacto de páginas definido por ti y lo descarga directamente.', descEn: 'Click "Apply & Download →". The engine builds the new PDF with the exact page order you defined and downloads it directly.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Acciones disponibles en el Organizador de Páginas' : '💡 Available actions in the Page Organizer'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Conoce todas las operaciones que puedes realizar sobre las páginas del PDF.' : 'Learn all the operations you can perform on PDF pages.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'Arrastrar y soltar para reordenar', labelEn: 'Drag & drop to reorder', descEs: 'La interfaz de miniaturas permite reordenar páginas visualmente arrastrándolas a cualquier posición. El nuevo orden se refleja en tiempo real.', descEn: 'The thumbnail interface allows visually reordering pages by dragging them to any position. The new order is reflected in real time.' },
+              { labelEs: 'Duplicar páginas', labelEn: 'Duplicate pages', descEs: 'Haz doble clic sobre una miniatura o usa el menú de página para duplicarla. Útil para repetir una carátula o añadir páginas en blanco en posiciones específicas.', descEn: 'Double-click on a thumbnail or use the page menu to duplicate it. Useful for repeating a cover page or adding blank pages at specific positions.' },
+              { labelEs: 'Rotar páginas individuales', labelEn: 'Rotate individual pages', descEs: 'Cada página puede rotarse independientemente en 90°, 180° o 270° sin afectar el resto del documento. Ideal para corregir páginas escaneadas en orientación incorrecta.', descEn: 'Each page can be rotated independently by 90°, 180°, or 270° without affecting the rest of the document. Ideal for fixing pages scanned in the wrong orientation.' },
+              { labelEs: 'Eliminar páginas directamente', labelEn: 'Delete pages directly', descEs: 'Desde el organizador puedes eliminar páginas sin necesidad de ir a la herramienta de Eliminar Páginas. Selecciona y presiona el botón de borrar en la miniatura.', descEn: 'From the organizer you can delete pages without going to the Delete Pages tool. Select and press the delete button on the thumbnail.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <ListOrdered className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
         {/* BLOQUE 1: PASO A PASO */}

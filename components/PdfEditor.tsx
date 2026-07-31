@@ -306,6 +306,7 @@ export default function PdfEditor() {
           </div>
         </motion.div>
       )}
+
     </div>
   );
 }

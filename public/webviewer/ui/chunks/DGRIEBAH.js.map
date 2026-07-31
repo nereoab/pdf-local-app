@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/ui/src/components/PanelListItem/index.js"],
+  "sourcesContent": ["import PanelListItem from './PanelListItem';\n\nexport default PanelListItem;"],
+  "mappings": "kFAAAA,IAAAC,IAAAC,IAEA,IAAOC,EAAQA",
+  "names": ["init_dirname", "init_buffer", "init_process", "PanelListItem_default"]
+}

@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
   ArrowRight, RefreshCw, FileText,
-  UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, Sparkles 
+  UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, Sparkles, Lock 
 } from 'lucide-react';
 import { WordIcon, ExcelIcon, PowerPointIcon, JpgIcon, HtmlIcon, TextIcon } from '../../components/ProgramIcons';
 import { toast } from 'sonner';
@@ -407,6 +407,106 @@ function ConvertirContent() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* SECCIÓN DETALLADA: ¿QUÉ SUCEDE CON TU ARCHIVO PDF Y EXPLICACIÓN DE HERRAMIENTAS DE CONVERSIÓN */}
+              <div className="w-full mt-12 space-y-8 font-sans">
+                
+                {/* BLOQUE 1: ¿QUÉ SUCEDE CON TU ARCHIVO PDF? (PRIVACIDAD Y SEGURIDAD LOCAL) */}
+                <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
+                      <ShieldCheck className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white tracking-tight">
+                        {isEs ? '¿Qué sucede exactamente con tu archivo PDF al convertirlo?' : 'What exactly happens to your PDF file when converted?'}
+                      </h3>
+                      <span className="text-xs font-mono text-emerald-400 font-semibold">
+                        {isEs ? '🔒 PRIVACIDAD ABSOLUTA • PROCESAMIENTO 100% LOCAL EN RAM • SIN SERVIDORES' : '🔒 ABSOLUTE PRIVACY • 100% LOCAL RAM PROCESSING • ZERO SERVERS'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
+                    <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
+                      <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                        <HardDrive className="w-4 h-4 text-emerald-400" />
+                        {isEs ? '1. Ejecución Local en tu Navegador' : '1. Local Browser Execution'}
+                      </strong>
+                      <p>
+                        {isEs
+                          ? 'Tus archivos PDF se transforman a Word, Excel, PowerPoint, imágenes u otros formatos directamente en tu navegador. Tus documentos privados no se suben a ningún servidor externo.'
+                          : 'Your PDF files are converted to Word, Excel, PowerPoint, images, or other formats directly in your browser. Private files are never uploaded to external servers.'}
+                      </p>
+                    </div>
+
+                    <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
+                      <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                        <Lock className="w-4 h-4 text-emerald-400" />
+                        {isEs ? '2. Fidelidad de Texto y Tablas' : '2. Text & Table Layout Fidelity'}
+                      </strong>
+                      <p>
+                        {isEs
+                          ? 'El motor de conversión analiza la estructura del documento extrayendo listas, párrafos, gráficos y hojas de cálculo para generar archivos limpios y totalmente editables.'
+                          : 'The conversion engine parses document layout extracting lists, paragraphs, charts, and spreadsheets to generate clean, fully editable files.'}
+                      </p>
+                    </div>
+
+                    <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
+                      <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                        {isEs ? '3. Purga Automática de Memoria' : '3. Automatic Memory Purge'}
+                      </strong>
+                      <p>
+                        {isEs
+                          ? 'Al finalizar la descarga del archivo convertido o al cerrar la ventana, la memoria RAM elimina automáticamente todos los datos y temporales procesados.'
+                          : 'Upon downloading your converted file or closing the tab, browser RAM automatically purges all processed temp data.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BLOQUE 2: GUÍA EXPLICATIVA DE TODAS LAS HERRAMIENTAS DE CONVERSIÓN */}
+                <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+                      <RefreshCw className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white tracking-tight font-sans">
+                        {isEs ? 'Herramientas disponibles en el Módulo de Conversión' : 'Available Tools in the Conversion Module'}
+                      </h3>
+                      <p className="text-xs text-zinc-400 font-mono">
+                        {isEs ? 'Conoce en detalle las 6 funciones avanzadas para exportar y convertir tus documentos PDF.' : 'Learn in detail about the 6 advanced functions to export and convert your PDF documents.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 font-sans">
+                    {conversionTools.map((tool) => (
+                      <div key={tool.id} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 hover:border-white/20 transition-all flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-2.5 mb-2.5">
+                            <div className="p-1.5 rounded-lg bg-zinc-900 border border-white/10 text-white">
+                              <tool.icon className="w-5 h-5" />
+                            </div>
+                            <span className="text-[10px] font-mono text-zinc-400 font-bold tracking-wider">
+                              {isEs ? tool.tagEs : tool.tagEn}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-white mb-2">{isEs ? tool.titleEs : tool.titleEn}</h4>
+                          <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? tool.descEs : tool.descEn}</p>
+                        </div>
+                        <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-emerald-400">
+                          <span>✓ 100% Local</span>
+                          <span className="text-zinc-500 font-sans">{isEs ? 'Sin Servidores' : 'No Servers'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </motion.div>
           )}

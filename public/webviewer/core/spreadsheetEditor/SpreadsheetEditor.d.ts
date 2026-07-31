@@ -3,8 +3,8 @@
 //***********************************************************************************************
 //***********************************************************************************************
 //   Type definitions for SpreadsheetEditor.js
-//   Updated: 6/3/2026 12:14
-//   Version: 23.0.0.22
+//   Updated: 7/14/2026 14:38
+//   Version: 23.0.0.27
 //   https://www.leadtools.com
 //***********************************************************************************************
 
@@ -67,6 +67,45 @@ declare module lt.Document.SheetEditor {
    class SheetEditorActiveSheetChangedEventArgs extends LeadEventArgs {
       get_sheetIndex(): number;
       sheetIndex: number; // read-only
+   }
+
+   enum CommentChangeType {
+      commentAdded = 0,
+      commentUpdated = 1,
+      commentDeleted = 2,
+      commentThreadAdded = 3,
+      commentThreadUpdated = 4,
+      commentThreadDeleted = 5,
+      commentThreadClearAll = 6
+   }
+
+   class CommentChangeInfo {
+      get_sheetIndex(): number;
+      get_row(): number;
+      get_column(): number;
+      get_threadId(): string;
+      get_commentIds(): string[];
+      sheetIndex: number; // read-only
+      row: number; // read-only
+      column: number; // read-only
+      threadId: string; // read-only
+      commentIds: string[]; // read-only
+   }
+
+   interface CommentChangedEventHandler extends LeadEventHandler {
+      (sender: any, e: CommentChangedEventArgs): void;
+   }
+
+   class CommentChangedEventType extends LeadEvent {
+      add(value: CommentChangedEventHandler): CommentChangedEventHandler;
+      remove(value: CommentChangedEventHandler): void;
+   }
+
+   class CommentChangedEventArgs extends LeadEventArgs {
+      get_type(): CommentChangeType;
+      get_changes(): CommentChangeInfo[];
+      type: CommentChangeType; // read-only
+      changes: CommentChangeInfo[]; // read-only
    }
 
    class SheetDataChangedInfo {
@@ -204,6 +243,68 @@ declare module lt.Document.SheetEditor {
       paste(): Promise<void>;
       cut(): void;
       isAsyncPasteAvailable(): any;
+   }
+
+   class CommentThreadReference {
+      get_sheetIndex(): number;
+      get_threadId(): string;
+      constructor(sheetIndex: number, threadId: string);
+      sheetIndex: number; // read-only
+      threadId: string; // read-only
+   }
+
+   class CommentThreadStates {
+      static open: string;
+      static resolved: string;
+   }
+
+   class Comment {
+      get_id(): string;
+      get_author(): string;
+      get_text(): string;
+      get_createdAt(): string;
+      id: string; // read-only
+      author: string; // read-only
+      text: string; // read-only
+      createdAt: string; // read-only
+   }
+
+   class CommentThread {
+      get_sheetIndex(): number;
+      get_row(): number;
+      get_column(): number;
+      get_id(): string;
+      get_root(): Comment;
+      get_replies(): Comment[];
+      get_state(): string;
+      get_createdAt(): string;
+      sheetIndex: number; // read-only
+      row: number; // read-only
+      column: number; // read-only
+      id: string; // read-only
+      root: Comment; // read-only
+      replies: Comment[]; // read-only
+      state: string; // read-only
+      createdAt: string; // read-only
+   }
+
+   class SheetEditorComments {
+      get_threads(): CommentThread[];
+      add_changed(value: CommentChangedEventHandler): void;
+      remove_changed(value: CommentChangedEventHandler): void;
+      getThread(threadId: string): CommentThread;
+      getThreadByCellAddress(sheetIndex: number, row: number, column: number): CommentThread;
+      createThread(sheetIndex: number, row: number, column: number, author: string, text: string, createdAt: string): CommentThread;
+      addComment(threadId: string, author: string, text: string, createdAt: string): Comment;
+      updateComment(threadId: string, commentId: string, text: string): void;
+      removeComment(threadId: string, commentId: string): Comment;
+      removeThread(threadId: string): CommentThread;
+      setThreadState(threadId: string, state: string): void;
+      setThreadStates(threads: CommentThreadReference[], state: string): void;
+      removeThreads(threads: CommentThreadReference[]): CommentThread[];
+      constructor(editor: SheetEditor);
+      threads: CommentThread[]; // read-only
+      changed: CommentChangedEventType; // read-only
    }
 
    class SearchResult {
@@ -348,7 +449,9 @@ declare module lt.Document.SheetEditor {
    }
 
    class SheetEditor {
+      get_isCellEditing(): boolean;
       get_formulaBarService(): SheetEditorFormulaBarService;
+      get_comments(): SheetEditorComments;
       get_interactiveService(): SheetEditorInteractiveService;
       get_history(): SheetEditorHistory;
       get_search(): SheetEditorSearch;
@@ -367,6 +470,7 @@ declare module lt.Document.SheetEditor {
       getWorkbookJsonData(): string;
       selectRange(range: CellRange): void;
       selectRanges(ranges: CellRange[]): void;
+      getSelectedCellRange(): CellRange;
       get_zoomRatio(): number;
       set_zoomRatio(value: number): void;
       get_editingEnabled(): boolean;
@@ -384,7 +488,9 @@ declare module lt.Document.SheetEditor {
       remove_dataChanged(value: SheetEditorDataChangedEventHandler): void;
       onDataChanged(e: SheetEditorDataChangedEventArgs): void;  // protected
       getWorkbook(): LEADWorkbook;
+      isCellEditing: boolean; // read-only
       formulaBarService: SheetEditorFormulaBarService; // read-only
+      comments: SheetEditorComments; // read-only
       interactiveService: SheetEditorInteractiveService; // read-only
       history: SheetEditorHistory; // read-only
       search: SheetEditorSearch; // read-only

@@ -137,6 +137,44 @@ export default function PdfWatermark() {
     setTotalPages(0);
   };
 
+  // Helpers para el color del overlay de previsualización
+  const getOverlayColor = (color: string): string => {
+    const colorMap: Record<string, string> = {
+      red: '#ef4444',
+      dark: '#1a1a1a',
+      blue: '#3b82f6',
+      emerald: '#10b981',
+      white: '#f5f5f5',
+    };
+    return colorMap[color] || '#ef4444';
+  };
+
+  const getOverlayTextColorClass = (color: string): string => {
+    const classMap: Record<string, string> = {
+      red: 'text-red-500 border-red-500',
+      dark: 'text-gray-900 border-gray-800',
+      blue: 'text-blue-400 border-blue-400',
+      emerald: 'text-emerald-400 border-emerald-400',
+      white: 'text-white border-white',
+    };
+    return classMap[color] || 'text-red-500 border-red-500';
+  };
+
+  const getPositionClasses = (pos: Position9): string => {
+    const posMap: Record<Position9, string> = {
+      'top-left': 'items-start justify-start',
+      'top-center': 'items-start justify-center',
+      'top-right': 'items-start justify-end',
+      'center-left': 'items-center justify-start',
+      'center': 'items-center justify-center',
+      'center-right': 'items-center justify-end',
+      'bottom-left': 'items-end justify-start',
+      'bottom-center': 'items-end justify-center',
+      'bottom-right': 'items-end justify-end',
+    };
+    return posMap[pos] || 'items-center justify-center';
+  };
+
   // Helper para verificar qué páginas deben recibir el sello de agua
   const parseSelectedPages = (): Set<number> => {
     const selected = new Set<number>();
@@ -414,22 +452,46 @@ export default function PdfWatermark() {
                         </div>
                       )}
 
-                      {/* STAMP OVERLAY EN TIEMPO REAL */}
-                      {isStamped && (
-                        <div className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center overflow-hidden p-4">
-                          {wmType === 'text' && (
-                            <span 
-                              style={{ 
-                                transform: `rotate(${rotation}deg)`, 
-                                opacity: opacity / 100 
-                              }}
-                              className="font-black text-red-500 text-xs tracking-widest uppercase border-2 border-red-500 px-2 py-0.5 rounded shadow-lg text-center break-all select-none font-mono"
-                            >
-                              {wmText || 'CONFIDENCIAL'}
-                            </span>
-                          )}
-                        </div>
-                      )}
+          {/* STAMP OVERLAY EN TIEMPO REAL */}
+          <div className={`absolute inset-0 z-30 pointer-events-none overflow-hidden p-1 flex ${getPositionClasses(position)}`}>
+            {wmType === 'text' && (
+              <span 
+                style={{ 
+                  transform: `rotate(${rotation}deg)`,
+                  opacity: opacity / 100,
+                  fontSize: `${Math.max(Math.min(fontSize * 0.28, 22), 6)}px`,
+                  color: getOverlayColor(fontColor),
+                }}
+                className={`font-black tracking-widest uppercase px-1 py-0.5 rounded select-none font-mono text-center break-all leading-tight ${getOverlayTextColorClass(fontColor)}`}
+              >
+                {wmText || 'CONFIDENCIAL'}
+              </span>
+            )}
+            {wmType === 'image' && imageFile && (
+              <div 
+                style={{ 
+                  transform: `rotate(${rotation}deg)`,
+                  opacity: opacity / 100,
+                }}
+                className="flex items-center justify-center"
+              >
+                <img 
+                  src={URL.createObjectURL(imageFile)} 
+                  alt="Watermark"
+                  style={{ maxWidth: '70%', maxHeight: '70%' }}
+                  className="object-contain"
+                />
+              </div>
+            )}
+            {wmType === 'image' && !imageFile && (
+              <div 
+                style={{ opacity: 0.35 }}
+                className="flex items-center justify-center text-zinc-400 text-[8px] font-mono"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </div>
+            )}
+          </div>
                     </div>
                   );
                 })}
@@ -647,6 +709,8 @@ export default function PdfWatermark() {
           </div>
         </motion.div>
       )}
+
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import { encryptPDF } from '@pdfsmaller/pdf-encrypt';
 import { 
@@ -22,6 +22,50 @@ export default function PdfProtector() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(85);
+
+  // Previsualización Canvas PDF Real
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
+
+  const renderPagePreview = useCallback(async (pdfFile: File, pageNum: number) => {
+    setIsLoadingPreview(true);
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      setTotalPages(pdfDoc.numPages);
+
+      const targetPageNum = Math.min(Math.max(1, pageNum), pdfDoc.numPages);
+      const page = await pdfDoc.getPage(targetPageNum);
+      const viewport = page.getViewport({ scale: 1.5 });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+        setPreviewDataUrl(canvas.toDataURL('image/jpeg', 0.85));
+      }
+    } catch (err) {
+      console.warn('Canvas preview fallback:', err);
+      setPreviewDataUrl(null);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (file) {
+      setCurrentPage(1);
+      renderPagePreview(file, 1);
+    } else {
+      setPreviewDataUrl(null);
+      setTotalPages(1);
+    }
+  }, [file, renderPagePreview]);
 
   // Section 1: Open Password States
   const [openPassword, setOpenPassword] = useState('');
@@ -77,6 +121,42 @@ export default function PdfProtector() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+/**
+ * Garantiza que el trailer del PDF contenga la entrada obligatoria /ID [<hex> <hex>]
+ * requerida por la especificación ISO 32000-1 para cifrado AES-256 en Adobe Acrobat Reader.
+ * Resuelve el Error (135) de Adobe Acrobat Reader.
+ */
+function ensureTrailerIdForAdobeAcrobat(encryptedBytes: Uint8Array): Uint8Array {
+  const textDecoder = new TextDecoder('latin1');
+  const textEncoder = new TextEncoder();
+  const pdfStr = textDecoder.decode(encryptedBytes);
+
+  // Si ya posee la etiqueta /ID [, el tráiler está completo
+  if (pdfStr.includes('/ID [')) {
+    return encryptedBytes;
+  }
+
+  // Generar un ID hexadecimal aleatorio de 16 bytes (32 caracteres hex)
+  const randomHex = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+
+  const idEntry = `/ID [<${randomHex}> <${randomHex}>]`;
+
+  // Buscar el cierre '>>' del diccionario trailer
+  const trailerKeywordIdx = pdfStr.lastIndexOf('trailer');
+  if (trailerKeywordIdx !== -1) {
+    const endDictIdx = pdfStr.indexOf('>>', trailerKeywordIdx);
+    if (endDictIdx !== -1) {
+      const patchedStr = pdfStr.slice(0, endDictIdx) + ` ${idEntry} ` + pdfStr.slice(endDictIdx);
+      return textEncoder.encode(patchedStr);
+    }
+  }
+
+  return encryptedBytes;
+}
+
   const executeProtect = async () => {
     if (!file) {
       toast.error(isEs ? 'Primero debes subir un archivo PDF' : 'You must upload a PDF file first');
@@ -101,26 +181,77 @@ export default function PdfProtector() {
     }
 
     setIsProcessing(true);
-    setProgressMsg(isEs ? 'Encriptando documento con cifrado AES...' : 'Encrypting document with AES...');
+    setProgressMsg(isEs ? 'Iniciando proceso de seguridad y cifrado AES-256...' : 'Starting AES-256 security & encryption process...');
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-      const pdfBytes = await pdfDoc.save();
+      let pdfBytesToEncrypt: Uint8Array;
+
+      // 1. Si se activó rasterizado (aplanar a imagen para máxima seguridad dura):
+      if (enableRasterize) {
+        setProgressMsg(isEs ? 'Rasterizando páginas a capas no editables de alta resolución...' : 'Rasterizing pages into high-resolution non-editable layers...');
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const srcDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+        const rasterPdf = await PDFDocument.create();
+
+        for (let pageNum = 1; pageNum <= srcDoc.numPages; pageNum++) {
+          const page = await srcDoc.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 2.0 }); // 300 DPI high resolution
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            const blobJpeg = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+            if (blobJpeg) {
+              const jpegBytes = await blobJpeg.arrayBuffer();
+              const embeddedImg = await rasterPdf.embedJpg(jpegBytes);
+              const origViewport = page.getViewport({ scale: 1.0 });
+
+              const newPage = rasterPdf.addPage([origViewport.width, origViewport.height]);
+              newPage.drawImage(embeddedImg, {
+                x: 0,
+                y: 0,
+                width: origViewport.width,
+                height: origViewport.height,
+              });
+            }
+          }
+        }
+        pdfBytesToEncrypt = new Uint8Array(await rasterPdf.save({ useObjectStreams: false }));
+      } else {
+        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        pdfBytesToEncrypt = new Uint8Array(await pdfDoc.save({ useObjectStreams: false }));
+      }
+
+      setProgressMsg(isEs ? 'Aplicando mapa de permisos /P y cifrado AES-256...' : 'Applying /P permissions map and AES-256 encryption...');
 
       const targetUserPassword = openPassword || '';
-      const targetOwnerPassword = permissionsPassword || openPassword || 'pdfblack-owner';
+      // Garantizar que targetOwnerPassword sea SIEMPRE diferente de targetUserPassword para obligar a Adobe Acrobat a aplicar las restricciones de usuario
+      const targetOwnerPassword = permissionsPassword 
+        ? permissionsPassword 
+        : (openPassword ? `${openPassword}_master_owner_2026` : 'PDFBLACK_PROTECTED_MASTER_KEY_2026');
 
-      const encryptedBytes = await encryptPDF(new Uint8Array(pdfBytes), targetUserPassword, {
+      const rawEncryptedBytes = await encryptPDF(pdfBytesToEncrypt, targetUserPassword, {
         ownerPassword: targetOwnerPassword,
+        algorithm: 'AES-256',
         allowPrinting: !preventPrinting,
+        allowHighQualityPrint: !preventPrinting,
         allowModifying: !preventEditing,
         allowCopying: !preventCopying,
+        allowExtraction: !preventCopying,
         allowAnnotating: !preventEditing,
         allowFillingForms: !preventEditing,
+        allowAssembly: !preventEditing,
       });
 
-      const blob = new Blob([encryptedBytes as any], { type: 'application/pdf' });
+      const encryptedBytes = ensureTrailerIdForAdobeAcrobat(rawEncryptedBytes);
+
+      const blob = new Blob([encryptedBytes as unknown as BlobPart], { type: 'application/pdf' });
       const downloadUrl = URL.createObjectURL(blob);
 
       const originalName = file.name.replace(/\.[^/.]+$/, "");
@@ -132,7 +263,7 @@ export default function PdfProtector() {
       document.body.removeChild(link);
       URL.revokeObjectURL(downloadUrl);
 
-      toast.success(isEs ? '¡Documento PDF protegido y descargado con éxito!' : 'PDF document protected and downloaded successfully!');
+      toast.success(isEs ? '¡Documento PDF protegido con éxito! Restricciones de permisos aplicadas.' : 'PDF protected successfully! Permission restrictions enforced.');
     } catch (error) {
       console.error(error);
       toast.error(isEs ? 'Ocurrió un error al aplicar la protección al PDF' : 'An error occurred while protecting the PDF');
@@ -266,48 +397,31 @@ export default function PdfProtector() {
             </div>
 
             {/* Document Canvas Preview */}
-            <div className="flex-1 bg-[#121215] relative overflow-y-auto p-4 flex flex-col items-center">
-              <div className="w-full bg-white rounded shadow-2xl text-black p-6 sm:p-8 min-h-[580px] relative font-serif text-xs leading-relaxed select-none border border-gray-200">
-                
-                {/* Security Overlay Badge */}
-                <div className="absolute top-4 right-4 bg-emerald-100 border border-emerald-400 text-emerald-900 px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 shadow">
-                  <Lock className="w-3 h-3 text-emerald-700" />
-                  <span>AES 256-BIT ENCRYPTION</span>
+            <div className="flex-1 bg-[#09090b] relative flex items-center justify-center p-3 min-h-[520px]">
+              {isLoadingPreview ? (
+                <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                  <Loader2 className="w-8 h-8 animate-spin text-white" />
+                  <span className="text-xs font-mono">{isEs ? "Generando previsualización..." : "Rendering preview..."}</span>
                 </div>
-
-                <div className="absolute top-4 left-6 text-2xl font-bold text-black font-sans">{currentPage}</div>
-
-                <div className="mt-8 space-y-4">
-                  <h2 className="text-base font-bold text-black font-sans border-b pb-2">
-                    DOCUMENTO PROTEGIDO CON CIFRADO
-                  </h2>
-
-                  <p className="text-xs text-gray-800 leading-relaxed">
-                    Este documento PDF se encuentra actualmente cargado en PDFBLACK y listo para aplicar restricciones de apertura y permisos.
-                  </p>
-
-                  <div className="bg-gray-50 border-l-2 border-emerald-500 p-3 text-xs text-gray-900 space-y-1.5 font-sans rounded">
-                    <strong className="text-emerald-950 font-mono text-[11px]">Resumen de Seguridad Configurada:</strong>
-                    <p className="text-[11px] text-gray-700">
-                      • Contraseña de Apertura: <span className="font-bold text-emerald-700">{openPassword ? '✓ Habilitada' : 'Sin clave'}</span>
-                    </p>
-                    <p className="text-[11px] text-gray-700">
-                      • Evitar Impresión: <span className="font-bold text-emerald-700">{preventPrinting ? '✓ Activo' : 'Permitido'}</span>
-                    </p>
-                    <p className="text-[11px] text-gray-700">
-                      • Evitar Copia: <span className="font-bold text-emerald-700">{preventCopying ? '✓ Activo' : 'Permitido'}</span>
-                    </p>
-                    <p className="text-[11px] text-gray-700">
-                      • Rasterizado: <span className="font-bold text-emerald-700">{enableRasterize ? '✓ Activado' : 'Desactivado'}</span>
-                    </p>
+              ) : previewDataUrl ? (
+                <div className="w-full h-full max-h-[580px] flex items-center justify-center relative">
+                  <img 
+                    src={previewDataUrl} 
+                    alt={`Página ${currentPage}`}
+                    className="max-h-[560px] w-auto max-w-full object-contain rounded-lg shadow-2xl border border-white/15 bg-white transition-all duration-200"
+                  />
+                  {/* Security Overlay Badge */}
+                  <div className="absolute top-4 right-4 bg-emerald-950/90 border border-emerald-500/40 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-md">
+                    <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>AES 256-BIT ENCRYPTION</span>
                   </div>
                 </div>
-
-                <div className="mt-16 text-[10px] text-gray-400 border-t pt-2 font-mono flex justify-between">
-                  <span>{file.name}</span>
-                  <span>Página {currentPage} de {totalPages}</span>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                  <FileText className="w-10 h-10 text-zinc-600" />
+                  <span className="text-xs font-mono">{isEs ? "Vista previa no disponible" : "Preview unavailable"}</span>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Bottom Viewer Toolbar */}

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
+import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -45,6 +46,74 @@ export default function PdfMerger() {
   const [addPageNumbers, setAddPageNumbers] = useState<boolean>(true);
   const [duplexMode, setDuplexMode] = useState<boolean>(false);
 
+  const { globalFiles, globalFile } = useFileStore();
+  const loadedFromStoreRef = useRef(false);
+
+  const processAndAddFileList = async (fileList: File[]) => {
+    const selected = fileList.filter(f => f.type === 'application/pdf');
+    if (selected.length === 0) return;
+
+    const newItems: FileItem[] = [];
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    for (const f of selected) {
+      try {
+        const buffer = await f.arrayBuffer();
+        const doc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+        const count = doc.getPageCount();
+
+        let thumbUrl: string | undefined = undefined;
+        try {
+          const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)) }).promise;
+          const page = await pdfjsDoc.getPage(1);
+          const viewport = page.getViewport({ scale: 0.3 });
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          if (context) {
+            await (page.render({ canvasContext: context, viewport, canvas } as any)).promise;
+            thumbUrl = canvas.toDataURL();
+          }
+        } catch (e) {
+          console.warn("Could not generate thumbnail for file:", f.name);
+        }
+
+        newItems.push({
+          id: `${f.name}-${Date.now()}-${Math.random()}`,
+          file: f,
+          pageCount: count,
+          pageRange: 'all',
+          thumbnailUrl: thumbUrl
+        });
+      } catch {
+        newItems.push({
+          id: `${f.name}-${Date.now()}-${Math.random()}`,
+          file: f,
+          pageCount: 1,
+          pageRange: 'all'
+        });
+      }
+    }
+
+    setFiles(prev => [...prev, ...newItems]);
+    setDownloadUrl(null);
+  };
+
+  useEffect(() => {
+    if (!loadedFromStoreRef.current && files.length === 0) {
+      const filesToLoad = globalFiles && globalFiles.length > 0 
+        ? globalFiles 
+        : (globalFile ? [globalFile] : []);
+
+      if (filesToLoad.length > 0) {
+        loadedFromStoreRef.current = true;
+        processAndAddFileList(filesToLoad);
+      }
+    }
+  }, [globalFiles, globalFile, files.length]);
+
   const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = Array.from(e.target.files).filter(f => f.type === 'application/pdf');
@@ -54,54 +123,8 @@ export default function PdfMerger() {
       }
 
       toast.info(isEs ? 'Analizando páginas de los archivos...' : 'Analyzing file pages...');
-
-      const newItems: FileItem[] = [];
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-      for (const f of selected) {
-        try {
-          const buffer = await f.arrayBuffer();
-          const doc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-          const count = doc.getPageCount();
-
-          let thumbUrl: string | undefined = undefined;
-          try {
-            const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)) }).promise;
-            const page = await pdfjsDoc.getPage(1);
-            const viewport = page.getViewport({ scale: 0.3 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            if (context) {
-              await (page.render({ canvasContext: context, viewport, canvas } as any)).promise;
-              thumbUrl = canvas.toDataURL();
-            }
-          } catch (e) {
-            console.warn("Could not generate thumbnail for file:", f.name);
-          }
-
-          newItems.push({
-            id: `${f.name}-${Date.now()}-${Math.random()}`,
-            file: f,
-            pageCount: count,
-            pageRange: 'all',
-            thumbnailUrl: thumbUrl
-          });
-        } catch {
-          newItems.push({
-            id: `${f.name}-${Date.now()}-${Math.random()}`,
-            file: f,
-            pageCount: 1,
-            pageRange: 'all'
-          });
-        }
-      }
-
-      setFiles(prev => [...prev, ...newItems]);
-      setDownloadUrl(null);
-      toast.success(isEs ? `${newItems.length} archivo(s) añadido(s)` : `${newItems.length} file(s) added`);
+      await processAndAddFileList(selected);
+      toast.success(isEs ? `${selected.length} archivo(s) añadido(s)` : `${selected.length} file(s) added`);
     }
     e.target.value = '';
   };
@@ -600,6 +623,67 @@ export default function PdfMerger() {
           </div>
         </motion.div>
       )}
+
+      {/* ── GUÍA DE USO: CÓMO UNIR PDFs ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <Merge className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo unir varios PDFs en uno solo?' : 'How to merge multiple PDFs into one?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para combinar y fusionar archivos PDF en un documento único.' : 'Quick guide to combine and merge PDF files into a single document.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Añade tus PDFs', titleEn: 'Add your PDFs', descEs: 'Arrastra o haz clic para añadir múltiples archivos PDF. Puedes agregar tantos como necesites. Los archivos aparecerán como tarjetas en la lista de fusión.', descEn: 'Drag or click to add multiple PDF files. You can add as many as needed. Files appear as cards in the merge list.' },
+              { step: '02', titleEs: 'Ordena los documentos', titleEn: 'Reorder documents', descEs: 'Arrastra las tarjetas para reordenar los archivos en el orden exacto en que quieres que aparezcan en el PDF final. Puedes usar los botones ↑ ↓ también.', descEn: 'Drag the cards to reorder files in the exact order you want them in the final PDF. You can also use the ↑ ↓ buttons.' },
+              { step: '03', titleEs: 'Configura opciones avanzadas', titleEn: 'Configure advanced options', descEs: 'Selecciona si quieres insertar páginas en blanco entre documentos, añadir numeración continua de páginas, o especificar rangos de páginas de cada archivo.', descEn: 'Select whether to insert blank pages between documents, add continuous page numbering, or specify page ranges from each file.' },
+              { step: '04', titleEs: 'Unir PDFs', titleEn: 'Merge PDFs', descEs: 'Haz clic en "Unir PDFs →". El motor fusiona todos los documentos al instante en un único PDF que puedes descargar directamente.', descEn: 'Click "Merge PDFs →". The engine instantly merges all documents into a single PDF you can download directly.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Consejos para una fusión perfecta de PDFs' : '💡 Tips for a perfect PDF merge'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Saca el máximo partido a las opciones de combinación de documentos.' : 'Get the most out of the document combining options.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'Rangos de páginas por archivo', labelEn: 'Page ranges per file', descEs: 'Puedes especificar qué páginas extraer de cada PDF antes de fusionarlos (ej. páginas 1-5 del primero y 3-7 del segundo). Perfecto para crear compilaciones personalizadas.', descEn: 'You can specify which pages to extract from each PDF before merging (e.g., pages 1-5 from the first and 3-7 from the second). Perfect for custom compilations.' },
+              { labelEs: 'Páginas en blanco separadoras', labelEn: 'Blank separator pages', descEs: 'Activa la opción de insertar una página en blanco entre cada documento para mejorar la presentación visual, especialmente en impresiones dúplex.', descEn: 'Enable the option to insert a blank page between each document to improve visual presentation, especially in duplex printing.' },
+              { labelEs: 'Numeración continua de páginas', labelEn: 'Continuous page numbering', descEs: 'El motor puede re-numerar todas las páginas del PDF fusionado de forma continua, útil para expedientes, informes o documentos legales.', descEn: 'The engine can re-number all pages of the merged PDF continuously, useful for dossiers, reports, or legal documents.' },
+              { labelEs: 'PDFs protegidos con contraseña', labelEn: 'Password-protected PDFs', descEs: 'Si alguno de tus PDFs tiene contraseña de apertura, primero usa la herramienta "Desbloquear PDF" del módulo OPTIMIZAR para quitarla antes de unirlos.', descEn: 'If any of your PDFs has an opening password, first use the "Unlock PDF" tool in the OPTIMIZE module to remove it before merging.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <Settings2 className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">

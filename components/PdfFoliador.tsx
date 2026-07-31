@@ -651,6 +651,7 @@ export default function PdfFoliador() {
           </div>
         </motion.div>
       )}
+
     </div>
   );
 }

@@ -752,6 +752,67 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
         </motion.div>
       )}
 
+      {/* ── GUÍA DE USO: WORD ↔ PDF ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo convertir entre Word y PDF?' : 'How to convert between Word and PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para convertir archivos .docx a PDF o extraer contenido de un PDF a Word.' : 'Quick guide to convert .docx files to PDF or extract content from a PDF to Word.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "Word → PDF" para convertir tu .docx a PDF, o "PDF → Word" para extraer el contenido de un PDF a un documento editable .docx.', descEn: 'Select "Word → PDF" to convert your .docx to PDF, or "PDF → Word" to extract content from a PDF into an editable .docx document.' },
+              { step: '02', titleEs: 'Sube tu archivo', titleEn: 'Upload your file', descEs: 'Arrastra el archivo .docx o PDF a la zona de carga. El sistema detectará automáticamente el formato y configurará el modo correcto.', descEn: 'Drag your .docx or PDF file to the upload area. The system automatically detects the format and sets the correct mode.' },
+              { step: '03', titleEs: 'Configura las opciones', titleEn: 'Configure options', descEs: 'Ajusta opciones como orientación de página, tamaño de papel, márgenes, o calidad de conversión según el tipo de documento que estás procesando.', descEn: 'Adjust options such as page orientation, paper size, margins, or conversion quality based on the type of document you\'re processing.' },
+              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor procesa el archivo en tu RAM local al instante. El resultado se descarga directamente sin pasar por ningún servidor.', descEn: 'Click "Convert →". The engine processes the file in your local RAM instantly. The result downloads directly without passing through any server.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Consejos para obtener la mejor conversión Word ↔ PDF' : '💡 Tips for the best Word ↔ PDF conversion'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Entiende las particularidades de cada dirección de conversión.' : 'Understand the particularities of each conversion direction.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'Word → PDF: preserva el formato al 100%', labelEn: 'Word → PDF: preserves formatting 100%', descEs: 'Al convertir Word a PDF, el diseño, fuentes, imágenes y tablas quedan "congelados" y se verán idénticos en cualquier dispositivo. Es la forma más profesional de compartir documentos.', descEn: 'When converting Word to PDF, the layout, fonts, images and tables are "frozen" and will look identical on any device. It\'s the most professional way to share documents.' },
+              { labelEs: 'PDF → Word: funciona mejor con PDFs de texto', labelEn: 'PDF → Word: works best with text PDFs', descEs: 'La conversión PDF a Word funciona óptimamente con PDFs generados desde procesadores de texto. PDFs escaneados (imágenes) requieren OCR primero para poder extraer el texto.', descEn: 'PDF to Word conversion works best with text-generated PDFs. Scanned PDFs (images) require OCR first to extract text before converting.' },
+              { labelEs: 'Fuentes no estándar en Word', labelEn: 'Non-standard fonts in Word', descEs: 'Si tu .docx usa fuentes poco comunes no instaladas en tu sistema, el motor las sustituirá por fuentes similares al convertir a PDF. Usa fuentes estándar (Arial, Times, Calibri) para mejores resultados.', descEn: 'If your .docx uses uncommon fonts not installed on your system, the engine will substitute similar fonts when converting to PDF. Use standard fonts (Arial, Times, Calibri) for best results.' },
+              { labelEs: 'PDFs con múltiples columnas', labelEn: 'Multi-column PDFs', descEs: 'Los PDFs con diseño de múltiples columnas (como revistas o periódicos) pueden perder su estructura al convertirlos a Word, ya que .docx no maneja de forma nativa los flujos de texto multi-columna del formato PDF.', descEn: 'PDFs with multi-column layouts (like magazines or newspapers) may lose their structure when converted to Word, as .docx doesn\'t natively handle multi-column PDF text flows.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
         {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}

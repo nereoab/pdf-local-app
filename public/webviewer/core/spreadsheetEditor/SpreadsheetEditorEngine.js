@@ -4136,7 +4136,9 @@ var wasmImports = {
   /** @export */ invoke_diii: invoke_diii,
   /** @export */ invoke_fiii: invoke_fiii,
   /** @export */ invoke_i: invoke_i,
+  /** @export */ invoke_id: invoke_id,
   /** @export */ invoke_ii: invoke_ii,
+  /** @export */ invoke_iid: invoke_iid,
   /** @export */ invoke_iii: invoke_iii,
   /** @export */ invoke_iiii: invoke_iiii,
   /** @export */ invoke_iiiii: invoke_iiiii,
@@ -4555,10 +4557,10 @@ function invoke_viiiii(index, a1, a2, a3, a4, a5) {
   }
 }
 
-function invoke_vid(index, a1, a2) {
+function invoke_iid(index, a1, a2) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)(a1, a2);
+    return getWasmTableEntry(index)(a1, a2);
   } catch (e) {
     stackRestore(sp);
     if (e !== e + 0) throw e;
@@ -4577,10 +4579,32 @@ function invoke_vdii(index, a1, a2, a3) {
   }
 }
 
+function invoke_id(index, a1) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1);
+  } catch (e) {
+    stackRestore(sp);
+    if (e !== e + 0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
 function invoke_iiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
   var sp = stackSave();
   try {
     return getWasmTableEntry(index)(a1, a2, a3, a4, a5, a6, a7, a8, a9);
+  } catch (e) {
+    stackRestore(sp);
+    if (e !== e + 0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_vid(index, a1, a2) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1, a2);
   } catch (e) {
     stackRestore(sp);
     if (e !== e + 0) throw e;

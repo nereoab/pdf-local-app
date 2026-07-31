@@ -800,6 +800,67 @@ export default function PdfRotator() {
         </div>
       )}
 
+      {/* ── GUÍA DE USO: CÓMO ROTAR PÁGINAS DE PDF ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <RotateCw className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo rotar páginas de un PDF?' : 'How to rotate pages of a PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para corregir la orientación de páginas en documentos PDF.' : 'Quick guide to fix the orientation of pages in PDF documents.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Sube tu PDF', titleEn: 'Upload your PDF', descEs: 'Arrastra el PDF a la zona de carga o haz clic para seleccionarlo. El visor mostrará las miniaturas de todas las páginas con su orientación actual.', descEn: 'Drag the PDF to the upload zone or click to select it. The viewer shows thumbnails of all pages with their current orientation.' },
+              { step: '02', titleEs: 'Selecciona las páginas a rotar', titleEn: 'Select pages to rotate', descEs: 'Haz clic en las miniaturas para seleccionar qué páginas quieres rotar. Puedes seleccionar todas, páginas pares, impares, o páginas individuales.', descEn: 'Click on thumbnails to select which pages you want to rotate. You can select all, even, odd, or individual pages.' },
+              { step: '03', titleEs: 'Elige el ángulo de rotación', titleEn: 'Choose rotation angle', descEs: 'Selecciona el ángulo: 90° a la derecha, 90° a la izquierda, o 180° (voltear). Puedes aplicar diferentes rotaciones a diferentes grupos de páginas.', descEn: 'Select the angle: 90° clockwise, 90° counter-clockwise, or 180° (flip). You can apply different rotations to different page groups.' },
+              { step: '04', titleEs: 'Rotar y Descargar', titleEn: 'Rotate & Download', descEs: 'Haz clic en "Aplicar Rotación →". El motor aplica las rotaciones a las páginas seleccionadas al instante y el PDF queda listo para descargar.', descEn: 'Click "Apply Rotation →". The engine instantly applies rotations to selected pages and the PDF is ready to download.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Consejos y casos de uso comunes de la rotación' : '💡 Tips and common use cases for rotation'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Aprende a sacar el máximo provecho de la herramienta de rotación.' : 'Learn to get the most out of the rotation tool.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'Corrección de escaneos volcados', labelEn: 'Fix rotated scans', descEs: 'El caso más común: una hoja se escaneó de lado (landscape) cuando debería ser vertical (portrait). Selecciona esas páginas y aplica 90° en la dirección correcta.', descEn: 'The most common case: a sheet was scanned sideways (landscape) when it should be vertical (portrait). Select those pages and apply 90° in the correct direction.' },
+              { labelEs: 'Rotar todas las páginas a la vez', labelEn: 'Rotate all pages at once', descEs: 'Usa el botón "Seleccionar todas" para aplicar la misma rotación a todo el documento de una sola vez, sin necesidad de seleccionarlas manualmente.', descEn: 'Use the "Select all" button to apply the same rotation to the entire document at once, without manually selecting them.' },
+              { labelEs: 'Rotación 180°: documentos invertidos', labelEn: '180° rotation: inverted documents', descEs: 'Si el documento fue escaneado completamente al revés (boca abajo), aplica 180° para voltearlo correctamente sin tener que re-escanear.', descEn: 'If the document was scanned completely upside down, apply 180° to flip it correctly without needing to re-scan.' },
+              { labelEs: 'Las rotaciones son permanentes en el PDF', labelEn: 'Rotations are permanent in the PDF', descEs: 'A diferencia de la rotación de visualización de un visor PDF, esta herramienta graba la rotación de forma permanente en el metadata de orientación de página del binario PDF.', descEn: 'Unlike the display rotation in a PDF viewer, this tool permanently records the rotation in the page orientation metadata of the PDF binary.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <RefreshCw className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
         {/* BLOQUE 1: PASO A PASO */}

@@ -583,6 +583,67 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         </motion.div>
       )}
 
+      {/* ── GUÍA DE USO: HTML ↔ PDF ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <Code className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo convertir entre HTML y PDF?' : 'How to convert between HTML and PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para convertir páginas web o código HTML a PDF, o extraer el contenido HTML de un PDF.' : 'Quick guide to convert web pages or HTML code to PDF, or extract HTML content from a PDF.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "HTML → PDF" para convertir código HTML/CSS a PDF, o "PDF → HTML" para extraer el contenido estructurado de un PDF como documento HTML.', descEn: 'Select "HTML → PDF" to convert HTML/CSS code to PDF, or "PDF → HTML" to extract the structured content from a PDF as an HTML document.' },
+              { step: '02', titleEs: 'Sube tu archivo o pega el HTML', titleEn: 'Upload your file or paste HTML', descEs: 'Puedes subir un archivo .html/.htm, o pegar directamente el código HTML en el editor de texto integrado para convertirlo al instante a PDF.', descEn: 'You can upload an .html/.htm file, or paste HTML code directly in the integrated text editor to instantly convert it to PDF.' },
+              { step: '03', titleEs: 'Configura el diseño de página', titleEn: 'Configure page layout', descEs: 'Ajusta el tamaño de página (A4, Letter), márgenes, si incluir estilos CSS externos, y el nivel de zoom de renderizado para que el PDF se vea exactamente como en el navegador.', descEn: 'Adjust page size (A4, Letter), margins, whether to include external CSS styles, and the rendering zoom level so the PDF looks exactly as it does in the browser.' },
+              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor renderiza el HTML localmente con el motor de tu navegador y genera el PDF al instante. Sin servidores, 100% privado.', descEn: 'Click "Convert →". The engine renders the HTML locally with your browser engine and generates the PDF instantly. No servers, 100% private.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Consejos para convertir HTML a PDF correctamente' : '💡 Tips for correctly converting HTML to PDF'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Conoce las particularidades del renderizado HTML en PDF.' : 'Learn the particularities of HTML rendering in PDF.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'CSS externo e imágenes online', labelEn: 'External CSS and online images', descEs: 'Si tu HTML referencia recursos externos (CDN de Bootstrap, Google Fonts, imágenes remotas), asegúrate de tener conexión a internet al convertir para que el motor pueda cargarlos.', descEn: 'If your HTML references external resources (Bootstrap CDN, Google Fonts, remote images), make sure you have internet connection when converting so the engine can load them.' },
+              { labelEs: 'Paginación de contenido largo', labelEn: 'Long content pagination', descEs: 'Para documentos HTML largos, el motor inserta saltos de página automáticos. Puedes usar la propiedad CSS "page-break-before: always" para controlar manualmente dónde comienzan las páginas.', descEn: 'For long HTML documents, the engine inserts automatic page breaks. You can use the CSS property "page-break-before: always" to manually control where pages start.' },
+              { labelEs: 'JavaScript no se ejecuta en la conversión', labelEn: 'JavaScript does not run during conversion', descEs: 'El motor convierte el HTML estático. El JavaScript de la página no se ejecuta durante la conversión, por lo que el contenido dinámico generado por JS podría no aparecer en el PDF.', descEn: 'The engine converts static HTML. The page\'s JavaScript does not execute during conversion, so dynamic content generated by JS may not appear in the PDF.' },
+              { labelEs: 'PDF → HTML: estructura semántica', labelEn: 'PDF → HTML: semantic structure', descEs: 'Al convertir PDF a HTML, el motor analiza la jerarquía de texto y genera etiquetas semánticas (h1, p, table). Es útil para reutilizar el contenido de un PDF en una web.', descEn: 'When converting PDF to HTML, the engine analyzes text hierarchy and generates semantic tags (h1, p, table). Useful for reusing PDF content in a website.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
         {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}

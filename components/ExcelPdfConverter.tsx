@@ -759,6 +759,67 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
         </motion.div>
       )}
 
+      {/* ── GUÍA DE USO: EXCEL ↔ PDF ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <FileSpreadsheet className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo convertir entre Excel y PDF?' : 'How to convert between Excel and PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para convertir hojas de cálculo .xlsx a PDF o extraer datos tabulares de un PDF.' : 'Quick guide to convert .xlsx spreadsheets to PDF or extract tabular data from a PDF.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "Excel → PDF" para convertir tu .xlsx a PDF, o "PDF → Excel" para extraer tablas y datos numéricos de un PDF a una hoja de cálculo editable.', descEn: 'Select "Excel → PDF" to convert your .xlsx to PDF, or "PDF → Excel" to extract tables and numeric data from a PDF into an editable spreadsheet.' },
+              { step: '02', titleEs: 'Sube tu archivo', titleEn: 'Upload your file', descEs: 'Arrastra el archivo .xlsx o PDF a la zona de carga. Puedes procesar múltiples hojas (sheets) de un mismo libro de Excel en una sola conversión.', descEn: 'Drag your .xlsx or PDF file to the upload area. You can process multiple sheets from the same Excel workbook in a single conversion.' },
+              { step: '03', titleEs: 'Configura las opciones de tabla', titleEn: 'Configure table options', descEs: 'Ajusta el tamaño de papel (A4, Letter, etc.), orientación (portrait/landscape), escala de ajuste de columnas y si incluir encabezados de hoja en el PDF resultante.', descEn: 'Adjust paper size (A4, Letter, etc.), orientation (portrait/landscape), column fit scale, and whether to include sheet headers in the resulting PDF.' },
+              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor analiza la estructura de celdas localmente en tu RAM y genera el archivo de salida al instante sin enviar datos a ningún servidor.', descEn: 'Click "Convert →". The engine analyzes the cell structure locally in your RAM and generates the output file instantly without sending data to any server.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Consejos para la conversión Excel ↔ PDF' : '💡 Tips for Excel ↔ PDF conversion'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Obtén el mejor resultado con tus hojas de cálculo.' : 'Get the best result with your spreadsheets.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'Orientación landscape para tablas anchas', labelEn: 'Landscape orientation for wide tables', descEs: 'Si tus hojas tienen muchas columnas, usa la orientación horizontal (landscape) en las opciones para que todas las columnas quepan en el PDF sin truncarse.', descEn: 'If your sheets have many columns, use horizontal (landscape) orientation in the options so all columns fit in the PDF without being truncated.' },
+              { labelEs: 'Múltiples hojas en un solo PDF', labelEn: 'Multiple sheets in one PDF', descEs: 'El conversor puede procesar todos los sheets de un libro Excel en un único PDF continuo, con cada hoja comenzando en una nueva página del documento.', descEn: 'The converter can process all sheets from an Excel workbook into a single continuous PDF, with each sheet starting on a new document page.' },
+              { labelEs: 'PDF → Excel: mejor con tablas limpias', labelEn: 'PDF → Excel: best with clean tables', descEs: 'La extracción de tablas funciona mejor con PDFs que tienen tablas bien definidas con bordes y celdas claramente delimitadas. PDFs con tablas en imágenes requieren OCR primero.', descEn: 'Table extraction works best with PDFs that have well-defined tables with clear borders and cells. PDFs with tables as images require OCR first.' },
+              { labelEs: 'Fórmulas no se transfieren a PDF', labelEn: 'Formulas do not transfer to PDF', descEs: 'Al convertir Excel a PDF, solo se guardan los valores calculados (resultados), no las fórmulas. El PDF es una representación visual fija del estado actual de la hoja.', descEn: 'When converting Excel to PDF, only calculated values (results) are stored, not formulas. The PDF is a fixed visual representation of the current sheet state.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
         {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}

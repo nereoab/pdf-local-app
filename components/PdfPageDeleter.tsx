@@ -721,6 +721,67 @@ export default function PdfPageDeleter() {
         </div>
       )}
 
+      {/* ── GUÍA DE USO: CÓMO ELIMINAR PÁGINAS ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <Trash2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo eliminar páginas de un PDF?' : 'How to delete pages from a PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para seleccionar y borrar páginas no deseadas de un documento PDF.' : 'Quick guide to select and delete unwanted pages from a PDF document.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Sube tu PDF', titleEn: 'Upload your PDF', descEs: 'Arrastra el PDF a la zona de carga o haz clic para seleccionarlo. El visor cargará automáticamente las miniaturas de todas las páginas.', descEn: 'Drag the PDF to the upload zone or click to select it. The viewer automatically loads thumbnails of all pages.' },
+              { step: '02', titleEs: 'Selecciona las páginas a eliminar', titleEn: 'Select pages to delete', descEs: 'Haz clic sobre las miniaturas de las páginas que quieres eliminar. Las páginas seleccionadas se marcan visualmente. Puedes seleccionar múltiples páginas a la vez.', descEn: 'Click on the thumbnails of pages you want to delete. Selected pages are visually marked. You can select multiple pages at once.' },
+              { step: '03', titleEs: 'Revisa la selección', titleEn: 'Review your selection', descEs: 'Verifica el resumen de páginas seleccionadas para asegurarte de que no eliminarás páginas incorrectas. Puedes deseleccionar páginas haciendo clic nuevamente.', descEn: 'Check the summary of selected pages to make sure you won\'t delete the wrong pages. You can deselect pages by clicking again.' },
+              { step: '04', titleEs: 'Eliminar páginas', titleEn: 'Delete pages', descEs: 'Haz clic en "Eliminar páginas →". El motor procesa el documento al instante y el PDF resultante (sin las páginas eliminadas) queda listo para descargar.', descEn: 'Click "Delete pages →". The engine processes the document instantly and the resulting PDF (without deleted pages) is ready to download.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 Consejos para eliminar páginas correctamente' : '💡 Tips for correctly deleting pages'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Evita errores comunes al seleccionar y eliminar páginas de tu PDF.' : 'Avoid common mistakes when selecting and deleting pages from your PDF.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'La eliminación es permanente', labelEn: 'Deletion is permanent', descEs: 'Las páginas eliminadas se borran definitivamente del nuevo PDF. Guarda siempre una copia del original antes de procesar el documento.', descEn: 'Deleted pages are permanently removed from the new PDF. Always keep a copy of the original before processing.' },
+              { labelEs: 'Selección múltiple por clic', labelEn: 'Multiple selection by click', descEs: 'Haz clic en cada miniatura para seleccionarla. Puedes seleccionar páginas no contiguas (ej. páginas 2, 5 y 9) haciendo clic individualmente en cada una.', descEn: 'Click each thumbnail to select it. You can select non-contiguous pages (e.g., pages 2, 5, and 9) by clicking individually on each one.' },
+              { labelEs: 'Rango de páginas rápido', labelEn: 'Quick page range', descEs: 'Usa la opción de rango para seleccionar rápidamente un intervalo de páginas consecutivas sin tener que hacer clic en cada miniatura una por una.', descEn: 'Use the range option to quickly select an interval of consecutive pages without having to click each thumbnail one by one.' },
+              { labelEs: 'No se puede eliminar la única página', labelEn: 'Cannot delete the only page', descEs: 'Un PDF debe tener al menos 1 página. Si tu documento tiene una sola página, el motor bloqueará la eliminación para evitar crear un PDF vacío inválido.', descEn: 'A PDF must have at least 1 page. If your document has a single page, the engine will block deletion to avoid creating an invalid empty PDF.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <Sliders className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
         {/* BLOQUE 1: PRIVACIDAD Y PROCESAMIENTO */}

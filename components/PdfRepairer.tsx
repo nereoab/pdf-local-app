@@ -29,6 +29,13 @@ export default function PdfRepairer() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [recoveredPages, setRecoveredPages] = useState<number | null>(null);
   const [repairLog, setRepairLog] = useState<string[]>([]);
+
+  // Previsualización Canvas PDF
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [previewPageNum, setPreviewPageNum] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
+
   // Opciones Avanzadas
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [recoveryPriority, setRecoveryPriority] = useState<RecoveryPriority>('todo');
@@ -46,6 +53,46 @@ export default function PdfRepairer() {
     }
     return null;
   }, [file]);
+
+  const renderPagePreview = useCallback(async (pdfFile: File, pageNum: number) => {
+    setIsLoadingPreview(true);
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      setTotalPages(pdfDoc.numPages);
+
+      const targetPageNum = Math.min(Math.max(1, pageNum), pdfDoc.numPages);
+      const page = await pdfDoc.getPage(targetPageNum);
+      const viewport = page.getViewport({ scale: 1.5 });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+        setPreviewDataUrl(canvas.toDataURL('image/jpeg', 0.85));
+      }
+    } catch (err) {
+      console.warn('Canvas preview fallback to iframe:', err);
+      setPreviewDataUrl(null);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (file) {
+      setPreviewPageNum(1);
+      renderPagePreview(file, 1);
+    } else {
+      setPreviewDataUrl(null);
+      setTotalPages(1);
+    }
+  }, [file, renderPagePreview]);
 
   useEffect(() => {
     return () => {
@@ -89,23 +136,23 @@ export default function PdfRepairer() {
     setRepairLog([]);
     setDownloadUrl(null);
 
-
+    const addLog = (msg: string) => {
+      setRepairLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+    };
 
     let localUrl: string | null = null;
 
     try {
       setProgressMsg(isEs ? 'Paso 1/4: Analizando cabecera binaria...' : 'Step 1/4: Analyzing binary header...');
       addLog(isEs ? '🔍 Leyendo binario del documento...' : '🔍 Reading document binary...');
-      await new Promise(r => setTimeout(r, 60));
+      await new Promise(r => setTimeout(r, 50));
 
       const rawBuffer = await file.arrayBuffer();
-      let cleanBuffer = rawBuffer;
+      let uint8 = new Uint8Array(rawBuffer);
 
-      // Stage 1: Strip leading byte garbage if header is offset
-      const uint8 = new Uint8Array(rawBuffer);
+      // 1. Limpieza de basura en cabecera (%PDF-)
       let headerOffset = -1;
-
-      for (let i = 0; i < Math.min(uint8.length - 5, 2048); i++) {
+      for (let i = 0; i < Math.min(uint8.length - 5, 4096); i++) {
         if (
           uint8[i] === 0x25 && // %
           uint8[i + 1] === 0x50 && // P
@@ -119,76 +166,104 @@ export default function PdfRepairer() {
       }
 
       if (headerOffset > 0) {
-        addLog(isEs ? `⚠️ Corregido desplazar de cabecera: ${headerOffset} bytes limpios` : `⚠️ Fixed header offset: ${headerOffset} bytes cleaned`);
-        cleanBuffer = rawBuffer.slice(headerOffset);
+        addLog(isEs ? `⚠️ Corregido desfase de cabecera: ${headerOffset} bytes inservibles eliminados` : `⚠️ Header offset fixed: ${headerOffset} bytes cleaned`);
+        uint8 = uint8.subarray(headerOffset);
       } else {
         addLog(isEs ? '✓ Cabecera %PDF detectada correctamente' : '✓ %PDF Header detected correctly');
       }
 
-      setProgressPercent(30);
+      // 2. Verificación y reparación de trailer %%EOF
+      let hasEof = false;
+      const tailCheckLength = Math.min(uint8.length, 1024);
+      for (let i = uint8.length - tailCheckLength; i < uint8.length - 4; i++) {
+        if (
+          uint8[i] === 0x25 && uint8[i+1] === 0x25 && // %%
+          uint8[i+2] === 0x45 && uint8[i+3] === 0x4f && uint8[i+4] === 0x46 // EOF
+        ) {
+          hasEof = true;
+          break;
+        }
+      }
 
-      // Stage 2: Smart Object Tree & XRef Rebuild
-      setProgressMsg(isEs ? 'Paso 2/4: Reconstruyendo tabla XRef y diccionario...' : 'Step 2/4: Rebuilding XRef table and dictionary...');
-      addLog(isEs ? '🔧 Re-indexando catálogo de objetos y diccionario trailer...' : '🔧 Re-indexing object catalog and trailer dictionary...');
-      await new Promise(r => setTimeout(r, 80));
+      if (!hasEof) {
+        addLog(isEs ? '⚠️ Marcador %%EOF dañado o ausente. Reparando trailer binario...' : '⚠️ %%EOF marker missing or corrupt. Repairing binary trailer...');
+        const eofBytes = new TextEncoder().encode('\n%%EOF\n');
+        const fixedUint8 = new Uint8Array(uint8.length + eofBytes.length);
+        fixedUint8.set(uint8);
+        fixedUint8.set(eofBytes, uint8.length);
+        uint8 = fixedUint8;
+      } else {
+        addLog(isEs ? '✓ Marcador %%EOF de cierre verificado' : '✓ %%EOF closing marker verified');
+      }
 
-      let pageCount = 0;
+      let cleanBuffer = uint8.buffer;
+      setProgressPercent(25);
+
       let finalBytes: Uint8Array | null = null;
+      let pageCount = 0;
 
+      // 3. Intento de Modo Inteligente (Reestructuración de Objetos con pdf-lib)
       if (repairMode === 'smart') {
+        setProgressMsg(isEs ? 'Paso 2/4: Reconstruyendo catálogo de objetos XRef...' : 'Step 2/4: Rebuilding XRef object catalog...');
+        addLog(isEs ? '🔧 Re-indexando catálogo de objetos y limpiando metadatos...' : '🔧 Re-indexing object catalog and stripping metadata...');
+
         try {
           const pdfDoc = await PDFDocument.load(cleanBuffer, {
             ignoreEncryption: true,
             updateMetadata: false
           });
 
-          // Strip corrupted title/author metadata pointers
-          pdfDoc.setTitle('');
-          pdfDoc.setAuthor('');
-          pdfDoc.setProducer('PDFBlack UltraRepair Engine');
-          pdfDoc.setSubject('');
-          pdfDoc.setKeywords([]);
-
           pageCount = pdfDoc.getPageCount();
-          addLog(isEs ? `✓ ${pageCount} página(s) encontradas en el árbol principal` : `✓ ${pageCount} page(s) found in main tree`);
+          if (pageCount > 0) {
+            const cleanPdf = await PDFDocument.create();
+            cleanPdf.setTitle('');
+            cleanPdf.setAuthor('');
+            cleanPdf.setProducer('PDFBlack UltraRepair Engine v2.0');
+            cleanPdf.setCreator('PDFBlack Local Engine');
 
-          setProgressPercent(60);
+            const pageIndices = pdfDoc.getPageIndices();
+            const copiedPages = await cleanPdf.copyPages(pdfDoc, pageIndices);
+            copiedPages.forEach(page => cleanPdf.addPage(page));
 
-          setProgressMsg(isEs ? 'Paso 3/4: Sanitizando objetos e imágenes...' : 'Step 3/4: Sanitizing objects and images...');
-          const cleanPdf = await PDFDocument.create();
-          const pageIndices = pdfDoc.getPageIndices();
-          const copiedPages = await cleanPdf.copyPages(pdfDoc, pageIndices);
-          copiedPages.forEach(page => cleanPdf.addPage(page));
-
-          finalBytes = await cleanPdf.save({ useObjectStreams: true });
-          addLog(isEs ? '✓ Flujos de páginas y fuentes re-empaquetados' : '✓ Page streams and fonts repackaged');
-        } catch {
-          addLog(isEs ? '⚠️ La reconstrucción rápida falló. Activando modo profundo...' : '⚠️ Fast rebuild failed. Triggering deep mode...');
+            finalBytes = await cleanPdf.save({ useObjectStreams: true });
+            addLog(isEs ? `✓ ${pageCount} página(s) recuperadas mediante reconstrucción estructural XRef` : `✓ ${pageCount} page(s) recovered via structural XRef rebuild`);
+          }
+        } catch (smartErr) {
+          addLog(isEs ? `⚠️ Reconstrucción de catálogo falló: ${smartErr instanceof Error ? smartErr.message : 'Error de sintaxis binaria'}. Activando Modo Profundo...` : `⚠️ Catalog rebuild failed. Activating Deep Rescue Mode...`);
         }
       }
 
-      // Stage 3: Deep Resampling Fallback for Severely Damaged PDF Streams
+      // 4. Modo Profundo o Fallback de Rescate Visual (Renderizado Tolerante a Fallos con pdf.js)
       if (!finalBytes || repairMode === 'deep') {
-        setProgressMsg(isEs ? 'Paso 3/4: Modo Profundo - Reconstruyendo flujos gráficos...' : 'Step 3/4: Deep Mode - Rebuilding graphic streams...');
-        addLog(isEs ? '⚙️ Iniciando motor de renderizado tolerante a fallos...' : '⚙️ Launching fault-tolerant rendering engine...');
-        
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+        setProgressMsg(isEs ? 'Paso 3/4: Modo Profundo - Rescatando páginas visuales...' : 'Step 3/4: Deep Mode - Rescuing visual pages...');
+        addLog(isEs ? '⚙️ Iniciando motor de renderizado tolerante a fallos (pdf.js)...' : '⚙️ Launching fault-tolerant rendering engine (pdf.js)...');
 
-        const loadingTask = pdfjsLib.getDocument({ data: cleanBuffer });
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const loadingTask = pdfjsLib.getDocument({
+          data: cleanBuffer,
+          stopAtErrors: false
+        });
+
         const pdf = await loadingTask.promise;
         pageCount = pdf.numPages;
+        addLog(isEs ? `✓ ${pageCount} página(s) detectadas en el flujo visual` : `✓ ${pageCount} page(s) detected in visual stream`);
 
         const deepPdf = await PDFDocument.create();
+        deepPdf.setTitle('');
+        deepPdf.setAuthor('');
+        deepPdf.setProducer('PDFBlack Deep Visual Repair Engine');
 
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const currentPct = 60 + Math.floor((i / pdf.numPages) * 30);
+        let rescuedCount = 0;
+        for (let i = 1; i <= pageCount; i++) {
+          const currentPct = 40 + Math.floor((i / pageCount) * 50);
           setProgressPercent(currentPct);
-          setProgressMsg(isEs ? `Procesando página visual ${i} de ${pdf.numPages}...` : `Processing visual page ${i} of ${pdf.numPages}...`);
+          setProgressMsg(isEs ? `Rescatando página visual ${i} de ${pageCount}...` : `Rescuing visual page ${i} of ${pageCount}...`);
 
           try {
             const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2.0 }); // High-DPI canvas
+            const viewport = page.getViewport({ scale: 1.8 });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
@@ -196,34 +271,43 @@ export default function PdfRepairer() {
 
             if (ctx) {
               await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-              const jpegUrl = canvas.toDataURL('image/jpeg', 0.92);
-              const jpegBytes = await fetch(jpegUrl).then(res => res.arrayBuffer());
 
-              const embeddedImg = await deepPdf.embedJpg(jpegBytes);
-              const originalViewport = page.getViewport({ scale: 1.0 });
-              const newPage = deepPdf.addPage([originalViewport.width, originalViewport.height]);
-              newPage.drawImage(embeddedImg, {
-                x: 0,
-                y: 0,
-                width: originalViewport.width,
-                height: originalViewport.height,
-              });
-              addLog(isEs ? `  • Página ${i} rescatada e integrada` : `  • Page ${i} rescued & integrated`);
+              const blobJpeg = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.90));
+              if (blobJpeg) {
+                const jpegBytes = await blobJpeg.arrayBuffer();
+                const embeddedImg = await deepPdf.embedJpg(jpegBytes);
+                const originalViewport = page.getViewport({ scale: 1.0 });
+
+                const newPage = deepPdf.addPage([originalViewport.width, originalViewport.height]);
+                newPage.drawImage(embeddedImg, {
+                  x: 0,
+                  y: 0,
+                  width: originalViewport.width,
+                  height: originalViewport.height,
+                });
+                rescuedCount++;
+                addLog(isEs ? `  • Página ${i} rescatada y reconstruida en formato PDF 1.7 limpiado` : `  • Page ${i} rescued and rebuilt into clean PDF 1.7 format`);
+              }
             }
-          } catch {
-            addLog(isEs ? `❌ Error en página ${i}, omitiendo bloque dañado` : `❌ Error on page ${i}, skipping damaged block`);
+          } catch (pageErr) {
+            addLog(isEs ? `❌ Error en bloque gráfico de página ${i}, omitiendo sector dañado` : `❌ Error on page ${i} graphic block, skipping damaged sector`);
           }
         }
 
-        finalBytes = await deepPdf.save({ useObjectStreams: true });
+        if (rescuedCount > 0) {
+          finalBytes = await deepPdf.save({ useObjectStreams: true });
+          pageCount = rescuedCount;
+        }
       }
 
-      setProgressPercent(90);
+      if (!finalBytes || finalBytes.byteLength === 0) {
+        throw new Error(isEs ? 'No se pudo recuperar ninguna página del archivo dañado.' : 'Failed to recover any pages from damaged file.');
+      }
 
-      // Stage 4: Verification & Blob Output
+      setProgressPercent(95);
       setProgressMsg(isEs ? 'Paso 4/4: Generando archivo PDF reparado final...' : 'Step 4/4: Generating final repaired PDF...');
       addLog(isEs ? '✨ Validando archivo final PDF 1.7 Standard...' : '✨ Validating final PDF 1.7 Standard file...');
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 80));
 
       const blob = new Blob([finalBytes as unknown as BlobPart], { type: 'application/pdf' });
       localUrl = URL.createObjectURL(blob);
@@ -233,17 +317,20 @@ export default function PdfRepairer() {
       setProgressPercent(100);
 
       const originalName = file.name.replace(/\.[^/.]+$/, "");
+      const suffix = customSuffix || '_Reparado';
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${originalName}_Reparado.pdf`;
+      link.download = `${originalName}${suffix}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? '¡PDF reparado y recuperado con éxito!' : 'PDF repaired and recovered successfully!');
+      toast.success(isEs ? '¡PDF reparado y recuperado con éxito!' : 'PDF repaired & recovered successfully!');
     } catch (error) {
       console.error(error);
-      toast.error(isEs ? 'Ocurrió un error grave al reparar el archivo.' : 'A severe error occurred while repairing the file.');
+      const errMsg = error instanceof Error ? error.message : (isEs ? 'Error desconocido en la lectura del PDF' : 'Unknown PDF read error');
+      addLog(`❌ ${errMsg}`);
+      toast.error(isEs ? `Error al reparar: ${errMsg}` : `Repair error: ${errMsg}`);
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
@@ -356,19 +443,27 @@ export default function PdfRepairer() {
                   </button>
                 </div>
 
-                <div className="relative w-full flex-1 min-h-0 bg-zinc-950 rounded-xl overflow-hidden flex items-center justify-center p-3 shadow-inner border border-white/5">
-                  {pdfUrl ? (
+                <div className="relative w-full flex-1 min-h-[500px] bg-[#09090b] rounded-xl overflow-hidden flex flex-col items-center justify-center p-3 border border-white/10">
+                  {isLoadingPreview ? (
+                    <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                      <Loader2 className="w-8 h-8 animate-spin text-white" />
+                      <span className="text-xs font-mono">{isEs ? "Generando previsualización..." : "Rendering preview..."}</span>
+                    </div>
+                  ) : previewDataUrl ? (
+                    <div className="w-full h-full max-h-[560px] flex items-center justify-center relative">
+                      <img 
+                        src={previewDataUrl} 
+                        alt={`Página ${previewPageNum}`}
+                        className="max-h-[550px] w-auto max-w-full object-contain rounded-lg shadow-2xl border border-white/15 bg-white transition-all duration-200"
+                      />
+                    </div>
+                  ) : pdfUrl ? (
                     <iframe
-                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                      className="w-full h-full rounded border-0 pointer-events-none"
+                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                      className="w-full h-full rounded border-0"
                       title="PDF Preview"
                     />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-zinc-400">
-                      <Loader2 className="w-8 h-8 animate-spin text-white" />
-                      <span className="text-xs font-mono">{isEs ? "Cargando previsualización..." : "Loading preview..."}</span>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>

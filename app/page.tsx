@@ -199,14 +199,17 @@ export default function DashboardPage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
           >
-            <div className="w-full h-full max-w-5xl max-h-[80vh] border-4 border-cyan-500/50 border-dashed rounded-[3rem] flex flex-col items-center justify-center bg-cyan-500/5 pointer-events-none">
+            <div className="w-full h-full max-w-5xl max-h-[80vh] border-2 border-white/30 border-dashed rounded-3xl flex flex-col items-center justify-center bg-zinc-900/60 pointer-events-none shadow-2xl">
               <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
-                <UploadCloud className="w-32 h-32 text-cyan-400 mb-6 drop-shadow-[0_0_30px_rgba(6,182,212,0.5)]" />
+                <UploadCloud className="w-24 h-24 text-white mb-6 drop-shadow-[0_0_25px_rgba(255,255,255,0.2)]" />
               </motion.div>
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 text-center">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 text-center tracking-tight font-sans">
                 {isEs ? "Suelta tu PDF en cualquier lugar" : "Drop your PDF anywhere"}
               </h2>
-              <p className="text-cyan-400 text-xl font-medium">{isEs ? "Para empezar a trabajar al instante" : "To start working instantly"}</p>
+              <p className="text-zinc-400 text-sm font-mono flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-zinc-300" />
+                {isEs ? "Para cargar y empezar a trabajar al instante" : "To load and start working instantly"}
+              </p>
             </div>
           </motion.div>
         )}
@@ -214,8 +217,7 @@ export default function DashboardPage() {
 
       {isMounted && (
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden flex justify-center items-start">
-          <motion.div animate={{ opacity: [0.03, 0.06, 0.03] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[5%] w-[80vw] h-[50vw] rounded-full bg-cyan-500 blur-[150px]" />
-          <motion.div animate={{ opacity: [0.02, 0.05, 0.02] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }} className="absolute top-[15%] right-[-10%] w-[60vw] h-[60vw] rounded-full bg-purple-500 blur-[150px]" />
+          <motion.div animate={{ opacity: [0.02, 0.04, 0.02] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[5%] w-[80vw] h-[50vw] rounded-full bg-zinc-400 blur-[160px]" />
         </div>
       )}
 
@@ -314,7 +316,7 @@ export default function DashboardPage() {
                       </div>
                       
                       <div className="w-full flex-1 bg-[#09090b] relative pointer-events-none overflow-hidden">
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[75%] aspect-[1/1.414]">
+                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[90%] aspect-[1/1.414]">
                           <iframe 
                             src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
                             className="w-full h-full border-none bg-white shadow-2xl rounded-md" 
@@ -760,16 +762,35 @@ export default function DashboardPage() {
 
           {/* ESTADO 2: CARGANDO */}
           {isUploading && (
-            <motion.div key="uploading-view" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full bg-black/60 border border-cyan-500/30 rounded-3xl p-12 shadow-[0_0_40px_rgba(6,182,212,0.15)] mt-10 relative z-[50]">
+            <motion.div 
+              key="uploading-view" 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }} 
+              className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-10 lg:p-12 shadow-2xl mt-10 relative z-[50] font-mono"
+            >
               <div className="max-w-md mx-auto">
-                <div className="flex justify-between items-end mb-4">
-                  <h3 className="text-white font-bold text-xl flex items-center gap-2">Cargando documento...</h3>
-                  <span className="text-cyan-400 font-bold text-3xl tabular-nums">{uploadProgress}%</span>
+                <div className="flex justify-between items-end mb-4 font-sans">
+                  <h3 className="text-white font-bold text-xl flex items-center gap-2.5">
+                    <UploadCloud className="w-5 h-5 text-white animate-pulse" />
+                    {isEs ? "Cargando documento..." : "Loading document..."}
+                  </h3>
+                  <span className="text-white font-bold text-3xl tabular-nums font-mono">{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-gray-900 rounded-full h-3 overflow-hidden border border-white/10">
-                  <motion.div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full relative" initial={{ width: 0 }} animate={{ width: `${uploadProgress}%` }} transition={{ ease: "linear", duration: 0.1 }}>
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-[shimmer_1.5s_infinite]"></div>
-                  </motion.div>
+                <div className="w-full bg-zinc-900 rounded-full h-3 overflow-hidden border border-white/10">
+                  <motion.div 
+                    className="bg-white h-full rounded-full relative" 
+                    initial={{ width: 0 }} 
+                    animate={{ width: `${uploadProgress}%` }} 
+                    transition={{ ease: "linear", duration: 0.1 }}
+                  />
+                </div>
+                <div className="mt-4 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
+                  <span className="flex items-center gap-1.5 text-emerald-400">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    {isEs ? "Procesamiento 100% Local" : "100% Local Engine"}
+                  </span>
+                  <span>{isEs ? "Preparando archivo..." : "Preparing file..."}</span>
                 </div>
               </div>
             </motion.div>

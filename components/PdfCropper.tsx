@@ -27,6 +27,12 @@ export default function PdfCropper() {
     return null;
   });
 
+  useEffect(() => {
+    if (globalFile && !file) {
+      setFile(globalFile);
+    }
+  }, [globalFile, file]);
+
   const [totalPages, setTotalPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageDataUrl, setPageDataUrl] = useState<string | null>(null);
@@ -654,6 +660,67 @@ export default function PdfCropper() {
           </div>
         </div>
       )}
+
+      {/* ── GUÍA DE USO: CÓMO RECORTAR MÁRGENES DE UN PDF ── */}
+      <div className="w-full mt-14 space-y-6 font-sans">
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <Crop className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {isEs ? '¿Cómo recortar o ajustar los márgenes de un PDF?' : 'How to crop or adjust the margins of a PDF?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono">
+                {isEs ? 'Guía rápida para eliminar márgenes, espacios en blanco o recortar el área visible de tu PDF.' : 'Quick guide to remove margins, white space, or crop the visible area of your PDF.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {[
+              { step: '01', titleEs: 'Sube tu PDF', titleEn: 'Upload your PDF', descEs: 'Arrastra el PDF a la zona de carga o haz clic para seleccionarlo. El visor mostrará las miniaturas de todas las páginas del documento.', descEn: 'Drag the PDF to the upload zone or click to select it. The viewer shows thumbnails of all document pages.' },
+              { step: '02', titleEs: 'Define el área de recorte', titleEn: 'Define the crop area', descEs: 'Ajusta los márgenes usando los controles deslizantes (superior, inferior, izquierdo, derecho) o ingresa valores numéricos exactos en puntos o centímetros.', descEn: 'Adjust margins using the sliders (top, bottom, left, right) or enter exact numerical values in points or centimeters.' },
+              { step: '03', titleEs: 'Selecciona las páginas a recortar', titleEn: 'Select pages to crop', descEs: 'Elige si aplicar el recorte a todas las páginas, solo a la página actual, páginas pares, impares, o a un rango específico del documento.', descEn: 'Choose whether to apply the crop to all pages, only the current page, even pages, odd pages, or a specific range of the document.' },
+              { step: '04', titleEs: 'Recortar PDF', titleEn: 'Crop PDF', descEs: 'Haz clic en "Recortar PDF →". El motor ajusta el MediaBox de cada página al instante. El PDF resultante se descarga directamente a tu equipo.', descEn: 'Click "Crop PDF →". The engine instantly adjusts the MediaBox of each page. The resulting PDF downloads directly to your device.' },
+            ].map((item) => (
+              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
+                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
+                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div className="flex items-start gap-3 mb-5">
+            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '💡 ¿Qué hace exactamente el Recortador de PDF?' : '💡 What does the PDF Cropper exactly do?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-mono mt-1">
+                {isEs ? 'Entiende cómo funciona el recorte a nivel técnico y cuándo usarlo.' : 'Understand how cropping works at a technical level and when to use it.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
+            {[
+              { labelEs: 'El recorte ajusta el MediaBox del PDF', labelEn: 'Cropping adjusts the PDF MediaBox', descEs: 'El recortador modifica el MediaBox (y/o CropBox) de cada página PDF, que define el área visible. El contenido fuera del área recortada no se elimina del binario pero queda oculto.', descEn: 'The cropper modifies the MediaBox (and/or CropBox) of each PDF page, which defines the visible area. Content outside the cropped area is not removed from the binary but is hidden.' },
+              { labelEs: 'El contenido NO se destruye permanentemente', labelEn: 'Content is NOT permanently destroyed', descEs: 'A diferencia de editar el contenido, el recorte solo ajusta los límites visibles. Con un editor avanzado se podría restaurar el área original. Para borrar contenido, usa la herramienta de Censurar PDF.', descEn: 'Unlike editing content, cropping only adjusts the visible boundaries. With an advanced editor the original area could be restored. To destroy content, use the Redact PDF tool.' },
+              { labelEs: 'Eliminar márgenes blancos', labelEn: 'Remove white margins', descEs: 'El uso más común es eliminar los márgenes en blanco excesivos de escaneos o documentos generados automáticamente, haciendo que el contenido ocupe toda la página.', descEn: 'The most common use is removing excessive white margins from scans or auto-generated documents, making content fill the entire page.' },
+              { labelEs: 'Recorte simétrico vs. personalizado', labelEn: 'Symmetric vs. custom crop', descEs: 'Usa el recorte simétrico para aplicar el mismo margen en todos los lados de forma rápida, o el personalizado para especificar valores diferentes en cada borde.', descEn: 'Use symmetric cropping to apply the same margin on all sides quickly, or custom to specify different values for each edge.' },
+            ].map((tip, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
       <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">

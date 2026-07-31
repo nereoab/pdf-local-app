@@ -1,0 +1,2 @@
+import{j as r}from"./DPFECJXQ.js";import{a as u}from"./RRGP5WIM.js";import{q as m}from"./QAQ2OXCF.js";import{e as s,h as o,j as c,k as i}from"./VEWNHGBN.js";o();i();c();o();i();c();var a=s(u());var C=(n,{isNotClickableSelector:t,className:e,disabled:p})=>({className:(0,a.default)({ActionButton:!0,[e]:!!e}),disabled:p||t&&t(n)}),A=(n,t)=>({onClick:t.shouldPassActiveDocumentViewerKeyToOnClickHandler||!t.onClick?t.onClick:()=>t.onClick(n)}),l=m(C,A)(r);var H=l;export{H as a};
+//# sourceMappingURL=FEIKIFLU.js.map

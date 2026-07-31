@@ -1,17 +1,32 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
-import { Globe, ArrowLeft, ShieldCheck, Spade, Plus, Edit3, FolderOpen, RefreshCw, Zap, ChevronDown } from 'lucide-react';
+import { Globe, ArrowLeft, ShieldCheck, Spade, Plus, Edit3, FolderOpen, RefreshCw, Zap, ChevronDown, User, LogOut } from 'lucide-react';
 import { Toaster } from 'sonner';
+import { useAuthStore } from '../store/useAuthStore';
+import AuthModal from './AuthModal';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
   const { lang, toggleLanguage } = useLanguage();
   const pathname = usePathname();
   const isEs = lang === 'es';
   const isHome = pathname === '/';
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { currentUser, logout } = useAuthStore();
+
+  // Obtener iniciales del usuario
+  const getUserInitials = () => {
+    if (!currentUser) return '';
+    const parts = currentUser.email.split('@')[0].split(/[._-]/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return currentUser.email.substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className="flex min-h-screen flex-col transition-colors duration-500 selection:bg-white/20 selection:text-white relative overflow-x-hidden font-sans text-white bg-[#09090b]">
@@ -143,15 +158,46 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               <Globe className="w-3.5 h-3.5 text-zinc-400" /> {lang === 'es' ? 'EN' : 'ES'}
             </motion.button>
 
-            <div className="relative group cursor-pointer flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-zinc-900 border border-white/10 text-white flex items-center justify-center font-mono text-xs font-semibold">
-                JD
+            {/* BOTÓN DE REGISTRO / CUENTA */}
+            {currentUser ? (
+              <div className="relative group cursor-pointer flex-shrink-0">
+                <button
+                  onClick={() => {
+                    const confirmed = confirm(isEs
+                      ? `¿Cerrar sesión de ${currentUser.email}?`
+                      : `Log out from ${currentUser.email}?`);
+                    if (confirmed) logout();
+                  }}
+                  className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-full text-xs font-mono transition-all group"
+                  title={isEs ? 'Cerrar sesión' : 'Log out'}
+                >
+                  <div className="w-5 h-5 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-mono text-[10px] font-bold">
+                    {getUserInitials()}
+                  </div>
+                  <span className="text-zinc-300 group-hover:text-white hidden sm:inline-block max-w-[100px] truncate">
+                    {currentUser.email.split('@')[0]}
+                  </span>
+                  <LogOut className="w-3 h-3 text-zinc-400 group-hover:text-red-400 transition-colors" />
+                </button>
               </div>
-            </div>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-2 bg-white text-black hover:bg-zinc-200 px-4 py-1.5 rounded-full font-sans font-semibold text-xs transition-all shadow-md whitespace-nowrap flex-shrink-0 cursor-pointer"
+              >
+                <User className="w-3.5 h-3.5 text-black" />
+                {isEs ? 'REGISTRARSE' : 'SIGN UP'}
+              </motion.button>
+            )}
 
           </div>
         </div>
       </header>
+
+      {/* MODAL DE AUTENTICACIÓN */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
       <main className="flex-1 w-full max-w-[100%] mx-auto flex flex-col z-10 relative">
         {children}

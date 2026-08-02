@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Loader2, ShieldCheck, Cpu, EyeOff, CheckCircle2, Lock, Sparkles, Search, FileCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, EyeOff, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 const PdfRedacter = dynamic(() => import('@/components/PdfRedacter'), {
@@ -23,249 +23,111 @@ export default function CensurarPdfPage() {
       <div className="w-full max-w-7xl">
         <PdfRedacter />
 
-        {/* SECCIÓN INFORMATIVA DETALLADA */}
-        <div className="space-y-12 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12">
-
-          {/* BLOQUE 1: PRIVACIDAD Y QUÉ SUCEDE CON SUS ARCHIVOS */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <ShieldCheck className="w-6 h-6 text-emerald-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¿Qué sucede exactamente con tus archivos al censurarlos?' : 'What exactly happens to your files when redacted?'}
-                </h2>
-                <span className="text-xs font-mono text-emerald-400 font-semibold">
-                  {isEs ? '🔒 PRIVACIDAD ABSOLUTA • CENSURA PERMANENTE • 100% LOCAL' : '🔒 ABSOLUTE PRIVACY • PERMANENT REDACTION • 100% LOCAL'}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-emerald-400" />
-                  {isEs ? 'Tus documentos nunca salen de tu dispositivo' : 'Your documents never leave your device'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'El proceso de censura se ejecuta completamente dentro de la memoria RAM de tu navegador mediante pdf-lib. Ningún fragmento de texto, imagen o metadato del documento sale de tu equipo local, garantizando confidencialidad absoluta para expedientes médicos, contratos legales o datos financieros.'
-                    : 'The redaction process runs entirely inside your browser RAM via pdf-lib. No text fragment, image, or metadata from the document leaves your local machine, ensuring absolute confidentiality for medical records, legal contracts, or financial data.'}
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
-                  {isEs ? 'Parches irrecuperables — no solo ocultos' : 'Unrecoverable patches — not just hidden'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Los parches negros no son una capa superpuesta ni un simple ocultamiento. Se incrustan directamente en el stream de objetos del PDF, sobreescribiendo permanentemente el contenido subyacente. El texto censurado no puede recuperarse con herramientas de extracción, OCR ni forenses digitales.'
-                    : 'Black patches are not a floating overlay or simple hide. They are embedded directly in the PDF object stream, permanently overwriting the underlying content. Redacted text cannot be recovered with extraction tools, OCR, or digital forensics.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOQUE 2: PROCEDIMIENTO TÉCNICO PASO A PASO */}
+        <div className="space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-10 mt-10">
           <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <Cpu className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'El procedimiento técnico de censura paso a paso' : 'Step-by-step technical redaction procedure'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Cómo nuestro motor dibuja parches permanentes sobre el contenido sensible del PDF' : 'How our engine draws permanent patches over sensitive PDF content'}
-                </p>
-              </div>
+            <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10"><EyeOff className="w-5 h-5 text-white" /></div>
+              <h2 className="text-lg font-bold text-white tracking-tight">{isEs?'1. Cómo censurar un PDF':'1. How to redact a PDF'}</h2>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">01 / SELECCIÓN</span>
-                  <h3 className="font-bold text-white text-sm mb-2 font-sans">
-                    {isEs ? '1. Marcado de Áreas Sensibles' : '1. Sensitive Area Marking'}
-                  </h3>
-                  <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">
-                    {isEs
-                      ? 'El usuario marca con el cursor las regiones a censurar sobre el visor del PDF. Cada área se registra con coordenadas precisas de página, origen X/Y, ancho y alto en unidades PDF.'
-                      : 'The user marks regions to redact over the PDF viewer. Each area is registered with precise page coordinates, X/Y origin, width, and height in PDF units.'}
-                  </p>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[{step:'01',es:'Sube tu archivo PDF a la zona de carga.',en:'Upload your PDF to the upload zone.'},{step:'02',es:'Marca áreas a censurar o usa detección automática (emails, teléfonos, tarjetas).',en:'Mark areas to redact or use automatic detection (emails, phones, cards).'},{step:'03',es:'El motor dibuja rectángulos negros permanentes en el stream de cada página.',en:'The engine draws permanent black rectangles in each page stream.'},{step:'04',es:'Haz clic en "Censurar PDF →" y descarga el documento con parches definitivos.',en:'Click "Redact PDF →" and download the document with permanent patches.'}].map((item,i)=>(<div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2"><span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">Paso {item.step}</span><p className="text-xs text-zinc-400 leading-relaxed">{isEs?item.es:item.en}</p></div>))}
+            </div>
+          </div>
+          <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-amber-500/20 pb-4">
+              <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30"><AlertTriangle className="w-5 h-5 text-amber-400" /></div>
+              <h2 className="text-lg font-bold text-white tracking-tight">{isEs?'2. Limitaciones y consejos útiles':'2. Limitations & useful tips'}</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3"><h4 className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">✓ {isEs?'LO QUE PUEDES HACER':'WHAT YOU CAN DO'}</h4>
+                {[isEs?'Censurar permanentemente texto, imágenes y datos sensibles con parches negros.':'Permanently redact text, images, and sensitive data with black patches.',isEs?'Usar detección automática de emails, teléfonos, tarjetas de crédito y palabras clave.':'Use automatic detection of emails, phones, credit cards, and keywords.',isEs?'Los parches sobreescriben permanentemente — no son capas superpuestas reversibles.':'Patches permanently overwrite — not reversible floating overlays.',isEs?'El texto censurado no puede recuperarse con OCR ni análisis forense digital.':'Redacted text cannot be recovered by OCR or digital forensic analysis.'].map((t,i)=>(<div key={i} className="flex items-start gap-2 text-xs text-zinc-300"><span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span><span>{t}</span></div>))}
               </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">02 / BÚSQUEDA</span>
-                  <h3 className="font-bold text-white text-sm mb-2 font-sans">
-                    {isEs ? '2. Detección por Categoría' : '2. Category-Based Detection'}
-                  </h3>
-                  <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">
-                    {isEs
-                      ? 'El motor extrae el texto del PDF y aplica expresiones regulares para detectar automáticamente patrones como correos electrónicos, teléfonos, tarjetas de crédito o palabras clave personalizadas.'
-                      : 'The engine extracts PDF text and applies regex patterns to automatically detect emails, phone numbers, credit cards, or custom keywords across all pages.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">03 / PINTURA</span>
-                  <h3 className="font-bold text-white text-sm mb-2 font-sans">
-                    {isEs ? '3. Pintado de Rectángulos Negros' : '3. Black Rectangle Painting'}
-                  </h3>
-                  <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">
-                    {isEs
-                      ? 'pdf-lib escribe operadores de dibujo PDF (`re f`) directamente en el stream de contenido de cada página, incrustando rectángulos negros sólidos que sobreescriben el contenido subyacente de forma permanente.'
-                      : 'pdf-lib writes PDF drawing operators (`re f`) directly into each page content stream, embedding solid black rectangles that permanently overwrite the underlying content.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">04 / EMPAQUETADO</span>
-                  <h3 className="font-bold text-white text-sm mb-2 font-sans">
-                    {isEs ? '4. PDF Censurado Resultante' : '4. Redacted PDF Output'}
-                  </h3>
-                  <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">
-                    {isEs
-                      ? 'Se genera un nuevo documento PDF 1.7 estándar con los parches negros integrados definitivamente en los streams de cada página, completamente abierto en cualquier visor sin metadatos de censura reversibles.'
-                      : 'Generates a new standard PDF 1.7 with black patches permanently integrated into each page stream, fully readable in any viewer with no reversible redaction metadata.'}
-                  </p>
-                </div>
+              <div className="space-y-3"><h4 className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">💡 {isEs?'CONSEJOS':'TIPS'}</h4>
+                {[isEs?'Revisa todas las áreas marcadas antes de aplicar — la censura es irreversible.':'Review all marked areas before applying — redaction is irreversible.',isEs?'Usa la detección automática como primer paso, luego revisa manualmente.':'Use automatic detection as a first step, then manually review.',isEs?'Haz una copia de seguridad del original antes de censurar.':'Make a backup of the original before redacting.',isEs?'Verifica que no quede texto visible en márgenes o entre líneas.':'Verify no text remains visible in margins or between lines.'].map((t,i)=>(<div key={i} className="flex items-start gap-2 text-xs text-zinc-300"><span className="text-amber-400 flex-shrink-0 mt-0.5">→</span><span>{t}</span></div>))}
               </div>
             </div>
           </div>
-
-          {/* BLOQUE 3: MOTOR DE DETECCIÓN Y CATEGORÍAS */}
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-emerald-500/20 pb-4">
+              <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30"><ShieldCheck className="w-5 h-5 text-emerald-400" /></div>
+              <h2 className="text-lg font-bold text-white tracking-tight">{isEs?'3. ¿Qué sucede con tu documento al censurarlo?':'3. What happens to your document when redacting it?'}</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400 leading-relaxed">
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5"><strong className="text-white font-bold text-xs block">🖥️ {isEs?'Procesamiento 100% local':'100% local processing'}</strong><p className="text-[11px]">{isEs?'La censura se ejecuta en la RAM. Ningún dato sensible sale de tu equipo.':'Redaction runs in RAM. No sensitive data leaves your device.'}</p></div>
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5"><strong className="text-white font-bold text-xs block">🖤 {isEs?'Parches permanentes e irrecuperables':'Permanent & unrecoverable patches'}</strong><p className="text-[11px]">{isEs?'Rectángulos negros incrustados con operadores PDF nativos (re f). El contenido subyacente se sobreescribe.':'Black rectangles embedded with native PDF operators (re f). Underlying content is overwritten.'}</p></div>
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5"><strong className="text-white font-bold text-xs block">📥 {isEs?'Descarga directa y segura':'Direct & secure download'}</strong><p className="text-[11px]">{isEs?'El PDF se genera localmente. Tu archivo original no se modifica.':'The PDF is generated locally. Your original file is not modified.'}</p></div>
+            </div>
+          </div>
           <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <Search className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'El Motor de Detección: ¿Cómo identifica datos sensibles automáticamente?' : 'The Detection Engine: How does it identify sensitive data automatically?'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Sistema de expresiones regulares y análisis semántico de patrones privados' : 'Regex system and semantic analysis of private data patterns'}
-                </p>
-              </div>
+            <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10"><HelpCircle className="w-5 h-5 text-white" /></div>
+              <h2 className="text-lg font-bold text-white tracking-tight">{isEs?'4. Preguntas Frecuentes':'4. Frequently Asked Questions'}</h2>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <EyeOff className="w-4 h-4 text-white" />
-                  {isEs ? 'Patrones de Datos Personales' : 'Personal Data Patterns'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'El motor incluye expresiones regulares precompiladas para detectar correos electrónicos (RFC 5322), números de teléfono internacionales (+XX XXX XXX XXXX), NIFs, DNIs, números de pasaporte y fechas de nacimiento en múltiples formatos.'
-                    : 'The engine includes precompiled regex patterns to detect RFC 5322 emails, international phone numbers, NIDs, passports, and birth dates in multiple formats across the entire document.'}
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-white" />
-                  {isEs ? 'Datos Financieros y Bancarios' : 'Financial & Banking Data'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Detecta automáticamente números de tarjetas de crédito/débito (Luhn), IBANs bancarios, CVV/CVC, montos monetarios con símbolo de divisa y números de cuenta de 10 a 18 dígitos presentes en extractos, facturas o contratos.'
-                    : 'Automatically detects Luhn-valid credit/debit card numbers, IBANs, CVV/CVC codes, monetary amounts with currency symbols, and 10–18 digit account numbers in statements, invoices, or contracts.'}
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-white" />
-                  {isEs ? 'Búsqueda por Palabra Clave' : 'Keyword Search Redaction'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Puedes introducir palabras clave personalizadas — nombres, cargos, números de expediente o términos contractuales — y el motor censurará todas las ocurrencias en el documento completo de forma automática.'
-                    : 'Enter custom keywords — names, job titles, dossier numbers, or contractual terms — and the engine will automatically redact all occurrences throughout the entire document.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOQUE 4: BENEFICIOS DEL PDF CENSURADO */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <EyeOff className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'Beneficios y garantías del PDF censurado resultante' : 'Benefits and guarantees of the resulting redacted PDF'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Estándares de seguridad y permanencia de la censura aplicada' : 'Security standards and permanence of the applied redaction'}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 font-mono text-xs">
-              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white font-bold text-xs block mb-1 font-sans">{isEs ? 'Censura Irrecuperable' : 'Unrecoverable Redaction'}</strong>
-                  <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{isEs ? 'Los parches sobreescriben permanentemente el contenido. No hay capa reversible ni metadatos ocultos.' : 'Patches permanently overwrite content. No reversible layer or hidden metadata exists.'}</span>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white font-bold text-xs block mb-1 font-sans">{isEs ? 'Resistente a OCR y Forense' : 'OCR & Forensic Resistant'}</strong>
-                  <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{isEs ? 'El contenido censurado no puede recuperarse con ninguna herramienta de extracción ni análisis forense.' : 'Redacted content cannot be recovered by any extraction tool or forensic analysis.'}</span>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white font-bold text-xs block mb-1 font-sans">{isEs ? 'Compatible con Todos los Visores' : 'All Viewers Compatible'}</strong>
-                  <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{isEs ? 'El PDF censurado abre correctamente en Adobe, Chrome, Edge, iOS y Android.' : 'Redacted PDF opens correctly in Adobe, Chrome, Edge, iOS, and Android.'}</span>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white font-bold text-xs block mb-1 font-sans">{isEs ? 'Detección por Categorías' : 'Category Auto-Detection'}</strong>
-                  <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{isEs ? 'Censura automática de emails, teléfonos, tarjetas de crédito y palabras clave.' : 'Automatic redaction of emails, phones, credit cards, and keywords.'}</span>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white font-bold text-xs block mb-1 font-sans">{isEs ? 'Cumplimiento GDPR / HIPAA' : 'GDPR / HIPAA Compliance'}</strong>
-                  <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{isEs ? 'Protección legal de datos personales conforme a normativas europeas y sanitarias.' : 'Legal personal data protection compliant with EU and healthcare regulations.'}</span>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white font-bold text-xs block mb-1 font-sans">{isEs ? 'Privacidad Corporativa Total' : 'Total Corporate Privacy'}</strong>
-                  <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{isEs ? 'Cero bytes enviados a servidores. Todo se procesa en tu RAM local.' : 'Zero bytes sent to servers. Everything is processed in your local RAM.'}</span>
-                </div>
-              </div>
+            <div className="space-y-4">
+              {[
+                {
+                  qEs: '¿La censura es realmente permanente e irreversible?',
+                  qEn: 'Is the redaction truly permanent and irreversible?',
+                  aEs: 'Sí. A diferencia de otras herramientas que solo dibujan una capa encima del PDF, nuestra herramienta modifica directamente el content stream de cada página, incrustando rectángulos negros con operadores nativos PDF (re f). El contenido subyacente se destruye y no puede recuperarse con OCR, editores de texto ni análisis forense digital.',
+                  aEn: 'Yes. Unlike other tools that merely draw a layer on top of the PDF, our tool directly modifies the content stream of each page, embedding black rectangles with native PDF operators (re f). The underlying content is destroyed and cannot be recovered by OCR, text editors, or digital forensic analysis.',
+                },
+                {
+                  qEs: '¿Mis documentos salen de mi computadora durante el proceso?',
+                  qEn: 'Do my documents leave my computer during the process?',
+                  aEs: 'No. Todo el procesamiento se ejecuta 100% en tu navegador mediante Web Workers independientes. El PDF se carga en RAM, se procesa localmente y se descarga directamente. No se envía ningún dato a servidores externos. La herramienta funciona completamente offline.',
+                  aEn: 'No. All processing runs 100% in your browser via independent Web Workers. The PDF is loaded into RAM, processed locally, and downloaded directly. No data is sent to external servers. The tool works completely offline.',
+                },
+                {
+                  qEs: '¿Qué tipos de datos sensibles detecta automáticamente?',
+                  qEn: 'What types of sensitive data does it automatically detect?',
+                  aEs: 'El motor de detección automática identifica: direcciones de correo electrónico, números de teléfono (formatos nacionales e internacionales), números de tarjetas de crédito/débito (12-19 dígitos), documentos de identidad (DNI, NIE, Pasaporte), IBAN y cuentas bancarias, matrículas de vehículos, direcciones IP, y palabras clave personalizadas mediante expresiones regulares configurables.',
+                  aEn: 'The automatic detection engine identifies: email addresses, phone numbers (national and international formats), credit/debit card numbers (12-19 digits), identity documents (ID, NIE, Passport), IBAN and bank accounts, vehicle license plates, IP addresses, and custom keywords via configurable regular expressions.',
+                },
+                {
+                  qEs: '¿Puedo censurar solo partes específicas sin afectar el resto del documento?',
+                  qEn: 'Can I redact only specific parts without affecting the rest of the document?',
+                  aEs: 'Sí. Dispones de dos modos de censura: el modo Precisión edita únicamente los content streams de las páginas afectadas, preservando texto no censurado, marcadores, enlaces y fuentes originales. El modo Raster convierte cada página a imagen, ideal para máxima compatibilidad con cualquier PDF. Puedes dibujar rectángulos manualmente, buscar palabras específicas, o usar la detección automática.',
+                  aEn: 'Yes. You have two redaction modes: Precision mode edits only the content streams of affected pages, preserving non-redacted text, bookmarks, links, and original fonts. Raster mode converts each page to an image, ideal for maximum compatibility with any PDF. You can manually draw rectangles, search for specific words, or use automatic detection.',
+                },
+                {
+                  qEs: '¿Queda algún registro o metadato que pueda revelar la información censurada?',
+                  qEn: 'Is there any log or metadata that could reveal the redacted information?',
+                  aEs: 'No. El proceso incluye sanitización automática de metadatos del PDF (autor, título, historial de modificaciones, coordenadas GPS, etc.). Además, la cadena de custodia con hash SHA-256 se almacena únicamente en tu navegador de forma temporal y no se transmite. El archivo resultante está completamente limpio de información residual.',
+                  aEn: 'No. The process includes automatic sanitization of PDF metadata (author, title, modification history, GPS coordinates, etc.). Additionally, the SHA-256 custody chain is stored only temporarily in your browser and is not transmitted. The resulting file is completely clean of residual information.',
+                },
+                {
+                  qEs: '¿Qué navegadores y dispositivos son compatibles?',
+                  qEn: 'Which browsers and devices are supported?',
+                  aEs: 'La herramienta es compatible con todos los navegadores modernos: Chrome 90+, Firefox 90+, Edge 90+, Safari 15+, Opera 76+, y navegadores móviles en iOS 15+ y Android 10+. Se requiere soporte para Web Workers, OffscreenCanvas (opcional, para rendimiento mejorado) y ECMAScript 2020. Funciona en Windows, macOS, Linux, iOS y Android.',
+                  aEn: 'The tool is compatible with all modern browsers: Chrome 90+, Firefox 90+, Edge 90+, Safari 15+, Opera 76+, and mobile browsers on iOS 15+ and Android 10+. Support for Web Workers, OffscreenCanvas (optional, for enhanced performance), and ECMAScript 2020 is required. It works on Windows, macOS, Linux, iOS, and Android.',
+                },
+                {
+                  qEs: '¿Existe algún límite de tamaño de archivo o número de páginas?',
+                  qEn: 'Is there any file size or page count limit?',
+                  aEs: 'No hay límites estrictos impuestos por la herramienta. El rendimiento depende de la memoria RAM disponible en tu dispositivo y de la capacidad de procesamiento de tu CPU. Para documentos de más de 500 páginas o superiores a 200 MB, se recomienda usar el modo Raster para un rendimiento óptimo. La herramienta ha sido probada exitosamente con documentos de hasta 2,000 páginas en equipos con 16 GB de RAM.',
+                  aEn: 'There are no strict limits imposed by the tool. Performance depends on the available RAM on your device and your CPU processing power. For documents with more than 500 pages or larger than 200 MB, using Raster mode is recommended for optimal performance. The tool has been successfully tested with documents up to 2,000 pages on computers with 16 GB of RAM.',
+                },
+                {
+                  qEs: '¿La herramienta cumple con normativas de protección de datos como GDPR?',
+                  qEn: 'Does the tool comply with data protection regulations such as GDPR?',
+                  aEs: 'Sí. Al procesar todo 100% localmente sin transmisión de datos a servidores, la herramienta es inherentemente compatible con GDPR, CCPA, HIPAA (en conjunto con políticas organizacionales adecuadas), y otras regulaciones de privacidad. El procesamiento local elimina la exposición de datos sensibles a terceros, que es un requisito fundamental de estas normativas. No obstante, recomendamos validar con tu oficial de cumplimiento normativo para casos de uso específicos.',
+                  aEn: 'Yes. By processing everything 100% locally without data transmission to servers, the tool is inherently compatible with GDPR, CCPA, HIPAA (in conjunction with appropriate organizational policies), and other privacy regulations. Local processing eliminates exposure of sensitive data to third parties, which is a fundamental requirement of these regulations. However, we recommend validating with your compliance officer for specific use cases.',
+                },
+              ].map((faq, i) => (
+                <details key={i} className="group bg-zinc-900/60 border border-white/5 rounded-xl overflow-hidden transition-all duration-200">
+                  <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-800/40 transition-colors list-none marker:content-none">
+                    <span className="text-xs sm:text-sm font-bold text-white pr-4 leading-snug">{isEs ? faq.qEs : faq.qEn}</span>
+                    <span className="flex-shrink-0 text-zinc-400 group-open:rotate-180 transition-transform duration-200">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </span>
+                  </summary>
+                  <div className="px-4 pb-4">
+                    <p className="text-xs text-zinc-400 leading-relaxed border-t border-white/5 pt-3">{isEs ? faq.aEs : faq.aEn}</p>
+                  </div>
+                </details>
+              ))}
             </div>
           </div>
-
         </div>
       </div>
     </main>

@@ -1,46 +1,136 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { PDFDocument } from 'pdf-lib';
-import { encryptPDF } from '@pdfsmaller/pdf-encrypt';
-import { 
-  ArrowLeft, ShieldCheck, Lock, Loader2, FileText, X, Eye, EyeOff, 
-  Settings, ArrowRight, UploadCloud, AlertCircle, ZoomIn, ZoomOut, Check
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import {
+  ArrowLeft, ShieldCheck, Lock, Loader2, FileText, X, Eye, EyeOff,
+  Settings, UploadCloud, Shield, KeyRound, Check, AlertTriangle,
+  ChevronDown, ChevronUp, SlidersHorizontal, Database, Package, FilePlus, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import type {
+  ProtectProgress,
+  ProtectResult,
+  ProtectError,
+} from '../workers/pdf-protect.worker';
 
 export default function PdfProtector() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const workerRef = useRef<Worker | null>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
-  const [file, setFile] = useState<File | null>(globalFile);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [zoomLevel, setZoomLevel] = useState<number>(85);
+  // === BATCH DE ARCHIVOS ===
+  const [files, setFiles] = useState<File[]>(globalFile ? [globalFile] : []);
+  const [activeFileIdx, setActiveFileIdx] = useState<number>(0);
 
-  // Previsualización Canvas PDF Real
+  // === PREVISUALIZACIÓN ===
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [previewPageNum, setPreviewPageNum] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
 
+  // === CONTRASEÑAS ===
+  const [userPassword, setUserPassword] = useState('');
+  const [confirmUserPassword, setConfirmUserPassword] = useState('');
+  const [showUserPassword, setShowUserPassword] = useState(false);
+
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [confirmOwnerPassword, setConfirmOwnerPassword] = useState('');
+  const [showOwnerPassword, setShowOwnerPassword] = useState(false);
+
+  // === PERMISOS GRANULARES ===
+  const [allowPrinting, setAllowPrinting] = useState(true);
+  const [allowHighQualityPrint, setAllowHighQualityPrint] = useState(true);
+  const [allowCopying, setAllowCopying] = useState(true);
+  const [allowExtraction, setAllowExtraction] = useState(true);
+  const [allowModifying, setAllowModifying] = useState(true);
+  const [allowAnnotating, setAllowAnnotating] = useState(true);
+  const [allowFillingForms, setAllowFillingForms] = useState(true);
+  const [allowAssembly, setAllowAssembly] = useState(true);
+
+  // Preset rápido: "Máxima protección"
+  const applyMaxProtection = () => {
+    setAllowPrinting(false);
+    setAllowHighQualityPrint(false);
+    setAllowCopying(false);
+    setAllowExtraction(false);
+    setAllowModifying(false);
+    setAllowAnnotating(false);
+    setAllowFillingForms(false);
+    setAllowAssembly(false);
+  };
+
+  // Preset rápido: "Solo lectura"
+  const applyReadOnly = () => {
+    setAllowPrinting(true);
+    setAllowHighQualityPrint(true);
+    setAllowCopying(true);
+    setAllowExtraction(true);
+    setAllowModifying(false);
+    setAllowAnnotating(false);
+    setAllowFillingForms(false);
+    setAllowAssembly(false);
+  };
+
+  // === OPCIONES ===
+  const [enableRasterize, setEnableRasterize] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [customSuffix, setCustomSuffix] = useState('_Protegido');
+
+  // === ESTADO DE PROCESAMIENTO ===
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progressMsg, setProgressMsg] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [totalFilesCount, setTotalFilesCount] = useState(0);
+
+  // === RESULTADOS ===
+  const [results, setResults] = useState<ProtectResult[]>([]);
+
+  const activeFile = files[activeFileIdx] || null;
+  const hasResults = results.length > 0;
+
+  // === EFECTOS ===
+  useEffect(() => {
+    if (globalFile && files.length === 0) {
+      setFiles([globalFile]);
+    }
+  }, [globalFile, files.length]);
+
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeFile) {
+      setPreviewPageNum(1);
+      renderPagePreview(activeFile, 1);
+    } else {
+      setPreviewDataUrl(null);
+      setTotalPages(1);
+    }
+  }, [activeFile]);
+
+  // === VISTA PREVIA ===
   const renderPagePreview = useCallback(async (pdfFile: File, pageNum: number) => {
     setIsLoadingPreview(true);
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       setTotalPages(pdfDoc.numPages);
-
       const targetPageNum = Math.min(Math.max(1, pageNum), pdfDoc.numPages);
       const page = await pdfDoc.getPage(targetPageNum);
       const viewport = page.getViewport({ scale: 1.5 });
-
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (ctx) {
@@ -49,292 +139,227 @@ export default function PdfProtector() {
         await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
         setPreviewDataUrl(canvas.toDataURL('image/jpeg', 0.85));
       }
-    } catch (err) {
-      console.warn('Canvas preview fallback:', err);
+    } catch {
       setPreviewDataUrl(null);
     } finally {
       setIsLoadingPreview(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (file) {
-      setCurrentPage(1);
-      renderPagePreview(file, 1);
-    } else {
-      setPreviewDataUrl(null);
-      setTotalPages(1);
+  const changePreviewPage = (delta: number) => {
+    if (!activeFile) return;
+    const newPage = Math.min(Math.max(1, previewPageNum + delta), totalPages);
+    if (newPage !== previewPageNum) {
+      setPreviewPageNum(newPage);
+      renderPagePreview(activeFile, newPage);
     }
-  }, [file, renderPagePreview]);
+  };
 
-  // Section 1: Open Password States
-  const [openPassword, setOpenPassword] = useState('');
-  const [confirmOpenPassword, setConfirmOpenPassword] = useState('');
-  const [showOpenPassword, setShowOpenPassword] = useState(false);
-
-  // Section 2: Permissions & Restrictions States
-  const [preventPrinting, setPreventPrinting] = useState(false);
-  const [preventCopying, setPreventCopying] = useState(false);
-  const [preventEditing, setPreventEditing] = useState(false);
-  const [permissionsPassword, setPermissionsPassword] = useState('');
-  const [confirmPermissionsPassword, setConfirmPermissionsPassword] = useState('');
-  const [showPermissionsPassword, setShowPermissionsPassword] = useState(false);
-
-  // Section 3: Optional Settings (Rasterization)
-  const [enableRasterize, setEnableRasterize] = useState(false);
-
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progressMsg, setProgressMsg] = useState('');
-
-  useEffect(() => {
-    if (globalFile && !file) {
-      setFile(globalFile);
-    }
-  }, [globalFile, file]);
-
+  // === MANEJO DE ARCHIVOS (BATCH) ===
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selectedFile = e.target.files[0];
-      if (selectedFile.type === 'application/pdf') {
-        setFile(selectedFile);
-        setGlobalFile(selectedFile);
-        setTotalPages(4);
-        toast.success(isEs ? 'Archivo PDF cargado correctamente' : 'PDF file loaded successfully');
-      } else {
-        toast.error(isEs ? 'Por favor, selecciona un archivo PDF válido' : 'Please select a valid PDF file');
+      const newFiles = Array.from(e.target.files).filter(f => f.type === 'application/pdf');
+      if (newFiles.length === 0) {
+        toast.error(isEs ? 'Selecciona archivos PDF válidos' : 'Select valid PDF files');
+        e.target.value = '';
+        return;
       }
+      if (newFiles.length !== e.target.files.length) {
+        toast.warning(isEs
+          ? `${e.target.files.length - newFiles.length} archivo(s) ignorado(s)`
+          : `${e.target.files.length - newFiles.length} file(s) ignored`);
+      }
+      setFiles(prev => [...prev, ...newFiles]);
+      if (newFiles.length > 0) {
+        setGlobalFile(newFiles[0]);
+        setActiveFileIdx(0);
+      }
+      setResults([]);
     }
     e.target.value = '';
   };
 
-  const removeFile = () => {
-    setFile(null);
-    setGlobalFile(null);
-    setOpenPassword('');
-    setConfirmOpenPassword('');
-    setPermissionsPassword('');
-    setConfirmPermissionsPassword('');
-    setPreventPrinting(false);
-    setPreventCopying(false);
-    setPreventEditing(false);
-    setEnableRasterize(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleRemoveFile = (idx: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== idx));
+    setResults(prev => prev.filter((_, i) => i !== idx));
+    if (idx === activeFileIdx) setActiveFileIdx(0);
+    else if (idx < activeFileIdx) setActiveFileIdx(prev => Math.max(0, prev - 1));
+    if (files.length <= 1) setGlobalFile(null);
   };
 
-/**
- * Garantiza que el trailer del PDF contenga la entrada obligatoria /ID [<hex> <hex>]
- * requerida por la especificación ISO 32000-1 para cifrado AES-256 en Adobe Acrobat Reader.
- * Resuelve el Error (135) de Adobe Acrobat Reader.
- */
-function ensureTrailerIdForAdobeAcrobat(encryptedBytes: Uint8Array): Uint8Array {
-  const textDecoder = new TextDecoder('latin1');
-  const textEncoder = new TextEncoder();
-  const pdfStr = textDecoder.decode(encryptedBytes);
+  const handleRemoveAllFiles = () => {
+    setFiles([]);
+    setGlobalFile(null);
+    setResults([]);
+    setActiveFileIdx(0);
+  };
 
-  // Si ya posee la etiqueta /ID [, el tráiler está completo
-  if (pdfStr.includes('/ID [')) {
-    return encryptedBytes;
-  }
+  // === MEDIDOR DE FUERZA DE CONTRASEÑA ===
+  const passwordStrength = (pwd: string): { score: number; label: string; color: string } => {
+    if (!pwd) return { score: 0, label: '', color: 'bg-zinc-700' };
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (pwd.length >= 12) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[a-z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
 
-  // Generar un ID hexadecimal aleatorio de 16 bytes (32 caracteres hex)
-  const randomHex = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-    .toUpperCase();
+    if (score <= 2) return { score: 1, label: isEs ? 'Débil' : 'Weak', color: 'bg-red-500' };
+    if (score <= 3) return { score: 2, label: isEs ? 'Regular' : 'Fair', color: 'bg-amber-500' };
+    if (score <= 4) return { score: 3, label: isEs ? 'Buena' : 'Good', color: 'bg-emerald-500' };
+    return { score: 4, label: isEs ? 'Fuerte' : 'Strong', color: 'bg-emerald-400' };
+  };
 
-  const idEntry = `/ID [<${randomHex}> <${randomHex}>]`;
+  const hasAnyRestriction = !allowPrinting || !allowHighQualityPrint || !allowCopying || 
+    !allowExtraction || !allowModifying || !allowAnnotating || !allowFillingForms || !allowAssembly;
 
-  // Buscar el cierre '>>' del diccionario trailer
-  const trailerKeywordIdx = pdfStr.lastIndexOf('trailer');
-  if (trailerKeywordIdx !== -1) {
-    const endDictIdx = pdfStr.indexOf('>>', trailerKeywordIdx);
-    if (endDictIdx !== -1) {
-      const patchedStr = pdfStr.slice(0, endDictIdx) + ` ${idEntry} ` + pdfStr.slice(endDictIdx);
-      return textEncoder.encode(patchedStr);
-    }
-  }
-
-  return encryptedBytes;
-}
-
+  // === EJECUTAR PROTECCIÓN (WEB WORKER) ===
   const executeProtect = async () => {
-    if (!file) {
-      toast.error(isEs ? 'Primero debes subir un archivo PDF' : 'You must upload a PDF file first');
+    if (files.length === 0) {
+      toast.error(isEs ? 'Selecciona al menos un archivo PDF' : 'Select at least one PDF file');
       return;
     }
 
-    // Validation for Open Password matching
-    if (openPassword && openPassword !== confirmOpenPassword) {
-      toast.error(isEs ? 'Las contraseñas para abrir el documento no coinciden' : 'Document open passwords do not match');
+    if (userPassword && userPassword !== confirmUserPassword) {
+      toast.error(isEs ? 'Las contraseñas de apertura no coinciden' : 'User passwords do not match');
       return;
     }
 
-    // Validation for Permissions Password matching
-    if (permissionsPassword && permissionsPassword !== confirmPermissionsPassword) {
-      toast.error(isEs ? 'Las contraseñas de permisos no coinciden' : 'Permission passwords do not match');
+    if (ownerPassword && ownerPassword !== confirmOwnerPassword) {
+      toast.error(isEs ? 'Las contraseñas de propietario no coinciden' : 'Owner passwords do not match');
       return;
     }
 
-    if (!openPassword && !permissionsPassword && !preventPrinting && !preventCopying && !preventEditing && !enableRasterize) {
-      toast.warning(isEs ? 'Debes establecer al menos una contraseña o regla de protección' : 'Please set at least one password or protection rule');
+    if (!userPassword && !ownerPassword && !hasAnyRestriction && !enableRasterize) {
+      toast.warning(isEs ? 'Debes establecer al menos una contraseña o restricción' : 'Set at least one password or restriction');
       return;
+    }
+
+    if (workerRef.current) {
+      workerRef.current.terminate();
     }
 
     setIsProcessing(true);
-    setProgressMsg(isEs ? 'Iniciando proceso de seguridad y cifrado AES-256...' : 'Starting AES-256 security & encryption process...');
+    setProgressPercent(0);
+    setResults([]);
+    setTotalFilesCount(files.length);
+    setCurrentFileIndex(0);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      let pdfBytesToEncrypt: Uint8Array;
+      const fileBuffers: ArrayBuffer[] = [];
+      const fileNames: string[] = [];
 
-      // 1. Si se activó rasterizado (aplanar a imagen para máxima seguridad dura):
-      if (enableRasterize) {
-        setProgressMsg(isEs ? 'Rasterizando páginas a capas no editables de alta resolución...' : 'Rasterizing pages into high-resolution non-editable layers...');
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-        const srcDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
-        const rasterPdf = await PDFDocument.create();
-
-        for (let pageNum = 1; pageNum <= srcDoc.numPages; pageNum++) {
-          const page = await srcDoc.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 2.0 }); // 300 DPI high resolution
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-
-          if (ctx) {
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-            const blobJpeg = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/jpeg', 0.92));
-            if (blobJpeg) {
-              const jpegBytes = await blobJpeg.arrayBuffer();
-              const embeddedImg = await rasterPdf.embedJpg(jpegBytes);
-              const origViewport = page.getViewport({ scale: 1.0 });
-
-              const newPage = rasterPdf.addPage([origViewport.width, origViewport.height]);
-              newPage.drawImage(embeddedImg, {
-                x: 0,
-                y: 0,
-                width: origViewport.width,
-                height: origViewport.height,
-              });
-            }
-          }
-        }
-        pdfBytesToEncrypt = new Uint8Array(await rasterPdf.save({ useObjectStreams: false }));
-      } else {
-        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-        pdfBytesToEncrypt = new Uint8Array(await pdfDoc.save({ useObjectStreams: false }));
+      for (const f of files) {
+        const buffer = await f.arrayBuffer();
+        fileBuffers.push(buffer);
+        fileNames.push(f.name);
       }
 
-      setProgressMsg(isEs ? 'Aplicando mapa de permisos /P y cifrado AES-256...' : 'Applying /P permissions map and AES-256 encryption...');
+      const workerUrl = new URL('../workers/pdf-protect.worker.ts', import.meta.url);
+      const worker = new Worker(workerUrl, { type: 'module' });
+      workerRef.current = worker;
 
-      const targetUserPassword = openPassword || '';
-      // Garantizar que targetOwnerPassword sea SIEMPRE diferente de targetUserPassword para obligar a Adobe Acrobat a aplicar las restricciones de usuario
-      const targetOwnerPassword = permissionsPassword 
-        ? permissionsPassword 
-        : (openPassword ? `${openPassword}_master_owner_2026` : 'PDFBLACK_PROTECTED_MASTER_KEY_2026');
+      let newResults: ProtectResult[] = [];
 
-      const rawEncryptedBytes = await encryptPDF(pdfBytesToEncrypt, targetUserPassword, {
-        ownerPassword: targetOwnerPassword,
-        algorithm: 'AES-256',
-        allowPrinting: !preventPrinting,
-        allowHighQualityPrint: !preventPrinting,
-        allowModifying: !preventEditing,
-        allowCopying: !preventCopying,
-        allowExtraction: !preventCopying,
-        allowAnnotating: !preventEditing,
-        allowFillingForms: !preventEditing,
-        allowAssembly: !preventEditing,
+      worker.onmessage = (event: MessageEvent) => {
+        const msg = event.data;
+
+        if (msg.type === 'progress') {
+          const p = msg as ProtectProgress;
+          setProgressPercent(p.percent);
+          setProgressMsg(p.message);
+          if (p.currentFile) setCurrentFileIndex(p.currentFile);
+          if (p.totalFiles) setTotalFilesCount(p.totalFiles);
+        } else if (msg.type === 'result') {
+          const r = msg as ProtectResult;
+          const blob = new Blob([r.protectedBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          (r as unknown as Record<string, unknown>).downloadUrl = url;
+          newResults.push(r);
+          setResults([...newResults]);
+
+          const originalName = r.fileName.replace(/\.[^/.]+$/, '');
+          const suffix = customSuffix || '_Protegido';
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${originalName}${suffix}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          toast.success(isEs
+            ? `${r.fileName}: ¡Protegido con AES-256! ${r.restrictions.length} restricciones aplicadas.`
+            : `${r.fileName}: Protected with AES-256! ${r.restrictions.length} restrictions applied.`);
+        } else if (msg.type === 'error') {
+          const e = msg as ProtectError;
+          toast.error(e.message);
+        }
+      };
+
+      worker.onerror = (error) => {
+        console.error('Worker error:', error);
+        toast.error(isEs ? 'Error en el motor de cifrado' : 'Encryption engine error');
+        setIsProcessing(false);
+      };
+
+      worker.postMessage({
+        fileBuffers,
+        fileNames,
+        options: {
+          userPassword,
+          ownerPassword,
+          allowPrinting,
+          allowHighQualityPrint,
+          allowModifying,
+          allowCopying,
+          allowExtraction,
+          allowAnnotating,
+          allowFillingForms,
+          allowAssembly,
+          enableRasterize,
+          customSuffix,
+        },
       });
 
-      const encryptedBytes = ensureTrailerIdForAdobeAcrobat(rawEncryptedBytes);
+      const checkCompletion = setInterval(() => {
+        if (progressPercent >= 100 || newResults.length >= files.length) {
+          clearInterval(checkCompletion);
+          setIsProcessing(false);
+          worker.terminate();
+          workerRef.current = null;
 
-      const blob = new Blob([encryptedBytes as unknown as BlobPart], { type: 'application/pdf' });
-      const downloadUrl = URL.createObjectURL(blob);
+          if (newResults.length > 1) {
+            toast.success(isEs
+              ? `¡${newResults.length} PDFs protegidos con éxito!`
+              : `${newResults.length} PDFs protected successfully!`);
+          }
+        }
+      }, 300);
 
-      const originalName = file.name.replace(/\.[^/.]+$/, "");
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `${originalName}_Protegido.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
-
-      toast.success(isEs ? '¡Documento PDF protegido con éxito! Restricciones de permisos aplicadas.' : 'PDF protected successfully! Permission restrictions enforced.');
     } catch (error) {
-      console.error(error);
-      toast.error(isEs ? 'Ocurrió un error al aplicar la protección al PDF' : 'An error occurred while protecting the PDF');
-    } finally {
+      console.error('Protect error:', error);
+      toast.error(isEs ? 'Error al iniciar la protección' : 'Error starting protection');
       setIsProcessing(false);
-      setProgressMsg('');
     }
   };
 
-  // INITIAL STATE: File Upload Dropzone
-  if (!file) {
-    return (
-      <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-8 font-sans">
-        <input 
-          type="file" 
-          accept=".pdf" 
-          className="hidden" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
-          onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-        />
+  const formatFileSize = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 KB';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
-        <div className="text-center flex flex-col items-center gap-3">
-          <div className="bg-zinc-900 p-4 rounded-2xl border border-white/10 shadow-2xl">
-            <Lock className="w-10 h-10 text-white" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            {isEs ? 'Proteger y Encriptar PDF' : 'Protect & Encrypt PDF'}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm max-w-md font-mono">
-            {isEs ? 'Establece contraseñas de apertura, restringe la impresión o copia y rasteriza el contenido en un archivo seguro.' : 'Set open passwords, restrict printing or copying, and rasterize content into a secure file.'}
-          </p>
-        </div>
+  const userPwdStrength = passwordStrength(userPassword);
+  const ownerPwdStrength = passwordStrength(ownerPassword);
 
-        <div 
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-[#09090b] border-2 border-dashed border-white/10 hover:border-white/30 rounded-2xl p-10 flex flex-col items-center justify-center gap-5 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[300px]"
-        >
-          <div className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors">
-            <UploadCloud className="w-10 h-10 text-white" />
-          </div>
-          <div className="text-center font-sans">
-            <h3 className="text-lg font-bold text-white tracking-tight">{isEs ? 'Arrastra tu PDF aquí para proteger' : 'Drop your PDF here to protect'}</h3>
-            <p className="text-zinc-400 text-xs font-mono mt-1">{isEs ? 'O haz clic para explorar tus archivos' : 'Or click to browse your files'}</p>
-          </div>
-          <button className="bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full text-xs font-semibold shadow-md transition-all">
-            {isEs ? 'Subir Archivo PDF' : 'Upload PDF File'}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 rounded-full text-zinc-300 text-xs font-mono">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>{isEs ? 'Procesamiento 100% Local • Cifrado AES de 256 Bits en tu navegador' : '100% Local Processing • 256-bit AES encryption in browser'}</span>
-        </div>
-      </div>
-    );
-  }
-
-  // DUAL WORKSPACE: LEFT = Document Viewer | RIGHT = Security Options Form
   return (
-    <div className="w-full max-w-7xl mx-auto font-sans">
-      <input 
-        type="file" 
-        accept=".pdf" 
-        className="hidden" 
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
-        onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-      />
+    <div className="w-full max-w-7xl mx-auto">
+      <input type="file" accept=".pdf" multiple className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
 
-      {/* CONTENEDOR SUPERIOR DE TÍTULO Y HERRAMIENTA */}
+      {/* CABECERA */}
       <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
@@ -358,16 +383,17 @@ function ensureTrailerIdForAdobeAcrobat(encryptedBytes: Uint8Array): Uint8Array 
           </div>
         </div>
 
-        {file && (
-          <div className="flex items-center gap-3 font-mono">
-            <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs text-white">
-              <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
+        {files.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-xl text-xs text-white font-mono">
+              <Package className="w-3.5 h-3.5 inline mr-1.5 text-zinc-400" />
+              <span className="font-bold">{files.length}</span> {isEs ? 'archivo(s)' : 'file(s)'}
             </div>
             <button
-              onClick={removeFile}
+              onClick={handleRemoveAllFiles}
+              disabled={isProcessing}
               className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
-              title={isEs ? 'Quitar archivo' : 'Remove file'}
+              title={isEs ? 'Quitar todos' : 'Remove all'}
             >
               <X className="w-4 h-4" />
             </button>
@@ -375,297 +401,423 @@ function ensureTrailerIdForAdobeAcrobat(encryptedBytes: Uint8Array): Uint8Array 
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* LEFT COLUMN: PDF DOCUMENT VIEWER (5 Cols) */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col relative h-[680px] shadow-2xl">
-            {/* Header Toolbar */}
-            <div className="bg-zinc-900 border-b border-white/10 px-4 py-3 flex justify-between items-center font-mono">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <FileText className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span className="text-xs font-bold text-white truncate max-w-[180px]">{file.name}</span>
-              </div>
+      {files.length === 0 ? (
+        /* DROPZONE SIN ARCHIVOS */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full max-w-3xl mx-auto bg-[#09090b] hover:bg-zinc-900/60 border border-white/10 hover:border-white/30 rounded-2xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[480px] relative overflow-hidden"
+        >
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+            className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors"
+          >
+            <UploadCloud className="w-12 h-12 text-white" />
+          </motion.div>
 
-              <button 
-                onClick={removeFile}
-                className="text-xs text-zinc-400 hover:text-red-400 flex items-center gap-1 bg-zinc-800 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-                <span>{isEs ? 'Cambiar' : 'Change'}</span>
-              </button>
-            </div>
+          <div className="text-center flex flex-col items-center gap-2 font-sans">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              {isEs ? 'Arrastra tus PDFs aquí para proteger' : 'Drop your PDFs here to protect'}
+            </h2>
+            <p className="text-zinc-400 text-xs sm:text-sm font-mono">
+              {isEs ? 'O haz clic para explorar tus archivos (múltiples permitidos)' : 'Or click to browse your files (multiple allowed)'}
+            </p>
+          </div>
 
-            {/* Document Canvas Preview */}
-            <div className="flex-1 bg-[#09090b] relative flex items-center justify-center p-3 min-h-[520px]">
-              {isLoadingPreview ? (
-                <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
-                  <Loader2 className="w-8 h-8 animate-spin text-white" />
-                  <span className="text-xs font-mono">{isEs ? "Generando previsualización..." : "Rendering preview..."}</span>
+          <button className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all shadow-md cursor-pointer">
+            <FilePlus className="w-4 h-4 text-black" /> {isEs ? 'Subir Archivos PDF' : 'Upload PDF Files'}
+          </button>
+
+          <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{isEs ? '100% LOCAL • CIFRADO AES-256 • WEB WORKER' : '100% LOCAL • AES-256 ENCRYPTION • WEB WORKER'}</span>
+          </div>
+        </motion.div>
+      ) : (
+        /* ÁREA DE TRABAJO: VISOR 5/12 + PANEL 7/12 */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans items-stretch">
+
+          {/* LADO IZQUIERDO: LISTA DE ARCHIVOS + VISTA PREVIA */}
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            {files.length > 1 && (
+              <div className="bg-[#09090b] border border-white/10 rounded-xl p-3 max-h-[160px] overflow-y-auto">
+                <span className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase">
+                  {isEs ? 'Cola de archivos' : 'File queue'} ({files.length})
+                </span>
+                <div className="space-y-1.5">
+                  {files.map((f, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setActiveFileIdx(i)}
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all text-xs ${
+                        i === activeFileIdx
+                          ? 'bg-zinc-800 border border-white/20 text-white'
+                          : 'bg-zinc-900/60 border border-white/5 text-zinc-400 hover:bg-zinc-800/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-zinc-500" />
+                        <span className="truncate font-mono">{f.name}</span>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); handleRemoveFile(i); }} disabled={isProcessing}
+                        className="p-1 hover:bg-red-500/20 rounded text-zinc-500 hover:text-red-400">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : previewDataUrl ? (
-                <div className="w-full h-full max-h-[580px] flex items-center justify-center relative">
-                  <img 
-                    src={previewDataUrl} 
-                    alt={`Página ${currentPage}`}
-                    className="max-h-[560px] w-auto max-w-full object-contain rounded-lg shadow-2xl border border-white/15 bg-white transition-all duration-200"
-                  />
-                  {/* Security Overlay Badge */}
-                  <div className="absolute top-4 right-4 bg-emerald-950/90 border border-emerald-500/40 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-md">
-                    <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>AES 256-BIT ENCRYPTION</span>
+                <button onClick={() => fileInputRef.current?.click()} disabled={isProcessing}
+                  className="mt-2 w-full text-[10px] font-mono text-zinc-500 hover:text-white py-1.5 border border-dashed border-white/10 hover:border-white/30 rounded-lg transition-all cursor-pointer">
+                  + {isEs ? 'Añadir más archivos' : 'Add more files'}
+                </button>
+              </div>
+            )}
+
+            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono flex-1 min-h-[520px]">
+              <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0">
+                    <FileText className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-white font-bold text-xs truncate w-28 sm:w-44">{activeFile?.name || ''}</span>
+                    <span className="text-zinc-400 text-[10px]">{activeFile ? formatFileSize(activeFile.size) : ''}</span>
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
-                  <FileText className="w-10 h-10 text-zinc-600" />
-                  <span className="text-xs font-mono">{isEs ? "Vista previa no disponible" : "Preview unavailable"}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-zinc-950 border border-white/10 rounded-xl px-2 py-1 text-xs text-zinc-300">
+                    <button onClick={() => changePreviewPage(-1)} disabled={previewPageNum <= 1 || isLoadingPreview} className="p-1 hover:text-white disabled:opacity-30 cursor-pointer">
+                      <ChevronDown className="w-4 h-4 rotate-90" />
+                    </button>
+                    <span className="px-2 text-[11px] font-mono font-bold text-white">{previewPageNum} / {totalPages}</span>
+                    <button onClick={() => changePreviewPage(1)} disabled={previewPageNum >= totalPages || isLoadingPreview} className="p-1 hover:text-white disabled:opacity-30 cursor-pointer">
+                      <ChevronDown className="w-4 h-4 -rotate-90" />
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Bottom Viewer Toolbar */}
-            <div className="bg-zinc-900 border-t border-white/10 px-4 py-2.5 flex items-center justify-between font-mono text-xs text-zinc-400">
-              <div className="flex items-center gap-2">
-                <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] text-white font-bold">{zoomLevel}%</span>
-                <button onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))} className="hover:text-white"><ZoomOut className="w-3.5 h-3.5"/></button>
-                <button onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))} className="hover:text-white"><ZoomIn className="w-3.5 h-3.5"/></button>
               </div>
-              <span className="truncate max-w-[120px] text-[11px]">{file.name}</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className="hover:text-white text-xs">&larr;</button>
-                <span>{currentPage} / {totalPages}</span>
-                <button onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className="hover:text-white text-xs">&rarr;</button>
+
+              <div className="w-full flex-1 bg-[#09090b] relative flex items-center justify-center p-3 sm:p-5 min-h-[440px]">
+                {isLoadingPreview ? (
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                    <Loader2 className="w-8 h-8 animate-spin text-white" />
+                    <span className="text-xs font-mono">{isEs ? 'Cargando preview...' : 'Loading preview...'}</span>
+                  </div>
+                ) : previewDataUrl ? (
+                  <div className="w-full h-full max-h-[480px] flex items-center justify-center relative">
+                    <img src={previewDataUrl} alt={`Página ${previewPageNum}`} className="max-h-[470px] w-auto max-w-full object-contain rounded-lg shadow-2xl border border-white/15 bg-white" />
+                    <div className="absolute top-4 right-4 bg-emerald-950/90 border border-emerald-500/40 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-md">
+                      <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>AES 256-BIT</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                    <FileText className="w-10 h-10 text-zinc-600" />
+                    <span className="text-xs font-mono">{isEs ? 'Vista previa no disponible' : 'Preview unavailable'}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* LADO DERECHO: PANEL DE CONTROL */}
+          <div className="lg:col-span-7 flex flex-col">
+            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans flex-1">
+
+              <div className="overflow-y-auto pr-1 max-h-[calc(100vh-250px)]">
+                {/* CABECERA PANEL */}
+                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
+                  <div>
+                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
+                      002 / CONFIGURACIÓN DE SEGURIDAD
+                    </span>
+                    <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
+                      {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
+                    </h2>
+                  </div>
+                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+                    <Lock className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+
+                {/* === CONTRASEÑA DE APERTURA (User Password) === */}
+                <div className="mb-5 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <KeyRound className="w-4 h-4 text-white" />
+                    <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
+                      {isEs ? 'Contraseña de Apertura' : 'User Password (Open)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mb-3 font-sans leading-relaxed">
+                    {isEs ? 'Restringe quién puede abrir y leer el documento. Déjalo en blanco si solo deseas restricciones de permisos.' : 'Restricts who can open and read the document. Leave blank for permission-only restrictions.'}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="relative">
+                      <input type={showUserPassword ? 'text' : 'password'} value={userPassword} onChange={e => setUserPassword(e.target.value)}
+                        placeholder={isEs ? 'Contraseña de apertura' : 'User password'}
+                        className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
+                      />
+                      <button type="button" onClick={() => setShowUserPassword(!showUserPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white">
+                        {showUserPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <input type={showUserPassword ? 'text' : 'password'} value={confirmUserPassword} onChange={e => setConfirmUserPassword(e.target.value)}
+                      placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
+                      className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                    />
+                  </div>
+                  {userPassword && (
+                    <div className="mt-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-zinc-900 rounded-full h-1.5 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-300 ${userPwdStrength.color}`}
+                            style={{ width: `${(userPwdStrength.score / 4) * 100}%` }} />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-zinc-300">{userPwdStrength.label}</span>
+                      </div>
+                      <p className="text-[9px] text-zinc-500 mt-1">
+                        {isEs ? 'Usa 8+ caracteres con mayúsculas, números y símbolos' : 'Use 8+ chars with uppercase, numbers & symbols'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* === CONTRASEÑA DE PROPIETARIO (Owner Password) === */}
+                <div className="mb-5 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
+                      {isEs ? 'Contraseña de Propietario' : 'Owner Password (Permissions)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mb-3 font-sans leading-relaxed">
+                    {isEs ? 'Contraseña maestra para restringir permisos sin impedir la lectura. Si no se establece, se genera una automáticamente.' : 'Master password to restrict permissions without blocking reading. Auto-generated if left blank.'}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="relative">
+                      <input type={showOwnerPassword ? 'text' : 'password'} value={ownerPassword} onChange={e => setOwnerPassword(e.target.value)}
+                        placeholder={isEs ? 'Contraseña maestra (opcional)' : 'Owner password (optional)'}
+                        className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
+                      />
+                      <button type="button" onClick={() => setShowOwnerPassword(!showOwnerPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white">
+                        {showOwnerPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <input type={showOwnerPassword ? 'text' : 'password'} value={confirmOwnerPassword} onChange={e => setConfirmOwnerPassword(e.target.value)}
+                      placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
+                      className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* === PANEL DE POLÍTICAS DE SEGURIDAD (PERMISOS GRANULARES) === */}
+                <div className="mb-5 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-white" />
+                      <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
+                        {isEs ? 'Políticas de Seguridad' : 'Security Policies'}
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button onClick={applyReadOnly}
+                        className="text-[9px] font-bold px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 transition-all font-mono cursor-pointer">
+                        {isEs ? 'Solo lectura' : 'Read-only'}
+                      </button>
+                      <button onClick={applyMaxProtection}
+                        className="text-[9px] font-bold px-2 py-1 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-all font-mono cursor-pointer">
+                        {isEs ? 'Máxima protección' : 'Max protection'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* IMPRESIÓN */}
+                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-white">{isEs ? 'Permitir impresión' : 'Allow printing'}</p>
+                          <p className="text-[10px] text-zinc-500">{isEs ? 'El usuario puede imprimir el documento' : 'User can print the document'}</p>
+                        </div>
+                        <div onClick={() => { setAllowPrinting(!allowPrinting); if (!allowPrinting) setAllowHighQualityPrint(false); }}
+                          className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowPrinting ? 'bg-white' : 'bg-zinc-700'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowPrinting ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                      </div>
+                      {allowPrinting && (
+                        <div className="mt-2 pl-2 border-l-2 border-white/10">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-zinc-400">{isEs ? 'Alta calidad' : 'High quality'}</span>
+                            <div onClick={() => setAllowHighQualityPrint(!allowHighQualityPrint)}
+                              className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowHighQualityPrint ? 'bg-white' : 'bg-zinc-700'}`}>
+                              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowHighQualityPrint ? 'left-4' : 'left-0.5'}`} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* COPIA */}
+                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-white">{isEs ? 'Permitir copia de texto/imágenes' : 'Allow copying text/images'}</p>
+                        <p className="text-[10px] text-zinc-500">{isEs ? 'Ctrl+C / clic derecho sobre contenido' : 'Ctrl+C / right-click on content'}</p>
+                      </div>
+                      <div onClick={() => { setAllowCopying(!allowCopying); setAllowExtraction(!allowCopying); }}
+                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowCopying ? 'bg-white' : 'bg-zinc-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowCopying ? 'left-4' : 'left-0.5'}`} />
+                      </div>
+                    </div>
+
+                    {/* MODIFICACIÓN */}
+                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-white">{isEs ? 'Permitir modificación de páginas' : 'Allow page modification'}</p>
+                        <p className="text-[10px] text-zinc-500">{isEs ? 'Rotar, eliminar, insertar páginas' : 'Rotate, delete, insert pages'}</p>
+                      </div>
+                      <div onClick={() => { setAllowModifying(!allowModifying); setAllowAssembly(!allowModifying); }}
+                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowModifying ? 'bg-white' : 'bg-zinc-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowModifying ? 'left-4' : 'left-0.5'}`} />
+                      </div>
+                    </div>
+
+                    {/* FORMULARIOS */}
+                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-white">{isEs ? 'Permitir llenado de formularios' : 'Allow form filling'}</p>
+                        <p className="text-[10px] text-zinc-500">{isEs ? 'Campos de formulario interactivos' : 'Interactive form fields'}</p>
+                      </div>
+                      <div onClick={() => setAllowFillingForms(!allowFillingForms)}
+                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowFillingForms ? 'bg-white' : 'bg-zinc-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowFillingForms ? 'left-4' : 'left-0.5'}`} />
+                      </div>
+                    </div>
+
+                    {/* ANOTACIONES */}
+                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-white">{isEs ? 'Permitir anotaciones/comentarios' : 'Allow annotations/comments'}</p>
+                        <p className="text-[10px] text-zinc-500">{isEs ? 'Resaltar, subrayar, notas adhesivas' : 'Highlight, underline, sticky notes'}</p>
+                      </div>
+                      <div onClick={() => setAllowAnnotating(!allowAnnotating)}
+                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowAnnotating ? 'bg-white' : 'bg-zinc-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowAnnotating ? 'left-4' : 'left-0.5'}`} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resumen de restricciones activas */}
+                  {hasAnyRestriction && (
+                    <div className="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-[10px] text-amber-300 font-mono">
+                      <span className="font-bold">{isEs ? 'Restricciones activas:' : 'Active restrictions:'}</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {!allowPrinting && <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">{isEs ? 'Impresión' : 'Print'}</span>}
+                        {!allowCopying && <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">{isEs ? 'Copia' : 'Copy'}</span>}
+                        {!allowModifying && <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">{isEs ? 'Edición' : 'Edit'}</span>}
+                        {!allowFillingForms && <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">{isEs ? 'Formularios' : 'Forms'}</span>}
+                        {!allowAnnotating && <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">{isEs ? 'Anotaciones' : 'Annotations'}</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* === OPCIONES AVANZADAS === */}
+                <div className="mb-5">
+                  <button onClick={() => setShowAdvanced(v => !v)}
+                    className="w-full flex items-center justify-between py-2.5 px-3 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 hover:border-white/20 rounded-xl transition-all cursor-pointer">
+                    <span className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider">
+                      <Settings className="w-3.5 h-3.5 text-white" />
+                      {isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}
+                    </span>
+                    {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                  </button>
+                  {showAdvanced && (
+                    <div className="mt-3 space-y-4 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
+                      <div onClick={() => setEnableRasterize(!enableRasterize)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                        <div>
+                          <p className="text-[11px] font-bold text-white">{isEs ? 'Rasterizar contenido (máxima seguridad)' : 'Rasterize content (maximum security)'}</p>
+                          <p className="text-[9px] text-zinc-500 font-mono">{isEs ? 'Convierte todo a imagen no editable ni buscable' : 'Converts all to non-editable, non-searchable image'}</p>
+                        </div>
+                        <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableRasterize ? 'bg-white' : 'bg-zinc-700'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableRasterize ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">{isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}</label>
+                        <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
+                        />
+                        <p className="text-[9px] font-mono text-zinc-600 mt-1">
+                          {isEs ? `Ejemplo: archivo${customSuffix}.pdf` : `Example: file${customSuffix}.pdf`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* BARRA DE PROGRESO + BOTÓN */}
+              <div>
+                <AnimatePresence>
+                  {isProcessing && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 font-mono">
+                      <div className="flex justify-between items-center text-xs text-zinc-300 mb-1.5">
+                        <span className="truncate mr-2">{progressMsg}</span>
+                        <span className="font-bold tabular-nums">{progressPercent}%</span>
+                      </div>
+                      <div className="w-full bg-zinc-900 rounded-full h-2.5 overflow-hidden border border-white/10">
+                        <motion.div className="bg-gradient-to-r from-emerald-500 to-emerald-300 h-full rounded-full"
+                          initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} transition={{ ease: 'easeInOut', duration: 0.3 }} />
+                      </div>
+                      {totalFilesCount > 1 && (
+                        <p className="text-[9px] text-zinc-500 mt-1 text-center">
+                          {isEs ? `Archivo ${currentFileIndex} de ${totalFilesCount}` : `File ${currentFileIndex} of ${totalFilesCount}`}
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="space-y-3 pt-2">
+                  {!hasResults ? (
+                    <button onClick={executeProtect} disabled={isProcessing || files.length === 0}
+                      className="w-full bg-white text-black hover:bg-zinc-200 font-bold py-3.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                      {isProcessing ? (
+                        <><Loader2 className="w-4 h-4 animate-spin text-black" /><span>{isEs ? 'Cifrando...' : 'Encrypting...'}</span></>
+                      ) : (
+                        <><Lock className="w-4 h-4 text-black" /><span>{isEs ? (files.length > 1 ? `Proteger ${files.length} archivos` : 'Proteger PDF') : (files.length > 1 ? `Protect ${files.length} files` : 'Protect PDF')}</span></>
+                      )}
+                    </button>
+                  ) : (
+                    <button onClick={handleRemoveAllFiles}
+                      className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2.5 px-4 rounded-full text-xs font-bold border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>{isEs ? 'Proteger otros archivos' : 'Protect other files'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* INDICADOR WEB WORKER */}
+                <div className="pt-3 mt-4 border-t border-white/10 flex items-center justify-between font-mono text-xs text-zinc-400">
+                  <span className="flex items-center gap-1.5 text-[11px]">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    {isEs ? 'Web Worker Activo' : 'Web Worker Active'}
+                  </span>
+                  <span className="flex items-center gap-1 text-white">
+                    <Database className="w-3 h-3" />
+                    {isEs ? '100% Local' : '100% Local'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* RIGHT COLUMN: SECURITY OPTIONS FORM (7 Cols) */}
-        <div className="lg:col-span-7 flex flex-col gap-5">
-
-          {/* CABECERA CON TÍTULO PANEL DE CONTROL */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex items-center justify-between shadow-2xl font-sans">
-            <div>
-              <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
-                002 / CONFIGURACIÓN
-              </span>
-              <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
-                PANEL DE CONTROL
-              </h2>
-            </div>
-            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
-              <Lock className="w-5 h-5 text-white" />
-            </div>
-          </div>
-          
-          {/* SECCIÓN 1: Establecer contraseña para abrir el documento */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-7 flex flex-col gap-4 shadow-2xl">
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mb-1 font-sans">
-                {isEs ? 'Establecer contraseña para abrir el documento' : 'Set password to open the document'}
-              </h3>
-              <p className="text-zinc-400 text-xs font-sans leading-relaxed">
-                {isEs 
-                  ? 'Esta contraseña se puede usar para evitar el acceso no deseado al archivo.' 
-                  : 'This password can be used to prevent unwanted access to the file.'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-300 font-semibold">
-                  {isEs ? 'Introduce la contraseña para abrir' : 'Enter open password'}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showOpenPassword ? 'text' : 'password'}
-                    value={openPassword}
-                    onChange={(e) => setOpenPassword(e.target.value)}
-                    placeholder={isEs ? 'Introduce la contraseña para abrir' : 'Enter open password'}
-                    className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowOpenPassword(!showOpenPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-                  >
-                    {showOpenPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-300 font-semibold">
-                  {isEs ? 'Repite la contraseña para abrir' : 'Confirm open password'}
-                </label>
-                <input
-                  type={showOpenPassword ? 'text' : 'password'}
-                  value={confirmOpenPassword}
-                  onChange={(e) => setConfirmOpenPassword(e.target.value)}
-                  placeholder={isEs ? 'Repite la contraseña para abrir' : 'Repeat open password'}
-                  className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* SECCIÓN 2: Establecer contraseña para restringir permisos */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-7 flex flex-col gap-4 shadow-2xl">
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight mb-1 font-sans">
-                {isEs ? 'Establecer contraseña para restringir permisos' : 'Set password to restrict permissions'}
-              </h3>
-              <p className="text-zinc-400 text-xs font-sans leading-relaxed">
-                {isEs 
-                  ? 'Esta contraseña se puede usar para limitar la funcionalidad del PDF.' 
-                  : 'This password can be used to limit PDF functionality.'}
-              </p>
-            </div>
-
-            {/* Note box */}
-            <div className="bg-zinc-900/80 border border-white/10 rounded-xl p-3.5 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5" />
-              <p className="text-[11px] text-zinc-300 font-sans leading-relaxed">
-                {isEs 
-                  ? 'Si me restringes los derechos de uso y solo especificas una contraseña de permisos, algunos programas podrían ignorar estas restricciones. Elige una contraseña de apertura para cifrar y proteger tu PDF.'
-                  : 'If you restrict usage rights and only specify a permissions password, some programs might ignore these restrictions. Choose an open password to encrypt and protect your PDF.'}
-              </p>
-            </div>
-
-            {/* Permisos Checkboxes */}
-            <div className="flex flex-col gap-2.5 pt-1 border-t border-white/10 font-sans">
-              <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
-                {isEs ? 'Permisos:' : 'Permissions:'}
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-xs">
-                <label className="flex items-center gap-2.5 p-2.5 bg-zinc-900 border border-white/10 rounded-xl cursor-pointer hover:border-white/30 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={preventPrinting}
-                    onChange={(e) => setPreventPrinting(e.target.checked)}
-                    className="w-4 h-4 accent-white rounded"
-                  />
-                  <span className="text-zinc-200">{isEs ? 'Evitar impresión:' : 'Prevent printing:'}</span>
-                </label>
-
-                <label className="flex items-center gap-2.5 p-2.5 bg-zinc-900 border border-white/10 rounded-xl cursor-pointer hover:border-white/30 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={preventCopying}
-                    onChange={(e) => setPreventCopying(e.target.checked)}
-                    className="w-4 h-4 accent-white rounded"
-                  />
-                  <span className="text-zinc-200">{isEs ? 'Evitar copia:' : 'Prevent copying:'}</span>
-                </label>
-
-                <label className="flex items-center gap-2.5 p-2.5 bg-zinc-900 border border-white/10 rounded-xl cursor-pointer hover:border-white/30 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={preventEditing}
-                    onChange={(e) => setPreventEditing(e.target.checked)}
-                    className="w-4 h-4 accent-white rounded"
-                  />
-                  <span className="text-zinc-200">{isEs ? 'Evitar edición:' : 'Prevent editing:'}</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Permission Password Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono pt-1">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-300 font-semibold">
-                  {isEs ? 'Introduce la contraseña de permisos' : 'Enter permissions password'}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPermissionsPassword ? 'text' : 'password'}
-                    value={permissionsPassword}
-                    onChange={(e) => setPermissionsPassword(e.target.value)}
-                    placeholder={isEs ? 'Introduce la contraseña de permisos' : 'Enter permissions password'}
-                    className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPermissionsPassword(!showPermissionsPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-                  >
-                    {showPermissionsPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-zinc-300 font-semibold">
-                  {isEs ? 'Repite la contraseña de permisos' : 'Confirm permissions password'}
-                </label>
-                <input
-                  type={showPermissionsPassword ? 'text' : 'password'}
-                  value={confirmPermissionsPassword}
-                  onChange={(e) => setConfirmPermissionsPassword(e.target.value)}
-                  placeholder={isEs ? 'Repite la contraseña de permisos' : 'Repeat permissions password'}
-                  className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* SECCIÓN 3: Ajustes opcionales (Rasterizado) */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-7 flex flex-col gap-4 shadow-2xl font-sans">
-            <div className="flex items-center gap-2 font-mono">
-              <Settings className="w-4 h-4 text-white" />
-              <h3 className="text-base font-bold text-white tracking-tight">
-                {isEs ? 'Ajustes opcionales' : 'Optional settings'}
-              </h3>
-            </div>
-
-            <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-4 flex flex-col gap-2.5 font-sans">
-              <h4 className="text-xs font-bold text-white font-mono uppercase tracking-wider">
-                {isEs ? 'Rasterizar:' : 'Rasterize:'}
-              </h4>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                {isEs 
-                  ? 'Para mayor seguridad, puedes seleccionar esta opción para evitar que otros editen el documento o revelen posibles áreas ocultas, ya que todo el contenido se combinará en una sola capa no editable ni editable mediante búsqueda.'
-                  : 'For extra security, select this option to prevent editing or revealing hidden areas, as all content will be combined into a single non-editable, non-searchable layer.'}
-              </p>
-
-              <label className="flex items-center gap-2.5 pt-1 cursor-pointer font-mono text-xs font-semibold text-white">
-                <input
-                  type="checkbox"
-                  checked={enableRasterize}
-                  onChange={(e) => setEnableRasterize(e.target.checked)}
-                  className="w-4 h-4 accent-white rounded"
-                />
-                <span>{isEs ? 'Activar rasterizado' : 'Enable rasterization'}</span>
-              </label>
-            </div>
-          </div>
-
-          {/* SECCIÓN 4: Botón Principal de Acción (INICIAR →) */}
-          <div className="flex justify-end pt-1">
-            <button
-              onClick={executeProtect}
-              disabled={isProcessing}
-              className="bg-white hover:bg-zinc-200 text-black font-extrabold text-sm sm:text-base py-3.5 px-8 rounded-full flex items-center gap-2 transition-all cursor-pointer shadow-2xl group disabled:opacity-40"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-black" />
-                  <span>{progressMsg || (isEs ? 'Procesando...' : 'Processing...')}</span>
-                </>
-              ) : (
-                <>
-                  <span>{isEs ? 'INICIAR' : 'START'}</span>
-                  <ArrowRight className="w-4 h-4 text-black group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </button>
-          </div>
-
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }

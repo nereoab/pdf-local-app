@@ -5,7 +5,8 @@ import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
 import { 
   Merge, FileText, Trash2, Loader2, ArrowUp, ArrowDown, Plus, 
   Sliders, ChevronDown, ChevronUp, Download, UploadCloud, ShieldCheck, 
-  ArrowLeft, Sparkles, LayoutGrid, CheckCircle2, Compass, Grid, Layers, Zap, Cpu, Settings2
+  ArrowLeft, Sparkles, LayoutGrid, CheckCircle2, Compass, Grid, Layers, Zap, Cpu, Settings2, GripVertical,
+  Eye, RotateCw, X, CheckSquare, Square, Lock, Unlock, KeyRound
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -17,12 +18,25 @@ type PageOrientation = 'original' | 'portrait' | 'landscape';
 type PageSizeOption = 'original' | 'a4' | 'letter';
 type SeparatorOption = 'none' | 'blank' | 'title_page';
 
+import type { WorkerMessageOut } from '../workers/pdf-merge.worker';
+
+export interface PageDetail {
+  pageIndex: number;
+  rotation: number;
+  included: boolean;
+  thumbnailUrl?: string;
+}
+
 interface FileItem {
   id: string;
   file: File;
   pageCount: number;
   pageRange: string; // e.g. "all" or "1-3, 5"
   thumbnailUrl?: string;
+  pagesDetail?: PageDetail[];
+  isEncrypted?: boolean;
+  needsPassword?: boolean;
+  password?: string;
 }
 
 export default function PdfMerger() {
@@ -37,6 +51,130 @@ export default function PdfMerger() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [passwordsMap, setPasswordsMap] = useState<Record<string, string>>({});
+
+  // METADATA STATE
+  const [docTitle, setDocTitle] = useState<string>('');
+  const [docAuthor, setDocAuthor] = useState<string>('');
+  const [docSubject, setDocSubject] = useState<string>('');
+
+  // DRAG AND DROP REORDERING STATE
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    setFiles(prev => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(draggedIndex, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+
+    setDownloadUrl(null);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    toast.info(isEs ? 'Orden de unión actualizado' : 'Merge order updated');
+  };
+
+  // PAGE INSPECTION MODAL STATE
+  const [inspectingFileId, setInspectingFileId] = useState<string | null>(null);
+  const [isLoadingInspectorPages, setIsLoadingInspectorPages] = useState<boolean>(false);
+
+  const openPageInspector = async (item: FileItem) => {
+    setInspectingFileId(item.id);
+    if (!item.pagesDetail || item.pagesDetail.length === 0) {
+      setIsLoadingInspectorPages(true);
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const buffer = await item.file.arrayBuffer();
+        const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)) }).promise;
+
+        const details: PageDetail[] = [];
+        for (let i = 1; i <= item.pageCount; i++) {
+          let thumbUrl: string | undefined = undefined;
+          try {
+            const page = await pdfjsDoc.getPage(i);
+            const viewport = page.getViewport({ scale: 0.25 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            if (context) {
+              await (page.render({ canvasContext: context, viewport, canvas } as any)).promise;
+              thumbUrl = canvas.toDataURL();
+            }
+          } catch (e) {
+            console.warn(`Could not render thumbnail for page ${i}`);
+          }
+
+          details.push({
+            pageIndex: i - 1,
+            rotation: 0,
+            included: true,
+            thumbnailUrl: thumbUrl,
+          });
+        }
+
+        setFiles(prev => prev.map(f => f.id === item.id ? { ...f, pagesDetail: details } : f));
+      } catch (e) {
+        toast.error(isEs ? 'Error al cargar páginas del documento' : 'Error loading document pages');
+      } finally {
+        setIsLoadingInspectorPages(false);
+      }
+    }
+  };
+
+  const togglePageIncluded = (fileId: string, pageIndex: number) => {
+    setFiles(prev => prev.map(f => {
+      if (f.id !== fileId || !f.pagesDetail) return f;
+      const updatedDetails = f.pagesDetail.map(p => p.pageIndex === pageIndex ? { ...p, included: !p.included } : p);
+      return { ...f, pagesDetail: updatedDetails };
+    }));
+  };
+
+  const rotatePageClockwise = (fileId: string, pageIndex: number) => {
+    setFiles(prev => prev.map(f => {
+      if (f.id !== fileId || !f.pagesDetail) return f;
+      const updatedDetails = f.pagesDetail.map(p => p.pageIndex === pageIndex ? { ...p, rotation: (p.rotation + 90) % 360 } : p);
+      return { ...f, pagesDetail: updatedDetails };
+    }));
+  };
+
+  const toggleAllPages = (fileId: string, includeAll: boolean) => {
+    setFiles(prev => prev.map(f => {
+      if (f.id !== fileId || !f.pagesDetail) return f;
+      const updatedDetails = f.pagesDetail.map(p => ({ ...p, included: includeAll }));
+      return { ...f, pagesDetail: updatedDetails };
+    }));
+  };
 
   // OPCIONES AVANZADAS DE UNIÓN
   const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
@@ -49,6 +187,54 @@ export default function PdfMerger() {
   const { globalFiles, globalFile } = useFileStore();
   const loadedFromStoreRef = useRef(false);
 
+  const unlockFileWithPassword = async (id: string, passwordInput: string) => {
+    const item = files.find(f => f.id === id);
+    if (!item) return;
+
+    try {
+      const buffer = await item.file.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(buffer, { password: passwordInput, ignoreEncryption: true } as any);
+      const count = pdfDoc.getPageCount();
+
+      let thumbUrl: string | undefined = undefined;
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)), password: passwordInput }).promise;
+        const page = await pdfjsDoc.getPage(1);
+        const viewport = page.getViewport({ scale: 0.3 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        if (context) {
+          await (page.render({ canvasContext: context, viewport, canvas } as any)).promise;
+          thumbUrl = canvas.toDataURL();
+        }
+      } catch (e) {
+        console.warn("Could not generate thumbnail after unlock:", item.file.name);
+      }
+
+      setFiles(prev => prev.map(f => {
+        if (f.id === id) {
+          return {
+            ...f,
+            isEncrypted: true,
+            needsPassword: false,
+            password: passwordInput,
+            pageCount: count,
+            thumbnailUrl: thumbUrl
+          };
+        }
+        return f;
+      }));
+
+      toast.success(isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF file unlocked successfully!');
+    } catch (err) {
+      toast.error(isEs ? 'Contraseña incorrecta. Inténtalo de nuevo.' : 'Incorrect password. Please try again.');
+    }
+  };
+
   const processAndAddFileList = async (fileList: File[]) => {
     const selected = fileList.filter(f => f.type === 'application/pdf');
     if (selected.length === 0) return;
@@ -60,6 +246,31 @@ export default function PdfMerger() {
     for (const f of selected) {
       try {
         const buffer = await f.arrayBuffer();
+        
+        let isEncrypted = false;
+        let needsPassword = false;
+
+        try {
+          await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)), password: '' }).promise;
+        } catch (err: any) {
+          if (err?.name === 'PasswordException' || err?.code === 1) {
+            isEncrypted = true;
+            needsPassword = true;
+          }
+        }
+
+        if (needsPassword) {
+          newItems.push({
+            id: `${f.name}-${Date.now()}-${Math.random()}`,
+            file: f,
+            pageCount: 1,
+            pageRange: 'all',
+            isEncrypted: true,
+            needsPassword: true
+          });
+          continue;
+        }
+
         const doc = await PDFDocument.load(buffer, { ignoreEncryption: true });
         const count = doc.getPageCount();
 
@@ -85,7 +296,8 @@ export default function PdfMerger() {
           file: f,
           pageCount: count,
           pageRange: 'all',
-          thumbnailUrl: thumbUrl
+          thumbnailUrl: thumbUrl,
+          isEncrypted
         });
       } catch {
         newItems.push({
@@ -190,102 +402,80 @@ export default function PdfMerger() {
       return;
     }
 
+    const lockedFile = files.find(f => f.needsPassword);
+    if (lockedFile) {
+      toast.error(isEs ? `Por favor ingresa la contraseña de "${lockedFile.file.name}" antes de unir.` : `Please enter password for "${lockedFile.file.name}" before merging.`);
+      return;
+    }
+
     setIsProcessing(true);
-    setProgressPercent(10);
-    let localUrl: string | null = null;
+    setProgressPercent(5);
+    setProgressMsg(isEs ? 'Iniciando Web Worker...' : 'Starting Web Worker...');
 
     try {
-      setProgressMsg(isEs ? 'Creando documento unificado...' : 'Creating unified document...');
-      const mergedPdf = await PDFDocument.create();
-      const helveticaFont = await mergedPdf.embedFont(StandardFonts.Helvetica);
-      const helveticaBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
+      const worker = new Worker(new URL('../workers/pdf-merge.worker.ts', import.meta.url), { type: 'module' });
 
-      for (let i = 0; i < files.length; i++) {
-        const item = files[i];
-        setProgressMsg(isEs ? `Procesando ${item.file.name} (${i + 1}/${files.length})...` : `Processing ${item.file.name} (${i + 1}/${files.length})...`);
-        setProgressPercent(10 + Math.floor(((i + 1) / files.length) * 75));
-        await new Promise(r => setTimeout(r, 10));
+      const filePayloads = await Promise.all(
+        files.map(async (item) => ({
+          id: item.id,
+          name: item.file.name,
+          size: item.file.size,
+          arrayBuffer: await item.file.arrayBuffer(),
+          pageCount: item.pageCount,
+          pageRange: item.pageRange,
+          password: item.password,
+          pagesDetail: item.pagesDetail ? item.pagesDetail.map(p => ({
+            pageIndex: p.pageIndex,
+            rotation: p.rotation,
+            included: p.included
+          })) : undefined
+        }))
+      );
 
-        // 1. CARÁTULA SEPARADORA SI APLICA
-        if (separatorMode === 'title_page') {
-          const sepPage = mergedPdf.addPage([595.28, 841.89]);
-          sepPage.drawText(`DOCUMENTO ${i + 1}`, {
-            x: 50,
-            y: 750,
-            size: 12,
-            font: helveticaBold,
-            color: rgb(0.6, 0.4, 1.0)
-          });
-          sepPage.drawText(item.file.name, {
-            x: 50,
-            y: 710,
-            size: 20,
-            font: helveticaBold,
-            color: rgb(1, 1, 1)
-          });
-          sepPage.drawText(`${item.pageCount} ${isEs ? 'páginas en original' : 'pages in original'}`, {
-            x: 50,
-            y: 680,
-            size: 11,
-            font: helveticaFont,
-            color: rgb(0.7, 0.7, 0.7)
-          });
-        } else if (separatorMode === 'blank' && i > 0) {
-          mergedPdf.addPage([595.28, 841.89]);
-        }
+      const transferableBuffers = filePayloads.map(f => f.arrayBuffer);
 
-        // 2. CARGAR Y COPIAR PÁGINAS DEL ARCHIVO
-        const arrayBuffer = await item.file.arrayBuffer();
-        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-        const total = pdfDoc.getPageCount();
-        const selectedIndices = parsePageRange(item.pageRange, total);
-
-        if (selectedIndices.length === 0) continue;
-
-        const copiedPages = await mergedPdf.copyPages(pdfDoc, selectedIndices);
-
-        copiedPages.forEach(page => {
-          if (orientation === 'portrait') {
-            page.setRotation(degrees(0));
-          } else if (orientation === 'landscape') {
-            page.setRotation(degrees(90));
+      const mergedBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        worker.onmessage = (e: MessageEvent<WorkerMessageOut>) => {
+          const msg = e.data;
+          if (msg.type === 'progress') {
+            setProgressPercent(msg.percent);
+            setProgressMsg(msg.message);
+          } else if (msg.type === 'result') {
+            resolve(msg.mergedBytes);
+          } else if (msg.type === 'error') {
+            reject(new Error(msg.message));
           }
+        };
 
-          if (pageSize === 'a4') {
-            page.setSize(595.28, 841.89);
-          } else if (pageSize === 'letter') {
-            page.setSize(612, 792);
-          }
+        worker.onerror = (err) => {
+          reject(err);
+        };
 
-          mergedPdf.addPage(page);
-        });
+        worker.postMessage(
+          {
+            action: 'merge',
+            files: filePayloads,
+            options: {
+              orientation,
+              pageSize,
+              separatorMode,
+              addPageNumbers,
+              duplexMode,
+              metadata: {
+                title: docTitle.trim() || undefined,
+                author: docAuthor.trim() || undefined,
+                subject: docSubject.trim() || undefined,
+              }
+            },
+          },
+          transferableBuffers
+        );
+      });
 
-        if (duplexMode && (selectedIndices.length % 2 !== 0)) {
-          mergedPdf.addPage([595.28, 841.89]);
-        }
-      }
+      worker.terminate();
 
-      if (addPageNumbers) {
-        const pages = mergedPdf.getPages();
-        const totalNumPages = pages.length;
-        pages.forEach((p, idx) => {
-          const { width } = p.getSize();
-          p.drawText(`${idx + 1} / ${totalNumPages}`, {
-            x: width / 2 - 15,
-            y: 18,
-            size: 9,
-            font: helveticaFont,
-            color: rgb(0.5, 0.5, 0.5),
-          });
-        });
-      }
-
-      setProgressMsg(isEs ? 'Compilando documento final...' : 'Compiling final document...');
-      setProgressPercent(95);
-
-      const mergedBytes = await mergedPdf.save();
-      const blob = new Blob([mergedBytes as unknown as BlobPart], { type: 'application/pdf' });
-      localUrl = URL.createObjectURL(blob);
+      const blob = new Blob([mergedBuffer], { type: 'application/pdf' });
+      const localUrl = URL.createObjectURL(blob);
       setDownloadUrl(localUrl);
 
       const link = document.createElement('a');
@@ -296,10 +486,10 @@ export default function PdfMerger() {
       document.body.removeChild(link);
 
       setProgressPercent(100);
-      toast.success(isEs ? '¡Archivos PDF unidos con éxito!' : 'PDF files merged successfully!');
-    } catch (error) {
+      toast.success(isEs ? '¡Archivos PDF unidos con éxito en segundo plano!' : 'PDF files merged successfully in background!');
+    } catch (error: any) {
       console.error(error);
-      toast.error(isEs ? 'Ocurrió un error al unir los archivos.' : 'An error occurred while merging files.');
+      toast.error(isEs ? `Error al unir los archivos: ${error?.message || 'Error desconocido'}` : `Error merging files: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
@@ -393,7 +583,7 @@ export default function PdfMerger() {
         >
           {/* LADO IZQUIERDO: REJILLA DE ARCHIVOS Y MINIATURAS DE UNIÓN */}
           <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
                 <span>{isEs ? `001 / ARCHIVOS A UNIR (${files.length} DOCUMENTOS)` : `001 / FILES TO MERGE (${files.length} DOCS)`}</span>
@@ -413,79 +603,149 @@ export default function PdfMerger() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[650px] pr-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="mb-3 px-3 py-1.5 bg-zinc-900/60 border border-white/5 rounded-xl flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+              <GripVertical className="w-3.5 h-3.5 text-zinc-300" />
+              <span>{isEs ? 'Arrastra y suelta las tarjetas para reordenar la secuencia de unión' : 'Drag and drop cards to reorder the merge sequence'}</span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto max-h-[650px] pr-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
               <AnimatePresence>
-                {files.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="relative group bg-zinc-950 border border-white/10 hover:border-white/30 rounded-2xl p-4 flex flex-col justify-between transition-all shadow-xl font-mono"
-                  >
-                    {/* ORDEN DE UNIÓN PAGO TOP LEFT */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="bg-white/10 text-white font-mono font-bold text-xs px-2.5 py-1 rounded-lg border border-white/10">
-                        #{index + 1}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button" onClick={() => moveFile(index, 'up')} disabled={index === 0}
-                          className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                          title={isEs ? "Mover arriba" : "Move up"}
-                        >
-                          <ArrowUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button" onClick={() => moveFile(index, 'down')} disabled={index === files.length - 1}
-                          className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                          title={isEs ? "Mover abajo" : "Move down"}
-                        >
-                          <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button" onClick={() => removeFile(item.id)}
-                          className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                          title={isEs ? "Eliminar" : "Remove"}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                {files.map((item, index) => {
+                  const isDraggingThis = draggedIndex === index;
+                  const isDragOverThis = dragOverIndex === index && draggedIndex !== index;
 
-                    {/* VISTA PREVIA O ICONO DE PDF */}
-                    <div className="w-full aspect-[4/3] bg-zinc-900/80 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-white/5 relative">
-                      {item.thumbnailUrl ? (
-                        <img src={item.thumbnailUrl} alt={item.file.name} className="w-full h-full object-contain p-2 rounded-xl bg-white" />
-                      ) : (
-                        <div className="flex flex-col items-center gap-2 text-zinc-500 font-mono">
-                          <FileText className="w-10 h-10 text-zinc-400" />
-                          <span className="text-[10px] font-bold uppercase">{item.pageCount} {isEs ? 'Páginas' : 'Pages'}</span>
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ 
+                        opacity: isDraggingThis ? 0.4 : 1, 
+                        scale: isDragOverThis ? 1.03 : 1,
+                        borderColor: isDragOverThis ? '#3b82f6' : undefined
+                      }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      draggable={!isProcessing}
+                      onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                      onDragOver={(e) => handleDragOver(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                      onDragEnd={handleDragEnd}
+                      onDrop={(e) => handleDrop(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                      className={`relative group bg-zinc-950 border ${isDragOverThis ? 'border-blue-500 shadow-blue-500/20 ring-2 ring-blue-500/30' : 'border-white/10 hover:border-white/30'} rounded-2xl p-4 flex flex-col justify-between transition-all shadow-xl font-mono cursor-grab active:cursor-grabbing`}
+                    >
+                      {/* ORDEN DE UNIÓN Y ARRASTRE HEADER */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="cursor-grab active:cursor-grabbing text-zinc-500 group-hover:text-zinc-300 p-0.5 rounded hover:bg-white/10 transition-colors" title={isEs ? "Arrastra para reordenar" : "Drag to reorder"}>
+                            <GripVertical className="w-4 h-4" />
+                          </span>
+                          <span className="bg-white/10 text-white font-mono font-bold text-xs px-2.5 py-1 rounded-lg border border-white/10">
+                            #{index + 1}
+                          </span>
+                          {item.password && (
+                            <span className="bg-emerald-500/20 text-emerald-400 font-mono text-[9px] px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1" title={isEs ? "PDF desbloqueado" : "PDF unlocked"}>
+                              <Unlock className="w-2.5 h-2.5" /> {isEs ? "Desbloqueado" : "Unlocked"}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </div>
-
-                    {/* NOMBRE Y DETALLES */}
-                    <div className="space-y-2">
-                      <h4 className="text-white font-bold text-xs truncate max-w-full font-sans" title={item.file.name}>{item.file.name}</h4>
-                      <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                        <span>{formatFileSize(item.file.size)}</span>
-                        <span>{item.pageCount} {isEs ? 'páginas' : 'pages'}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button" onClick={() => moveFile(index, 'up')} disabled={index === 0}
+                            className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                            title={isEs ? "Mover arriba" : "Move up"}
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button" onClick={() => moveFile(index, 'down')} disabled={index === files.length - 1}
+                            className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                            title={isEs ? "Mover abajo" : "Move down"}
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button" onClick={() => removeFile(item.id)}
+                            className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                            title={isEs ? "Eliminar" : "Remove"}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="pt-2 border-t border-white/5 flex items-center gap-2 text-[10px]">
-                        <span className="text-zinc-400 flex-shrink-0">{isEs ? 'Rango:' : 'Range:'}</span>
-                        <input
-                          type="text"
-                          placeholder="all (ej: 1-3, 5)"
-                          value={item.pageRange}
-                          onChange={(e) => updatePageRange(item.id, e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-white text-[10px] font-mono outline-none focus:border-white/30"
-                        />
+                      {/* VISTA PREVIA O WIDGET DE CONTRASEÑA */}
+                      <div className="w-full aspect-[4/3] bg-zinc-900/80 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-white/5 relative">
+                        {item.needsPassword ? (
+                          <div className="flex flex-col items-center justify-center p-3 text-center gap-1.5 bg-amber-950/20 rounded-xl border border-amber-500/30 w-full h-full">
+                            <Lock className="w-6 h-6 text-amber-400 animate-pulse" />
+                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">{isEs ? "PDF Protegido" : "Password Protected"}</span>
+                            <div className="flex items-center gap-1 w-full mt-1">
+                              <input
+                                type="password"
+                                placeholder={isEs ? "Contraseña..." : "Password..."}
+                                value={passwordsMap[item.id] || ''}
+                                onChange={(e) => setPasswordsMap(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') unlockFileWithPassword(item.id, passwordsMap[item.id] || '');
+                                }}
+                                className="w-full bg-zinc-900 border border-amber-500/30 rounded-lg px-2 py-1 text-white text-[10px] outline-none focus:border-amber-400 font-mono"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => unlockFileWithPassword(item.id, passwordsMap[item.id] || '')}
+                                className="bg-amber-500 hover:bg-amber-400 text-black px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex-shrink-0 flex items-center gap-1"
+                              >
+                                <Unlock className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : item.thumbnailUrl ? (
+                          <img src={item.thumbnailUrl} alt={item.file.name} className="w-full h-full object-contain p-2 rounded-xl bg-white select-none pointer-events-none" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-zinc-500 font-mono select-none">
+                            <FileText className="w-10 h-10 text-zinc-400" />
+                            <span className="text-[10px] font-bold uppercase">{item.pageCount} {isEs ? 'Páginas' : 'Pages'}</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+
+                      {/* NOMBRE Y DETALLES */}
+                      <div className="space-y-2">
+                        <h4 className="text-white font-bold text-xs truncate max-w-full font-sans" title={item.file.name}>{item.file.name}</h4>
+                        <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                          <span>{formatFileSize(item.file.size)}</span>
+                          <span>{item.pageCount} {isEs ? 'páginas' : 'pages'}</span>
+                        </div>
+
+                        <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => openPageInspector(item)}
+                            className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-2 py-1 rounded-lg border border-white/10 text-[10px] font-mono transition-colors cursor-pointer"
+                            title={isEs ? "Inspeccionar y organizar páginas individuales" : "Inspect and organize individual pages"}
+                          >
+                            <Eye className="w-3 h-3 text-zinc-400" />
+                            <span>{isEs ? "Páginas" : "Pages"}</span>
+                            {item.pagesDetail && (
+                              <span className="ml-1 px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 rounded-full text-[9px] font-bold">
+                                {item.pagesDetail.filter(p => p.included).length}/{item.pagesDetail.length}
+                              </span>
+                            )}
+                          </button>
+
+                          <div className="flex items-center gap-1">
+                            <span className="text-zinc-400 flex-shrink-0">{isEs ? 'Rango:' : 'Range:'}</span>
+                            <input
+                              type="text"
+                              placeholder="all"
+                              value={item.pageRange}
+                              onChange={(e) => updatePageRange(item.id, e.target.value)}
+                              className="w-16 bg-zinc-900 border border-white/10 rounded-lg py-1 px-1.5 text-white text-[10px] font-mono outline-none focus:border-white/30"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           </div>
@@ -517,79 +777,96 @@ export default function PdfMerger() {
                 </select>
               </div>
 
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
-              <button 
-                type="button" 
-                onClick={() => setShowAdvanced(!showAdvanced)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer my-4 shadow-sm"
-              >
-                <div className="flex items-center gap-2 font-bold">
+              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
+              <div className="pt-4 border-t border-white/10 my-4 space-y-4 font-mono">
+                <div className="flex items-center gap-2 text-xs font-bold text-white mb-2">
                   <Settings2 className="w-4 h-4 text-white" />
                   <span>{isEs ? "Opciones Avanzadas" : "Advanced Options"}</span>
                 </div>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-              </button>
 
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 pt-1 border-t border-white/5 font-mono overflow-hidden"
-                  >
-                    {/* ORIENTACIÓN Y TAMAÑO DE PAPEL */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Orientación:" : "Orientation:"}</label>
-                        <select
-                          value={orientation} onChange={(e) => setOrientation(e.target.value as PageOrientation)}
-                          className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-[11px] font-bold text-white outline-none cursor-pointer focus:border-white/30"
-                        >
-                          <option value="original">{isEs ? "Original" : "Original"}</option>
-                          <option value="portrait">{isEs ? "Vertical" : "Portrait"}</option>
-                          <option value="landscape">{isEs ? "Horizontal" : "Landscape"}</option>
-                        </select>
-                      </div>
+                {/* ORIENTACIÓN Y TAMAÑO DE PAPEL */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Orientación:" : "Orientation:"}</label>
+                    <select
+                      value={orientation} onChange={(e) => setOrientation(e.target.value as PageOrientation)}
+                      className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-[11px] font-bold text-white outline-none cursor-pointer focus:border-white/30"
+                    >
+                      <option value="original">{isEs ? "Original" : "Original"}</option>
+                      <option value="portrait">{isEs ? "Vertical" : "Portrait"}</option>
+                      <option value="landscape">{isEs ? "Horizontal" : "Landscape"}</option>
+                    </select>
+                  </div>
 
-                      <div>
-                        <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Papel:" : "Paper Size:"}</label>
-                        <select
-                          value={pageSize} onChange={(e) => setPageSize(e.target.value as PageSizeOption)}
-                          className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-[11px] font-bold text-white outline-none cursor-pointer focus:border-white/30"
-                        >
-                          <option value="original">{isEs ? "Original" : "Original"}</option>
-                          <option value="a4">A4</option>
-                          <option value="letter">Carta</option>
-                        </select>
-                      </div>
-                    </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Papel:" : "Paper Size:"}</label>
+                    <select
+                      value={pageSize} onChange={(e) => setPageSize(e.target.value as PageSizeOption)}
+                      className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-[11px] font-bold text-white outline-none cursor-pointer focus:border-white/30"
+                    >
+                      <option value="original">{isEs ? "Original" : "Original"}</option>
+                      <option value="a4">A4</option>
+                      <option value="letter">Carta</option>
+                    </select>
+                  </div>
+                </div>
 
-                    {/* METADATOS Y NUMERACIÓN CONTINUA */}
-                    <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5">
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "AJUSTES DE NUMERACIÓN Y PÁGINAS" : "NUMBERING & PAGE SETTINGS"}</label>
-                      
-                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                        <input 
-                          type="checkbox" checked={addPageNumbers} onChange={(e) => setAddPageNumbers(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded"
-                        />
-                        <span>{isEs ? "Numeración continua (Página N / M)" : "Continuous numbering (Page N / M)"}</span>
-                      </label>
+                {/* METADATOS Y NUMERACIÓN CONTINUA */}
+                <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "AJUSTES DE NUMERACIÓN Y PÁGINAS" : "NUMBERING & PAGE SETTINGS"}</label>
+                  
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                    <input 
+                      type="checkbox" checked={addPageNumbers} onChange={(e) => setAddPageNumbers(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded"
+                    />
+                    <span>{isEs ? "Numeración continua (Página N / M)" : "Continuous numbering (Page N / M)"}</span>
+                  </label>
 
-                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                        <input 
-                          type="checkbox" checked={duplexMode} onChange={(e) => setDuplexMode(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded"
-                        />
-                        <span>{isEs ? "Modo Dúplex (Inicio en página impar)" : "Duplex mode (Start on odd page)"}</span>
-                      </label>
-                    </div>
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                    <input 
+                      type="checkbox" checked={duplexMode} onChange={(e) => setDuplexMode(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded"
+                    />
+                    <span>{isEs ? "Modo Dúplex (Inicio en página impar)" : "Duplex mode (Start on odd page)"}</span>
+                  </label>
+                </div>
 
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
+                <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2 font-mono">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">{isEs ? "METADATOS DEL PDF RESULTANTE" : "OUTPUT PDF METADATA"}</label>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Título:" : "Title:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Documento_Unificado_2026" : "Ex: Unified_Document_2026"}
+                      value={docTitle}
+                      onChange={(e) => setDocTitle(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Autor / Organización:" : "Author / Organization:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Mi Empresa S.A." : "Ex: Company Inc."}
+                      value={docAuthor}
+                      onChange={(e) => setDocAuthor(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Asunto / Descripción:" : "Subject / Description:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Fusión de expedientes corporativos" : "Ex: Merged corporate records"}
+                      value={docSubject}
+                      onChange={(e) => setDocSubject(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
@@ -623,8 +900,153 @@ export default function PdfMerger() {
           </div>
         </motion.div>
       )}
+      {/* MODAL DE INSPECCIÓN Y ORGANIZACIÓN DE PÁGINAS */}
+      <AnimatePresence>
+        {inspectingFileId && (() => {
+          const activeItem = files.find(f => f.id === inspectingFileId);
+          if (!activeItem) return null;
 
-      
+          const details = activeItem.pagesDetail || [];
+          const includedCount = details.filter(p => p.included).length;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md font-mono"
+              onClick={() => setInspectingFileId(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-4xl max-h-[85vh] bg-[#09090b] border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col justify-between overflow-hidden"
+              >
+                {/* MODAL HEADER */}
+                <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                      <Eye className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-white truncate max-w-md font-sans">{activeItem.file.name}</h3>
+                      <p className="text-xs text-zinc-400">
+                        {isEs ? `Organizando páginas (${includedCount} de ${activeItem.pageCount} incluidas)` : `Organizing pages (${includedCount} of ${activeItem.pageCount} included)`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleAllPages(activeItem.id, true)}
+                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs rounded-xl border border-white/10 transition-colors cursor-pointer"
+                    >
+                      {isEs ? "Incluir todas" : "Include all"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleAllPages(activeItem.id, false)}
+                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs rounded-xl border border-white/10 transition-colors cursor-pointer"
+                    >
+                      {isEs ? "Excluir todas" : "Exclude all"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInspectingFileId(null)}
+                      className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-white/10 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* MODAL BODY: PAGE THUMBNAILS GRID */}
+                <div className="flex-1 overflow-y-auto py-6 my-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pr-1">
+                  {isLoadingInspectorPages ? (
+                    <div className="col-span-full py-16 flex flex-col items-center justify-center gap-3 text-zinc-400">
+                      <Loader2 className="w-8 h-8 animate-spin text-white" />
+                      <span className="text-xs font-bold">{isEs ? 'Generando vista previa de páginas...' : 'Generating page preview...'}</span>
+                    </div>
+                  ) : (
+                    details.map((page) => (
+                      <div
+                        key={page.pageIndex}
+                        className={`relative bg-zinc-950 border ${page.included ? 'border-white/15' : 'border-red-500/30 opacity-40'} rounded-2xl p-3 flex flex-col justify-between transition-all`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-md">
+                            #{page.pageIndex + 1}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => rotatePageClockwise(activeItem.id, page.pageIndex)}
+                              className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md border border-white/10 transition-colors cursor-pointer"
+                              title={isEs ? "Rotar 90°" : "Rotate 90°"}
+                            >
+                              <RotateCw className="w-3 h-3 text-white" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => togglePageIncluded(activeItem.id, page.pageIndex)}
+                              className={`p-1 ${page.included ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'} rounded-md border transition-colors cursor-pointer`}
+                              title={page.included ? (isEs ? "Excluir página" : "Exclude page") : (isEs ? "Incluir página" : "Include page")}
+                            >
+                              {page.included ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="w-full aspect-[3/4] bg-zinc-900 rounded-xl overflow-hidden flex items-center justify-center border border-white/5 mb-2 relative">
+                          {page.thumbnailUrl ? (
+                            <img
+                              src={page.thumbnailUrl}
+                              alt={`Página ${page.pageIndex + 1}`}
+                              style={{ transform: `rotate(${page.rotation}deg)` }}
+                              className="w-full h-full object-contain p-1 transition-transform duration-300"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-zinc-500 font-bold">{page.pageIndex + 1}</span>
+                          )}
+
+                          {page.rotation > 0 && (
+                            <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
+                              {page.rotation}°
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className={page.included ? 'text-emerald-400 font-bold' : 'text-red-400 line-through'}>
+                            {page.included ? (isEs ? 'Incluida' : 'Included') : (isEs ? 'Excluida' : 'Excluded')}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* MODAL FOOTER */}
+                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                  <span className="text-xs text-zinc-400">
+                    {isEs ? `${includedCount} páginas seleccionadas para la fusión` : `${includedCount} pages selected for merging`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setInspectingFileId(null)}
+                    className="bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer"
+                  >
+                    {isEs ? "Aplicar y Cerrar" : "Apply & Close"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }

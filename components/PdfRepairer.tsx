@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { ArrowLeft, Activity, FileDown, Loader2, X, FilePlus, FileText, UploadCloud, ChevronDown, ChevronUp, SlidersHorizontal, Shield, Zap, Target, Archive, RotateCcw, FileCheck2, AlertTriangle, CheckCircle2, Info, Clock, Binary, FileWarning, Database, FileCode2, Lock, Eye, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, Activity, FileDown, Loader2, X, FilePlus, FileText, UploadCloud, ChevronDown, ChevronUp, SlidersHorizontal, Shield, Zap, Target, Archive, RotateCcw, FileCheck2, AlertTriangle, CheckCircle2, Info, Clock, Binary, FileWarning, Database, FileCode2, Lock, Eye, ZoomIn, ZoomOut, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
@@ -82,60 +82,66 @@ export default function PdfRepairer() {
   // Reporte de recuperación
   const [recoveryReport, setRecoveryReport] = useState<RecoveryReport | null>(null);
 
-  // Previsualización Canvas PDF
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  // Previsualización Canvas / Miniaturas PDF
   const [previewPageNum, setPreviewPageNum] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
-  const [previewScale, setPreviewScale] = useState<number>(1.5);
-  const previewScaleRef = useRef<number>(1.5);
-  const [isPanning, setIsPanning] = useState(false);
-  const panStart = useRef<{ x: number; y: number; scrollX: number; scrollY: number }>({ x: 0, y: 0, scrollX: 0, scrollY: 0 });
-  const viewerRef = useRef<HTMLDivElement>(null);
+  const [thumbnails, setThumbnails] = useState<{ pageNum: number; dataUrl: string }[]>([]);
+  const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
 
   // ---------------------------------------------------------------------------
-  // PREVISUALIZACIÓN
+  // GENERACIÓN DE MINIATURAS
   // ---------------------------------------------------------------------------
 
   const pdfUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
 
-  const renderPagePreview = useCallback(async (pdfFile: File, pageNum: number, scale?: number) => {
-    const effectiveScale = scale ?? previewScaleRef.current;
-    setIsLoadingPreview(true);
+  const loadFileThumbnails = useCallback(async (pdfFile: File) => {
+    setIsLoadingThumbnails(true);
+    setThumbnails([]);
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
       const arrayBuffer = await pdfFile.arrayBuffer();
-      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      setTotalPages(pdfDoc.numPages);
-      const targetPageNum = Math.min(Math.max(1, pageNum), pdfDoc.numPages);
-      const page = await pdfDoc.getPage(targetPageNum);
-      const viewport = page.getViewport({ scale: effectiveScale });
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      const total = pdfDoc.numPages;
+      setTotalPages(total);
+
+      const generated: { pageNum: number; dataUrl: string }[] = [];
+      const maxThumbnails = Math.min(total, 60);
+
+      for (let pn = 1; pn <= maxThumbnails; pn++) {
+        const page = await pdfDoc.getPage(pn);
+        const viewport = page.getViewport({ scale: 0.5 });
+        const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-        setPreviewDataUrl(canvas.toDataURL('image/jpeg', 0.85));
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+          generated.push({ pageNum: pn, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+        }
       }
+      setThumbnails(generated);
     } catch (err) {
-      console.warn('Canvas preview fallback:', err);
-      setPreviewDataUrl(null);
+      console.warn('Fallback al generar miniaturas en PDF:', err);
     } finally {
-      setIsLoadingPreview(false);
+      setIsLoadingThumbnails(false);
     }
   }, []);
 
   useEffect(() => {
     if (file) {
       setPreviewPageNum(1);
-      renderPagePreview(file, 1);
+      loadFileThumbnails(file);
     } else {
-      setPreviewDataUrl(null);
+      setThumbnails([]);
       setTotalPages(1);
     }
-  }, [file, renderPagePreview]);
+  }, [file, loadFileThumbnails]);
 
   useEffect(() => {
     return () => {
@@ -501,9 +507,9 @@ export default function PdfRepairer() {
       ) : (
         /* WORKSPACE */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans" style={{ alignItems: 'stretch' }}>
-          {/* LADO IZQUIERDO: PREVIEW + DIAGNÓSTICO + REPORTE */}
+          {/* LADO IZQUIERDO: PREVIEW (MINIATURAS) + DIAGNÓSTICO + REPORTE */}
           <div className="lg:col-span-5" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* PREVIEW */}
+            {/* PREVIEW CON GRILLA DE MINIATURAS */}
             <div className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex flex-col shadow-2xl" style={{ flex: 1, minHeight: '300px' }}>
               <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 font-mono">
                 <div className="flex items-center gap-3 overflow-hidden">
@@ -513,87 +519,66 @@ export default function PdfRepairer() {
                     <span className="text-[10px] text-zinc-400 font-mono">{formatFileSize(file.size)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {/* Controles de zoom */}
-                  <div className="flex items-center bg-zinc-950 border border-white/10 rounded-xl px-1.5 py-0.5 text-xs text-zinc-300">
-                    <button
-                      onClick={() => {
-                        const newScale = Math.max(0.5, previewScale - 0.5);
-                        previewScaleRef.current = newScale;
-                        setPreviewScale(newScale);
-                        if (file) renderPagePreview(file, previewPageNum, newScale);
-                      }}
-                      disabled={previewScale <= 0.5 || isLoadingPreview}
-                      className="p-1 hover:text-white disabled:opacity-30 cursor-pointer"
-                      title={isEs ? 'Alejar' : 'Zoom out'}
-                    >
-                      <ZoomOut className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="px-1.5 text-[10px] font-mono font-bold text-white min-w-[40px] text-center">
-                      {Math.round(previewScale * 100)}%
-                    </span>
-                    <button
-                      onClick={() => {
-                        const newScale = Math.min(3.0, previewScale + 0.5);
-                        previewScaleRef.current = newScale;
-                        setPreviewScale(newScale);
-                        if (file) renderPagePreview(file, previewPageNum, newScale);
-                      }}
-                      disabled={previewScale >= 3.0 || isLoadingPreview}
-                      className="p-1 hover:text-white disabled:opacity-30 cursor-pointer"
-                      title={isEs ? 'Acercar' : 'Zoom in'}
-                    >
-                      <ZoomIn className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="bg-zinc-950 border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>{isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}</span>
+                  </span>
                   <button onClick={removeFile} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer" title={isEs ? 'Remover archivo' : 'Remove file'}>
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              <div
-                ref={viewerRef}
-                className={`relative w-full flex-1 min-h-[300px] bg-[#09090b] rounded-xl overflow-auto p-3 border border-white/10 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
-                onMouseDown={(e) => {
-                  if (!viewerRef.current) return;
-                  setIsPanning(true);
-                  panStart.current = {
-                    x: e.clientX,
-                    y: e.clientY,
-                    scrollX: viewerRef.current.scrollLeft,
-                    scrollY: viewerRef.current.scrollTop,
-                  };
-                  e.preventDefault();
-                }}
-                onMouseMove={(e) => {
-                  if (!isPanning || !viewerRef.current) return;
-                  const dx = e.clientX - panStart.current.x;
-                  const dy = e.clientY - panStart.current.y;
-                  viewerRef.current.scrollLeft = panStart.current.scrollX - dx;
-                  viewerRef.current.scrollTop = panStart.current.scrollY - dy;
-                }}
-                onMouseUp={() => setIsPanning(false)}
-                onMouseLeave={() => setIsPanning(false)}
-              >
-                {isLoadingPreview ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[200px]">
-                    <Loader2 className="w-8 h-8 animate-spin text-white" />
-                    <span className="text-xs font-mono">{isEs ? 'Generando previsualización...' : 'Rendering preview...'}</span>
+              {/* GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS VISIBLES) */}
+              <div className="relative w-full flex-1 h-[580px] max-h-[600px] bg-[#09090b] rounded-xl overflow-y-auto p-3 border border-white/10 font-sans">
+                {isLoadingThumbnails ? (
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                    <span className="text-xs font-mono">{isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}</span>
                   </div>
-                ) : previewDataUrl ? (
-                  <div className="relative inline-block select-none pointer-events-none">
-                    <img
-                      src={previewDataUrl}
-                      alt={`Página ${previewPageNum}`}
-                      className="block rounded-lg shadow-2xl border border-white/15 bg-white"
-                      style={{ maxWidth: 'none' }}
-                      draggable={false}
-                    />
+                ) : thumbnails.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full">
+                    {thumbnails.map((thumb) => (
+                      <div
+                        key={thumb.pageNum}
+                        onClick={() => setPreviewPageNum(thumb.pageNum)}
+                        className={`group relative bg-zinc-900/90 rounded-xl p-1.5 sm:p-2 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-1.5 shadow-md ${
+                          previewPageNum === thumb.pageNum
+                            ? 'border-emerald-400 ring-2 ring-emerald-500/30 bg-zinc-800'
+                            : 'border-white/10 hover:border-white/30 hover:bg-zinc-800/80'
+                        }`}
+                      >
+                        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white flex items-center justify-center h-[110px] sm:h-[125px] w-full p-1">
+                          <img
+                            src={thumb.dataUrl}
+                            alt={`Página ${thumb.pageNum}`}
+                            className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                          />
+                        </div>
+                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[9px] sm:text-[10px]">
+                          <span className={`font-bold px-1.5 py-0.5 rounded-full ${
+                            previewPageNum === thumb.pageNum
+                              ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
+                              : 'bg-zinc-800 text-zinc-300 border border-white/10'
+                          }`}>
+                            {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
+                          </span>
+                          {previewPageNum === thumb.pageNum && (
+                            <span className="text-emerald-400 text-[8px] sm:text-[9px] font-bold">✓</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : pdfUrl ? (
-                  <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} className="w-full h-full rounded border-0" title="PDF Preview" />
-                ) : null}
+                  <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} className="w-full h-full rounded border-0 min-h-[300px]" title="PDF Preview" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
+                    <FileText className="w-10 h-10 text-zinc-600" />
+                    <span className="text-xs font-mono">{isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -733,8 +718,8 @@ export default function PdfRepairer() {
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7" style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between shadow-2xl font-sans" style={{ flex: 1 }}>
+          <div className="lg:col-span-7 flex flex-col">
+            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 rounded-2xl p-4 sm:p-5 transition-all duration-300 flex flex-col justify-between shadow-2xl font-sans">
               <div>
                 {/* CABECERA PANEL */}
                 <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
@@ -816,117 +801,102 @@ export default function PdfRepairer() {
                   </div>
                 )}
 
-                {/* OPCIONES AVANZADAS */}
-                <div className="mb-4">
-                  <button
-                    onClick={() => setShowAdvanced(v => !v)}
-                    className="w-full flex items-center justify-between py-2.5 px-3 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 hover:border-white/20 rounded-xl transition-all cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-white" />
-                      {isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}
-                    </span>
-                    {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-                  </button>
+                {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES Y COMPACTAS) */}
+                <div className="mb-4 space-y-4 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 mb-3 uppercase">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isEs ? 'OPCIONES AVANZADAS DE RECUPERACIÓN' : 'ADVANCED RECOVERY OPTIONS'}</span>
+                  </div>
 
-                  {showAdvanced && (
-                    <div className="mt-3 space-y-4 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
-                      {/* PRIORIDAD */}
+                  {/* PRIORIDAD */}
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <Target className="w-3 h-3 text-zinc-400" />
+                      {isEs ? 'Prioridad de Recuperación' : 'Recovery Priority'}
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['texto', 'imagenes', 'todo'] as RecoveryPriority[]).map(opt => (
+                        <button key={opt} onClick={() => setRecoveryPriority(opt)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${recoveryPriority === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>
+                          {opt === 'texto' ? '📄 Texto' : opt === 'imagenes' ? '🖼️ Imgs' : '⚡ Todo'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ALCANCE */}
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <FileCheck2 className="w-3 h-3 text-zinc-400" />
+                      {isEs ? 'Alcance de Páginas' : 'Page Scope'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 mb-2">
+                      {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map(opt => (
+                        <button key={opt} onClick={() => setPageScope(opt)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${pageScope === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>
+                          {opt === 'todas' ? (isEs ? 'Todas' : 'All') : opt === 'pares' ? (isEs ? 'Pares' : 'Even') : opt === 'impares' ? (isEs ? 'Impares' : 'Odd') : (isEs ? 'Rango' : 'Range')}
+                        </button>
+                      ))}
+                    </div>
+                    {pageScope === 'rango' && (
+                      <input type="text" value={pageRange} onChange={e => setPageRange(e.target.value)} placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'} className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition" />
+                    )}
+                  </div>
+
+                  {/* COMPRESIÓN */}
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <Archive className="w-3 h-3 text-zinc-400" />
+                      {isEs ? 'Compresión de Salida' : 'Output Compression'}
+                    </label>
+                    <div className="flex gap-1.5">
+                      {([['none', isEs ? 'Sin comprimir' : 'None'], ['low', isEs ? 'Baja' : 'Low'], ['medium', isEs ? 'Media' : 'Med'], ['high', isEs ? 'Alta' : 'High']] as [CompressionLevel, string][]).map(([lvl, label]) => (
+                        <button key={lvl} onClick={() => setCompressionLevel(lvl)} className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${compressionLevel === lvl ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ACCIÓN EN PÁGINAS DAÑADAS */}
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3 text-zinc-400" />
+                      {isEs ? 'Acción ante Páginas Dañadas' : 'Action on Corrupted Pages'}
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([['omitir', isEs ? 'Omitir' : 'Skip'], ['sustituir', isEs ? 'Sustituir' : 'Replace'], ['incluir_vacia', isEs ? 'Vía en blanco' : 'Blank']] as [DamagedPageAction, string][]).map(([act, label]) => (
+                        <button key={act} onClick={() => setDamagedPageAction(act)} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${damagedPageAction === act ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* OPCIONES DE SEGURIDAD Y SELLADO */}
+                  <div className="space-y-2">
+                    <div onClick={() => setRemoveRestrictions(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <Target className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Prioridad de Recuperación' : 'Recovery Priority'}
-                        </label>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {(['texto', 'imagenes', 'todo'] as RecoveryPriority[]).map(opt => (
-                            <button key={opt} onClick={() => setRecoveryPriority(opt)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${recoveryPriority === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>
-                              {opt === 'texto' ? '📄 Texto' : opt === 'imagenes' ? '🖼️ Imgs' : '⚡ Todo'}
-                            </button>
-                          ))}
-                        </div>
+                        <p className="text-[11px] font-bold text-white">{isEs ? 'Eliminar restricciones de impresión/copia' : 'Remove print/copy restrictions'}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Desbloquea permisos del documento' : 'Unlock document permissions'}</p>
                       </div>
-
-                      {/* ALCANCE */}
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <FileCheck2 className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Alcance de Páginas' : 'Page Scope'}
-                        </label>
-                        <div className="grid grid-cols-2 gap-1.5 mb-2">
-                          {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map(opt => (
-                            <button key={opt} onClick={() => setPageScope(opt)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${pageScope === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>
-                              {opt === 'todas' ? (isEs ? 'Todas' : 'All') : opt === 'pares' ? (isEs ? 'Pares' : 'Even') : opt === 'impares' ? (isEs ? 'Impares' : 'Odd') : (isEs ? 'Rango' : 'Range')}
-                            </button>
-                          ))}
-                        </div>
-                        {pageScope === 'rango' && (
-                          <input type="text" value={pageRange} onChange={e => setPageRange(e.target.value)} placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'} className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition" />
-                        )}
-                      </div>
-
-                      {/* COMPRESIÓN */}
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <Archive className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Compresión de Salida' : 'Output Compression'}
-                        </label>
-                        <div className="flex gap-1.5">
-                          {([['none', isEs ? 'Sin comprimir' : 'None'], ['low', isEs ? 'Baja' : 'Low'], ['medium', isEs ? 'Media' : 'Med'], ['high', isEs ? 'Alta' : 'High']] as [CompressionLevel, string][]).map(([lvl, label]) => (
-                            <button key={lvl} onClick={() => setCompressionLevel(lvl)} className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${compressionLevel === lvl ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>{label}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* PÁGINAS DAÑADAS */}
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <RotateCcw className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Páginas Irrecuperables' : 'Unrecoverable Pages'}
-                        </label>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {([['omitir', isEs ? 'Omitir' : 'Skip'], ['sustituir', isEs ? 'Sustituir' : 'Replace'], ['incluir_vacia', isEs ? 'Pg. Vacía' : 'Blank Pg']] as [DamagedPageAction, string][]).map(([act, label]) => (
-                            <button key={act} onClick={() => setDamagedPageAction(act)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${damagedPageAction === act ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>{label}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* TOGGLES */}
-                      <div className="space-y-2.5">
-                        <label className="text-[10px] font-bold text-zinc-400 block font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <Shield className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Ajustes de Seguridad y Salida' : 'Security & Output Settings'}
-                        </label>
-
-                        <div onClick={() => setRemoveRestrictions(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
-                          <div>
-                            <p className="text-[11px] font-bold text-white">{isEs ? 'Eliminar restricciones de impresión/copia' : 'Remove print/copy restrictions'}</p>
-                            <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Desbloquea permisos del documento' : 'Unlock document permissions'}</p>
-                          </div>
-                          <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${removeRestrictions ? 'bg-white' : 'bg-zinc-700'}`}>
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${removeRestrictions ? 'left-4' : 'left-0.5'}`} />
-                          </div>
-                        </div>
-
-                        <div onClick={() => setAddRepairStamp(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
-                          <div>
-                            <p className="text-[11px] font-bold text-white">{isEs ? 'Añadir sello de reparación (pie)' : 'Add repair stamp (footer)'}</p>
-                            <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Marca el PDF como reparado' : 'Marks the PDF as repaired'}</p>
-                          </div>
-                          <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${addRepairStamp ? 'bg-white' : 'bg-zinc-700'}`}>
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${addRepairStamp ? 'left-4' : 'left-0.5'}`} />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">{isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}</label>
-                          <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)} className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition" />
-                          <p className="text-[9px] font-mono text-zinc-600 mt-1">
-                            {isEs ? `Salida: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'archivo'}${customSuffix}.pdf` : `Output: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'file'}${customSuffix}.pdf`}
-                          </p>
-                        </div>
+                      <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${removeRestrictions ? 'bg-white' : 'bg-zinc-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${removeRestrictions ? 'left-4' : 'left-0.5'}`} />
                       </div>
                     </div>
-                  )}
+
+                    <div onClick={() => setAddRepairStamp(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                      <div>
+                        <p className="text-[11px] font-bold text-white">{isEs ? 'Añadir sello de reparación (pie)' : 'Add repair stamp (footer)'}</p>
+                        <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Marca el PDF como reparado' : 'Marks the PDF as repaired'}</p>
+                      </div>
+                      <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${addRepairStamp ? 'bg-white' : 'bg-zinc-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${addRepairStamp ? 'left-4' : 'left-0.5'}`} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">{isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}</label>
+                      <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)} className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition" />
+                      <p className="text-[9px] font-mono text-zinc-600 mt-1">
+                        {isEs ? `Salida: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'archivo'}${customSuffix}.pdf` : `Output: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'file'}${customSuffix}.pdf`}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1092,6 +1062,85 @@ export default function PdfRepairer() {
                   : 'The repaired PDF is generated as a completely new file in your browser. Your original file is never modified. You will receive a detailed report of everything that was recovered.'}
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* ── SECCIÓN 4: PREGUNTAS FRECUENTES ── */}
+        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+              <HelpCircle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '4. Preguntas frecuentes (FAQ)' : '4. Frequently Asked Questions (FAQ)'}
+              </h2>
+              <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                {isEs
+                  ? 'Respuestas claras sobre el diagnóstico binario, modos de reparación y privacidad local'
+                  : 'Clear answers about binary diagnosis, repair modes, and local privacy'}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3 font-sans">
+            {[
+              {
+                qEs: '¿Qué tipo de daños en archivos PDF puede reparar esta herramienta?',
+                qEn: 'What types of PDF file damage can this tool repair?',
+                aEs: 'La herramienta repara PDFs que no abren debido a cabeceras binarias dañadas (%PDF-), tablas de referencias cruzadas (XRef) desalineadas o inexistentes, marcadores de fin de archivo (%%EOF) ausentes, basura de transmisión al inicio o fin del archivo por descargas incompletas, e inconsistencias en la estructura de objetos.',
+                aEn: 'The tool repairs PDFs that fail to open due to corrupt binary headers (%PDF-), missing or misaligned cross-reference tables (XRef), missing end-of-file markers (%%EOF), stream garbage from incomplete downloads, and object catalog inconsistencies.'
+              },
+              {
+                qEs: '¿Cuál es la diferencia entre el modo Smart Repair y Deep Rescue?',
+                qEn: 'What is the difference between Smart Repair and Deep Rescue mode?',
+                aEs: 'Smart Repair re-indexa la tabla de objetos preservando la fidelidad vectorial original, textos seleccionables e indexables y fuentes integradas sin perder resolución. Deep Rescue es un modo de rescate extremo que decodifica tolerante a fallos el contenido visual de cada página cuando la tabla interna de objetos está totalmente destruida.',
+                aEn: 'Smart Repair re-indexes the object table while preserving original vector quality, selectable text, and embedded fonts without resolution loss. Deep Rescue is an extreme rescue mode that decodes page visual content when the internal object table is completely destroyed.'
+              },
+              {
+                qEs: '¿Tus documentos o datos se envían a algún servidor externo durante la reparación?',
+                qEn: 'Are your documents or data sent to any external server during repair?',
+                aEs: 'No. El análisis binario, diagnóstico de estructura y reconstrucción del documento se ejecutan 100% en tu navegador Web dentro de la memoria RAM (vía Web Worker). Ningún archivo o byte se transmite a servidores remotos.',
+                aEn: 'No. Binary scanning, structural diagnosis, and document reconstruction run 100% locally inside your browser RAM via Web Worker. No files or bytes are ever transmitted to remote servers.'
+              },
+              {
+                qEs: '¿Qué sucede si el PDF dañado está protegido con contraseña?',
+                qEn: 'What happens if the damaged PDF is password protected?',
+                aEs: 'Si el archivo tiene una contraseña de apertura que impide leer su estructura binaria, el motor de reparación te indicará utilizar primero la herramienta "Desbloquear PDF" del módulo Optimizar para retirar el cifrado antes de iniciar el diagnóstico binario.',
+                aEn: 'If the file has an open password preventing binary structure reading, the engine will advise you to use the "Unlock PDF" tool in the Optimize module to remove encryption before starting binary diagnosis.'
+              },
+              {
+                qEs: '¿Puedo elegir qué hacer si una página del documento está irrecuperable?',
+                qEn: 'Can I choose what to do if a page in the document is irrecoverable?',
+                aEs: 'Sí. En las opciones avanzadas puedes configurar la acción ante páginas dañadas: (1) Omitir páginas corruptas, (2) Sustituir con una página de reemplazo informativa con sello explicativo, o (3) Incluir una página en blanco preservando la numeración original.',
+                aEn: 'Yes. In advanced options you can select damaged page actions: (1) Skip corrupt pages, (2) Replace with an informative substitute page with repair stamp, or (3) Insert a blank page preserving original numbering.'
+              },
+              {
+                qEs: '¿La herramienta modifica o sobrescribe mi archivo PDF original?',
+                qEn: 'Does the tool modify or overwrite my original PDF file?',
+                aEs: 'No. La herramienta trabaja sobre una copia en memoria y genera un archivo PDF 1.7 totalmente nuevo. Tu archivo original permanece intacto e inalterado en tu dispositivo.',
+                aEn: 'No. The tool works on an in-memory copy and generates a completely new PDF 1.7 file. Your original file remains untouched and unmodified on your device.'
+              },
+              {
+                qEs: '¿Puedo descargar un informe técnico con los detalles del diagnóstico y la reparación?',
+                qEn: 'Can I download a technical report with diagnosis and repair details?',
+                aEs: 'Sí. Al finalizar la reparación, la herramienta genera un reporte técnico de auditoría con la severidad del daño, listado de problemas corregidos, páginas recuperadas vs. perdidas y métricas de tamaño, exportable en formato JSON para control de calidad de TI.',
+                aEn: 'Yes. Upon completion, the tool generates an audit report detailing damage severity, fixed issues, recovered vs. lost pages, and size metrics, exportable in JSON format for IT quality control.'
+              }
+            ].map((faq, i) => (
+              <details key={i} className="group bg-zinc-900/60 border border-white/5 rounded-xl transition-all duration-200 hover:border-white/15">
+                <summary className="flex items-center justify-between p-4 cursor-pointer text-xs font-bold text-white select-none">
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-zinc-400 font-mono text-[11px] font-normal">0{i + 1}.</span>
+                    {isEs ? faq.qEs : faq.qEn}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-zinc-400 transition-transform duration-200 group-open:rotate-180 flex-shrink-0" />
+                </summary>
+                <div className="px-4 pb-4 pt-1 text-xs text-zinc-400 border-t border-white/5 leading-relaxed font-sans mt-1">
+                  {isEs ? faq.aEs : faq.aEn}
+                </div>
+              </details>
+            ))}
           </div>
         </div>
 

@@ -1,19 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import JSZip from 'jszip';
+import { PDFDocument } from 'pdf-lib';
 import { 
-  Scissors, FileText, X, Loader2, FilePlus, Sliders, 
-  FileDown, UploadCloud, Layers, Archive, 
-  Plus, Check, Trash2, CheckSquare, Square, Layers3, LayoutGrid, Maximize2,
-  ChevronDown, ChevronUp, Type, Sparkles, Filter, ShieldCheck, ArrowLeft, Zap, Cpu
+  Scissors, FileText, X, Loader2, Sliders, 
+  UploadCloud, Plus, Check, Trash2, Layers3, LayoutGrid, Maximize2,
+  ShieldCheck, ArrowLeft, Sparkles, Lock, Unlock, Eye, RefreshCw, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SplitWorkerMessageIn, SplitWorkerMessageOut } from '@/workers/pdf-split.worker';
 
 type MainTab = 'rango' | 'paginas' | 'tamano';
 type RangeSubMode = 'personalizado' | 'fijo' | 'inteligente';
@@ -22,6 +21,12 @@ interface RangeItem {
   id: string;
   from: number;
   to: number;
+}
+
+interface PageThumbnail {
+  pageIndex: number;
+  dataUrl: string;
+  included: boolean;
 }
 
 export default function PdfSplitter() {
@@ -40,12 +45,22 @@ export default function PdfSplitter() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
 
+  // ENCRYPTION / PASSWORD STATE
+  const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [unlockedPassword, setUnlockedPassword] = useState<string | undefined>(undefined);
+
+  // PAGE THUMBNAILS & SELECTION
+  const [pageThumbnails, setPageThumbnails] = useState<PageThumbnail[]>([]);
+  const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
+
   // RESULTADOS
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
   const [createdCount, setCreatedCount] = useState<number>(0);
 
-  // ESTADO DE LA INTERFAZ Y TABS
+  // TABS Y MODOS DE RANGO
   const [mainTab, setMainTab] = useState<MainTab>('rango');
   const [rangeSubMode, setRangeSubMode] = useState<RangeSubMode>('personalizado');
   const [ranges, setRanges] = useState<RangeItem[]>([
@@ -53,63 +68,106 @@ export default function PdfSplitter() {
   ]);
   const [mergeAllRanges, setMergeAllRanges] = useState<boolean>(false);
 
-  // OPCIONES AVANZADAS
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
+  // OPCIONES AVANZADAS Y METADATOS
   const [extractMode, setExtractMode] = useState<'all' | 'specific' | 'even' | 'odd'>('all');
   const [specificPagesInput, setSpecificPagesInput] = useState<string>('1, 2, 3');
   const [chunkPageCount, setChunkPageCount] = useState<number>(5);
   const [createZip, setCreateZip] = useState<boolean>(true);
   const [filePrefix, setFilePrefix] = useState<string>('Documento_Dividido');
-  const [skipBlankPages, setSkipBlankPages] = useState<boolean>(false);
   const [addPageFooterNumbering, setAddPageFooterNumbering] = useState<boolean>(false);
 
-  const pdfUrl = useMemo(() => {
-    if (file) {
-      return URL.createObjectURL(file);
-    }
-    return null;
-  }, [file]);
+  // METADATOS PERSONALIZADOS
+  const [docTitle, setDocTitle] = useState<string>('');
+  const [docAuthor, setDocAuthor] = useState<string>('');
+  const [docSubject, setDocSubject] = useState<string>('');
 
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
-  }, [pdfUrl]);
-
-  // Cargar información de páginas al seleccionar archivo
-  const inspectPdfPages = useCallback(async (selectedFile: File) => {
+  // RENDERIZAR MINIATURAS REALES CON PDFJS
+  const renderThumbnails = useCallback(async (pdfBuffer: ArrayBuffer, pass?: string) => {
+    setIsLoadingThumbnails(true);
     try {
-      const buffer = await selectedFile.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-      const count = pdfDoc.getPageCount();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(pdfBuffer), password: pass });
+      const pdfjsDoc = await loadingTask.promise;
+      const count = pdfjsDoc.numPages;
+
       setTotalPages(count);
-      setRanges([{ id: '1', from: 1, to: count }]);
-      setFilePrefix(selectedFile.name.replace(/\.[^/.]+$/, ""));
-    } catch {
-      toast.error(isEs ? 'Error al leer la estructura de páginas del PDF' : 'Error reading PDF page structure');
+      const thumbs: PageThumbnail[] = [];
+
+      // Renderizar primeras 24 páginas en miniatura para alta respuesta
+      const renderLimit = Math.min(count, 32);
+      for (let i = 1; i <= renderLimit; i++) {
+        const page = await pdfjsDoc.getPage(i);
+        const viewport = page.getViewport({ scale: 0.25 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        if (context) {
+          await page.render({ canvasContext: context, viewport, canvas } as any).promise;
+          thumbs.push({
+            pageIndex: i - 1,
+            dataUrl: canvas.toDataURL('image/jpeg', 0.8),
+            included: true,
+          });
+        }
+      }
+
+      // Rellenar resto si el PDF es gigante
+      for (let i = renderLimit + 1; i <= count; i++) {
+        thumbs.push({
+          pageIndex: i - 1,
+          dataUrl: '',
+          included: true,
+        });
+      }
+
+      setPageThumbnails(thumbs);
+      setIsEncrypted(false);
+      setIsUnlocked(true);
+    } catch (err: any) {
+      if (err?.name === 'PasswordException' || err?.code === 1) {
+        setIsEncrypted(true);
+        setIsUnlocked(false);
+        toast.warning(isEs ? 'El archivo requiere contraseña para abrirse' : 'File requires password to open');
+      } else {
+        console.error(err);
+        toast.error(isEs ? 'Error al procesar las páginas del PDF' : 'Error processing PDF pages');
+      }
+    } finally {
+      setIsLoadingThumbnails(false);
     }
   }, [isEs]);
 
-  useEffect(() => {
-    if (file && totalPages === 0) {
-      let isMounted = true;
-      (async () => {
-        try {
-          const buffer = await file.arrayBuffer();
-          const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-          const count = pdfDoc.getPageCount();
-          if (isMounted) {
-            setTotalPages(count);
-            setRanges([{ id: '1', from: 1, to: count }]);
-            setFilePrefix(file.name.replace(/\.[^/.]+$/, ""));
-          }
-        } catch {
-          // ignore
-        }
-      })();
-      return () => { isMounted = false; };
+  // INSPECCIONAR PDF AL CARGAR ARCHIVO
+  const inspectPdf = useCallback(async (selectedFile: File, pass?: string) => {
+    try {
+      const buffer = await selectedFile.arrayBuffer();
+      setFilePrefix(selectedFile.name.replace(/\.[^/.]+$/, ""));
+
+      // Intentar cargar con pdf-lib
+      try {
+        const pdfDoc = await PDFDocument.load(buffer, { password: pass, ignoreEncryption: true } as any);
+        const count = pdfDoc.getPageCount();
+        setTotalPages(count);
+        setRanges([{ id: '1', from: 1, to: count }]);
+      } catch (err: any) {
+        // Encriptado
+      }
+
+      await renderThumbnails(buffer, pass);
+    } catch (err) {
+      toast.error(isEs ? 'Error al leer la estructura del PDF' : 'Error reading PDF structure');
     }
-  }, [file, totalPages]);
+  }, [isEs, renderThumbnails]);
+
+  useEffect(() => {
+    if (file && totalPages === 0 && !isEncrypted) {
+      inspectPdf(file);
+    }
+  }, [file, totalPages, isEncrypted, inspectPdf]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -122,10 +180,29 @@ export default function PdfSplitter() {
       setGlobalFile(selected);
       setDownloadUrl(null);
       setCreatedCount(0);
-      inspectPdfPages(selected);
+      setIsEncrypted(false);
+      setIsUnlocked(false);
+      setUnlockedPassword(undefined);
+      setPasswordInput('');
+      setTotalPages(0);
+      inspectPdf(selected);
       toast.success(isEs ? 'Archivo cargado con éxito' : 'File loaded successfully');
     }
     e.target.value = '';
+  };
+
+  const unlockFileWithPassword = async () => {
+    if (!file || !passwordInput) return;
+    try {
+      const buffer = await file.arrayBuffer();
+      await renderThumbnails(buffer, passwordInput);
+      setUnlockedPassword(passwordInput);
+      setIsUnlocked(true);
+      setIsEncrypted(false);
+      toast.success(isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF unlocked successfully!');
+    } catch {
+      toast.error(isEs ? 'Contraseña incorrecta' : 'Incorrect password');
+    }
   };
 
   const removeFile = useCallback(() => {
@@ -134,8 +211,18 @@ export default function PdfSplitter() {
     setDownloadUrl(null);
     setGlobalFile(null);
     setCreatedCount(0);
+    setIsEncrypted(false);
+    setIsUnlocked(false);
+    setUnlockedPassword(undefined);
+    setPasswordInput('');
+    setPageThumbnails([]);
     setRanges([{ id: '1', from: 1, to: 1 }]);
   }, [setGlobalFile]);
+
+  // TOGGLE INCLUSION DE PAGINA AL HACER CLICK EN MINIATURA
+  const togglePageIncluded = (index: number) => {
+    setPageThumbnails(prev => prev.map(p => p.pageIndex === index ? { ...p, included: !p.included } : p));
+  };
 
   // MANEJO DE RANGOS MÚLTIPLES
   const handleAddRange = () => {
@@ -167,19 +254,24 @@ export default function PdfSplitter() {
     setDownloadUrl(null);
   };
 
+  // EXECUTE SPLIT WITH WEB WORKER
   const executeSplit = async () => {
     if (!file || totalPages === 0) {
       toast.error(isEs ? 'Por favor carga un archivo PDF' : 'Please upload a PDF file');
       return;
     }
 
+    if (isEncrypted && !isUnlocked) {
+      toast.error(isEs ? 'Desbloquea el PDF con su contraseña antes de dividir' : 'Unlock PDF with password before splitting');
+      return;
+    }
+
     setIsProcessing(true);
     setProgressPercent(10);
-    setProgressMsg(isEs ? 'Procesando páginas vectoriales...' : 'Processing vector pages...');
+    setProgressMsg(isEs ? 'Iniciando Web Worker acelerado...' : 'Starting Web Worker...');
 
     try {
       const buffer = await file.arrayBuffer();
-      const srcDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
 
       let pageGroups: number[][] = [];
 
@@ -189,201 +281,146 @@ export default function PdfSplitter() {
             const indices: number[] = [];
             const start = Math.max(0, r.from - 1);
             const end = Math.min(totalPages - 1, r.to - 1);
-            for (let i = start; i <= end; i++) indices.push(i);
+            for (let i = start; i <= end; i++) {
+              if (pageThumbnails[i] ? pageThumbnails[i].included : true) {
+                indices.push(i);
+              }
+            }
             return indices;
           }).filter(g => g.length > 0);
         } else if (rangeSubMode === 'fijo') {
           const chunkSize = Math.max(1, chunkPageCount);
           for (let i = 0; i < totalPages; i += chunkSize) {
             const chunk: number[] = [];
-            for (let j = i; j < Math.min(i + chunkSize, totalPages); j++) chunk.push(j);
-            pageGroups.push(chunk);
+            for (let j = i; j < Math.min(i + chunkSize, totalPages); j++) {
+              if (pageThumbnails[j] ? pageThumbnails[j].included : true) chunk.push(j);
+            }
+            if (chunk.length > 0) pageGroups.push(chunk);
           }
         } else {
           // Inteligente (divide cada 10 páginas)
           const chunkSize = 10;
           for (let i = 0; i < totalPages; i += chunkSize) {
             const chunk: number[] = [];
-            for (let j = i; j < Math.min(i + chunkSize, totalPages); j++) chunk.push(j);
-            pageGroups.push(chunk);
+            for (let j = i; j < Math.min(i + chunkSize, totalPages); j++) {
+              if (pageThumbnails[j] ? pageThumbnails[j].included : true) chunk.push(j);
+            }
+            if (chunk.length > 0) pageGroups.push(chunk);
           }
         }
       } else if (mainTab === 'paginas') {
         if (extractMode === 'all') {
-          for (let i = 0; i < totalPages; i++) pageGroups.push([i]);
+          for (let i = 0; i < totalPages; i++) {
+            if (pageThumbnails[i] ? pageThumbnails[i].included : true) pageGroups.push([i]);
+          }
         } else if (extractMode === 'even') {
           const evens: number[] = [];
           for (let i = 0; i < totalPages; i++) {
-            if ((i + 1) % 2 === 0) evens.push(i);
+            if ((i + 1) % 2 === 0 && (pageThumbnails[i] ? pageThumbnails[i].included : true)) evens.push(i);
           }
-          pageGroups.push(evens);
+          if (evens.length > 0) pageGroups.push(evens);
         } else if (extractMode === 'odd') {
           const odds: number[] = [];
           for (let i = 0; i < totalPages; i++) {
-            if ((i + 1) % 2 !== 0) odds.push(i);
+            if ((i + 1) % 2 !== 0 && (pageThumbnails[i] ? pageThumbnails[i].included : true)) odds.push(i);
           }
-          pageGroups.push(odds);
+          if (odds.length > 0) pageGroups.push(odds);
         } else {
           const indices: Set<number> = new Set();
           specificPagesInput.split(',').forEach(p => {
             const num = parseInt(p.trim(), 10);
             if (!isNaN(num) && num >= 1 && num <= totalPages) indices.add(num - 1);
           });
-          if (indices.size > 0) pageGroups.push(Array.from(indices).sort((a, b) => a - b));
+          const sorted = Array.from(indices).sort((a, b) => a - b);
+          if (sorted.length > 0) pageGroups.push(sorted);
         }
       } else {
         // TAB TAMAÑO
         const size = Math.max(1, chunkPageCount);
         for (let i = 0; i < totalPages; i += size) {
           const chunk: number[] = [];
-          for (let j = i; j < Math.min(i + size, totalPages); j++) chunk.push(j);
-          pageGroups.push(chunk);
+          for (let j = i; j < Math.min(i + size, totalPages); j++) {
+            if (pageThumbnails[j] ? pageThumbnails[j].included : true) chunk.push(j);
+          }
+          if (chunk.length > 0) pageGroups.push(chunk);
         }
       }
 
       if (pageGroups.length === 0) {
-        toast.error(isEs ? 'No se generaron grupos de páginas válidos' : 'No valid page groups generated');
+        toast.error(isEs ? 'No se seleccionaron páginas válidas para dividir' : 'No valid pages selected for splitting');
         setIsProcessing(false);
         return;
       }
 
-      // SI SE SELECCIONÓ UNIR TODOS LOS RANGOS EN UN SOLO PDF
-      if (mainTab === 'rango' && mergeAllRanges) {
-        setProgressMsg(isEs ? 'Uniendo todos los rangos en un solo PDF...' : 'Merging all ranges into single PDF...');
-        const newPdf = await PDFDocument.create();
-        const font = await newPdf.embedFont(StandardFonts.Helvetica);
-        const allIndices = pageGroups.flat();
-        const copied = await newPdf.copyPages(srcDoc, allIndices);
+      const worker = new Worker(new URL('../workers/pdf-split.worker.ts', import.meta.url), { type: 'module' });
 
-        copied.forEach((p, idx) => {
-          if (addPageFooterNumbering) {
-            const { width } = p.getSize();
-            p.drawText(`Página ${idx + 1} de ${copied.length}`, {
-              x: width / 2 - 30,
-              y: 15,
-              size: 9,
-              font,
-              color: rgb(0.5, 0.5, 0.5),
-            });
+      const bufferCopy = buffer.slice(0);
+      const payload: SplitWorkerMessageIn = {
+        action: 'split',
+        arrayBuffer: bufferCopy,
+        password: unlockedPassword,
+        pageGroups,
+        options: {
+          filePrefix: filePrefix.trim() || 'Documento_Dividido',
+          createZip,
+          mergeAllRanges,
+          addPageFooterNumbering,
+          metadata: {
+            title: docTitle.trim() || undefined,
+            author: docAuthor.trim() || undefined,
+            subject: docSubject.trim() || undefined,
           }
-          newPdf.addPage(p);
-        });
-
-        const bytes = await newPdf.save();
-        const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
-        const localUrl = URL.createObjectURL(blob);
-        const outName = `${filePrefix}_Rangos_Unidos.pdf`;
-
-        setDownloadFilename(outName);
-        setDownloadUrl(localUrl);
-        setCreatedCount(1);
-        triggerDownload(localUrl, outName);
-        setProgressPercent(100);
-        toast.success(isEs ? '¡Rangos unidos en un único PDF!' : 'Ranges merged into a single PDF!');
-      } else if (pageGroups.length === 1) {
-        const newPdf = await PDFDocument.create();
-        const font = await newPdf.embedFont(StandardFonts.Helvetica);
-        const copied = await newPdf.copyPages(srcDoc, pageGroups[0]);
-
-        copied.forEach((p, idx) => {
-          if (addPageFooterNumbering) {
-            const { width } = p.getSize();
-            p.drawText(`Página ${idx + 1} de ${copied.length}`, {
-              x: width / 2 - 30,
-              y: 15,
-              size: 9,
-              font,
-              color: rgb(0.5, 0.5, 0.5),
-            });
-          }
-          newPdf.addPage(p);
-        });
-
-        const bytes = await newPdf.save();
-        const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
-        const localUrl = URL.createObjectURL(blob);
-        const outName = `${filePrefix}_Rango_1.pdf`;
-
-        setDownloadFilename(outName);
-        setDownloadUrl(localUrl);
-        setCreatedCount(1);
-        triggerDownload(localUrl, outName);
-        setProgressPercent(100);
-        toast.success(isEs ? '¡PDF dividido con éxito!' : 'PDF split successfully!');
-      } else {
-        if (createZip) {
-          setProgressMsg(isEs ? 'Empaquetando en archivo .ZIP...' : 'Packaging into .ZIP file...');
-          const zip = new JSZip();
-
-          for (let i = 0; i < pageGroups.length; i++) {
-            setProgressPercent(20 + Math.floor((i / pageGroups.length) * 70));
-            const newPdf = await PDFDocument.create();
-            const font = await newPdf.embedFont(StandardFonts.Helvetica);
-            const copied = await newPdf.copyPages(srcDoc, pageGroups[i]);
-
-            copied.forEach((p, pIdx) => {
-              if (addPageFooterNumbering) {
-                const { width } = p.getSize();
-                p.drawText(`Página ${pIdx + 1} de ${copied.length}`, {
-                  x: width / 2 - 30,
-                  y: 15,
-                  size: 9,
-                  font,
-                  color: rgb(0.5, 0.5, 0.5),
-                });
-              }
-              newPdf.addPage(p);
-            });
-
-            const bytes = await newPdf.save();
-            const partName = `${filePrefix}_Rango_${i + 1}.pdf`;
-            zip.file(partName, bytes);
-          }
-
-          const zipContent = await zip.generateAsync({ type: 'blob' });
-          const localUrl = URL.createObjectURL(zipContent);
-          const zipName = `${filePrefix}_Dividido.zip`;
-
-          setDownloadFilename(zipName);
-          setDownloadUrl(localUrl);
-          setCreatedCount(pageGroups.length);
-          triggerDownload(localUrl, zipName);
-          setProgressPercent(100);
-          toast.success(isEs ? `¡${pageGroups.length} rangos empaquetados en .ZIP!` : `¡${pageGroups.length} ranges packaged into .ZIP!`);
-        } else {
-          const newPdf = await PDFDocument.create();
-          const copied = await newPdf.copyPages(srcDoc, pageGroups[0]);
-          copied.forEach(p => newPdf.addPage(p));
-
-          const bytes = await newPdf.save();
-          const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' });
-          const localUrl = URL.createObjectURL(blob);
-          const outName = `${filePrefix}_Rango_1.pdf`;
-
-          setDownloadFilename(outName);
-          setDownloadUrl(localUrl);
-          setCreatedCount(pageGroups.length);
-          triggerDownload(localUrl, outName);
-          setProgressPercent(100);
-          toast.success(isEs ? `Descargado rango 1 de ${pageGroups.length}` : `Downloaded range 1 of ${pageGroups.length}`);
         }
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(isEs ? 'Error al procesar la división' : 'Error processing split');
+      };
+
+      const result = await new Promise<{ buffer: ArrayBuffer; filename: string; isZip: boolean; createdCount: number }>((resolve, reject) => {
+        worker.onmessage = (e: MessageEvent<SplitWorkerMessageOut>) => {
+          const msg = e.data;
+          if (msg.type === 'progress') {
+            setProgressPercent(msg.percent);
+            setProgressMsg(msg.message);
+          } else if (msg.type === 'result') {
+            resolve({
+              buffer: msg.buffer,
+              filename: msg.filename,
+              isZip: msg.isZip,
+              createdCount: msg.createdCount,
+            });
+          } else if (msg.type === 'error') {
+            reject(new Error(msg.message));
+          }
+        };
+
+        worker.onerror = (err) => reject(err);
+
+        worker.postMessage(payload, [bufferCopy]);
+      });
+
+      worker.terminate();
+
+      const blob = new Blob([result.buffer], { type: result.isZip ? 'application/zip' : 'application/pdf' });
+      const localUrl = URL.createObjectURL(blob);
+
+      setDownloadUrl(localUrl);
+      setDownloadFilename(result.filename);
+      setCreatedCount(result.createdCount);
+
+      // Trigger instant download
+      const link = document.createElement('a');
+      link.href = localUrl;
+      link.download = result.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(isEs ? '¡Documento dividido con éxito!' : 'Document split successfully!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || (isEs ? 'Error al dividir el documento PDF' : 'Error splitting PDF document'));
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
     }
-  };
-
-  const triggerDownload = (url: string, name: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -470,89 +507,107 @@ export default function PdfSplitter() {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: VISTA PREVIA Y RANGOS DE HOJAS */}
+          {/* LADO IZQUIERDO: REJILLA DE MINIATURAS REALES Y RANGOS DE HOJAS */}
           <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / VISTA PREVIA Y RANGOS DE HOJAS (${totalPages} PÁGINAS)` : `001 / PREVIEW & PAGE RANGES (${totalPages} PAGES)`}</span>
+                <span>{isEs ? `001 / VISOR Y MINIATURAS DE PÁGINAS (${totalPages} PÁGINAS)` : `001 / PAGE THUMBNAILS & PREVIEW (${totalPages} PAGES)`}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
-            {/* DETALLES DEL ARCHIVO CARGADO */}
-            <div className="bg-zinc-950 border border-white/10 p-4 rounded-xl mb-4 flex items-center justify-between font-mono text-xs">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <FileText className="w-5 h-5 text-rose-400 flex-shrink-0" />
-                <div className="truncate">
-                  <span className="text-white font-bold block truncate">{file.name}</span>
-                  <span className="text-[10px] text-zinc-400">{formatFileSize(file.size)} • {totalPages} {isEs ? 'páginas en total' : 'total pages'}</span>
-                </div>
-              </div>
-              <button onClick={removeFile} className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* VISUALIZADOR GRAFICO DE MINIATURAS DE RANGOS */}
-            <div className="flex-1 overflow-y-auto max-h-[580px] pr-2 space-y-6">
-              {ranges.map((r, idx) => (
-                <div key={r.id} className="flex flex-col items-center gap-2 font-mono">
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                    {isEs ? `Rango ${idx + 1}` : `Range ${idx + 1}`}
-                  </span>
-
-                  {/* CUADRO DE VISTA PREVIA DEL RANGO */}
-                  <div className="w-full bg-zinc-950/80 border border-dashed border-white/20 hover:border-rose-400/40 rounded-2xl p-6 flex items-center justify-center gap-6 shadow-inner transition-colors">
-                    
-                    {/* MINIATURA PÁGINA INICIO (FROM) */}
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-28 sm:w-36 h-36 sm:h-48 bg-white rounded-xl shadow-2xl border border-zinc-300 p-3 flex flex-col justify-between text-zinc-800 relative overflow-hidden group">
-                        <div className="space-y-1.5 opacity-60">
-                          <div className="h-2 w-3/4 bg-zinc-400 rounded"></div>
-                          <div className="h-1.5 w-full bg-zinc-300 rounded"></div>
-                          <div className="h-1.5 w-5/6 bg-zinc-300 rounded"></div>
-                          <div className="h-1.5 w-4/6 bg-zinc-300 rounded"></div>
-                          <div className="h-1.5 w-full bg-zinc-300 rounded"></div>
-                        </div>
-                        <span className="text-[10px] font-bold text-zinc-500 font-mono text-center">
-                          Pág. {r.from}
-                        </span>
-                      </div>
-                      <span className="text-xs font-extrabold text-white font-mono">{r.from}</span>
-                    </div>
-
-                    {/* PUNTOS SUSPENSIVOS SI HAY MÁS DE 1 PÁGINA EN EL RANGO */}
-                    {r.to > r.from && (
-                      <div className="flex items-center justify-center font-extrabold text-zinc-500 text-2xl tracking-widest">
-                        ...
-                      </div>
-                    )}
-
-                    {/* MINIATURA PÁGINA FIN (TO) */}
-                    {r.to > r.from && (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="w-28 sm:w-36 h-36 sm:h-48 bg-white rounded-xl shadow-2xl border border-zinc-300 p-3 flex flex-col justify-between text-zinc-800 relative overflow-hidden group">
-                          <div className="space-y-1.5 opacity-60">
-                            <div className="h-1.5 w-full bg-zinc-300 rounded"></div>
-                            <div className="h-1.5 w-4/5 bg-zinc-300 rounded"></div>
-                            <div className="h-1.5 w-full bg-zinc-300 rounded"></div>
-                            <div className="h-1.5 w-2/3 bg-zinc-300 rounded"></div>
-                            <div className="h-2 w-1/2 bg-zinc-400 rounded mt-4"></div>
-                          </div>
-                          <span className="text-[10px] font-bold text-zinc-500 font-mono text-center">
-                            Pág. {r.to}
-                          </span>
-                        </div>
-                        <span className="text-xs font-extrabold text-white font-mono">{r.to}</span>
-                      </div>
-                    )}
-
+            {/* DETALLES DEL ARCHIVO CARGADO Y WIDGET DE CONTRASEÑA */}
+            <div className="bg-zinc-950 border border-white/10 p-4 rounded-xl mb-4 font-mono text-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <FileText className="w-5 h-5 text-rose-400 flex-shrink-0" />
+                  <div className="truncate">
+                    <span className="text-white font-bold block truncate">{file.name}</span>
+                    <span className="text-[10px] text-zinc-400">{formatFileSize(file.size)} • {totalPages} {isEs ? 'páginas en total' : 'total pages'}</span>
                   </div>
                 </div>
-              ))}
+
+                <div className="flex items-center gap-2">
+                  {isUnlocked && (
+                    <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2.5 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1">
+                      <Unlock className="w-3 h-3" /> {isEs ? "Desbloqueado" : "Unlocked"}
+                    </span>
+                  )}
+                  <button onClick={removeFile} className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* ENCRYPTED PASSWORD WIDGET */}
+              {isEncrypted && !isUnlocked && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                    <Lock className="w-4 h-4" />
+                    <span>{isEs ? "Este PDF está protegido con contraseña" : "This PDF is password protected"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      placeholder={isEs ? "Ingresa la contraseña de apertura..." : "Enter open password..."}
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
+                      className="flex-1 bg-zinc-900 border border-white/15 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40"
+                    />
+                    <button
+                      onClick={unlockFileWithPassword}
+                      className="px-3 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Unlock className="w-3.5 h-3.5" />
+                      <span>{isEs ? "Desbloquear" : "Unlock"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* VISUALIZADOR GRAFICO DE MINIATURAS REALES EN GRILLA 4x4 */}
+            <div className="flex-1 overflow-y-auto max-h-[580px] pr-2 font-mono">
+              {isLoadingThumbnails ? (
+                <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-400">
+                  <Loader2 className="w-8 h-8 animate-spin text-white" />
+                  <span className="text-xs font-bold">{isEs ? 'Generando vistas previas de páginas en 4x4...' : 'Generating 4x4 page previews...'}</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                  {pageThumbnails.map((p) => (
+                    <div
+                      key={p.pageIndex}
+                      onClick={() => togglePageIncluded(p.pageIndex)}
+                      className={`relative bg-zinc-950 border ${p.included ? 'border-white/20 hover:border-white/40' : 'border-red-500/30 opacity-40'} rounded-2xl p-3 flex flex-col justify-between transition-all cursor-pointer group shadow-lg`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-md">
+                          #{p.pageIndex + 1}
+                        </span>
+                        <div className={`p-1 rounded-md border ${p.included ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                          {p.included ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                        </div>
+                      </div>
+
+                      <div className="w-full h-40 bg-zinc-900 rounded-xl overflow-hidden flex items-center justify-center border border-white/5 relative">
+                        {p.dataUrl ? (
+                          <img src={p.dataUrl} alt={`Página ${p.pageIndex + 1}`} className="w-full h-full object-contain" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1.5 text-zinc-600">
+                            <FileText className="w-6 h-6" />
+                            <span className="text-[9px]">Pág. {p.pageIndex + 1}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -624,7 +679,7 @@ export default function PdfSplitter() {
                           rangeSubMode === 'fijo' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
                         }`}
                       >
-                        {isEs ? 'Fijo' : 'Fixed'}
+                        {isEs ? 'Fijo (1 pág / PDF)' : 'Fixed (1 pg / PDF)'}
                       </button>
 
                       <button
@@ -638,52 +693,108 @@ export default function PdfSplitter() {
                     </div>
                   </div>
 
-                  {/* CONTROLES DE RANGOS */}
-                  <div className="space-y-2.5 max-h-[160px] overflow-y-auto pr-1">
-                    {ranges.map((r, idx) => (
-                      <div key={r.id} className="bg-zinc-950 border border-white/10 p-2.5 rounded-xl space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-white">
-                          <span>{isEs ? `Rango ${idx + 1}` : `Range ${idx + 1}`}</span>
-                          {ranges.length > 1 && (
-                            <button onClick={() => handleRemoveRange(r.id)} className="text-zinc-400 hover:text-red-400 transition-colors">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
+                  {rangeSubMode === 'personalizado' && (
+                    <>
+                      {/* CONTROLES DE RANGOS PERSONALIZADOS */}
+                      <div className="space-y-2.5 max-h-[160px] overflow-y-auto pr-1">
+                        {ranges.map((r, idx) => (
+                          <div key={r.id} className="bg-zinc-950 border border-white/10 p-2.5 rounded-xl space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-white">
+                              <span>{isEs ? `Rango ${idx + 1}` : `Range ${idx + 1}`}</span>
+                              {ranges.length > 1 && (
+                                <button onClick={() => handleRemoveRange(r.id)} className="text-zinc-400 hover:text-red-400 transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
 
-                        <div className="flex items-center justify-between text-xs text-zinc-300">
-                          <span className="text-[10px] text-zinc-400">{isEs ? "de la página" : "from page"}</span>
-                          <input
-                            type="number" min={1} max={totalPages || 100} value={r.from}
-                            onChange={(e) => handleUpdateRange(r.id, 'from', parseInt(e.target.value, 10) || 1)}
-                            className="w-14 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
-                          />
-                          <span className="text-[10px] text-zinc-400">{isEs ? "a" : "to"}</span>
-                          <input
-                            type="number" min={1} max={totalPages || 100} value={r.to}
-                            onChange={(e) => handleUpdateRange(r.id, 'to', parseInt(e.target.value, 10) || 1)}
-                            className="w-14 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
-                          />
-                        </div>
+                            <div className="flex items-center justify-between text-xs text-zinc-300">
+                              <span className="text-[10px] text-zinc-400">{isEs ? "de la página" : "from page"}</span>
+                              <input
+                                type="number" min={1} max={totalPages || 100} value={r.from}
+                                onChange={(e) => handleUpdateRange(r.id, 'from', parseInt(e.target.value, 10) || 1)}
+                                className="w-14 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                              />
+                              <span className="text-[10px] text-zinc-400">{isEs ? "a" : "to"}</span>
+                              <input
+                                type="number" min={1} max={totalPages || 100} value={r.to}
+                                onChange={(e) => handleUpdateRange(r.id, 'to', parseInt(e.target.value, 10) || 1)}
+                                className="w-14 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
 
-                  <button
-                    onClick={handleAddRange}
-                    className="w-full border border-white/20 hover:border-white/40 bg-zinc-900 hover:bg-zinc-800 text-white py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Añadir Rango' : 'Add Range'}</span>
-                  </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleAddRange}
+                          className="flex-1 border border-white/20 hover:border-white/40 bg-zinc-900 hover:bg-zinc-800 text-white py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{isEs ? 'Añadir Rango' : 'Add Range'}</span>
+                        </button>
 
-                  <label className="flex items-center gap-2.5 cursor-pointer text-[11px] font-bold text-zinc-300 pt-1">
-                    <input
-                      type="checkbox" checked={mergeAllRanges} onChange={(e) => setMergeAllRanges(e.target.checked)}
-                      className="accent-white w-4 h-4 rounded"
-                    />
-                    <span>{isEs ? 'Unir todos los rangos en un único PDF.' : 'Merge all ranges into single PDF.'}</span>
-                  </label>
+                        <button
+                          onClick={() => {
+                            if (totalPages === 0) return;
+                            const newRanges: RangeItem[] = [];
+                            for (let i = 1; i <= totalPages; i++) {
+                              newRanges.push({ id: `range-${i}`, from: i, to: i });
+                            }
+                            setRanges(newRanges);
+                            toast.success(isEs ? `Se crearon ${totalPages} rangos (1 página cada uno)` : `Created ${totalPages} ranges (1 page each)`);
+                          }}
+                          className="px-3 py-2 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                          title={isEs ? "Crear 1 rango por cada página del PDF" : "Create 1 range per PDF page"}
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{isEs ? '1 pág / PDF' : '1 pg / PDF'}</span>
+                        </button>
+                      </div>
+
+                      <label className="flex items-center gap-2.5 cursor-pointer text-[11px] font-bold text-zinc-300 pt-1">
+                        <input
+                          type="checkbox" checked={mergeAllRanges} onChange={(e) => setMergeAllRanges(e.target.checked)}
+                          className="accent-white w-4 h-4 rounded"
+                        />
+                        <span>{isEs ? 'Unir todos los rangos en un único PDF.' : 'Merge all ranges into single PDF.'}</span>
+                      </label>
+                    </>
+                  )}
+
+                  {rangeSubMode === 'fijo' && (
+                    <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2.5">
+                      <label className="text-[11px] text-zinc-300 font-bold block">
+                        {isEs ? "Bloques de páginas por PDF:" : "Page block size per PDF:"}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-400">{isEs ? "Dividir cada" : "Split every"}</span>
+                        <input
+                          type="number" min={1} max={totalPages || 100} value={chunkPageCount}
+                          onChange={(e) => setChunkPageCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-20 bg-zinc-900 border border-white/20 rounded-lg p-1.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                        />
+                        <span className="text-xs text-zinc-400">{isEs ? "página(s)" : "page(s)"}</span>
+                      </div>
+                      <p className="text-[10px] text-emerald-400 font-mono">
+                        {isEs 
+                          ? `✓ Se generarán ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} archivos PDF (${createZip ? 'empaquetados en .ZIP' : 'descarga directa'})`
+                          : `✓ Will generate ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} PDF files (${createZip ? 'packaged in .ZIP' : 'direct download'})`}
+                      </p>
+                    </div>
+                  )}
+
+                  {rangeSubMode === 'inteligente' && (
+                    <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2">
+                      <span className="text-xs font-bold text-white block">🧠 {isEs ? 'División Inteligente Individual' : 'Smart Individual Split'}</span>
+                      <p className="text-[11px] text-zinc-400">
+                        {isEs 
+                          ? `Cada una de las ${totalPages} páginas del documento se dividirá automáticamente en un archivo PDF independiente (total: ${totalPages} PDFs en 1 archivo .ZIP).`
+                          : `Each of the ${totalPages} pages will be automatically split into an independent PDF file (total: ${totalPages} PDFs in 1 .ZIP file).`}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -736,67 +847,77 @@ export default function PdfSplitter() {
                 </div>
               )}
 
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
-              <button 
-                type="button" 
-                onClick={() => setShowAdvanced(!showAdvanced)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer my-4 shadow-sm"
-              >
-                <div className="flex items-center gap-2 font-bold">
+              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
+              <div className="pt-4 border-t border-white/10 my-4 space-y-3 font-mono">
+                <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
                   <Sliders className="w-4 h-4 text-white" />
                   <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
                 </div>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-              </button>
 
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-3 pt-1 border-t border-white/5 font-mono overflow-hidden"
-                  >
-                    <div>
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo de Archivos:" : "Output File Prefix:"}</label>
-                      <input
-                        type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
-                        placeholder="Documento_Corte"
-                        className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30"
-                      />
-                    </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo de Archivos:" : "Output File Prefix:"}</label>
+                  <input
+                    type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
+                    placeholder="Documento_Corte"
+                    className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                  />
+                </div>
 
-                    <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5">
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "OPCIONES DE SALIDA" : "OUTPUT OPTIONS"}</label>
-                      
-                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                        <input 
-                          type="checkbox" checked={createZip} onChange={(e) => setCreateZip(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded"
-                        />
-                        <span>{isEs ? "Empaquetar en archivo .ZIP (2+ partes)" : "Package into .ZIP file"}</span>
-                      </label>
+                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "OPCIONES DE SALIDA" : "OUTPUT OPTIONS"}</label>
+                  
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                    <input 
+                      type="checkbox" checked={createZip} onChange={(e) => setCreateZip(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded"
+                    />
+                    <span>{isEs ? "Empaquetar en archivo .ZIP (2+ partes)" : "Package into .ZIP file"}</span>
+                  </label>
 
-                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                        <input 
-                          type="checkbox" checked={skipBlankPages} onChange={(e) => setSkipBlankPages(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded"
-                        />
-                        <span>{isEs ? "Omitir páginas en blanco vacías" : "Filter blank empty pages"}</span>
-                      </label>
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                    <input 
+                      type="checkbox" checked={addPageFooterNumbering} onChange={(e) => setAddPageFooterNumbering(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded"
+                    />
+                    <span>{isEs ? "Re-numerar páginas en pie de página" : "Re-number pages in footer"}</span>
+                  </label>
+                </div>
 
-                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                        <input 
-                          type="checkbox" checked={addPageFooterNumbering} onChange={(e) => setAddPageFooterNumbering(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded"
-                        />
-                        <span>{isEs ? "Re-numerar páginas en pie de página" : "Re-number pages in footer"}</span>
-                      </label>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
+                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">{isEs ? "METADATOS DEL PDF DIVIDIDO" : "SPLIT PDF METADATA"}</label>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Título:" : "Title:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Documento_Fragmentado" : "Ex: Split_Document"}
+                      value={docTitle}
+                      onChange={(e) => setDocTitle(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Autor / Organización:" : "Author / Organization:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Mi Empresa S.A." : "Ex: Company Inc."}
+                      value={docAuthor}
+                      onChange={(e) => setDocAuthor(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Asunto / Descripción:" : "Subject / Description:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: División de expedientes corporativos" : "Ex: Merged corporate records"}
+                      value={docSubject}
+                      onChange={(e) => setDocSubject(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
@@ -815,7 +936,7 @@ export default function PdfSplitter() {
 
               <button 
                 onClick={executeSplit} 
-                disabled={isProcessing || !file} 
+                disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
                 className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
@@ -831,7 +952,6 @@ export default function PdfSplitter() {
         </motion.div>
       )}
 
-      
     </div>
   );
 }

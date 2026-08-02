@@ -73,6 +73,12 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
   const [trimEmptyRows, setTrimEmptyRows] = useState<boolean>(true);
   const [extractionStrategy, setExtractionStrategy] = useState<'smart' | 'lineByLine'>('smart');
 
+  // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [activePage, setActivePage] = useState<number>(1);
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
   const parseXlsxContent = async (excelFile: File): Promise<number> => {
@@ -90,10 +96,55 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
   };
 
   useEffect(() => {
-    if (file && (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls'))) {
+    if (!file) {
+      setPageDataUrls({});
+      setTotalPages(0);
+      return;
+    }
+    if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
       parseXlsxContent(file).then(count => setExtractedCellCount(count));
+    } else if (file.name.toLowerCase().endsWith('.pdf')) {
+      cargarMiniaturasPdf(file);
     }
   }, [file]);
+
+  const cargarMiniaturasPdf = async (pdfFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      setTotalPages(pdfDoc.numPages);
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {}
+      }
+      setPageDataUrls(urls);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRendering(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -488,33 +539,85 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: PREVISUALIZACIÓN DE ARCHIVO */}
-          <div className="lg:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <Table className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / PREVISUALIZACIÓN DE DOCUMENTO` : `001 / DOCUMENT PREVIEW`}</span>
+                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
-            {/* VISTA PREVIA DETALLADA */}
-            <div className="w-full flex-1 bg-zinc-950 rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 relative border border-white/5 font-mono min-h-[460px]">
-              {pdfUrl ? (
-                <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} className="w-full h-full border-none bg-white rounded-lg shadow-inner min-h-[440px]" title="PDF Preview" />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-6">
-                  <div className="w-32 h-44 bg-zinc-900 border border-white/20 rounded-2xl flex flex-col items-center justify-center p-4 shadow-2xl">
-                    <FileSpreadsheet className="w-14 h-14 text-emerald-400 mb-2" />
-                    <span className="text-xs font-bold text-white uppercase">XLSX / CSV</span>
+            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
+              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                </span>
+                {isRendering ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    <span>...</span>
                   </div>
-                  <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                    ✓ {extractedCellCount} {isEs ? 'celdas de datos detectadas' : 'data cells detected'}
-                  </span>
-                </div>
-              )}
+                ) : totalPages > 0 ? (
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setActivePage(pageNum)}
+                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                        {pageDataUrls[pageNum] ? (
+                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                        )}
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                          #{pageNum}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
+                )}
+              </div>
+
+              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
+              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                {pdfUrl ? (
+                  <iframe
+                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                    title="Visor PDF Tamaño Normal"
+                  />
+                ) : pageDataUrls[activePage] ? (
+                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
+                    <img
+                      src={pageDataUrls[activePage]}
+                      alt={`Página ${activePage}`}
+                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
+                    <div className="w-28 h-36 bg-zinc-900 border border-white/20 rounded-2xl flex flex-col items-center justify-center p-3 shadow-2xl">
+                      <FileSpreadsheet className="w-10 h-10 text-emerald-400 mb-2" />
+                      <span className="text-[10px] font-bold text-white uppercase">XLSX / CSV</span>
+                    </div>
+                    <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                      ✓ {extractedCellCount} {isEs ? 'celdas detectadas' : 'data cells'}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* PIE DE ARCHIVO */}
@@ -527,7 +630,7 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">
@@ -758,174 +861,6 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
           </div>
         </motion.div>
       )}
-
-      {/* ── GUÍA DE USO: EXCEL ↔ PDF ── */}
-      <div className="w-full mt-14 space-y-6 font-sans">
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
-              <FileSpreadsheet className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Cómo convertir entre Excel y PDF?' : 'How to convert between Excel and PDF?'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono">
-                {isEs ? 'Guía rápida para convertir hojas de cálculo .xlsx a PDF o extraer datos tabulares de un PDF.' : 'Quick guide to convert .xlsx spreadsheets to PDF or extract tabular data from a PDF.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            {[
-              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "Excel → PDF" para convertir tu .xlsx a PDF, o "PDF → Excel" para extraer tablas y datos numéricos de un PDF a una hoja de cálculo editable.', descEn: 'Select "Excel → PDF" to convert your .xlsx to PDF, or "PDF → Excel" to extract tables and numeric data from a PDF into an editable spreadsheet.' },
-              { step: '02', titleEs: 'Sube tu archivo', titleEn: 'Upload your file', descEs: 'Arrastra el archivo .xlsx o PDF a la zona de carga. Puedes procesar múltiples hojas (sheets) de un mismo libro de Excel en una sola conversión.', descEn: 'Drag your .xlsx or PDF file to the upload area. You can process multiple sheets from the same Excel workbook in a single conversion.' },
-              { step: '03', titleEs: 'Configura las opciones de tabla', titleEn: 'Configure table options', descEs: 'Ajusta el tamaño de papel (A4, Letter, etc.), orientación (portrait/landscape), escala de ajuste de columnas y si incluir encabezados de hoja en el PDF resultante.', descEn: 'Adjust paper size (A4, Letter, etc.), orientation (portrait/landscape), column fit scale, and whether to include sheet headers in the resulting PDF.' },
-              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor analiza la estructura de celdas localmente en tu RAM y genera el archivo de salida al instante sin enviar datos a ningún servidor.', descEn: 'Click "Convert →". The engine analyzes the cell structure locally in your RAM and generates the output file instantly without sending data to any server.' },
-            ].map((item) => (
-              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
-                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
-                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-start gap-3 mb-5">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                {isEs ? '💡 Consejos para la conversión Excel ↔ PDF' : '💡 Tips for Excel ↔ PDF conversion'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono mt-1">
-                {isEs ? 'Obtén el mejor resultado con tus hojas de cálculo.' : 'Get the best result with your spreadsheets.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
-            {[
-              { labelEs: 'Orientación landscape para tablas anchas', labelEn: 'Landscape orientation for wide tables', descEs: 'Si tus hojas tienen muchas columnas, usa la orientación horizontal (landscape) en las opciones para que todas las columnas quepan en el PDF sin truncarse.', descEn: 'If your sheets have many columns, use horizontal (landscape) orientation in the options so all columns fit in the PDF without being truncated.' },
-              { labelEs: 'Múltiples hojas en un solo PDF', labelEn: 'Multiple sheets in one PDF', descEs: 'El conversor puede procesar todos los sheets de un libro Excel en un único PDF continuo, con cada hoja comenzando en una nueva página del documento.', descEn: 'The converter can process all sheets from an Excel workbook into a single continuous PDF, with each sheet starting on a new document page.' },
-              { labelEs: 'PDF → Excel: mejor con tablas limpias', labelEn: 'PDF → Excel: best with clean tables', descEs: 'La extracción de tablas funciona mejor con PDFs que tienen tablas bien definidas con bordes y celdas claramente delimitadas. PDFs con tablas en imágenes requieren OCR primero.', descEn: 'Table extraction works best with PDFs that have well-defined tables with clear borders and cells. PDFs with tables as images require OCR first.' },
-              { labelEs: 'Fórmulas no se transfieren a PDF', labelEn: 'Formulas do not transfer to PDF', descEs: 'Al convertir Excel a PDF, solo se guardan los valores calculados (resultados), no las fórmulas. El PDF es una representación visual fija del estado actual de la hoja.', descEn: 'When converting Excel to PDF, only calculated values (results) are stored, not formulas. The PDF is a fixed visual representation of the current sheet state.' },
-            ].map((tip, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
-                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
-      <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
-        {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Qué sucede con tus archivos al extraer tablas PDF a Excel?' : 'What happens to your files when extracting PDF tables to Excel?'}
-              </h2>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
-                {isEs ? '🔒 EXTRACCIÓN Y RENDERIZADO VECTORIAL 100% LOCAL' : '🔒 100% LOCAL VECTOR EXTRACTION & RENDERING'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                {isEs ? '1. Conversión de PDF a Excel (.xlsx)' : '1. PDF to Excel (.xlsx) Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Identifica las fronteras vectoriales y celdas de las tablas dentro del PDF, transponiendo los valores numéricos y campos de texto directamente a filas y columnas de Excel.'
-                  : 'Identifies vector borders & table cells inside the PDF, transposing numeric values and text directly into Excel rows and columns.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                {isEs ? '2. Conversión de Excel (.xlsx) a PDF' : '2. Excel (.xlsx) to PDF Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Procesa el árbol OpenXML de la hoja de cálculo (`xl/worksheets/sheet1.xml`), ajustando los anchos de columna y márgenes de impresión para generar un reporte PDF limpio y apaisado.'
-                  : 'Parses spreadsheet OpenXML trees (`xl/worksheets/sheet1.xml`), fitting column widths and print margins to generate a clean landscape PDF report.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* BLOQUE 2: GUÍA PASO A PASO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-              <HelpCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? 'Aprende a usar la herramienta en 3 sencillos pasos' : 'Learn how to use the tool in 3 simple steps'}
-              </h2>
-              <p className="text-xs font-mono text-zinc-400">
-                {isEs ? 'GUÍA RÁPIDA DE EXTRACCIÓN DE TABLAS' : 'QUICK TABLE EXTRACTION GUIDE'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                1
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Cargar Archivo' : 'Upload File'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Arrastra tu PDF o documento de Excel. El sistema pre-visualizará las tablas o celdas de forma instantánea.' 
-                  : 'Drop your PDF or Excel file. The system will preview tables or cells instantly.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                2
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Configurar Tablas' : 'Configure Tables'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Selecciona el método de extracción (Inteligente o Línea a línea) y si deseas auto-formatear números o separar en 1 hoja continua.' 
-                  : 'Select extraction method (Smart Grid or Line by line) and if you want to auto-format numbers.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                3
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Exportar y Descargar' : 'Export & Download'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Haz clic en el botón de conversión para descargar tu libro .xlsx o reporte PDF listo para usar.' 
-                  : 'Click conversion button to download your .xlsx workbook or PDF report ready to use.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Loader2, ShieldCheck, Unlock, AlertTriangle } from 'lucide-react';
+import { Loader2, ShieldCheck, Unlock, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 const PdfUnlocker = dynamic(() => import('@/components/PdfUnlocker'), {
@@ -68,6 +68,71 @@ export default function DesbloquearPdfPage() {
               <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5"><strong className="text-white font-bold text-xs block">🖥️ {isEs?'Procesamiento 100% local':'100% local processing'}</strong><p className="text-[11px]">{isEs?'El descifrado se ejecuta en la RAM. Ninguna clave sale de tu dispositivo.':'Decryption runs in RAM. No key leaves your device.'}</p></div>
               <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5"><strong className="text-white font-bold text-xs block">🔓 {isEs?'Eliminación del diccionario de cifrado':'Encryption dictionary removal'}</strong><p className="text-[11px]">{isEs?'Desvincula /Encrypt del trailer, descifra streams y restablece banderas /P.':'Detaches /Encrypt from the trailer, decrypts streams, and resets /P flags.'}</p></div>
               <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5"><strong className="text-white font-bold text-xs block">📥 {isEs?'Descarga directa y segura':'Direct & secure download'}</strong><p className="text-[11px]">{isEs?'El PDF se genera localmente. Tu archivo original no se modifica.':'The PDF is generated locally. Your original file is not modified.'}</p></div>
+            </div>
+          </div>
+
+          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10"><HelpCircle className="w-5 h-5 text-white" /></div>
+              <h2 className="text-lg font-bold text-white tracking-tight">{isEs ? '4. Preguntas Frecuentes' : '4. Frequently Asked Questions'}</h2>
+            </div>
+            <div className="space-y-4">
+              {[
+                {
+                  qEs: '¿Es legal desbloquear un archivo PDF con esta herramienta?',
+                  qEn: 'Is it legal to unlock a PDF file with this tool?',
+                  aEs: 'Sí, siempre que seas el propietario legítimo del documento o cuentes con la autorización explícita para modificar sus permisos de acceso y uso. Esta herramienta está concebida para la recuperación legítima de archivos propios, liberación de restricciones de impresión en documentos de trabajo y auditoría de archivos organizacionales.',
+                  aEn: 'Yes, provided you are the legitimate owner of the document or have explicit authorization to modify its access and usage permissions. This tool is designed for legitimate recovery of personal files, removal of printing restrictions on work documents, and organizational file auditing.',
+                },
+                {
+                  qEs: '¿Mis contraseñas o archivos se transmiten a servidores externos?',
+                  qEn: 'Are my passwords or files transmitted to external servers?',
+                  aEs: 'No. Todo el análisis, descifrado y generación del nuevo PDF se ejecuta 100% en tu navegador a través de un Web Worker aislado. Las contraseñas se procesan en la memoria RAM de tu dispositivo y se eliminan inmediatamente al finalizar el proceso. Ningún dato viaja por Internet.',
+                  aEn: 'No. All analysis, decryption, and PDF generation run 100% in your browser via an isolated Web Worker. Passwords are processed in your device\'s RAM and deleted immediately after the process ends. No data travels over the Internet.',
+                },
+                {
+                  qEs: '¿Qué diferencia hay entre la contraseña de apertura y la de propietario?',
+                  qEn: 'What is the difference between the open password and the owner password?',
+                  aEs: 'La contraseña de apertura (User Password) bloquea completamente la lectura del documento. Para desbloquearlo se requiere la clave o usar la función de recuperación automática. La contraseña de propietario (Owner Password) solo restringe funciones como copiar texto, imprimir o editar formularios; este tipo de restricciones de propietario se eliminan automáticamente sin requerir clave.',
+                  aEn: 'The open password (User Password) completely blocks reading the document. Unlocking it requires the key or using the automatic recovery feature. The owner password only restricts features like copying text, printing, or editing forms; these owner restrictions are automatically removed without requiring a password.',
+                },
+                {
+                  qEs: '¿Cómo funciona la opción de "Recuperar Contraseña" automática?',
+                  qEn: 'How does the automatic "Recover Password" option work?',
+                  aEs: 'El motor ejecuta una búsqueda heurística en segundo plano probando candidatos derivados del nombre del archivo, metadatos no cifrados, diccionarios de claves corporativas comunes, patrones de fechas y barridos numéricos de 4 dígitos (0000-9999). Esta función se ejecuta con un límite de tiempo (max 15s) para garantizar un rendimiento fluido.',
+                  aEn: 'The engine executes a background heuristic search testing candidates derived from the file name, unencrypted metadata, common corporate dictionaries, date patterns, and 4-digit numeric sweeps (0000-9999). This process runs with a time limit (max 15s) to guarantee smooth performance.',
+                },
+                {
+                  qEs: '¿El PDF desbloqueado pierde calidad vectorial, imágenes o fuentes?',
+                  qEn: 'Does the unlocked PDF lose vector quality, images, or fonts?',
+                  aEs: 'No. El motor realiza un desbloqueo estructural (utilizando pdf-lib) reconstruyendo el PDF y desvinculando el diccionario /Encrypt. Esto preserva de manera exacta todas las fuentes tipográficas incrustadas, vectores, imágenes de alta resolución y la maquetación original.',
+                  aEn: 'No. The engine performs a structural unlock (using pdf-lib) rebuilding the PDF and detaching the /Encrypt dictionary. This preserves exact embedded fonts, vectors, high-resolution images, and original layout.',
+                },
+                {
+                  qEs: '¿Qué ocurre con las firmas digitales al desbloquear el documento?',
+                  qEn: 'What happens to digital signatures when unlocking the document?',
+                  aEs: 'De acuerdo con la especificación ISO 32000, cualquier modificación en la estructura o en el diccionario de cifrado de un PDF firmado digitalmente anulará la validez criptográfica de las firmas incrustadas. La herramienta te advertirá si detecta firmas digitales (/Sig) antes de proceder.',
+                  aEn: 'According to the ISO 32000 specification, any modification to the structure or encryption dictionary of a digitally signed PDF will invalidate the cryptographic validity of embedded signatures. The tool will warn you if it detects digital signatures (/Sig) before proceeding.',
+                },
+                {
+                  qEs: '¿Puedo generar reportes de auditoría de los documentos desbloqueados?',
+                  qEn: 'Can I generate audit reports of the unlocked documents?',
+                  aEs: 'Sí. Una vez completado el desbloqueo, puedes presionar Ctrl + S o pulsar el botón de descarga de reporte para obtener un archivo JSON con los hashes criptográficos SHA-256 de los documentos, timestamps ISO 8601 y métricas de tamaño, útil para auditorías de seguridad de TI.',
+                  aEn: 'Yes. Once unlocking is complete, press Ctrl + S or click the download report button to obtain a JSON file with SHA-256 cryptographic hashes, ISO 8601 timestamps, and file size metrics, useful for IT security auditing.',
+                },
+              ].map((faq, i) => (
+                <details key={i} className="group bg-zinc-900/60 border border-white/5 rounded-xl overflow-hidden transition-all duration-200">
+                  <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-800/40 transition-colors list-none marker:content-none">
+                    <span className="text-xs sm:text-sm font-bold text-white pr-4 leading-snug">{isEs ? faq.qEs : faq.qEn}</span>
+                    <span className="flex-shrink-0 text-zinc-400 group-open:rotate-180 transition-transform duration-200">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </span>
+                  </summary>
+                  <div className="px-4 pb-4">
+                    <p className="text-xs text-zinc-400 leading-relaxed border-t border-white/5 pt-3">{isEs ? faq.aEs : faq.aEn}</p>
+                  </div>
+                </details>
+              ))}
             </div>
           </div>
         </div>

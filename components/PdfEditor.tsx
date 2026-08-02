@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { 
-  Loader2, ShieldCheck, FileEdit, FileText, X, Save, Download, 
-  CheckCircle2, ArrowLeft, Plus, UploadCloud, Type, Sparkles, Trash2 
+  Loader2, ShieldCheck, FileText, X, Save, Download, 
+  CheckCircle2, ArrowLeft, Plus, UploadCloud, Type, Sparkles, Trash2,
+  Lock, Unlock, Sliders
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFileStore } from '@/store/useFileStore';
 import { useLanguage } from '@/context/LanguageContext';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { EditWorkerMessageIn, EditWorkerMessageOut } from '@/workers/pdf-edit.worker';
 
 type Step = 'upload' | 'edit' | 'download';
 
@@ -26,12 +28,26 @@ export default function PdfEditor() {
   
   const [isLoaded, setIsLoaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progressMsg, setProgressMsg] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
   
   const [viewerInstance, setViewerInstance] = useState<any>(null);
   const [editedPdfUrl, setEditedPdfUrl] = useState<string | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // ENCRYPTION / PASSWORD STATE
+  const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [unlockedPassword, setUnlockedPassword] = useState<string | undefined>(undefined);
 
+  // OPCIONES AVANZADAS Y METADATOS
+  const [filePrefix, setFilePrefix] = useState<string>('Documento_Editado');
+  const [renumberPages, setRenumberPages] = useState<boolean>(false);
+  const [docTitle, setDocTitle] = useState<string>('');
+  const [docAuthor, setDocAuthor] = useState<string>('');
+  const [docSubject, setDocSubject] = useState<string>('');
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitializing = useRef(false);
 
   useEffect(() => {
@@ -41,21 +57,67 @@ export default function PdfEditor() {
     }
   }, [globalFile, file]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Detección inicial de encriptación con pdfjs-dist
+  const checkEncryption = useCallback(async (selectedFile: File, pass?: string) => {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: pass });
+      await loadingTask.promise;
+      setIsEncrypted(false);
+      setIsUnlocked(true);
+      return true;
+    } catch (error: any) {
+      if (error?.name === 'PasswordException' || error?.code === 1) {
+        setIsEncrypted(true);
+        setIsUnlocked(false);
+        toast.warning(isEs ? 'El archivo requiere contraseña para editarse' : 'File requires password to edit');
+        return false;
+      }
+      return true;
+    }
+  }, [isEs]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
       setFile(selected);
       setGlobalFile(selected);
-      setStep('edit');
+      setFilePrefix(selected.name.replace(/\.[^/.]+$/, "") + '_Editado');
+      setIsEncrypted(false);
+      setIsUnlocked(false);
+      setPasswordInput('');
+      setUnlockedPassword(undefined);
+      
+      const canProceed = await checkEncryption(selected);
+      if (canProceed) {
+        setStep('edit');
+      }
     }
     e.target.value = '';
   };
 
-  // Inicializar el motor de Apryse solo cuando estamos en el paso 'edit'
+  const unlockFileWithPassword = async () => {
+    if (!file || !passwordInput) return;
+    const ok = await checkEncryption(file, passwordInput);
+    if (ok) {
+      setUnlockedPassword(passwordInput);
+      setIsUnlocked(true);
+      setIsEncrypted(false);
+      setStep('edit');
+      toast.success(isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF unlocked successfully!');
+    } else {
+      toast.error(isEs ? 'Contraseña incorrecta' : 'Incorrect password');
+    }
+  };
+
+  // Inicializar el motor de Apryse cuando estamos en el paso 'edit'
   useEffect(() => {
     let activeInstance: any = null;
 
-    if (step === 'edit' && file && viewer.current && !isLoaded && !isInitializing.current) {
+    if (step === 'edit' && file && viewer.current && !isLoaded && !isInitializing.current && (!isEncrypted || isUnlocked)) {
       isInitializing.current = true;
       if (viewer.current) {
         viewer.current.innerHTML = '';
@@ -81,8 +143,12 @@ export default function PdfEditor() {
           UI.openElements(['leftPanel']); 
           UI.setTheme('dark');
 
-          // Cargar el archivo PDF en WebViewer de manera directa
-          UI.loadDocument(file, { filename: file.name });
+          // Cargar el archivo PDF en WebViewer con clave si aplica
+          const loadOptions: any = { filename: file.name };
+          if (unlockedPassword) {
+            loadOptions.password = unlockedPassword;
+          }
+          UI.loadDocument(file, loadOptions);
 
           toast.success(isEs ? '¡Documento abierto y listo para editar!' : 'Document loaded and ready to edit!');
         }).catch(err => {
@@ -100,33 +166,80 @@ export default function PdfEditor() {
         } catch (e) {}
       }
     };
-  }, [step, file, isLoaded, isEs]);
+  }, [step, file, isLoaded, isEs, isEncrypted, isUnlocked, unlockedPassword]);
 
   const handleFinishEditing = async () => {
     if (!viewerInstance) return;
     
     setIsProcessing(true);
-    toast.info(isEs ? 'Grabando modificaciones...' : 'Saving changes...');
+    setProgressPercent(20);
+    setProgressMsg(isEs ? 'Extrayendo buffer modificado...' : 'Extracting modified buffer...');
 
     try {
       const docViewer = viewerInstance.Core.documentViewer;
       const doc = docViewer.getDocument();
 
       const data = await doc.getFileData();
-      const arr = new Uint8Array(data);
-      const blob = new Blob([arr as any], { type: 'application/pdf' });
-      
+      const rawBuffer = data.buffer || data;
+
+      setProgressPercent(50);
+      setProgressMsg(isEs ? 'Ejecutando Web Worker de metadatos...' : 'Running metadata Web Worker...');
+
+      const bufferCopy = rawBuffer.slice(0);
+
+      const worker = new Worker(new URL('../workers/pdf-edit.worker.ts', import.meta.url), { type: 'module' });
+
+      const payload: EditWorkerMessageIn = {
+        action: 'process',
+        arrayBuffer: bufferCopy,
+        options: {
+          filePrefix: filePrefix.trim() || 'Documento_Editado',
+          renumberPages,
+          metadata: {
+            title: docTitle.trim() || undefined,
+            author: docAuthor.trim() || undefined,
+            subject: docSubject.trim() || undefined,
+          }
+        }
+      };
+
+      const result = await new Promise<{ buffer: ArrayBuffer; totalPages: number }>((resolve, reject) => {
+        worker.onmessage = (e: MessageEvent<EditWorkerMessageOut>) => {
+          const msg = e.data;
+          if (msg.type === 'progress') {
+            setProgressPercent(msg.percent);
+            setProgressMsg(msg.message);
+          } else if (msg.type === 'result') {
+            resolve({
+              buffer: msg.buffer,
+              totalPages: msg.totalPages,
+            });
+          } else if (msg.type === 'error') {
+            reject(new Error(msg.message));
+          }
+        };
+
+        worker.onerror = (err) => reject(err);
+
+        worker.postMessage(payload, [bufferCopy]);
+      });
+
+      worker.terminate();
+
+      const blob = new Blob([result.buffer], { type: 'application/pdf' });
       if (editedPdfUrl) URL.revokeObjectURL(editedPdfUrl);
       const url = URL.createObjectURL(blob);
       setEditedPdfUrl(url);
       
+      setProgressPercent(100);
       toast.success(isEs ? '¡Modificaciones grabadas correctamente!' : 'Changes saved successfully!');
       setStep('download');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error(isEs ? 'Error al grabar el documento.' : 'Failed to save document.');
+      toast.error(error?.message || (isEs ? 'Error al grabar el documento.' : 'Failed to save document.'));
     } finally {
       setIsProcessing(false);
+      setProgressMsg('');
     }
   };
 
@@ -135,7 +248,7 @@ export default function PdfEditor() {
     
     const link = document.createElement('a');
     link.href = editedPdfUrl;
-    link.download = `${file?.name.replace(/\.[^/.]+$/, '')}_Editado.pdf`;
+    link.download = `${filePrefix.trim() || 'Documento_Editado'}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -154,6 +267,10 @@ export default function PdfEditor() {
     setIsLoaded(false);
     setViewerInstance(null);
     setEditedPdfUrl(null);
+    setIsEncrypted(false);
+    setIsUnlocked(false);
+    setUnlockedPassword(undefined);
+    setPasswordInput('');
     setStep('upload');
   };
 
@@ -196,8 +313,38 @@ export default function PdfEditor() {
         )}
       </div>
 
+      {/* PASSWORD WIDGET FOR ENCRYPTED PDF */}
+      {file && isEncrypted && !isUnlocked && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl mb-6 space-y-3 font-mono text-xs max-w-xl mx-auto">
+          <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+            <Lock className="w-5 h-5" />
+            <span>{isEs ? "Este PDF está protegido con contraseña" : "This PDF is password protected"}</span>
+          </div>
+          <p className="text-zinc-400 text-xs font-sans">
+            {isEs ? "Ingresa la contraseña de apertura para desbloquear el visor e iniciar la edición nativa." : "Enter open password to unlock the viewer and start editing."}
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              placeholder={isEs ? "Ingresa la contraseña de apertura..." : "Enter open password..."}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
+              className="flex-1 bg-zinc-900 border border-white/15 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-white/40 font-mono"
+            />
+            <button
+              onClick={unlockFileWithPassword}
+              className="px-4 py-2 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 font-mono"
+            >
+              <Unlock className="w-4 h-4" />
+              <span>{isEs ? "Desbloquear" : "Unlock"}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* PANTALLA 1: SUBIDA (DROPZONE VACÍA) */}
-      {step === 'upload' && (
+      {step === 'upload' && (!isEncrypted || isUnlocked) && (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -228,8 +375,8 @@ export default function PdfEditor() {
         </motion.div>
       )}
 
-      {/* PANTALLA 2: EDICIÓN (MOTOR NATIVO WEBVIEWER) */}
-      {step === 'edit' && (
+      {/* PANTALLA 2: EDICIÓN (MOTOR NATIVO WEBVIEWER CON OPCIONES AVANZADAS) */}
+      {step === 'edit' && (!isEncrypted || isUnlocked) && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full flex flex-col">
           {/* BARRA SUPERIOR DE ACCIONES */}
           <div className="w-full mb-4 flex justify-between items-center bg-[#09090b] border border-white/10 p-4 rounded-2xl shadow-2xl font-mono">
@@ -252,13 +399,79 @@ export default function PdfEditor() {
                 className="flex items-center gap-2 bg-white text-black hover:bg-zinc-200 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-sans font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
               >
                 {isProcessing ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <Save className="w-4 h-4 text-black" />}
-                <span>{isProcessing ? (isEs ? 'Grabando...' : 'Saving...') : (isEs ? 'Terminar y Grabar →' : 'Finish & Save →')}</span>
+                <span>{isProcessing ? progressMsg || (isEs ? 'Grabando...' : 'Saving...') : (isEs ? 'Terminar y Grabar →' : 'Finish & Save →')}</span>
               </button>
+            </div>
+          </div>
+
+          {/* OPCIONES AVANZADAS PERMANENTEMENTE VISIBLES */}
+          <div className="w-full bg-[#09090b] border border-white/10 p-4 rounded-2xl mb-4 font-mono text-xs space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
+              <Sliders className="w-4 h-4 text-white" />
+              <span>{isEs ? "Opciones Avanzadas de Salida PDFBLACK" : "PDFBLACK Advanced Output Options"}</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo del Archivo Resultante:" : "Output File Prefix:"}</label>
+                <input
+                  type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
+                  placeholder="Documento_Editado"
+                  className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center">
+                <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer bg-zinc-950 p-2.5 rounded-xl border border-white/10 w-full">
+                  <input 
+                    type="checkbox" checked={renumberPages} onChange={(e) => setRenumberPages(e.target.checked)}
+                    className="accent-white w-4 h-4 rounded"
+                  />
+                  <span>{isEs ? "Re-numerar páginas en pie de página (Página N / M)" : "Re-number footer pages (Page N / M)"}</span>
+                </label>
+              </div>
+            </div>
+
+            {/* METADATOS DEL DOCUMENTO RESULTANTE */}
+            <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
+              <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">{isEs ? "METADATOS DEL PDF EDITADO" : "EDITED PDF METADATA"}</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Título:" : "Title:"}</label>
+                  <input
+                    type="text"
+                    placeholder={isEs ? "Ej: Documento_Modificado_2026" : "Ex: Edited_Document_2026"}
+                    value={docTitle}
+                    onChange={(e) => setDocTitle(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Autor / Organización:" : "Author / Organization:"}</label>
+                  <input
+                    type="text"
+                    placeholder={isEs ? "Ej: Mi Empresa S.A." : "Ex: Company Inc."}
+                    value={docAuthor}
+                    onChange={(e) => setDocAuthor(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Asunto / Descripción:" : "Subject / Description:"}</label>
+                  <input
+                    type="text"
+                    placeholder={isEs ? "Ej: Modificación de texto e imágenes" : "Ex: Text and image edit"}
+                    value={docSubject}
+                    onChange={(e) => setDocSubject(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           
           {/* CONTENEDOR DEL VISOR WEBVIEWER */}
-          <div className="w-full h-[85vh] min-h-[700px] border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative bg-[#09090b]">
+          <div className="w-full h-[80vh] min-h-[650px] border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative bg-[#09090b]">
             {!isLoaded && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#09090b] z-10 font-mono gap-3">
                 <Loader2 className="w-10 h-10 animate-spin text-white" />

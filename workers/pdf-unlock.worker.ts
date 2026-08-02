@@ -201,7 +201,8 @@ async function detectEncryptionStatus(
       data: fileBuffer.slice(0),
       password: '',
       stopAtErrors: false,
-    }).promise;
+      disableWorker: true,
+    } as any).promise;
 
     if (hasEncrypt) {
       return {
@@ -479,11 +480,17 @@ async function attemptPasswordRecovery(
 }
 
 // ============================================================
-// DESBLOQUEO ESTRUCTURAL CON PDF-LIB (PRESERVA VECTORES)
+// DESBLOQUEO VECTORIAL Y COMPATIBLE CON ADOBE ACROBAT
 //
-// Lógica corregida:
-// - ignoreEncryption: true  → solo para owner-password (streams no están cifrados)
-// - password: user-provided  → para user-password (pdf-lib desencripta los streams)
+// 1. PRIORIDAD: Desensamblado vectorial con pdf-lib.
+//    Para archivos con restricciones de propietario (Owner Password), los streams
+//    de contenido no están cifrados. pdf-lib elimina /Encrypt y copia las páginas
+//    manteniendo los vectores, texto seleccionable y fuentes integradas 100% intactas
+//    (evitando las cajas de texto tofu '□□□□' y preservando el formato original).
+//
+// 2. FALLBACK: Renderizado descifrado con PDF.js + CMaps.
+//    Para archivos con contraseña de apertura (User Password) donde los streams
+//    están cifrados. Carga CMaps y fuentes estándar para evitar problemas de caracteres.
 // ============================================================
 
 async function unlockPdfStructural(
@@ -491,162 +498,183 @@ async function unlockPdfStructural(
   options: UnlockOptions,
   report: (msg: WorkerMessage) => void
 ): Promise<{ bytes: Uint8Array; pageCount: number; vectorPreserved: boolean; wasEncrypted: boolean }> {
-
-  let pdfDoc: PDFDocument;
-  let wasEncrypted = false;
-
   const uint8 = new Uint8Array(fileBuffer);
   const scanSize = Math.min(uint8.length, 2 * 1024 * 1024);
   const text = new TextDecoder('latin1').decode(uint8.slice(0, scanSize));
   const hasEncryptDict = text.includes('/Encrypt');
 
-  // ===== ESTRATEGIA DE CARGA =====
+  let activePassword = options.password || '';
 
-  if (options.password) {
-    // El usuario proporcionó contraseña → usarla directamente
-    report({
-      type: 'progress', phase: 'decrypting', percent: 20,
-      message: 'Intentando desencriptar con la contraseña proporcionada...',
-    });
-
-    try {
-      // pdf-lib acepta password en las opciones de carga (aunque los tipos strict no lo reflejan)
-      const loadOpts = {
-        ignoreEncryption: false,
-        updateMetadata: false,
-        password: options.password,
-      };
-      pdfDoc = await PDFDocument.load(new Uint8Array(fileBuffer), loadOpts as unknown as Record<string, unknown>);
-      wasEncrypted = hasEncryptDict;
-    } catch (passwordErr) {
-      // Falló → puede ser contraseña incorrecta o dueño corrupto. Intentar ignoreEncryption como fallback.
-      try {
-        pdfDoc = await PDFDocument.load(new Uint8Array(fileBuffer), { ignoreEncryption: true, updateMetadata: false });
-        wasEncrypted = hasEncryptDict;
-      } catch {
-        throw new Error('Contraseña incorrecta o documento corrupto. Verifique la clave e intente nuevamente.');
-      }
-    }
-  } else if (options.passwordRecovery) {
-    // ===== MODO RECUPERACIÓN AUTOMÁTICA =====
+  // 1. Si está activo el modo recuperación, obtener la clave
+  if (options.passwordRecovery && !activePassword) {
     report({
       type: 'progress', phase: 'decrypting', percent: 10,
       message: '🔓 Iniciando recuperación automática de contraseña...',
     });
 
-    const recoveredPassword = await attemptPasswordRecovery(
-      fileBuffer,
+    const recovered = await attemptPasswordRecovery(
+      fileBuffer.slice(0),
       'unknown.pdf',
       options.customDictionary || [],
       options.recoveryMaxTimeMs || 15_000,
       report
     );
 
-    if (!recoveredPassword) {
-      throw new Error(
-        'No se pudo recuperar la contraseña automáticamente. ' +
-        'Por favor, ingrese la contraseña manualmente en el campo correspondiente.'
-      );
+    if (!recovered) {
+      throw new Error('No se pudo recuperar la contraseña automáticamente. Por favor, ingrésela manualmente.');
     }
 
-    // Contraseña encontrada — cargar con ella
+    activePassword = recovered;
     report({
       type: 'progress', phase: 'decrypting', percent: 45,
-      message: `🔑 Contraseña encontrada: "${recoveredPassword}". Desencriptando documento...`,
+      message: `🔑 Contraseña encontrada: "${activePassword}". Desencriptando documento...`,
+    });
+  }
+
+  // 2. ESTRATEGIA PRINCIPAL: DESENSAMBLADO VECTORIAL DIRECTO CON PDF-LIB
+  // Preserva las fuentes integradas originales, texto seleccionable y formato vectorial
+  try {
+    report({
+      type: 'progress', phase: 'decrypting', percent: 25,
+      message: '🔓 Reconstruyendo estructura vectorial y liberando restricciones...',
     });
 
-    try {
-      const loadOpts = {
-        ignoreEncryption: false,
-        updateMetadata: false,
-        password: recoveredPassword,
-      };
-      pdfDoc = await PDFDocument.load(new Uint8Array(fileBuffer), loadOpts as unknown as Record<string, unknown>);
-      wasEncrypted = hasEncryptDict;
-    } catch {
-      throw new Error('Error al desencriptar con la contraseña recuperada. El documento puede estar corrupto.');
-    }
-  } else {
-    // Sin contraseña y sin recovery → intentar ignoreEncryption (funciona para owner-password)
-    try {
-      pdfDoc = await PDFDocument.load(new Uint8Array(fileBuffer), { ignoreEncryption: true, updateMetadata: false });
-      wasEncrypted = hasEncryptDict;
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileBuffer.slice(0)), {
+      ignoreEncryption: true,
+      updateMetadata: false,
+    });
 
-      if (hasEncryptDict) {
-        report({
-          type: 'progress', phase: 'decrypting', percent: 20,
-          message: 'Cargado con ignoreEncryption (solo restricciones de propietario).',
-        });
+    const pageCount = pdfDoc.getPageCount();
+    if (pageCount > 0) {
+      const cleanPdf = await PDFDocument.create();
+      const pageIndices = pdfDoc.getPageIndices();
+
+      const copiedPages = await cleanPdf.copyPages(pdfDoc, pageIndices);
+      copiedPages.forEach(p => cleanPdf.addPage(p));
+
+      if (!options.stripMetadata) {
+        try {
+          const title = pdfDoc.getTitle();
+          if (title) cleanPdf.setTitle(title);
+          const author = pdfDoc.getAuthor();
+          if (author) cleanPdf.setAuthor(author);
+        } catch {}
+      } else {
+        cleanPdf.setTitle('');
+        cleanPdf.setAuthor('');
+        cleanPdf.setSubject('');
+        cleanPdf.setKeywords([]);
       }
-    } catch {
-      // ignoreEncryption falló → el PDF tiene user-password pero no hay contraseña
-      throw new Error(
-        'Este PDF requiere contraseña de apertura (User Password). ' +
-        'Por favor, ingrese la contraseña manualmente o use la opción "Recuperar Contraseña".'
-      );
+
+      cleanPdf.setProducer('PDFBlack Vector Engine v4.0');
+      cleanPdf.setCreator('PDFBlack Local Worker');
+
+      const bytes = await cleanPdf.save({ useObjectStreams: false });
+
+      if (bytes && bytes.length > 200) {
+        report({
+          type: 'progress', phase: 'packaging', percent: 95,
+          message: 'PDF vectorial 100% preservado generado con éxito.',
+        });
+
+        return {
+          bytes,
+          pageCount,
+          vectorPreserved: true,
+          wasEncrypted: hasEncryptDict,
+        };
+      }
     }
+  } catch {
+    // Si pdf-lib falla porque los streams sí requieren descifrado de apertura (User Password), pasar al motor de renderizado PDF.js
   }
 
-  const pageCount = pdfDoc.getPageCount();
-  if (pageCount === 0) {
-    throw new Error('El documento no contiene páginas.');
-  }
-
+  // 3. ESTRATEGIA SECUNDARIA: MOTOR DE RENDERIZADO Y DESCRIPCIÓN CON PDF.JS + CMAPS
+  // Para PDFs cifrados con User Password de apertura
   report({
-    type: 'progress', phase: 'rebuilding', percent: 60,
-    message: `Reconstruyendo ${pageCount} páginas en nuevo PDF sin restricciones...`,
+    type: 'progress', phase: 'decrypting', percent: 35,
+    message: '🔓 Descifrando streams criptográficos con motor PDF.js (con fuentes CMaps)...',
   });
-
-  // Crear nuevo PDF limpio copiando páginas (preserva vectores, fuentes, capas)
-  const cleanPdf = await PDFDocument.create();
-  const pageIndices = pdfDoc.getPageIndices();
 
   try {
-    const copiedPages = await cleanPdf.copyPages(pdfDoc, pageIndices);
-    copiedPages.forEach(page => cleanPdf.addPage(page));
-  } catch {
-    // Fallback: copiar página por página
-    for (let i = 0; i < pageIndices.length; i++) {
-      try {
-        const [copiedPage] = await cleanPdf.copyPages(pdfDoc, [pageIndices[i]]);
-        cleanPdf.addPage(copiedPage);
-      } catch {
-        throw new Error(`Error al copiar página ${i + 1}. El documento puede estar dañado.`);
-      }
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(fileBuffer.slice(0)),
+      password: activePassword,
+      stopAtErrors: false,
+      disableWorker: true,
+      cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/standard_fonts/',
+    } as any);
+
+    const srcDoc = await loadingTask.promise;
+    const pageCount = srcDoc.numPages;
+
+    if (pageCount === 0) {
+      throw new Error('El documento no contiene páginas.');
     }
+
+    report({
+      type: 'progress', phase: 'rebuilding', percent: 45,
+      message: `Desbloqueando y renderizando ${pageCount} páginas libre de cifrado...`,
+    });
+
+    const cleanPdf = await PDFDocument.create();
+
+    for (let pn = 1; pn <= pageCount; pn++) {
+      report({
+        type: 'progress', phase: 'rebuilding', percent: 45 + Math.floor((pn / pageCount) * 45),
+        message: `Descifrando y reconstruyendo página ${pn} de ${pageCount}...`,
+      });
+
+      const page = await srcDoc.getPage(pn);
+      const originalViewport = page.getViewport({ scale: 1.0 });
+      // Render a escala 2.0x para máxima nitidez de lectura e impresión
+      const renderViewport = page.getViewport({ scale: 2.0 });
+
+      const canvas = new OffscreenCanvas(renderViewport.width, renderViewport.height);
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        throw new Error('No se pudo inicializar el contexto 2D del lienzo OffscreenCanvas.');
+      }
+
+      await page.render({ canvasContext: ctx as any, viewport: renderViewport } as any).promise;
+      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.94 });
+      const jpgBytes = await blob.arrayBuffer();
+
+      const img = await cleanPdf.embedJpg(jpgBytes);
+      const newPage = cleanPdf.addPage([originalViewport.width, originalViewport.height]);
+      newPage.drawImage(img, {
+        x: 0,
+        y: 0,
+        width: originalViewport.width,
+        height: originalViewport.height,
+      });
+    }
+
+    cleanPdf.setProducer('PDFBlack Decrypted Engine v4.0');
+    cleanPdf.setCreator('PDFBlack Local Worker');
+
+    report({
+      type: 'progress', phase: 'packaging', percent: 95,
+      message: 'Generando PDF 100% compatible con Adobe Acrobat...',
+    });
+
+    const unlockedBytes = await cleanPdf.save({ useObjectStreams: false });
+
+    return {
+      bytes: unlockedBytes,
+      pageCount,
+      vectorPreserved: false,
+      wasEncrypted: true,
+    };
+  } catch (pdfjsErr: any) {
+    if (pdfjsErr?.name === 'PasswordException' || pdfjsErr?.message?.includes('password')) {
+      throw new Error('Contraseña incorrecta. Por favor verifique la clave e intente nuevamente.');
+    }
+    throw new Error(`Error al descifrar el documento: ${pdfjsErr?.message || 'Archivo corrupto o no soportado.'}`);
   }
-
-  // Preservar metadatos si no se solicita limpieza
-  if (!options.stripMetadata) {
-    try {
-      const title = pdfDoc.getTitle();
-      if (title) cleanPdf.setTitle(title);
-      const author = pdfDoc.getAuthor();
-      if (author) cleanPdf.setAuthor(author);
-    } catch { /* metadatos corruptos — ignorar */ }
-  } else {
-    cleanPdf.setTitle('');
-    cleanPdf.setAuthor('');
-    cleanPdf.setSubject('');
-    cleanPdf.setKeywords([]);
-  }
-
-  cleanPdf.setProducer('PDFBlack Unlocker v4.0');
-  cleanPdf.setCreator('PDFBlack Local Worker');
-
-  report({
-    type: 'progress', phase: 'packaging', percent: 90,
-    message: 'Empaquetando PDF sin restricciones...',
-  });
-
-  const unlockedBytes = await cleanPdf.save({ useObjectStreams: true, addDefaultPage: false });
-
-  return {
-    bytes: unlockedBytes,
-    pageCount,
-    vectorPreserved: true,
-    wasEncrypted,
-  };
 }
 
 // ============================================================
@@ -659,10 +687,12 @@ async function unlockSinglePdf(
   options: UnlockOptions,
   report: (msg: WorkerMessage) => void
 ): Promise<UnlockResult> {
-  // Fase 1: Detección
+  const originalSize = fileBuffer.byteLength;
+
+  // Fase 1: Detección (usando un clon del buffer para no desasociarlo)
   report({ type: 'progress', phase: 'detection', percent: 5, message: 'Analizando nivel de protección...' });
 
-  const detection = await detectEncryptionStatus(fileBuffer, fileName, report);
+  const detection = await detectEncryptionStatus(fileBuffer.slice(0), fileName, report);
 
   report({
     type: 'detection',
@@ -670,10 +700,10 @@ async function unlockSinglePdf(
     status: detection,
   } as DetectionResult);
 
-  // Fase 2: Desencriptado y reconstrucción
+  // Fase 2: Desencriptado y reconstrucción (usando un clon del buffer)
   report({ type: 'progress', phase: 'decrypting', percent: 15, message: detection.message });
 
-  const result = await unlockPdfStructural(fileBuffer, options, report);
+  const result = await unlockPdfStructural(fileBuffer.slice(0), options, report);
 
   report({ type: 'progress', phase: 'packaging', percent: 100, message: 'Desbloqueo completado.' });
 
@@ -688,11 +718,10 @@ async function unlockSinglePdf(
     checksumSha256 = 'no-disponible';
   }
 
-  // Determinar tipo de cifrado
-  const detectResult = await detectEncryptionStatus(fileBuffer, fileName, report);
+  // Determinar tipo de cifrado usando el resultado de la Fase 1 (evita volver a analizar un buffer desasociado)
   let encryptionType = 'none';
-  if (detectResult.type === 'encrypted') encryptionType = 'User Password (contraseña de apertura)';
-  else if (detectResult.type === 'owner-only') encryptionType = 'Owner Password (restricciones de propietario)';
+  if (detection.type === 'encrypted') encryptionType = 'User Password (contraseña de apertura)';
+  else if (detection.type === 'owner-only') encryptionType = 'Owner Password (restricciones de propietario)';
 
   return {
     type: 'result',
@@ -701,7 +730,7 @@ async function unlockSinglePdf(
     pageCount: result.pageCount,
     vectorPreserved: result.vectorPreserved,
     wasEncrypted: result.wasEncrypted,
-    originalSize: fileBuffer.byteLength,
+    originalSize,
     unlockedSize: result.bytes.byteLength,
     checksumSha256,
     encryptionType,

@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { PDFDocument, degrees, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 import { 
-  RotateCw, RotateCcw, FileText, X, Loader2, FilePlus, Sliders, ChevronDown, ChevronUp, 
-  FileDown, UploadCloud, Layers, Filter, Sparkles, CheckSquare, 
-  Square, ZoomIn, Compass, RefreshCw, ShieldCheck, ArrowLeft, Zap, Cpu, HelpCircle, Plus, LayoutGrid, Trash2
+  RotateCw, RotateCcw, FileText, X, Loader2, Sliders, 
+  UploadCloud, Filter, Sparkles, RefreshCw, ZoomIn, 
+  ShieldCheck, ArrowLeft, Lock, Unlock, LayoutGrid, Plus, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { RotateWorkerMessageIn, RotateWorkerMessageOut } from '@/workers/pdf-rotate.worker';
 
 type PageThumb = {
   pageNum: number; // 1-indexed
@@ -37,41 +38,36 @@ export default function PdfRotator() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
 
-  // RESULTADOS
+  // ENCRYPTION / PASSWORD STATE
+  const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [unlockedPassword, setUnlockedPassword] = useState<string | undefined>(undefined);
+
+  // RESULTADOS Y PREVIAS
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
 
-  // OPCIONES AVANZADAS PDFBLACK
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
+  // OPCIONES AVANZADAS Y METADATOS
   const [rangeInput, setRangeInput] = useState<string>('');
   const [filePrefix, setFilePrefix] = useState<string>('Documento_Rotado');
   const [renumberPages, setRenumberPages] = useState<boolean>(false);
   const [previewZoomPage, setPreviewZoomPage] = useState<PageThumb | null>(null);
 
+  // METADATOS PERSONALIZADOS
+  const [docTitle, setDocTitle] = useState<string>('');
+  const [docAuthor, setDocAuthor] = useState<string>('');
+  const [docSubject, setDocSubject] = useState<string>('');
+
   const rotatedCount = useMemo(() => {
     return pages.filter(p => p.rotation !== 0).length;
   }, [pages]);
 
-  const pdfUrl = useMemo(() => {
-    if (file) {
-      return URL.createObjectURL(file);
-    }
-    return null;
-  }, [file]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
-  }, [pdfUrl]);
-
   // Cargar y renderizar miniaturas Canvas del PDF
-  const cargarPdf = useCallback(async (selectedFile: File) => {
-    setFile(selectedFile);
-    setGlobalFile(selectedFile);
+  const renderThumbnails = useCallback(async (selectedFile: File, pass?: string) => {
     setIsProcessing(true);
     setProgressPercent(10);
-    setProgressMsg(isEs ? 'Cargando y analizando páginas...' : 'Loading and analyzing pages...');
+    setProgressMsg(isEs ? 'Renderizando miniaturas...' : 'Rendering thumbnails...');
     setFilePrefix(selectedFile.name.replace(/\.[^/.]+$/, "") + '_Rotado');
 
     try {
@@ -79,17 +75,20 @@ export default function PdfRotator() {
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: pass });
+      const pdf = await loadingTask.promise;
       const count = pdf.numPages;
 
       const thumbs: PageThumb[] = [];
-      for (let p = 1; p <= count; p++) {
+      const renderLimit = Math.min(count, 32);
+
+      for (let p = 1; p <= renderLimit; p++) {
         setProgressMsg(isEs ? `Procesando pág ${p} de ${count}...` : `Processing page ${p} of ${count}...`);
         setProgressPercent(10 + Math.floor((p / count) * 80));
-        if (p % 3 === 0) await new Promise(r => setTimeout(r, 5));
+        if (p % 4 === 0) await new Promise(r => setTimeout(r, 5));
 
         const page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale: 0.3 });
+        const viewport = page.getViewport({ scale: 0.25 });
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
 
@@ -99,7 +98,7 @@ export default function PdfRotator() {
         if (context) {
           canvas.height = viewport.height;
           canvas.width = viewport.width;
-          await page.render({ canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+          await page.render({ canvasContext: context, viewport, canvas } as any).promise;
           dataUrl = canvas.toDataURL('image/jpeg', 0.6);
         }
 
@@ -112,91 +111,74 @@ export default function PdfRotator() {
         });
       }
 
+      // Rellenar resto de páginas si el documento es grande
+      for (let p = renderLimit + 1; p <= count; p++) {
+        thumbs.push({
+          pageNum: p,
+          thumbnailUrl: null,
+          rotation: 0,
+          isLandscape: false,
+          selected: false,
+        });
+      }
+
       setPages(thumbs);
+      setIsEncrypted(false);
+      setIsUnlocked(true);
       setProgressPercent(100);
       toast.success(isEs ? `${count} páginas listas para rotación` : `${count} pages ready for rotation`);
-    } catch (error) {
-      console.error(error);
-      toast.error(isEs ? 'Error al cargar el PDF' : 'Error loading PDF');
-      setFile(null);
+    } catch (error: any) {
+      if (error?.name === 'PasswordException' || error?.code === 1) {
+        setIsEncrypted(true);
+        setIsUnlocked(false);
+        toast.warning(isEs ? 'El archivo requiere contraseña para abrirse' : 'File requires password to open');
+      } else {
+        console.error(error);
+        toast.error(isEs ? 'Error al cargar el PDF' : 'Error loading PDF');
+      }
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
     }
-  }, [isEs, setGlobalFile]);
+  }, [isEs]);
 
   useEffect(() => {
-    if (file && pages.length === 0) {
-      let isMounted = true;
-      (async () => {
-        setIsProcessing(true);
-        setProgressPercent(10);
-        setProgressMsg(isEs ? 'Cargando y analizando páginas...' : 'Loading and analyzing pages...');
-        setFilePrefix(file.name.replace(/\.[^/.]+$/, "") + '_Rotado');
-
-        try {
-          const pdfjsLib = await import('pdfjs-dist');
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          const count = pdf.numPages;
-
-          const thumbs: PageThumb[] = [];
-          for (let p = 1; p <= count; p++) {
-            if (!isMounted) break;
-            const page = await pdf.getPage(p);
-            const viewport = page.getViewport({ scale: 0.3 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-
-            let dataUrl: string | null = null;
-            const isLandscape = viewport.width > viewport.height;
-
-            if (context) {
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
-              await page.render({ canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-              dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-            }
-
-            thumbs.push({
-              pageNum: p,
-              thumbnailUrl: dataUrl,
-              rotation: 0,
-              isLandscape,
-              selected: false
-            });
-          }
-
-          if (isMounted) {
-            setPages(thumbs);
-            setProgressPercent(100);
-          }
-        } catch {
-          if (isMounted) setFile(null);
-        } finally {
-          if (isMounted) {
-            setIsProcessing(false);
-            setProgressMsg('');
-          }
-        }
-      })();
-      return () => { isMounted = false; };
+    if (file && pages.length === 0 && !isEncrypted) {
+      renderThumbnails(file);
     }
-  }, [file, pages.length, isEs]);
+  }, [file, pages.length, isEncrypted, renderThumbnails]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
       if (selected.type === 'application/pdf') {
+        setFile(selected);
+        setGlobalFile(selected);
         setDownloadUrl(null);
-        await cargarPdf(selected);
+        setPages([]);
+        setIsEncrypted(false);
+        setIsUnlocked(false);
+        setUnlockedPassword(undefined);
+        setPasswordInput('');
+        await renderThumbnails(selected);
       } else {
         toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
       }
     }
     e.target.value = '';
+  };
+
+  const unlockFileWithPassword = async () => {
+    if (!file || !passwordInput) return;
+    try {
+      await renderThumbnails(file, passwordInput);
+      setUnlockedPassword(passwordInput);
+      setIsUnlocked(true);
+      setIsEncrypted(false);
+      toast.success(isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF unlocked successfully!');
+    } catch {
+      toast.error(isEs ? 'Contraseña incorrecta' : 'Incorrect password');
+    }
   };
 
   const removeFile = useCallback(() => {
@@ -205,6 +187,10 @@ export default function PdfRotator() {
     setDownloadUrl(null);
     setGlobalFile(null);
     setRangeInput('');
+    setIsEncrypted(false);
+    setIsUnlocked(false);
+    setUnlockedPassword(undefined);
+    setPasswordInput('');
   }, [setGlobalFile]);
 
   // ROTACIÓN DE PÁGINAS INDIVIDUALES
@@ -323,70 +309,96 @@ export default function PdfRotator() {
     })));
   };
 
+  // EJECUCIÓN CON WEB WORKER
   const executeRotate = async () => {
     if (!file || pages.length === 0) {
       toast.error(isEs ? 'Carga un archivo PDF' : 'Upload a PDF file');
       return;
     }
 
+    if (isEncrypted && !isUnlocked) {
+      toast.error(isEs ? 'Desbloquea el PDF con su contraseña antes de procesar' : 'Unlock PDF with password before processing');
+      return;
+    }
+
     setIsProcessing(true);
     setProgressPercent(10);
-    setProgressMsg(isEs ? 'Aplicando matriz de rotación vectorial...' : 'Applying vector rotation matrix...');
+    setProgressMsg(isEs ? 'Iniciando Web Worker acelerado...' : 'Starting Web Worker...');
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const pdfPages = pdfDoc.getPages();
+      const buffer = await file.arrayBuffer();
+      const bufferCopy = buffer.slice(0);
 
-      pdfPages.forEach((page, idx) => {
-        const pageMeta = pages[idx];
-        if (pageMeta && pageMeta.rotation !== 0) {
-          const currentRot = page.getRotation().angle;
-          page.setRotation(degrees((currentRot + pageMeta.rotation) % 360));
-        }
+      const worker = new Worker(new URL('../workers/pdf-rotate.worker.ts', import.meta.url), { type: 'module' });
 
-        if (renumberPages) {
-          const { width } = page.getSize();
-          page.drawText(`Página ${idx + 1} de ${pdfPages.length}`, {
-            x: width / 2 - 30,
-            y: 15,
-            size: 9,
-            font: helveticaFont,
-            color: rgb(0.5, 0.5, 0.5),
-          });
+      const pageRotationsPayload = pages.map(p => ({
+        pageNum: p.pageNum,
+        rotation: p.rotation,
+      }));
+
+      const payload: RotateWorkerMessageIn = {
+        action: 'rotate',
+        arrayBuffer: bufferCopy,
+        password: unlockedPassword,
+        pageRotations: pageRotationsPayload,
+        options: {
+          filePrefix: filePrefix.trim() || 'Documento_Rotado',
+          renumberPages,
+          metadata: {
+            title: docTitle.trim() || undefined,
+            author: docAuthor.trim() || undefined,
+            subject: docSubject.trim() || undefined,
+          }
         }
+      };
+
+      const result = await new Promise<{ buffer: ArrayBuffer; totalPages: number }>((resolve, reject) => {
+        worker.onmessage = (e: MessageEvent<RotateWorkerMessageOut>) => {
+          const msg = e.data;
+          if (msg.type === 'progress') {
+            setProgressPercent(msg.percent);
+            setProgressMsg(msg.message);
+          } else if (msg.type === 'result') {
+            resolve({
+              buffer: msg.buffer,
+              totalPages: msg.totalPages,
+            });
+          } else if (msg.type === 'error') {
+            reject(new Error(msg.message));
+          }
+        };
+
+        worker.onerror = (err) => reject(err);
+
+        worker.postMessage(payload, [bufferCopy]);
       });
 
-      setProgressPercent(85);
-      setProgressMsg(isEs ? 'Compilando PDF rotado...' : 'Compiling rotated PDF...');
+      worker.terminate();
 
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+      const blob = new Blob([result.buffer], { type: 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
-      const outName = `${filePrefix}.pdf`;
+      const outName = `${filePrefix.trim() || 'Documento_Rotado'}.pdf`;
 
       setDownloadFilename(outName);
       setDownloadUrl(localUrl);
-      triggerDownload(localUrl, outName);
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.href = localUrl;
+      link.download = outName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
       setProgressPercent(100);
       toast.success(isEs ? '¡Documento PDF rotado con éxito!' : 'PDF document rotated successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error(isEs ? 'Error al guardar la rotación del documento' : 'Error saving document rotation');
+      toast.error(error?.message || (isEs ? 'Error al guardar la rotación del documento' : 'Error saving document rotation'));
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
     }
-  };
-
-  const triggerDownload = (url: string, name: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -467,13 +479,13 @@ export default function PdfRotator() {
           </div>
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PANEL DE CONTROL Y GRID DE PÁGINAS ROTABLES */
+        /* VISTA PRINCIPAL CON PANEL DE CONTROL Y GRID DE PÁGINAS ROTABLES EN CUADRÍCULA 4x4 */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: REJILLA INTERACTIVA DE PÁGINAS */}
+          {/* LADO IZQUIERDO: REJILLA INTERACTIVA DE PÁGINAS EN CUADRÍCULA 4x4 */}
           <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
@@ -489,6 +501,33 @@ export default function PdfRotator() {
                 </div>
               </div>
             </div>
+
+            {/* PASSWORD WIDGET FOR ENCRYPTED PDF */}
+            {isEncrypted && !isUnlocked && (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4 space-y-2 font-mono text-xs">
+                <div className="flex items-center gap-2 text-amber-400 font-bold">
+                  <Lock className="w-4 h-4" />
+                  <span>{isEs ? "Este PDF está protegido con contraseña" : "This PDF is password protected"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    placeholder={isEs ? "Ingresa la contraseña de apertura..." : "Enter open password..."}
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
+                    className="flex-1 bg-zinc-900 border border-white/15 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40 font-mono"
+                  />
+                  <button
+                    onClick={unlockFileWithPassword}
+                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 font-mono"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>{isEs ? "Desbloquear" : "Unlock"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* BARRA DE SELECCIÓN RÁPIDA DE FILTROS */}
             <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] mb-4">
@@ -523,15 +562,15 @@ export default function PdfRotator() {
               </div>
             </div>
 
-            {/* GRID DE MINIATURAS CANVAS CON ROTACIÓN VISUAL */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-[560px] overflow-y-auto pr-1">
+            {/* GRID DE MINIATURAS CANVAS CON ROTACIÓN VISUAL EN CUADRÍCULA 4x4 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 max-h-[560px] overflow-y-auto pr-1">
               {pages.map((p, idx) => (
                 <motion.div
                   key={p.pageNum}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   onClick={() => toggleSelectPage(idx)}
-                  className={`relative rounded-xl border p-2 flex flex-col items-center justify-between cursor-pointer transition-all duration-200 group overflow-hidden ${
+                  className={`relative rounded-2xl border p-3 flex flex-col items-center justify-between cursor-pointer transition-all duration-200 group overflow-hidden ${
                     p.selected
                       ? 'border-white bg-zinc-900 shadow-[0_0_15px_rgba(255,255,255,0.25)]'
                       : p.rotation !== 0
@@ -540,17 +579,17 @@ export default function PdfRotator() {
                   }`}
                 >
                   {/* BADGES DE PÁGINA Y ROTACIÓN */}
-                  <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px]">
-                    <span className="px-2 py-0.5 rounded-full font-bold bg-zinc-800 text-zinc-300">
+                  <div className="w-full flex items-center justify-between mb-2 font-mono text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md font-bold bg-zinc-900 border border-white/10 text-zinc-300">
                       Pág. {p.pageNum}
                     </span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded font-mono ${p.rotation !== 0 ? 'bg-white text-black' : 'text-zinc-500'}`}>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${p.rotation !== 0 ? 'bg-white text-black' : 'text-zinc-500'}`}>
                       {p.rotation}°
                     </span>
                   </div>
 
                   {/* MINIATURA CANVAS ROTADA VISUALMENTE EN TIEMPO REAL */}
-                  <div className="w-full h-36 bg-white rounded-lg overflow-hidden flex items-center justify-center relative shadow-inner p-1">
+                  <div className="w-full h-40 bg-zinc-900 rounded-xl overflow-hidden flex items-center justify-center relative shadow-inner p-1 border border-white/5">
                     {p.thumbnailUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img 
@@ -565,18 +604,18 @@ export default function PdfRotator() {
                   </div>
 
                   {/* CONTROLES FLOTANTES INDIVIDUALES */}
-                  <div className="w-full flex items-center justify-between mt-2 pt-1 border-t border-white/10 font-mono text-[10px]">
+                  <div className="w-full flex items-center justify-between mt-2.5 pt-1.5 border-t border-white/10 font-mono text-[10px]">
                     <div className="flex items-center gap-1">
                       <button
                         type="button" onClick={(e) => { e.stopPropagation(); rotateSinglePage(idx, 90); }}
-                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md transition-colors"
+                        className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg transition-colors border border-white/10"
                         title={isEs ? "Girar 90° Derecha" : "Rotate 90° CW"}
                       >
                         <RotateCw className="w-3.5 h-3.5" />
                       </button>
                       <button
                         type="button" onClick={(e) => { e.stopPropagation(); rotateSinglePage(idx, -90); }}
-                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md transition-colors"
+                        className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg transition-colors border border-white/10"
                         title={isEs ? "Girar 90° Izquierda" : "Rotate 90° CCW"}
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
@@ -585,7 +624,7 @@ export default function PdfRotator() {
 
                     <button
                       type="button" onClick={(e) => { e.stopPropagation(); setPreviewZoomPage(p); }}
-                      className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md transition-colors"
+                      className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg transition-colors border border-white/10"
                       title={isEs ? "Zoom" : "Zoom"}
                     >
                       <ZoomIn className="w-3.5 h-3.5" />
@@ -656,7 +695,7 @@ export default function PdfRotator() {
                   <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? "Normalización Inteligente:" : "Smart Normalization:"}</span>
                   <button
                     type="button" onClick={normalizeLandscapePages} disabled={pages.length === 0}
-                    className="px-3 py-1.5 bg-white text-black font-bold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40"
+                    className="px-3 py-1.5 bg-white text-black font-bold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40 font-mono"
                   >
                     {isEs ? 'Normalizar Horizontales' : 'Normalize Landscapes'}
                   </button>
@@ -682,60 +721,78 @@ export default function PdfRotator() {
                 </div>
               </div>
 
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
-              <button 
-                type="button" 
-                onClick={() => setShowAdvanced(!showAdvanced)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer my-4 shadow-sm"
-              >
-                <div className="flex items-center gap-2 font-bold">
+              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
+              <div className="pt-4 border-t border-white/10 my-4 space-y-3 font-mono">
+                <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
                   <Sliders className="w-4 h-4 text-white" />
                   <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
                 </div>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-              </button>
 
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-3 pt-1 border-t border-white/5 font-mono overflow-hidden"
-                  >
-                    <div>
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Rotación por Texto / Rango:" : "Range Selection Input:"}</label>
-                      <input
-                        type="text" value={rangeInput} onChange={(e) => handleRangeInputChange(e.target.value)}
-                        placeholder="ej: 1, 3, 5-8"
-                        className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30"
-                      />
-                    </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Rotación por Texto / Rango:" : "Range Selection Input:"}</label>
+                  <input
+                    type="text" value={rangeInput} onChange={(e) => handleRangeInputChange(e.target.value)}
+                    placeholder="ej: 1, 3, 5-8"
+                    className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                  />
+                </div>
 
-                    <div>
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo de Salida:" : "Output File Prefix:"}</label>
-                      <input
-                        type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
-                        placeholder="Documento_Rotado"
-                        className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30"
-                      />
-                    </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo del Archivo Resultante:" : "Output File Prefix:"}</label>
+                  <input
+                    type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
+                    placeholder="Documento_Rotado"
+                    className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                  />
+                </div>
 
-                    <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5">
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "AJUSTES DE NUMERACIÓN" : "NUMBERING SETTINGS"}</label>
-                      
-                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                        <input 
-                          type="checkbox" checked={renumberPages} onChange={(e) => setRenumberPages(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded"
-                        />
-                        <span>{isEs ? "Re-numerar páginas en pie de página (Página N / M)" : "Re-number footer pages (Page N / M)"}</span>
-                      </label>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "AJUSTES DE NUMERACIÓN" : "NUMBERING SETTINGS"}</label>
+                  
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                    <input 
+                      type="checkbox" checked={renumberPages} onChange={(e) => setRenumberPages(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded"
+                    />
+                    <span>{isEs ? "Re-numerar páginas en pie de página (Página N / M)" : "Re-number footer pages (Page N / M)"}</span>
+                  </label>
+                </div>
+
+                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
+                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">{isEs ? "METADATOS DEL PDF ROTADO" : "ROTATED PDF METADATA"}</label>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Título:" : "Title:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Documento_Orientado_2026" : "Ex: Rotated_Document_2026"}
+                      value={docTitle}
+                      onChange={(e) => setDocTitle(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Autor / Organización:" : "Author / Organization:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Mi Empresa S.A." : "Ex: Company Inc."}
+                      value={docAuthor}
+                      onChange={(e) => setDocAuthor(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Asunto / Descripción:" : "Subject / Description:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Orientación de planos y hojas" : "Ex: Sheet orientation"}
+                      value={docSubject}
+                      onChange={(e) => setDocSubject(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
@@ -754,7 +811,7 @@ export default function PdfRotator() {
 
               <button 
                 onClick={executeRotate} 
-                disabled={isProcessing || pages.length === 0} 
+                disabled={isProcessing || pages.length === 0 || (isEncrypted && !isUnlocked)} 
                 className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
@@ -800,7 +857,6 @@ export default function PdfRotator() {
         </div>
       )}
 
-      
     </div>
   );
 }

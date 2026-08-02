@@ -1,20 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 import { 
-  Crop, FileText, X, Loader2, FilePlus, Sliders, ChevronDown, ChevronUp, 
-  FileDown, UploadCloud, Layers, Sparkles, CheckSquare, 
-  Square, ZoomIn, Compass, ChevronLeft, ChevronRight, SlidersHorizontal, RefreshCw,
-  ShieldCheck, ArrowLeft, Zap, Cpu, HelpCircle, Plus, LayoutGrid
+  Crop, FileText, X, Loader2, Sliders, 
+  UploadCloud, Sparkles, ZoomIn, ChevronLeft, ChevronRight, RefreshCw,
+  ShieldCheck, ArrowLeft, Lock, Unlock, LayoutGrid, Plus, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
-
-type CropScope = 'all' | 'even' | 'odd' | 'current';
+import { motion } from 'framer-motion';
+import { CropWorkerMessageIn, CropWorkerMessageOut, CropScope } from '@/workers/pdf-crop.worker';
 
 export default function PdfCropper() {
   const { lang } = useLanguage();
@@ -27,12 +25,6 @@ export default function PdfCropper() {
     return null;
   });
 
-  useEffect(() => {
-    if (globalFile && !file) {
-      setFile(globalFile);
-    }
-  }, [globalFile, file]);
-
   const [totalPages, setTotalPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageDataUrl, setPageDataUrl] = useState<string | null>(null);
@@ -42,6 +34,12 @@ export default function PdfCropper() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
 
+  // ENCRYPTION / PASSWORD STATE
+  const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [unlockedPassword, setUnlockedPassword] = useState<string | undefined>(undefined);
+
   // MÁRGENES DE RECORTE EN MM
   const [marginTop, setMarginTop] = useState<number>(10);
   const [marginBottom, setMarginBottom] = useState<number>(10);
@@ -49,40 +47,33 @@ export default function PdfCropper() {
   const [marginRight, setMarginRight] = useState<number>(10);
   const [cropScope, setCropScope] = useState<CropScope>('all');
 
-  // RESULTADOS
+  // RESULTADOS Y PREVIAS
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
 
-  // OPCIONES AVANZADAS PDFBLACK
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
+  // OPCIONES AVANZADAS Y METADATOS
   const [filePrefix, setFilePrefix] = useState<string>('Documento_Recortado');
   const [renumberPages, setRenumberPages] = useState<boolean>(false);
   const [previewZoom, setPreviewZoom] = useState<boolean>(false);
 
-  const pdfUrl = useMemo(() => {
-    if (file) {
-      return URL.createObjectURL(file);
-    }
-    return null;
-  }, [file]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
-  }, [pdfUrl]);
+  // METADATOS PERSONALIZADOS
+  const [docTitle, setDocTitle] = useState<string>('');
+  const [docAuthor, setDocAuthor] = useState<string>('');
+  const [docSubject, setDocSubject] = useState<string>('');
 
   // Cargar PDF y renderizar vista previa de la página actual
-  const renderCurrentPage = useCallback(async (selectedFile: File, pageNum: number) => {
+  const renderCurrentPage = useCallback(async (selectedFile: File, pageNum: number, pass?: string) => {
     setIsProcessing(true);
     setProgressMsg(isEs ? `Cargando vista previa pág ${pageNum}...` : `Loading preview page ${pageNum}...`);
+    setFilePrefix(selectedFile.name.replace(/\.[^/.]+$/, "") + '_Recortado');
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: pass });
+      const pdf = await loadingTask.promise;
       setTotalPages(pdf.numPages);
 
       const targetPageNum = Math.max(1, Math.min(pdf.numPages, pageNum));
@@ -97,12 +88,21 @@ export default function PdfCropper() {
       if (context) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        await page.render({ canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+        await page.render({ canvasContext: context, viewport, canvas } as any).promise;
         setPageDataUrl(canvas.toDataURL('image/jpeg', 0.8));
       }
-    } catch (error) {
-      console.error(error);
-      toast.error(isEs ? 'Error al renderizar página del PDF' : 'Error rendering PDF page');
+
+      setIsEncrypted(false);
+      setIsUnlocked(true);
+    } catch (error: any) {
+      if (error?.name === 'PasswordException' || error?.code === 1) {
+        setIsEncrypted(true);
+        setIsUnlocked(false);
+        toast.warning(isEs ? 'El archivo requiere contraseña para abrirse' : 'File requires password to open');
+      } else {
+        console.error(error);
+        toast.error(isEs ? 'Error al renderizar página del PDF' : 'Error rendering PDF page');
+      }
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
@@ -110,16 +110,10 @@ export default function PdfCropper() {
   }, [isEs]);
 
   useEffect(() => {
-    if (file) {
-      let isMounted = true;
-      (async () => {
-        if (isMounted) {
-          await renderCurrentPage(file, currentPage);
-        }
-      })();
-      return () => { isMounted = false; };
+    if (file && !isEncrypted) {
+      renderCurrentPage(file, currentPage, unlockedPassword);
     }
-  }, [file, currentPage, renderCurrentPage]);
+  }, [file, currentPage, isEncrypted, unlockedPassword, renderCurrentPage]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -129,13 +123,29 @@ export default function PdfCropper() {
         setGlobalFile(selected);
         setCurrentPage(1);
         setDownloadUrl(null);
-        setFilePrefix(selected.name.replace(/\.[^/.]+$/, "") + '_Recortado');
-        toast.success(isEs ? 'Archivo PDF cargado' : 'PDF file loaded');
+        setIsEncrypted(false);
+        setIsUnlocked(false);
+        setUnlockedPassword(undefined);
+        setPasswordInput('');
+        await renderCurrentPage(selected, 1);
       } else {
         toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
       }
     }
     e.target.value = '';
+  };
+
+  const unlockFileWithPassword = async () => {
+    if (!file || !passwordInput) return;
+    try {
+      await renderCurrentPage(file, currentPage, passwordInput);
+      setUnlockedPassword(passwordInput);
+      setIsUnlocked(true);
+      setIsEncrypted(false);
+      toast.success(isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF unlocked successfully!');
+    } catch {
+      toast.error(isEs ? 'Contraseña incorrecta' : 'Incorrect password');
+    }
   };
 
   const removeFile = useCallback(() => {
@@ -144,6 +154,10 @@ export default function PdfCropper() {
     setPageDataUrl(null);
     setDownloadUrl(null);
     setGlobalFile(null);
+    setIsEncrypted(false);
+    setIsUnlocked(false);
+    setUnlockedPassword(undefined);
+    setPasswordInput('');
   }, [setGlobalFile]);
 
   const applyPreset = (mm: number) => {
@@ -163,90 +177,96 @@ export default function PdfCropper() {
     setDownloadUrl(null);
   };
 
+  // EJECUCIÓN CON WEB WORKER
   const executeCrop = async () => {
     if (!file) {
       toast.error(isEs ? 'Selecciona un archivo PDF' : 'Select a PDF file');
       return;
     }
 
+    if (isEncrypted && !isUnlocked) {
+      toast.error(isEs ? 'Desbloquea el PDF con su contraseña antes de procesar' : 'Unlock PDF with password before processing');
+      return;
+    }
+
     setIsProcessing(true);
     setProgressPercent(10);
-    setProgressMsg(isEs ? 'Aplicando recortado vectorial CropBox...' : 'Applying vector CropBox crop...');
+    setProgressMsg(isEs ? 'Iniciando Web Worker acelerado...' : 'Starting Web Worker...');
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const pdfPages = pdfDoc.getPages();
+      const buffer = await file.arrayBuffer();
+      const bufferCopy = buffer.slice(0);
 
-      // Convertir mm a puntos PDF (1 mm = 2.83465 pt)
-      const mmToPoints = (mm: number) => mm * 2.83465;
+      const worker = new Worker(new URL('../workers/pdf-crop.worker.ts', import.meta.url), { type: 'module' });
 
-      const topPt = mmToPoints(marginTop);
-      const bottomPt = mmToPoints(marginBottom);
-      const leftPt = mmToPoints(marginLeft);
-      const rightPt = mmToPoints(marginRight);
-
-      pdfPages.forEach((page, idx) => {
-        const pageNum = idx + 1;
-        let shouldCrop = false;
-
-        if (cropScope === 'all') shouldCrop = true;
-        else if (cropScope === 'even' && pageNum % 2 === 0) shouldCrop = true;
-        else if (cropScope === 'odd' && pageNum % 2 !== 0) shouldCrop = true;
-        else if (cropScope === 'current' && pageNum === currentPage) shouldCrop = true;
-
-        if (shouldCrop) {
-          const { width, height } = page.getSize();
-          const newX = Math.max(0, leftPt);
-          const newY = Math.max(0, bottomPt);
-          const newW = Math.max(10, width - leftPt - rightPt);
-          const newH = Math.max(10, height - topPt - bottomPt);
-
-          page.setCropBox(newX, newY, newW, newH);
+      const payload: CropWorkerMessageIn = {
+        action: 'crop',
+        arrayBuffer: bufferCopy,
+        password: unlockedPassword,
+        options: {
+          filePrefix: filePrefix.trim() || 'Documento_Recortado',
+          renumberPages,
+          marginTop,
+          marginBottom,
+          marginLeft,
+          marginRight,
+          cropScope,
+          currentPage,
+          metadata: {
+            title: docTitle.trim() || undefined,
+            author: docAuthor.trim() || undefined,
+            subject: docSubject.trim() || undefined,
+          }
         }
+      };
 
-        if (renumberPages) {
-          const { width } = page.getSize();
-          page.drawText(`Página ${pageNum} de ${pdfPages.length}`, {
-            x: width / 2 - 30,
-            y: 15,
-            size: 9,
-            font: helveticaFont,
-            color: rgb(0.5, 0.5, 0.5),
-          });
-        }
+      const result = await new Promise<{ buffer: ArrayBuffer; totalPages: number }>((resolve, reject) => {
+        worker.onmessage = (e: MessageEvent<CropWorkerMessageOut>) => {
+          const msg = e.data;
+          if (msg.type === 'progress') {
+            setProgressPercent(msg.percent);
+            setProgressMsg(msg.message);
+          } else if (msg.type === 'result') {
+            resolve({
+              buffer: msg.buffer,
+              totalPages: msg.totalPages,
+            });
+          } else if (msg.type === 'error') {
+            reject(new Error(msg.message));
+          }
+        };
+
+        worker.onerror = (err) => reject(err);
+
+        worker.postMessage(payload, [bufferCopy]);
       });
 
-      setProgressPercent(85);
-      setProgressMsg(isEs ? 'Compilando documento recortado...' : 'Compiling cropped document...');
+      worker.terminate();
 
-      const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+      const blob = new Blob([result.buffer], { type: 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
-      const outName = `${filePrefix}.pdf`;
+      const outName = `${filePrefix.trim() || 'Documento_Recortado'}.pdf`;
 
       setDownloadFilename(outName);
       setDownloadUrl(localUrl);
-      triggerDownload(localUrl, outName);
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.href = localUrl;
+      link.download = outName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
       setProgressPercent(100);
       toast.success(isEs ? '¡Márgenes del PDF recortados con éxito!' : 'PDF margins cropped successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error(isEs ? 'Error al recortar los márgenes del PDF' : 'Error cropping PDF margins');
+      toast.error(error?.message || (isEs ? 'Error al recortar los márgenes del PDF' : 'Error cropping PDF margins'));
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
     }
-  };
-
-  const triggerDownload = (url: string, name: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -290,7 +310,7 @@ export default function PdfCropper() {
               className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
               title={isEs ? "Quitar archivo" : "Remove file"}
             >
-              <X className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -368,6 +388,33 @@ export default function PdfCropper() {
               </div>
             </div>
 
+            {/* PASSWORD WIDGET FOR ENCRYPTED PDF */}
+            {isEncrypted && !isUnlocked && (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4 space-y-2 font-mono text-xs">
+                <div className="flex items-center gap-2 text-amber-400 font-bold">
+                  <Lock className="w-4 h-4" />
+                  <span>{isEs ? "Este PDF está protegido con contraseña" : "This PDF is password protected"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    placeholder={isEs ? "Ingresa la contraseña de apertura..." : "Enter open password..."}
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
+                    className="flex-1 bg-zinc-900 border border-white/15 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40 font-mono"
+                  />
+                  <button
+                    onClick={unlockFileWithPassword}
+                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 font-mono"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>{isEs ? "Desbloquear" : "Unlock"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* DETALLES DEL ARCHIVO CARGADO */}
             <div className="bg-zinc-950 border border-white/10 p-3 rounded-xl mb-4 flex items-center justify-between font-mono text-xs">
               <div className="flex items-center gap-3 overflow-hidden">
@@ -378,7 +425,7 @@ export default function PdfCropper() {
                 </div>
               </div>
               <button type="button" onClick={removeFile} className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors">
-                <X className="w-4 h-4" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
 
@@ -530,19 +577,19 @@ export default function PdfCropper() {
                   <div className="grid grid-cols-3 gap-1.5">
                     <button
                       type="button" onClick={() => applyPreset(0)}
-                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center"
+                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center font-mono"
                     >
                       0 mm
                     </button>
                     <button
                       type="button" onClick={() => applyPreset(10)}
-                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center"
+                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center font-mono"
                     >
                       10 mm
                     </button>
                     <button
                       type="button" onClick={() => applyPreset(20)}
-                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center"
+                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center font-mono"
                     >
                       20 mm
                     </button>
@@ -550,51 +597,69 @@ export default function PdfCropper() {
                 </div>
               </div>
 
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
-              <button 
-                type="button" 
-                onClick={() => setShowAdvanced(!showAdvanced)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer my-4 shadow-sm"
-              >
-                <div className="flex items-center gap-2 font-bold">
+              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
+              <div className="pt-4 border-t border-white/10 my-4 space-y-3 font-mono">
+                <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
                   <Sliders className="w-4 h-4 text-white" />
                   <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
                 </div>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-              </button>
 
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-3 pt-1 border-t border-white/5 font-mono overflow-hidden"
-                  >
-                    <div>
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo de Salida:" : "Output File Prefix:"}</label>
-                      <input
-                        type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
-                        placeholder="Documento_Recortado"
-                        className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30"
-                      />
-                    </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo del Archivo Resultante:" : "Output File Prefix:"}</label>
+                  <input
+                    type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
+                    placeholder="Documento_Recortado"
+                    className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                  />
+                </div>
 
-                    <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5">
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "AJUSTES DE NUMERACIÓN" : "NUMBERING SETTINGS"}</label>
-                      
-                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                        <input 
-                          type="checkbox" checked={renumberPages} onChange={(e) => setRenumberPages(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded"
-                        />
-                        <span>{isEs ? "Re-numerar páginas en pie de página (Página N / M)" : "Re-number footer pages (Page N / M)"}</span>
-                      </label>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "AJUSTES DE NUMERACIÓN" : "NUMBERING SETTINGS"}</label>
+                  
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                    <input 
+                      type="checkbox" checked={renumberPages} onChange={(e) => setRenumberPages(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded"
+                    />
+                    <span>{isEs ? "Re-numerar páginas en pie de página (Página N / M)" : "Re-number footer pages (Page N / M)"}</span>
+                  </label>
+                </div>
+
+                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
+                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">{isEs ? "METADATOS DEL PDF RECORTADO" : "CROPPED PDF METADATA"}</label>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Título:" : "Title:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Documento_Ajustado_2026" : "Ex: Cropped_Document_2026"}
+                      value={docTitle}
+                      onChange={(e) => setDocTitle(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Autor / Organización:" : "Author / Organization:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Mi Empresa S.A." : "Ex: Company Inc."}
+                      value={docAuthor}
+                      onChange={(e) => setDocAuthor(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Asunto / Descripción:" : "Subject / Description:"}</label>
+                    <input
+                      type="text"
+                      placeholder={isEs ? "Ej: Ajuste de márgenes de escaneo" : "Ex: Margin crop adjustment"}
+                      value={docSubject}
+                      onChange={(e) => setDocSubject(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
@@ -613,7 +678,7 @@ export default function PdfCropper() {
 
               <button 
                 onClick={executeCrop} 
-                disabled={isProcessing || !file} 
+                disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
                 className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
@@ -661,7 +726,6 @@ export default function PdfCropper() {
         </div>
       )}
 
-      
     </div>
   );
 }

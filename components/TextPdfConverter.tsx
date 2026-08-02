@@ -72,11 +72,60 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     };
   }, [pdfUrl]);
 
+  // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [activePage, setActivePage] = useState<number>(1);
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+
   useEffect(() => {
-    if (file && mode === 'text-to-pdf') {
-      file.text().then(txt => setManualText(txt)).catch(() => {});
+    if (!file) {
+      setPageDataUrls({});
+      setTotalPages(0);
+      return;
     }
-  }, [file, mode]);
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      cargarMiniaturasPdf(file);
+    }
+  }, [file]);
+
+  const cargarMiniaturasPdf = async (pdfFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      setTotalPages(pdfDoc.numPages);
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {}
+      }
+      setPageDataUrls(urls);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRendering(false);
+    }
+  };
 
   const handleSwitchMode = (newMode: ConversionDirection) => {
     setMode(newMode);
@@ -393,37 +442,89 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: PREVISUALIZACIÓN DE ARCHIVO O ÁREA DE TEXTO */}
-          <div className="lg:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <AlignLeft className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / PREVISUALIZACIÓN DE DOCUMENTO` : `001 / DOCUMENT PREVIEW`}</span>
+                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
-            {/* VISTA PREVIA DETALLADA O EDITOR */}
-            <div className="w-full flex-1 bg-zinc-950 rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 relative border border-white/5 font-mono min-h-[460px]">
-              {mode === 'pdf-to-text' ? (
-                pdfUrl ? (
-                  <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} className="w-full h-full border-none bg-white rounded-lg shadow-inner min-h-[440px]" title="PDF Preview" />
+            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
+              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                </span>
+                {isRendering ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    <span>...</span>
+                  </div>
+                ) : totalPages > 0 ? (
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setActivePage(pageNum)}
+                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                        {pageDataUrls[pageNum] ? (
+                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                        )}
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                          #{pageNum}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
+                )}
+              </div>
+
+              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL O EDITOR */}
+              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                {mode === 'pdf-to-text' ? (
+                  pdfUrl ? (
+                    <iframe
+                      src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                      className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                      title="Visor PDF Tamaño Normal"
+                    />
+                  ) : pageDataUrls[activePage] ? (
+                    <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
+                      <img
+                        src={pageDataUrls[activePage]}
+                        alt={`Página ${activePage}`}
+                        className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                      />
+                    </div>
+                  ) : (
+                    <textarea
+                      value={extractedText} readOnly
+                      placeholder={isEs ? 'El texto extraído aparecerá aquí...' : 'Extracted text will appear here...'}
+                      className="w-full h-full bg-zinc-950 p-4 rounded-xl border border-white/10 text-zinc-200 font-mono text-xs outline-none resize-none"
+                    />
+                  )
                 ) : (
                   <textarea
-                    value={extractedText} readOnly
-                    placeholder={isEs ? 'El texto extraído aparecerá aquí...' : 'Extracted text will appear here...'}
-                    className="w-full h-full min-h-[440px] bg-zinc-950 p-4 rounded-xl border border-white/10 text-zinc-200 font-mono text-xs outline-none resize-none"
+                    value={manualText} onChange={(e) => setManualText(e.target.value)}
+                    placeholder={isEs ? 'Escribe, pega o carga un texto plano para convertir a PDF...' : 'Write, paste, or upload plain text to convert to PDF...'}
+                    className="w-full h-full bg-zinc-950 p-4 rounded-xl border border-white/10 text-zinc-200 font-mono text-xs outline-none resize-none focus:border-white/30 transition-colors"
                   />
-                )
-              ) : (
-                <textarea
-                  value={manualText} onChange={(e) => setManualText(e.target.value)}
-                  placeholder={isEs ? 'Escribe, pega o carga un texto plano para convertir a PDF...' : 'Write, paste, or upload plain text to convert to PDF...'}
-                  className="w-full h-full min-h-[440px] bg-zinc-950 p-4 rounded-xl border border-white/10 text-zinc-200 font-mono text-xs outline-none resize-none focus:border-white/30 transition-colors"
-                />
-              )}
+                )}
+              </div>
             </div>
 
             {/* PIE DE ARCHIVO */}
@@ -438,7 +539,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">
@@ -640,113 +741,6 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
           </div>
         </motion.div>
       )}
-
-      {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
-      <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
-        {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-[#09090b] p-3 rounded-xl border border-white/10">
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Cómo funciona la extracción de texto plano?' : 'How does plain text extraction work?'}
-              </h2>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
-                {isEs ? '🔒 PROCESAMIENTO Y AGRUPAMIENTO ESPACIAL 100% LOCAL' : '🔒 100% LOCAL SPATIAL GROUPING & EXTRACTION'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                {isEs ? 'Preservación de Maquetación' : 'Layout Preservation'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Nuestra tecnología analiza la posición espacial (coordenadas X e Y) de cada carácter para mantener tablas, columnas y párrafos intactos.' 
-                  : 'Our technology analyzes the spatial position (X & Y coordinates) of every character to keep tables, columns, and paragraphs intact.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                {isEs ? 'Privacidad y Codificación' : 'Privacy & Encoding'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Tus datos nunca salen del navegador. Soporta codificación UTF-8 para tildes y caracteres especiales sin depender de un servidor.' 
-                  : 'Your data never leaves your browser. Supports UTF-8 encoding for special accents without reliance on any external server.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* BLOQUE 2: GUÍA PASO A PASO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-              <HelpCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? 'Aprende a usar la herramienta en 3 sencillos pasos' : 'Learn how to use the tool in 3 simple steps'}
-              </h2>
-              <p className="text-xs font-mono text-zinc-400">
-                {isEs ? 'GUÍA RÁPIDA DE TEXTO PLANO' : 'QUICK PLAIN TEXT GUIDE'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                1
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Cargar o Escribir Texto' : 'Upload or Type Text'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Arrastra tu PDF, carga un archivo .TXT o escribe directamente en el editor.' 
-                  : 'Drop your PDF, upload a .TXT file or type directly in the editor.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                2
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Configurar Maquetación' : 'Configure Layout'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Ajusta codificación UTF-8, alineación espacial, tipografía e interlineado.' 
-                  : 'Adjust UTF-8 encoding, spatial alignment, font family and line spacing.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                3
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Exportar y Descargar' : 'Export & Download'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Haz clic en el botón principal para compilar y descargar tu documento final.' 
-                  : 'Click the action button to compile and download your final document.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

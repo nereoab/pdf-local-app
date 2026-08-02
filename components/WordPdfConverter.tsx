@@ -48,6 +48,12 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
   const [downloadFilename, setDownloadFilename] = useState<string>('');
   const [showAdvancedSettings, setShowAdvancedSettings] = useState<boolean>(true);
 
+  // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [activePage, setActivePage] = useState<number>(1);
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+
   // AJUSTES AVANZADOS WORD -> PDF
   const [pageSize, setPageSize] = useState<PageSize>('a4');
   const [orientation, setOrientation] = useState<PageOrientation>('portrait');
@@ -101,10 +107,164 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
   };
 
   useEffect(() => {
-    if (file && (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.doc'))) {
-      parseDocxContent(file).then(lines => setExtractedParagraphs(lines));
+    if (!file) {
+      setPageDataUrls({});
+      setTotalPages(0);
+      setExtractedParagraphs([]);
+      return;
     }
-  }, [file]);
+
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.pdf')) {
+      cargarMiniaturasPdf(file);
+    } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
+      parseDocxContent(file).then(lines => setExtractedParagraphs(lines));
+      prepararPrevisualizacionWord(file);
+    }
+  }, [file, pageSize, orientation, margin, watermarkText]);
+
+  const cargarMiniaturasPdf = async (pdfFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      const count = pdfDoc.numPages;
+      setTotalPages(count);
+
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= count; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {
+          /* omit */
+        }
+      }
+      setPageDataUrls(urls);
+    } catch (err) {
+      console.error('Error miniaturas PDF:', err);
+    } finally {
+      setIsRendering(false);
+    }
+  };
+
+  const prepararPrevisualizacionWord = async (wordFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    try {
+      const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      let width = 595.28;
+      let height = 841.89;
+      if (pageSize === 'letter') {
+        width = orientation === 'landscape' ? 792 : 612;
+        height = orientation === 'landscape' ? 612 : 792;
+      } else if (pageSize === 'legal') {
+        width = orientation === 'landscape' ? 1008 : 612;
+        height = orientation === 'landscape' ? 612 : 1008;
+      } else {
+        width = orientation === 'landscape' ? 841.89 : 595.28;
+        height = orientation === 'landscape' ? 595.28 : 841.89;
+      }
+
+      const marginOffset = margin === 'narrow' ? 25 : (margin === 'none' ? 10 : 45);
+      const lines = await parseDocxContent(wordFile);
+
+      let currentPage = pdfDoc.addPage([width, height]);
+      let currentY = height - marginOffset - 20;
+
+      if (watermarkText.trim()) {
+        currentPage.drawText(watermarkText.toUpperCase(), {
+          x: width / 5, y: height / 2, size: 36, font: fontBold, color: rgb(0.85, 0.15, 0.15), opacity: 0.18,
+        });
+      }
+
+      currentPage.drawText(wordFile.name.replace(/\.[^/.]+$/, '').toUpperCase(), {
+        x: marginOffset, y: currentY, size: 14, font: fontBold, color: rgb(0.1, 0.3, 0.7),
+      });
+      currentY -= 25;
+
+      const printableWidth = width - (marginOffset * 2);
+      for (const line of lines) {
+        const words = line.split(' ');
+        let currentLine = '';
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          if (font.widthOfTextAtSize(testLine, 10) > printableWidth) {
+            if (currentY < marginOffset + 30) {
+              currentPage = pdfDoc.addPage([width, height]);
+              currentY = height - marginOffset - 20;
+            }
+            currentPage.drawText(currentLine, { x: marginOffset, y: currentY, size: 10, font, color: rgb(0.15, 0.15, 0.15) });
+            currentY -= 14;
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) {
+          if (currentY < marginOffset + 30) {
+            currentPage = pdfDoc.addPage([width, height]);
+            currentY = height - marginOffset - 20;
+          }
+          currentPage.drawText(currentLine, { x: marginOffset, y: currentY, size: 10, font, color: rgb(0.15, 0.15, 0.15) });
+          currentY -= 20;
+        }
+      }
+
+      const pdfBytes = await pdfDoc.save();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const doc = await pdfjsLib.getDocument({
+        data: pdfBytes,
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      setTotalPages(doc.numPages);
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= doc.numPages; p++) {
+        try {
+          const page = await doc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {}
+      }
+      setPageDataUrls(urls);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRendering(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -495,30 +655,82 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: PREVISUALIZACIÓN DE ARCHIVO */}
-          <div className="lg:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <FileText className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / PREVISUALIZACIÓN DE DOCUMENTO` : `001 / DOCUMENT PREVIEW`}</span>
+                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
-            {/* VISTA PREVIA DETALLADA */}
-            <div className="w-full flex-1 bg-zinc-950 rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 relative border border-white/5 font-mono min-h-[460px]">
-              {pdfUrl ? (
-                <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} className="w-full h-full border-none bg-white rounded-lg shadow-inner min-h-[440px]" title="PDF Preview" />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-6">
-                  <WordIcon className="w-24 h-24 rounded-2xl shadow-2xl" />
-                  <span className="text-xs text-blue-400 font-mono bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-500/20">
-                    ✓ {extractedParagraphs.length} {isEs ? 'párrafos de texto detectados' : 'text paragraphs detected'}
-                  </span>
-                </div>
-              )}
+            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
+              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                </span>
+                {isRendering ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    <span>...</span>
+                  </div>
+                ) : totalPages > 0 ? (
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setActivePage(pageNum)}
+                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                        {pageDataUrls[pageNum] ? (
+                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                        )}
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                          #{pageNum}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
+                )}
+              </div>
+
+              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
+              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                {pdfUrl ? (
+                  <iframe
+                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                    title="Visor PDF Tamaño Normal"
+                  />
+                ) : pageDataUrls[activePage] ? (
+                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
+                    <img
+                      src={pageDataUrls[activePage]}
+                      alt={`Página ${activePage}`}
+                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
+                    <WordIcon className="w-16 h-16 rounded-2xl shadow-2xl" />
+                    <span className="text-xs text-blue-400 font-mono bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-500/20">
+                      ✓ {extractedParagraphs.length} {isEs ? 'párrafos detectados' : 'paragraphs detected'}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* PIE DE ARCHIVO */}
@@ -531,10 +743,10 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
+              <div className="mb-4 pb-3 border-b border-white/10">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>
@@ -544,28 +756,12 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
                 </h2>
               </div>
 
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
-              <button 
-                type="button" 
-                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer mb-5 shadow-sm"
-              >
-                <div className="flex items-center gap-2 font-bold">
+              {/* SECCIÓN OPCIONES AVANZADAS (SIEMPRE VISIBLES DEPLEGADAS) */}
+              <div className="space-y-4 font-mono text-xs mb-5">
+                <div className="flex items-center gap-2 text-xs font-bold text-white border-b border-white/10 pb-2 uppercase tracking-wider">
                   <Sliders className="w-4 h-4 text-white" />
-                  <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
+                  <span>{isEs ? "OPCIONES AVANZADAS" : "ADVANCED OPTIONS"}</span>
                 </div>
-                {showAdvancedSettings ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-              </button>
-
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvancedSettings && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 font-mono text-xs mb-5 overflow-hidden"
-                  >
                     {mode === 'word-to-pdf' ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
@@ -700,9 +896,7 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
                         </div>
                       </div>
                     )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </div>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
@@ -751,174 +945,6 @@ export default function WordPdfConverter({ defaultMode = 'pdf-to-word' }: WordPd
           </div>
         </motion.div>
       )}
-
-      {/* ── GUÍA DE USO: WORD ↔ PDF ── */}
-      <div className="w-full mt-14 space-y-6 font-sans">
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Cómo convertir entre Word y PDF?' : 'How to convert between Word and PDF?'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono">
-                {isEs ? 'Guía rápida para convertir archivos .docx a PDF o extraer contenido de un PDF a Word.' : 'Quick guide to convert .docx files to PDF or extract content from a PDF to Word.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            {[
-              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "Word → PDF" para convertir tu .docx a PDF, o "PDF → Word" para extraer el contenido de un PDF a un documento editable .docx.', descEn: 'Select "Word → PDF" to convert your .docx to PDF, or "PDF → Word" to extract content from a PDF into an editable .docx document.' },
-              { step: '02', titleEs: 'Sube tu archivo', titleEn: 'Upload your file', descEs: 'Arrastra el archivo .docx o PDF a la zona de carga. El sistema detectará automáticamente el formato y configurará el modo correcto.', descEn: 'Drag your .docx or PDF file to the upload area. The system automatically detects the format and sets the correct mode.' },
-              { step: '03', titleEs: 'Configura las opciones', titleEn: 'Configure options', descEs: 'Ajusta opciones como orientación de página, tamaño de papel, márgenes, o calidad de conversión según el tipo de documento que estás procesando.', descEn: 'Adjust options such as page orientation, paper size, margins, or conversion quality based on the type of document you\'re processing.' },
-              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor procesa el archivo en tu RAM local al instante. El resultado se descarga directamente sin pasar por ningún servidor.', descEn: 'Click "Convert →". The engine processes the file in your local RAM instantly. The result downloads directly without passing through any server.' },
-            ].map((item) => (
-              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
-                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
-                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-start gap-3 mb-5">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                {isEs ? '💡 Consejos para obtener la mejor conversión Word ↔ PDF' : '💡 Tips for the best Word ↔ PDF conversion'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono mt-1">
-                {isEs ? 'Entiende las particularidades de cada dirección de conversión.' : 'Understand the particularities of each conversion direction.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
-            {[
-              { labelEs: 'Word → PDF: preserva el formato al 100%', labelEn: 'Word → PDF: preserves formatting 100%', descEs: 'Al convertir Word a PDF, el diseño, fuentes, imágenes y tablas quedan "congelados" y se verán idénticos en cualquier dispositivo. Es la forma más profesional de compartir documentos.', descEn: 'When converting Word to PDF, the layout, fonts, images and tables are "frozen" and will look identical on any device. It\'s the most professional way to share documents.' },
-              { labelEs: 'PDF → Word: funciona mejor con PDFs de texto', labelEn: 'PDF → Word: works best with text PDFs', descEs: 'La conversión PDF a Word funciona óptimamente con PDFs generados desde procesadores de texto. PDFs escaneados (imágenes) requieren OCR primero para poder extraer el texto.', descEn: 'PDF to Word conversion works best with text-generated PDFs. Scanned PDFs (images) require OCR first to extract text before converting.' },
-              { labelEs: 'Fuentes no estándar en Word', labelEn: 'Non-standard fonts in Word', descEs: 'Si tu .docx usa fuentes poco comunes no instaladas en tu sistema, el motor las sustituirá por fuentes similares al convertir a PDF. Usa fuentes estándar (Arial, Times, Calibri) para mejores resultados.', descEn: 'If your .docx uses uncommon fonts not installed on your system, the engine will substitute similar fonts when converting to PDF. Use standard fonts (Arial, Times, Calibri) for best results.' },
-              { labelEs: 'PDFs con múltiples columnas', labelEn: 'Multi-column PDFs', descEs: 'Los PDFs con diseño de múltiples columnas (como revistas o periódicos) pueden perder su estructura al convertirlos a Word, ya que .docx no maneja de forma nativa los flujos de texto multi-columna del formato PDF.', descEn: 'PDFs with multi-column layouts (like magazines or newspapers) may lose their structure when converted to Word, as .docx doesn\'t natively handle multi-column PDF text flows.' },
-            ].map((tip, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
-                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
-      <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
-        {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Qué sucede exactamente con tu archivo al convertirlo entre PDF y Word?' : 'What exactly happens to your file when converting between PDF and Word?'}
-              </h2>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
-                {isEs ? '🔒 CONVERSIÓN DE ALTA PRECISIÓN • 100% PROCESAMIENTO LOCAL' : '🔒 HIGH PRECISION CONVERSION • 100% LOCAL PROCESSING'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                {isEs ? '1. Conversión de PDF a Word (.docx)' : '1. PDF to Word (.docx) Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Extrae las coordenadas tridimensionales de texto e imágenes del PDF, reconstruyendo párrafos continuos y celdas de tablas editables en Microsoft Word o Google Docs sin distorsionar el documento original.'
-                  : 'Extracts 3D text and image coordinates from the PDF, rebuilding continuous paragraphs and editable table cells in Microsoft Word or Google Docs without distorting layout.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                {isEs ? '2. Conversión de Word (.docx) a PDF' : '2. Word (.docx) to PDF Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'El motor analiza las etiquetas OpenXML del archivo Word (párrafos, tipografías, sangrías y tablas) y las recompila en un documento PDF vectorial limpio. Todo el diseño y formato visual se fija de forma profesional garantizando que se vea idéntico en cualquier dispositivo.'
-                  : 'The engine parses OpenXML tags from the Word file (paragraphs, fonts, indents, and tables) recompiling them into a clean vector PDF. Visual layout freezes professionally to look identical across all screens.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* BLOQUE 2: GUÍA PASO A PASO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-              <HelpCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? 'Aprende a usar la herramienta en 3 sencillos pasos' : 'Learn how to use the tool in 3 simple steps'}
-              </h2>
-              <p className="text-xs font-mono text-zinc-400">
-                {isEs ? 'GUÍA RÁPIDA DE CONVERSIÓN DE DOCUMENTOS' : 'QUICK DOCUMENT CONVERSION GUIDE'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                1
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Elige el Modo o Arrastra' : 'Choose Mode or Drop File'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Selecciona el modo (PDF a Word o Word a PDF) arriba, o simplemente suelta tu archivo en la zona de carga; el sistema detectará el formato automáticamente.' 
-                  : 'Select mode above or drop your file in the box; the system auto-detects format.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                2
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Clic en Convertir' : 'Click Convert'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Haz clic en el botón principal. Nuestro motor decodificará las fuentes y maquetación en tiempo real dentro de la memoria RAM de tu navegador.' 
-                  : 'Click the action button. Our engine decodes fonts and layout in real-time inside your browser RAM.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                3
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Descarga tu Resultado' : 'Download Result'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Obtén inmediatamente tu archivo de Word editable o tu PDF convertido listo para usar de forma 100% privada.' 
-                  : 'Get your editable Word document or converted PDF immediately, 100% private and ready to use.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

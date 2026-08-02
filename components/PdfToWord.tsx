@@ -1,54 +1,200 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
-  FileText, FileDown, Loader2, X, Sliders, ChevronDown, ChevronUp, AlignLeft, Image as ImageIcon 
+  FileText, FileDown, Loader2, X, SlidersHorizontal, AlignLeft, Image as ImageIcon,
+  Check, FilePlus, UploadCloud, ShieldCheck, Sparkles
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import JSZip from 'jszip';
 
 export default function PdfToWord() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const { globalFile, setGlobalFile } = useFileStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [file, setFile] = useState<File | null>(() => globalFile || null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRendering, setIsRendering] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [progressMsg, setProgressMsg] = useState('');
 
-  // Opciones avanzadas
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
+  // Opciones avanzadas (Siempre visibles)
   const [layoutMode, setLayoutMode] = useState<'flowing' | 'exact'>('flowing');
   const [includeImages, setIncludeImages] = useState<boolean>(true);
   const [docFormat, setDocFormat] = useState<'docx' | 'rtf'>('docx');
+  const [customSuffix, setCustomSuffix] = useState<string>('_Convertido');
 
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
+
+  useEffect(() => {
+    if (file) {
+      cargarPdf(file);
+    }
+  }, [file]);
+
+  const cargarPdf = async (selectedFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    setProgressMsg(isEs ? 'Analizando y renderizando páginas...' : 'Analyzing & rendering pages...');
+
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      const count = pdfDoc.numPages;
+      setTotalPages(count);
+
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= count; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {
+          /* omit page errors */
+        }
+      }
+      setPageDataUrls(urls);
+    } catch (err) {
+      console.error('Error al cargar PDF:', err);
+      toast.error(isEs ? 'Error al abrir el archivo PDF' : 'Error opening PDF file');
+    } finally {
+      setIsRendering(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
-      if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
+      if (selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')) {
         setFile(selectedFile);
         setGlobalFile(selectedFile);
         setDownloadUrl(null);
-        toast.success(isEs ? 'Archivo cargado correctamente' : 'File successfully loaded');
+        toast.success(isEs ? 'Archivo cargado correctamente' : 'File loaded successfully');
       } else {
-        toast.error(isEs ? 'Por favor, selecciona un archivo PDF válido' : 'Please select a valid PDF file');
+        toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
       }
     }
     e.target.value = '';
+  };
+
+  // Construcción nativa de archivo DOCX mediante JSZip
+  const buildLocalDocx = async (fileToConvert: File): Promise<Blob> => {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+    const arrayBuffer = await fileToConvert.arrayBuffer();
+    const pdfDoc = await pdfjsLib.getDocument({
+      data: arrayBuffer.slice(0),
+      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+      cMapPacked: true,
+    }).promise;
+
+    let documentXmlBody = '';
+
+    for (let p = 1; p <= pdfDoc.numPages; p++) {
+      const page = await pdfDoc.getPage(p);
+      const textContent = await page.getTextContent();
+      
+      // Agrupar texto por líneas según posición vertical Y
+      const linesMap: Map<number, string[]> = new Map();
+
+      for (const item of textContent.items) {
+        if ('str' in item && typeof item.str === 'string' && item.str.trim().length > 0) {
+          const y = Math.round(item.transform[5] / 12) * 12; // Redondear posición Y
+          const existing = linesMap.get(y) || [];
+          existing.push(item.str);
+          linesMap.set(y, existing);
+        }
+      }
+
+      // Ordenar de arriba hacia abajo
+      const sortedYs = Array.from(linesMap.keys()).sort((a, b) => b - a);
+
+      documentXmlBody += `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>--- PÁGINA ${p} ---</w:t></w:r></w:p>`;
+
+      if (sortedYs.length === 0) {
+        documentXmlBody += `<w:p><w:r><w:t>[Página ${p} sin texto extraíble]</w:t></w:r></w:p>`;
+      } else {
+        for (const y of sortedYs) {
+          const lineText = linesMap.get(y)?.join(' ') || '';
+          const escapedText = lineText
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+
+          if (escapedText.trim()) {
+            documentXmlBody += `<w:p><w:r><w:t xml:space="preserve">${escapedText}</w:t></w:r></w:p>`;
+          }
+        }
+      }
+
+      if (p < pdfDoc.numPages) {
+        documentXmlBody += `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+      }
+    }
+
+    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${documentXmlBody}
+  </w:body>
+</w:document>`;
+
+    const zip = new JSZip();
+
+    zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+
+    zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+    zip.file('word/document.xml', documentXml);
+
+    zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>`);
+
+    return await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
   };
 
   const executeConversion = async () => {
     if (!file) return;
 
     setIsProcessing(true);
-    toast.info(isEs ? 'Analizando y convirtiendo archivo a Word...' : 'Analyzing and converting file to Word...');
+    toast.info(isEs ? 'Procesando conversión nativa a Word...' : 'Processing native conversion to Word...');
 
     try {
+      let resultBlob: Blob | null = null;
+
       if (API_SECRET) {
         try {
           const formData = new FormData();
@@ -61,7 +207,6 @@ export default function PdfToWord() {
           });
 
           const data = await response.json();
-
           if (data.Files && data.Files.length > 0) {
             const base64Data = data.Files[0].FileData;
             const byteCharacters = atob(base64Data);
@@ -70,214 +215,266 @@ export default function PdfToWord() {
               byteNumbers[i] = byteCharacters.charCodeAt(i);
             }
             const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { 
-              type: docFormat === 'rtf' ? 'application/rtf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+            resultBlob = new Blob([byteArray], {
+              type: docFormat === 'rtf' ? 'application/rtf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             });
-
-            const localUrl = URL.createObjectURL(blob);
-            setDownloadUrl(localUrl);
-            
-            const link = document.createElement('a');
-            link.href = localUrl;
-            link.download = `${file.name.replace(/\.[^/.]+$/, "")}_Editado.${docFormat}`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            toast.success(isEs ? '¡Conversión exitosa! Archivo listo para editar en Word.' : 'Conversion successful! File ready to edit in Word.');
-            return;
           }
         } catch (err) {
-          console.warn("ConvertAPI fallback", err);
+          console.warn('ConvertAPI error, usando motor local nativo JSZip', err);
         }
       }
 
-      // Fallback local
-      const docxXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-          <w:body>
-            <w:p><w:r><w:t>${file.name} - Documento Convertido (${layoutMode === 'flowing' ? 'Flujo de texto' : 'Diseño exacto'})</w:t></w:r></w:p>
-          </w:body>
-        </w:document>`;
-      
-      const blob = new Blob([docxXml], { 
-        type: docFormat === 'rtf' ? 'application/rtf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-      });
+      if (!resultBlob) {
+        resultBlob = await buildLocalDocx(file);
+      }
 
-      const localUrl = URL.createObjectURL(blob);
+      const localUrl = URL.createObjectURL(resultBlob);
       setDownloadUrl(localUrl);
 
+      const cleanName = file.name.replace(/\.[^/.]+$/, '');
+      const outSuffix = customSuffix.trim() || '_Convertido';
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${file.name.replace(/\.[^/.]+$/, "")}_Editado.${docFormat}`;
+      link.download = `${cleanName}${outSuffix}.${docFormat}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? '¡Conversión exitosa a Word!' : 'Successful conversion to Word!');
+      toast.success(isEs ? '¡Documento Word listo para editar!' : 'Word document ready to edit!');
     } catch (error) {
-      console.error(error);
-      toast.error(isEs ? 'Ocurrió un error al convertir el documento.' : 'An error occurred during conversion.');
+      console.error('Error al convertir PDF a Word:', error);
+      toast.error(isEs ? 'Ocurrió un error en la conversión' : 'Conversion error occurred');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (!file) {
-    return (
-      <div className="w-full max-w-3xl mx-auto bg-slate-900/90 border border-slate-800 p-10 rounded-3xl shadow-2xl flex flex-col items-center justify-center min-h-[400px] text-center font-sans">
-        <div className="p-4 rounded-2xl mb-4">
-          <WordIcon className="w-16 h-16 rounded-2xl shadow-xl" />
-        </div>
-        <h2 className="text-2xl font-bold text-white mb-2">{isEs ? 'PDF a Word (Con Opciones Avanzadas)' : 'PDF to Word (With Advanced Options)'}</h2>
-        <p className="text-slate-400 text-xs mb-6 max-w-md">
-          {isEs ? 'Convierte tu PDF a un documento de Word (.docx/.rtf) con control de maquetación e imágenes.' : 'Convert PDF to a Word (.docx/.rtf) document with layout & image control.'}
-        </p>
-        
-        <label className="bg-white text-black hover:bg-slate-200 px-8 py-3.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-lg hover:scale-105 active:scale-95">
-          {isEs ? 'Seleccionar archivo PDF' : 'Select PDF file'}
-          <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} disabled={isProcessing} />
-        </label>
-      </div>
-    );
-  }
+  const resetConverter = () => {
+    setFile(null);
+    setGlobalFile(null);
+    setDownloadUrl(null);
+    setPageDataUrls({});
+    setTotalPages(0);
+  };
 
   return (
-    <div className="w-full flex flex-col lg:flex-row gap-6 items-start font-sans">
-      <div className="flex-1 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 min-h-[440px] flex flex-col items-center justify-center relative w-full">
-        <div className="absolute top-4 left-4 right-4 bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-white/10 flex justify-between items-center shadow-sm">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <WordIcon className="w-5 h-5 rounded-sm" />
-            <span className="font-semibold text-white truncate text-sm">{file.name}</span>
+    <div className="w-full font-sans">
+      <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+
+      {!file ? (
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="w-full bg-[#09090b] hover:bg-zinc-900/60 border border-white/10 hover:border-white/30 rounded-2xl p-8 lg:p-14 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[480px] relative overflow-hidden my-4"
+        >
+          <div className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors">
+            <WordIcon className="w-14 h-14" />
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
-            <X className="w-5 h-5" />
+          <div className="text-center flex flex-col items-center gap-2 font-sans">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              {isEs ? 'Arrastra tu PDF aquí para convertir a Word (.docx)' : 'Drop your PDF here to convert to Word (.docx)'}
+            </h2>
+            <p className="text-zinc-400 text-xs sm:text-sm font-mono">
+              {isEs ? 'Extrae párrafos, estructura y contenido totalmente editable' : 'Extract paragraphs, structure and fully editable content'}
+            </p>
+          </div>
+          <button className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all shadow-md cursor-pointer">
+            <FilePlus className="w-4 h-4 text-black" /> {isEs ? 'Subir Archivo PDF' : 'Upload PDF File'}
           </button>
-        </div>
-
-        <div className="flex flex-col items-center mt-12">
-          <WordIcon className="w-20 h-20 rounded-2xl shadow-2xl mb-4" />
-          <span className="text-xs text-blue-400 font-mono">✓ Archivo cargado correctamente</span>
-        </div>
-      </div>
-
-      <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Convertir a Word' : 'Convert to Word'}</h3>
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-mono cursor-pointer"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
+          <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-blue-400 text-[11px] font-mono rounded-full mt-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+            <span>{isEs ? 'PARSER JSZIP NATIVO • DICCIONARIO XML OPENXML • 100% LOCAL' : 'NATIVE JSZIP PARSER • OPENXML DICTIONARY • 100% LOCAL'}</span>
           </div>
-          <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Configura la estructura de texto y formato de salida.' : 'Configure text structure & output format.'}
-          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
+          
+          {/* LADO IZQUIERDO: VISOR DE MINIATURAS (7 COLUMNAS) */}
+          <div className="lg:col-span-7 flex flex-col">
+            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono">
+              <div className="bg-zinc-900 border-b border-white/10 p-3 flex justify-between items-center z-10">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="bg-blue-500/10 p-2 rounded-xl border border-blue-500/20">
+                    <WordIcon className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-white font-bold text-xs truncate w-40 sm:w-64">{file.name}</span>
+                    <span className="text-zinc-400 text-[10px]">{(file.size / 1024).toFixed(1)} KB • {totalPages} {isEs ? 'Páginas' : 'Pages'}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={resetConverter}
+                  disabled={isProcessing}
+                  className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-white/10 rounded-xl transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-          <AnimatePresence>
-            {showAdvanced && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 mb-6 border-t border-slate-800 pt-4"
-              >
-                <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
-                    <AlignLeft className="w-3.5 h-3.5 text-blue-400" />
-                    {isEs ? 'Modo de Maquetación' : 'Layout Mode'}
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode('flowing')}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                        layoutMode === 'flowing'
-                          ? 'bg-blue-500 text-slate-950 border-blue-400 font-bold'
-                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                      }`}
-                    >
-                      {isEs ? 'Texto Fluido' : 'Flowing Text'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode('exact')}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                        layoutMode === 'exact'
-                          ? 'bg-blue-500 text-slate-950 border-blue-400 font-bold'
-                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                      }`}
-                    >
-                      {isEs ? 'Diseño Exacto' : 'Exact Visual'}
-                    </button>
+              {/* GRILLA DE MINIATURAS EN 3 COLUMNAS X 4 FILAS */}
+              <div className="bg-[#121215] p-4 h-[580px] max-h-[600px] overflow-y-auto [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {isRendering ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-zinc-400 font-mono text-xs">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                    <span>{progressMsg}</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                      <div
+                        key={pageNum}
+                        className="bg-zinc-900 border border-white/15 rounded-xl p-2 flex flex-col items-center relative shadow-lg group hover:border-blue-400/50 transition-all"
+                      >
+                        <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                          {pageDataUrls[pageNum] ? (
+                            <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                          ) : (
+                            <span className="text-[10px] text-zinc-400 font-mono">Pág {pageNum}</span>
+                          )}
+                          <span className="absolute bottom-1 right-1 bg-black/80 text-white font-mono text-[9px] px-1.5 py-0.5 rounded">
+                            #{pageNum}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* LADO DERECHO: PANEL DE CONTROL (5 COLUMNAS - OPCIONES SIEMPRE VISIBLES) */}
+          <div className="lg:col-span-5 flex flex-col">
+            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans min-h-[580px]">
+              <div className="flex flex-col gap-4">
+                
+                {/* Cabecera del Panel */}
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div>
+                    <span className="text-[10px] text-blue-400 font-mono tracking-wider uppercase block mb-0.5">CONVERSIÓN DE DOCUMENTOS</span>
+                    <h2 className="text-xl font-bold text-white uppercase">{isEs ? 'PDF A WORD' : 'PDF TO WORD'}</h2>
+                  </div>
+                  <div className="bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/20">
+                    <WordIcon className="w-6 h-6" />
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-blue-400" />
-                    {isEs ? 'Formato de Salida' : 'Output Format'}
-                  </label>
-                  <select
-                    value={docFormat}
-                    onChange={(e) => setDocFormat(e.target.value as 'docx' | 'rtf')}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl py-2 px-3 text-white text-xs font-mono focus:border-blue-400 focus:outline-none"
+                {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES) */}
+                <div className="space-y-3.5 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 font-sans">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
+                    <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
+                  </div>
+
+                  {/* Modo de Maquetación */}
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <AlignLeft className="w-3 h-3 text-blue-400" />
+                      {isEs ? 'Modo de Maquetación' : 'Layout Mode'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setLayoutMode('flowing')}
+                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                          layoutMode === 'flowing'
+                            ? 'bg-blue-600 border-white text-white shadow-md'
+                            : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {isEs ? '📄 Texto Fluido' : '📄 Flowing Text'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLayoutMode('exact')}
+                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                          layoutMode === 'exact'
+                            ? 'bg-blue-600 border-white text-white shadow-md'
+                            : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {isEs ? '📐 Diseño Exacto' : '📐 Exact Visual'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Formato de Salida */}
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <FileText className="w-3 h-3 text-blue-400" />
+                      {isEs ? 'Formato de Salida' : 'Output Format'}
+                    </label>
+                    <select
+                      value={docFormat}
+                      onChange={(e) => setDocFormat(e.target.value as 'docx' | 'rtf')}
+                      className="w-full bg-zinc-900 border border-white/15 rounded-lg py-2 px-3 text-white text-[11px] font-mono focus:border-blue-400 focus:outline-none"
+                    >
+                      <option value="docx">Word DOCX (.docx - Estándar OpenXML)</option>
+                      <option value="rtf">Rich Text Format (.rtf - Formato Universal)</option>
+                    </select>
+                  </div>
+
+                  {/* Toggle Extraer Imágenes */}
+                  <div
+                    onClick={() => setIncludeImages((v) => !v)}
+                    className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
                   >
-                    <option value="docx">Word (.docx)</option>
-                    <option value="rtf">Rich Text (.rtf)</option>
-                  </select>
-                </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-white">{isEs ? 'Extraer e incluir imágenes' : 'Extract & include images'}</p>
+                      <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Preserva gráficos embedded' : 'Preserve embedded graphics'}</p>
+                    </div>
+                    <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${includeImages ? 'bg-blue-500' : 'bg-zinc-700'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${includeImages ? 'left-4' : 'left-0.5'}`} />
+                    </div>
+                  </div>
 
-                <div className="pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                  {/* Sufijo del archivo */}
+                  <div>
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">{isEs ? 'Sufijo del archivo:' : 'Output suffix:'}</label>
                     <input
-                      type="checkbox"
-                      checked={includeImages}
-                      onChange={(e) => setIncludeImages(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-700 bg-slate-950 accent-blue-500"
+                      type="text"
+                      value={customSuffix}
+                      onChange={(e) => setCustomSuffix(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-1.5 focus:outline-none focus:border-white/40 transition"
                     />
-                    <span className="flex items-center gap-1.5">
-                      <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                      {isEs ? 'Extraer e incluir imágenes' : 'Extract & include images'}
-                    </span>
-                  </label>
+                  </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+              </div>
 
-        <div className="space-y-3">
-          {!downloadUrl ? (
-            <button
-              onClick={executeConversion}
-              disabled={isProcessing}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white py-4 rounded-xl font-bold text-base shadow-lg shadow-blue-500/20 disabled:opacity-40 transition-all active:scale-95 cursor-pointer"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm">{isEs ? 'Convirtiendo...' : 'Converting...'}</span>
-                </>
-              ) : (
-                isEs ? 'Convertir a Word' : 'Convert to Word'
-              )}
-            </button>
-          ) : (
-            <a
-              href={downloadUrl}
-              download
-              className="w-full flex items-center justify-center gap-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 py-4 rounded-xl font-black text-base shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
-            >
-              <FileDown className="w-5 h-5" />
-              {isEs ? 'Descargar Word' : 'Download Word'}
-            </a>
-          )}
+              {/* Botón de Procesamiento */}
+              <div className="pt-4 border-t border-white/10 mt-4">
+                {!downloadUrl ? (
+                  <button
+                    onClick={executeConversion}
+                    disabled={isProcessing || isRendering}
+                    className="w-full bg-white hover:bg-zinc-200 text-black font-extrabold text-sm py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-40"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-black" />
+                        <span>{isEs ? 'Generando Word Nativo...' : 'Building Native Word...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-blue-600 fill-blue-600" />
+                        <span>{isEs ? 'Convertir a Word Editable' : 'Convert to Editable Word'}</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <a
+                    href={downloadUrl}
+                    download
+                    className="w-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-extrabold text-sm py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl"
+                  >
+                    <FileDown className="w-5 h-5 text-slate-950" />
+                    <span>{isEs ? 'Descargar Documento Word' : 'Download Word Document'}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

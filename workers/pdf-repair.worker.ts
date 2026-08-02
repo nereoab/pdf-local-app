@@ -394,10 +394,26 @@ async function attemptSmartRepair(
       type: 'progress',
       phase: 'smart-repair',
       percent: 25,
-      message: 'Cargando PDF con motor de reconstruccion estructural (pdf-lib)...',
+      message: 'Analizando y purgando cabecera binaria del PDF...',
     });
 
-    const pdfDoc = await PDFDocument.load(uint8.buffer as ArrayBuffer, {
+    let targetBytes = uint8;
+    let headerOffset = -1;
+    for (let i = 0; i < Math.min(uint8.length - 5, 8192); i++) {
+      if (
+        uint8[i] === 0x25 && uint8[i + 1] === 0x50 &&
+        uint8[i + 2] === 0x44 && uint8[i + 3] === 0x46 && uint8[i + 4] === 0x2d
+      ) {
+        headerOffset = i;
+        break;
+      }
+    }
+    if (headerOffset > 0) {
+      targetBytes = uint8.slice(headerOffset);
+      issuesFixed.push(`Purga binaria: ${headerOffset} bytes de basura eliminados antes de la cabecera %PDF-`);
+    }
+
+    const pdfDoc = await PDFDocument.load(targetBytes.buffer as ArrayBuffer, {
       ignoreEncryption: true,
       updateMetadata: false,
     });

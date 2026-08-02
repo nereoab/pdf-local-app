@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Loader2, ShieldCheck, Cpu, Crop, CheckCircle2, Lock, Sparkles, Layers, Move } from 'lucide-react';
+import { Loader2, ShieldCheck, Crop, AlertTriangle, ChevronDown, HelpCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 const PdfCropper = dynamic(() => import('@/components/PdfCropper'), {
@@ -11,7 +11,7 @@ const PdfCropper = dynamic(() => import('@/components/PdfCropper'), {
       <Loader2 className="w-10 h-10 animate-spin text-white" />
       <p className="text-zinc-400 font-mono text-xs">Cargando herramienta para recortar páginas PDF...</p>
     </div>
-  ),
+  )
 });
 
 export default function RecortarPdfPage() {
@@ -23,173 +23,189 @@ export default function RecortarPdfPage() {
       <div className="w-full max-w-7xl">
         <PdfCropper />
 
-        {/* SECCIÓN INFORMATIVA DETALLADA */}
-        <div className="space-y-12 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12">
-
-          {/* BLOQUE 1: PRIVACIDAD */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <ShieldCheck className="w-6 h-6 text-emerald-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¿Qué sucede con tu PDF al recortar márgenes de sus páginas?' : 'What happens to your PDF when cropping its page margins?'}
-                </h2>
-                <span className="text-xs font-mono text-emerald-400 font-semibold">
-                  {isEs ? '🔒 PRIVACIDAD ABSOLUTA • RECORTE VÍA MEDIABOX • 100% LOCAL' : '🔒 ABSOLUTE PRIVACY • MEDIABOX CROP • 100% LOCAL'}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-emerald-400" />
-                  {isEs ? 'Tu documento nunca sale de tu dispositivo' : 'Your document never leaves your device'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'El recorte de páginas se ejecuta completamente en la memoria RAM de tu navegador mediante pdf-lib. Tus documentos confidenciales — contratos, planos técnicos, presentaciones — se procesan localmente sin ser transmitidos a ningún servidor externo. Privacidad y seguridad absolutas.'
-                    : 'Page cropping runs entirely in your browser RAM using pdf-lib. Your confidential documents — contracts, technical blueprints, presentations — are processed locally without being transmitted to any external server. Absolute privacy and security.'}
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
-                  {isEs ? 'Recorte no destructivo mediante modificación del CropBox/MediaBox' : 'Non-destructive crop via CropBox/MediaBox modification'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'El recorte PDF nativo funciona modificando el campo `CropBox` (o `MediaBox`) de cada página en el diccionario de la página — un rectángulo que define el área visible al renderizar. El contenido fuera del área recortada sigue existiendo en el stream de la página pero queda oculto. La operación es reversible y no degrada calidad.'
-                    : 'Native PDF cropping works by modifying the `CropBox` (or `MediaBox`) field of each page in the page dictionary — a rectangle defining the visible area when rendering. Content outside the cropped area still exists in the page stream but is hidden. The operation is reversible and does not degrade quality.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOQUE 2: PROCEDIMIENTO TÉCNICO */}
+        {/* ESTRUCTURA INFORMATIVA EN 4 PUNTOS CON ESTILO PDFBLACK */}
+        <div className="space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-10 mt-10">
+          
+          {/* SECCIÓN 1: CÓMO USAR LA HERRAMIENTA */}
           <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <Cpu className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                <Crop className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'El procedimiento técnico de recorte de páginas PDF paso a paso' : 'Step-by-step technical PDF page cropping procedure'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Cómo el motor ajusta las cajas de visualización de cada página del documento' : 'How the engine adjusts the view boxes of each document page'}
-                </p>
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '1. Cómo recortar márgenes de un PDF' : '1. How to crop PDF margins'}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { step: '01 / ANÁLISIS', title: isEs ? '1. Lectura del MediaBox' : '1. MediaBox Reading', desc: isEs ? 'pdf-lib deserializa la página y lee el `MediaBox` — el rectángulo base que define las dimensiones físicas totales de la página en puntos PDF (1 punto = 1/72 pulgada). Este es el límite máximo de recorte disponible.' : 'pdf-lib deserializes the page and reads the `MediaBox` — the base rectangle defining total physical page dimensions in PDF points (1 point = 1/72 inch). This is the maximum available crop boundary.' },
-                { step: '02 / SELECCIÓN', title: isEs ? '2. Definición del Área' : '2. Area Definition', desc: isEs ? 'El usuario define el área a conservar mediante el visor interactivo — arrastrando el recuadro de recorte o introduciendo valores exactos de margen (superior, inferior, izquierdo, derecho) en milímetros o puntos PDF.' : 'The user defines the area to keep via the interactive viewer — dragging the crop box or entering exact margin values (top, bottom, left, right) in millimeters or PDF points.' },
-                { step: '03 / MODIFICACIÓN', title: isEs ? '3. Escritura del CropBox' : '3. CropBox Writing', desc: isEs ? 'pdf-lib escribe el nuevo `CropBox` en el diccionario de cada página seleccionada con las coordenadas calculadas. El visor PDF usará este rectángulo para determinar el área visible — ocultando el contenido fuera de él.' : 'pdf-lib writes the new `CropBox` in each selected page dictionary with the calculated coordinates. The PDF viewer uses this rectangle to determine the visible area — hiding content outside it.' },
-                { step: '04 / EXPORTACIÓN', title: isEs ? '4. PDF Recortado Listo' : '4. Cropped PDF Ready', desc: isEs ? 'Se serializa un nuevo PDF 1.7 estándar con el `CropBox` ajustado en cada página. El documento resultante muestra solo el área definida en cualquier visor, con calidad de contenido intacta.' : 'A new standard PDF 1.7 is serialized with the adjusted `CropBox` on each page. The resulting document shows only the defined area in any viewer, with content quality intact.' },
+                {
+                  step: '01',
+                  es: 'Sube tu documento PDF. La vista previa se cargará con el recuadro interactivo CropBox.',
+                  en: 'Upload your PDF document. The preview will load with the interactive CropBox overlay.'
+                },
+                {
+                  step: '02',
+                  es: 'Ingresa los márgenes en milímetros (mm) para los bordes superior, inferior y laterales.',
+                  en: 'Enter margin values in millimeters (mm) for top, bottom, and side borders.'
+                },
+                {
+                  step: '03',
+                  es: 'Selecciona el alcance del recorte: "Todas", "Pares", "Impares" o solo la "Página Actual".',
+                  en: 'Select crop scope: "All", "Evens", "Odds", or "Current Page" only.'
+                },
+                {
+                  step: '04',
+                  es: 'Haz clic en "Recortar Márgenes del PDF →" para procesar y descargar tu documento depurado.',
+                  en: 'Click "Crop PDF Margins →" to process and download your trimmed document.'
+                }
               ].map((item, i) => (
-                <div key={i} className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">{item.step}</span>
-                    <h3 className="font-bold text-white text-sm mb-2 font-sans">{item.title}</h3>
-                    <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">{item.desc}</p>
-                  </div>
+                <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+                  <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">
+                    Paso {item.step}
+                  </span>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    {isEs ? item.es : item.en}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* BLOQUE 3: OPCIONES DE RECORTE */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <Crop className="w-6 h-6 text-white" />
+          {/* SECCIÓN 2: LIMITACIONES Y CONSEJOS ÚTILES */}
+          <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-amber-500/20 pb-4">
+              <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'Opciones de recorte y formatos de página soportados' : 'Crop options and supported page formats'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Flexibilidad de recorte para documentos de cualquier formato y tamaño' : 'Crop flexibility for documents of any format and size'}
-                </p>
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '2. Limitaciones y consejos útiles' : '2. Limitations & useful tips'}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-white" />
-                  {isEs ? 'Recorte por Márgenes Uniformes' : 'Uniform Margin Crop'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Define márgenes iguales en todos los lados (superior, inferior, izquierdo, derecho) en milímetros para eliminar espacios en blanco excesivos de documentos escaneados. Ideal para reducir márgenes de PDFs generados desde Word o LibreOffice con bordes demasiado amplios.'
-                    : 'Define equal margins on all sides (top, bottom, left, right) in millimeters to remove excessive white space from scanned documents. Ideal for reducing margins of PDFs generated from Word or LibreOffice with overly wide borders.'}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <h4 className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                  ✓ {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
+                </h4>
+                {[
+                  isEs ? 'Ajustar márgenes en milímetros con precisión sub-punto PDF.' : 'Adjust margins in millimeters with sub-point PDF precision.',
+                  isEs ? 'Usar preajustes rápidos de 0 mm, 10 mm y 20 mm en 1-clic.' : 'Use quick presets of 0 mm, 10 mm, and 20 mm in 1-click.',
+                  isEs ? 'Recortar solo páginas pares e impares con márgenes asimétricos.' : 'Crop only even and odd pages with asymmetrical margins.',
+                  isEs ? 'Visualizar la caja CropBox en tiempo real sobre la vista previa.' : 'Visualize the CropBox rectangle in real time over the preview.',
+                  isEs ? 'Desbloquear PDFs protegidos con contraseña antes de recortar.' : 'Unlock password-protected PDFs before cropping.'
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                    <span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                  💡 {isEs ? 'CONSEJOS' : 'TIPS'}
+                </h4>
+                {[
+                  isEs ? 'Ideal para eliminar los bordes negros o blancos en escaneos.' : 'Ideal for removing black or white borders from scanned docs.',
+                  isEs ? 'El recorte modifica el parámetro CropBox (100% sin pérdida).' : 'Cropping modifies the CropBox parameter (100% lossless).',
+                  isEs ? 'El archivo original se mantiene seguro e intacto en tu dispositivo.' : 'The original file remains safe and untouched on your device.',
+                  isEs ? 'Estampa metadatos de Título y Autor en las Opciones Avanzadas.' : 'Stamp Title and Author metadata in Advanced Options.'
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                    <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 3: ¿QUÉ SUCEDE CON TU DOCUMENTO? */}
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-emerald-500/20 pb-4">
+              <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '3. ¿Qué sucede con tu documento al recortarlo?' : '3. What happens to your document when cropping?'}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400 leading-relaxed">
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">🖥️ {isEs ? 'Procesamiento 100% Local en Web Worker' : '100% Local Web Worker Processing'}</strong>
+                <p className="text-[11px]">
+                  {isEs ? 'El ajuste de la caja CropBox del PDF se ejecuta en la RAM de tu navegador sin subirse a ningún servidor.' : 'PDF CropBox rectangle adjustment runs in browser RAM without uploading to servers.'}
                 </p>
               </div>
 
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Move className="w-4 h-4 text-white" />
-                  {isEs ? 'Recorte con Visor Interactivo' : 'Interactive Viewer Crop'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Usa el visor interactivo para arrastrar el recuadro de recorte directamente sobre la página. El motor calcula automáticamente las coordenadas del `CropBox` en puntos PDF con precisión sub-punto. La vista previa en tiempo real muestra el resultado final antes de procesar.'
-                    : 'Use the interactive viewer to drag the crop box directly over the page. The engine automatically calculates `CropBox` coordinates in PDF points with sub-point precision. Real-time preview shows the final result before processing.'}
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">📐 {isEs ? 'Recorte Vectorial No Destructivo' : 'Non-Destructive Vector Crop'}</strong>
+                <p className="text-[11px]">
+                  {isEs ? 'No se recodifican imágenes ni texto; se actualiza el límite visible de impresión sin alterar el contenido original.' : 'Images and text are not re-encoded; visible print boundary is updated without altering content.'}
                 </p>
               </div>
 
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-white" />
-                  {isEs ? 'Aplicar a Todas o Páginas Específicas' : 'Apply to All or Specific Pages'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Aplica el mismo recorte a todas las páginas del documento a la vez, o define áreas de recorte diferentes para páginas pares e impares — útil para documentos a doble cara donde los márgenes de encuadernación varían entre páginas izquierda y derecha.'
-                    : 'Apply the same crop to all document pages at once, or define different crop areas for even and odd pages — useful for double-sided documents where binding margins vary between left and right pages.'}
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">🔒 {isEs ? 'Privacidad e Integridad Garantizada' : 'Privacy & Integrity Guaranteed'}</strong>
+                <p className="text-[11px]">
+                  {isEs ? 'Tu archivo original nunca es modificado ni sobrescrito. La descarga genera un nuevo PDF limpio al instante.' : 'Your original file is never modified or overwritten. Download generates a clean new PDF.'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* BLOQUE 4: BENEFICIOS */}
+          {/* SECCIÓN 4: PREGUNTAS FRECUENTES (FAQ) - ACORDEÓN INTERACTIVO */}
           <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <CheckCircle2 className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                <HelpCircle className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'Beneficios del PDF recortado resultante' : 'Benefits of the resulting cropped PDF'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Calidad, compatibilidad y eficiencia en el documento con márgenes ajustados' : 'Quality, compatibility, and efficiency in the margin-adjusted document'}
-                </p>
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '4. Preguntas frecuentes (FAQ)' : '4. Frequently Asked Questions (FAQ)'}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 font-mono text-xs">
+            <div className="space-y-3 font-sans">
               {[
-                { title: isEs ? 'Recorte No Destructivo' : 'Non-Destructive Crop', desc: isEs ? 'El contenido original del stream de página permanece intacto. Solo el CropBox visible se modifica.' : 'Original page stream content remains intact. Only the visible CropBox is modified.' },
-                { title: isEs ? 'Calidad Lossless' : 'Lossless Quality', desc: isEs ? 'Ninguna imagen, fuente o vector se recodifica durante el proceso de recorte.' : 'No image, font, or vector is re-encoded during the cropping process.' },
-                { title: isEs ? 'Menor Área de Impresión' : 'Smaller Print Area', desc: isEs ? 'El recorte reduce el área visible de la página — ideal para ajustar documentos a formatos de impresión estándar sin márgenes excesivos.' : 'Crop reduces the visible page area — ideal for fitting documents to standard print formats without excessive margins.' },
-                { title: isEs ? 'Compatible con Todos los Visores' : 'All Viewers Compatible', desc: isEs ? 'El PDF recortado abre correctamente en Adobe, Chrome, Edge, Foxit, iOS y Android.' : 'Cropped PDF opens correctly in Adobe, Chrome, Edge, Foxit, iOS, and Android.' },
-                { title: isEs ? 'Documentos Escaneados' : 'Scanned Documents', desc: isEs ? 'Ideal para eliminar el exceso de fondo blanco en PDFs escaneados con cama plana.' : 'Ideal for removing excess white background in flatbed-scanned PDF documents.' },
-                { title: isEs ? 'Privacidad Total' : 'Total Privacy', desc: isEs ? 'Cero bytes enviados a servidores. El recorte ocurre completamente en tu RAM local.' : 'Zero bytes sent to servers. Cropping happens completely in your local RAM.' },
-              ].map((item, i) => (
-                <div key={i} className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="text-white font-bold text-xs block mb-1 font-sans">{item.title}</strong>
-                    <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{item.desc}</span>
+                {
+                  q: isEs ? '¿Recortar márgenes reduce el tamaño en MB del archivo PDF?' : 'Does cropping margins reduce the file size in MB?',
+                  a: isEs 
+                    ? 'No significativamente. El recorte en PDF funciona ajustando el área visible (CropBox). Dado que no elimina permanentemente imágenes ni vectores, la calidad se mantiene intacta pero el tamaño en MB es muy similar.'
+                    : 'Not significantly. PDF cropping works by adjusting visible area (CropBox). Since images or vectors are not permanently stripped, quality stays intact and MB size is similar.'
+                },
+                {
+                  q: isEs ? '¿Puedo aplicar recortes diferentes a páginas pares e impares?' : 'Can I apply different crops to even and odd pages?',
+                  a: isEs
+                    ? 'Sí. Puedes seleccionar el alcance "Pares" para ajustar márgenes derechos en páginas pares, y luego "Impares" para ajustar márgenes izquierdos, ideal para encuadernación de libros.'
+                    : 'Yes. You can select "Evens" scope for right margins on even pages, and "Odds" for left margins, ideal for bookbinding.'
+                },
+                {
+                  q: isEs ? '¿Mis documentos o datos se envían a algún servidor?' : 'Are my documents or data sent to any server?',
+                  a: isEs
+                    ? 'No. Todo el procesamiento se realiza 100% en tu navegador usando Web Workers. Ningún byte sale de tu equipo.'
+                    : 'No. All processing happens 100% inside your browser using Web Workers. No bytes leave your machine.'
+                },
+                {
+                  q: isEs ? '¿Puedo recortar un PDF protegido con contraseña?' : 'Can I crop a password-protected PDF?',
+                  a: isEs
+                    ? 'Sí. Al cargar un PDF encriptado, aparecerá un widget inline de clave. Ingresa la contraseña de apertura una vez para desbloquear el visor y proceder.'
+                    : 'Yes. Upon loading an encrypted PDF, an inline key widget will appear. Enter the open password once to unlock the viewer and proceed.'
+                }
+              ].map((faq, idx) => (
+                <details 
+                  key={idx} 
+                  className="group bg-zinc-900/60 border border-white/5 rounded-xl transition-all duration-200 overflow-hidden"
+                >
+                  <summary className="flex items-center justify-between p-4 cursor-pointer font-semibold text-xs sm:text-sm text-white select-none group-hover:text-zinc-200">
+                    <span>{faq.q}</span>
+                    <ChevronDown className="w-4 h-4 text-zinc-400 group-open:rotate-180 transition-transform duration-300 flex-shrink-0 ml-2" />
+                  </summary>
+                  <div className="px-4 pb-4 text-xs text-zinc-400 leading-relaxed border-t border-white/5 pt-3 font-sans">
+                    {faq.a}
                   </div>
-                </div>
+                </details>
               ))}
             </div>
           </div>

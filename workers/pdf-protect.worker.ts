@@ -1,17 +1,26 @@
 /**
- * Web Worker para cifrado AES-256 de PDF sin bloquear el hilo principal.
+ * Web Worker para cifrado AES-256 de PDF de grado corporativo.
  *
- * Utiliza @pdfsmaller/pdf-encrypt — motor de cifrado probado que implementa
- * AES-256 (V=5, R=6) según ISO 32000-2:2020 usando Web Crypto API + pdf-lib.
+ * Cumple estrictamente con la especificación ISO 32000-2:2020 (PDF 2.0 / AES-256 V=5 R=6).
  *
- * Compatible con Adobe Acrobat, Chrome, Edge, Firefox, Foxit y visores
- * que soporten AES-256 (PDF 2.0).
- *
- * SEGURIDAD: 100% local. Las contraseñas se procesan en RAM del worker.
- * No se loguean, no se almacenan, no se transmiten a servidores.
+ * CORRECCIÓN ADOBE ACROBAT:
+ * 1. Todos los strings cifrados en diccionarios se serializan como PDFHexString (<HEX>)
+ *    para evitar secuencias de escape corruptas o paréntesis no escapados (...).
+ * 2. Se actualiza automáticamente la propiedad /Length en los diccionarios de stream
+ *    para reflejar el tamaño exacto con relleno PKCS#7 e IV de 16 bytes.
+ * 3. Procesamiento 100% local en RAM vía Web Crypto API (SubtleCrypto).
  */
 
-import { encryptPDF } from '@pdfsmaller/pdf-encrypt';
+import {
+  PDFDocument,
+  PDFName,
+  PDFHexString,
+  PDFString,
+  PDFDict,
+  PDFArray,
+  PDFRawStream,
+  PDFNumber,
+} from 'pdf-lib';
 
 // ============================================================
 // INTERFACES
@@ -61,21 +70,232 @@ export interface ProtectError {
 export type WorkerMessage = ProtectProgress | ProtectResult | ProtectError;
 
 // ============================================================
-// UTILIDAD: Extraer ArrayBuffer exacto de un Uint8Array
+// UTILIDADES CRIPTOGRÁFICAS WEB CRYPTO (ISO 32000-2 / AES-256)
 // ============================================================
 
+function bytesToHex(bytes: Uint8Array): string {
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+function randomBytes(n: number): Uint8Array {
+  const bytes = new Uint8Array(n);
+  crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+function concatBuffers(...arrays: Uint8Array[]): Uint8Array {
+  const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
+}
+
+async function sha256(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest('SHA-256', data as BufferSource);
+  return new Uint8Array(hash);
+}
+
+async function sha384(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest('SHA-384', data as BufferSource);
+  return new Uint8Array(hash);
+}
+
+async function sha512(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest('SHA-512', data as BufferSource);
+  return new Uint8Array(hash);
+}
+
+async function aes128CbcEncryptNoPad(data: Uint8Array, key: Uint8Array, iv: Uint8Array): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, cryptoKey, data as BufferSource);
+  return new Uint8Array(encrypted).slice(0, data.byteLength);
+}
+
+async function aes256CbcEncryptNoPad(data: Uint8Array, key: Uint8Array, iv: Uint8Array): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, cryptoKey, data as BufferSource);
+  return new Uint8Array(encrypted).slice(0, data.byteLength);
+}
+
+async function aes256EcbEncryptBlock(block: Uint8Array, key: Uint8Array): Promise<Uint8Array> {
+  const zeroIV = new Uint8Array(16);
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: zeroIV as BufferSource }, cryptoKey, block as BufferSource);
+  return new Uint8Array(encrypted).slice(0, 16);
+}
+
+async function importAES256Key(key: Uint8Array): Promise<CryptoKey> {
+  return await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
+}
+
+async function aes256CbcEncryptWithKey(data: Uint8Array, cryptoKey: CryptoKey, iv: Uint8Array): Promise<Uint8Array> {
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, cryptoKey, data as BufferSource);
+  return new Uint8Array(encrypted);
+}
+
 /**
- * pdf-lib internamente crea Uint8Arrays como vistas parciales de
- * ArrayBuffers más grandes. Si usamos .buffer.slice(0) directamente,
- * copiamos bytes basura al final del archivo PDF, causando que los
- * visores lo rechacen como "dañado".
- *
- * Esta función garantiza que extraemos exactamente los bytes del
- * Uint8Array en un ArrayBuffer limpio del tamaño correcto.
+ * Algoritmo 2.B (ISO 32000-2:2020) — Derivación de Clave Hardened para R=6
  */
+async function computeHash2B(password: Uint8Array, salt: Uint8Array, userKey: Uint8Array): Promise<Uint8Array> {
+  const input = concatBuffers(password, salt, userKey);
+  let K = await sha256(input);
+
+  let i = 0;
+  let E: Uint8Array;
+
+  while (true) {
+    const block = concatBuffers(password, K, userKey);
+    const K1 = new Uint8Array(block.length * 64);
+    for (let j = 0; j < 64; j++) {
+      K1.set(block, j * block.length);
+    }
+
+    const aesKey = K.slice(0, 16);
+    const aesIV = K.slice(16, 32);
+    E = await aes128CbcEncryptNoPad(K1, aesKey, aesIV);
+
+    let byteSum = 0;
+    for (let j = 0; j < 16; j++) {
+      byteSum += E[j];
+    }
+    const hashSelect = byteSum % 3;
+
+    if (hashSelect === 0) {
+      K = await sha256(E);
+    } else if (hashSelect === 1) {
+      K = await sha384(E);
+    } else {
+      K = await sha512(E);
+    }
+
+    i++;
+    if (i >= 64 && E[E.length - 1] <= i - 32) {
+      break;
+    }
+  }
+
+  return K.slice(0, 32);
+}
+
+function buildPermissions(options: ProtectOptions): number {
+  let P = 0xFFFFF000 | 0x000000C0;
+  if (options.allowPrinting !== false) P |= 0x00000004;
+  if (options.allowModifying !== false) P |= 0x00000008;
+  if (options.allowCopying !== false) P |= 0x00000010;
+  if (options.allowAnnotating !== false) P |= 0x00000020;
+  if (options.allowFillingForms !== false) P |= 0x00000100;
+  if (options.allowExtraction !== false) P |= 0x00000200;
+  if (options.allowAssembly !== false) P |= 0x00000400;
+  if (options.allowHighQualityPrint !== false) P |= 0x00000800;
+  return P | 0;
+}
+
+function saslPrepPassword(password: string): Uint8Array {
+  const bytes = new TextEncoder().encode(password);
+  return bytes.length > 127 ? bytes.slice(0, 127) : bytes;
+}
+
+async function computeUandUE(password: Uint8Array, fileKey: Uint8Array) {
+  const validationSalt = randomBytes(8);
+  const keySalt = randomBytes(8);
+  const hash = await computeHash2B(password, validationSalt, new Uint8Array(0));
+  const U = new Uint8Array(48);
+  U.set(hash, 0);
+  U.set(validationSalt, 32);
+  U.set(keySalt, 40);
+
+  const ueKey = await computeHash2B(password, keySalt, new Uint8Array(0));
+  const zeroIV = new Uint8Array(16);
+  const UE = await aes256CbcEncryptNoPad(fileKey, ueKey, zeroIV);
+  return { U, UE };
+}
+
+async function computeOandOE(password: Uint8Array, fileKey: Uint8Array, U: Uint8Array) {
+  const validationSalt = randomBytes(8);
+  const keySalt = randomBytes(8);
+  const hash = await computeHash2B(password, validationSalt, U);
+  const O = new Uint8Array(48);
+  O.set(hash, 0);
+  O.set(validationSalt, 32);
+  O.set(keySalt, 40);
+
+  const oeKey = await computeHash2B(password, keySalt, U);
+  const zeroIV = new Uint8Array(16);
+  const OE = await aes256CbcEncryptNoPad(fileKey, oeKey, zeroIV);
+  return { O, OE };
+}
+
+async function computePerms(permissions: number, fileKey: Uint8Array, encryptMetadata: boolean): Promise<Uint8Array> {
+  const block = new Uint8Array(16);
+  block[0] = permissions & 0xFF;
+  block[1] = (permissions >> 8) & 0xFF;
+  block[2] = (permissions >> 16) & 0xFF;
+  block[3] = (permissions >> 24) & 0xFF;
+  block[4] = 0xFF; block[5] = 0xFF; block[6] = 0xFF; block[7] = 0xFF;
+  block[8] = encryptMetadata ? 0x54 : 0x46;
+  block[9] = 0x61; block[10] = 0x64; block[11] = 0x62;
+  const rand = randomBytes(4);
+  block[12] = rand[0]; block[13] = rand[1]; block[14] = rand[2]; block[15] = rand[3];
+  return await aes256EcbEncryptBlock(block, fileKey);
+}
+
+async function encryptObjectAES256(data: Uint8Array, cryptoKey: CryptoKey): Promise<Uint8Array> {
+  const iv = randomBytes(16);
+  const encrypted = await aes256CbcEncryptWithKey(data, cryptoKey, iv);
+  const result = new Uint8Array(16 + encrypted.length);
+  result.set(iv, 0);
+  result.set(encrypted, 16);
+  return result;
+}
+
+/**
+ * Cifrado seguro de strings en estructuras jerárquicas PDF.
+ * Convierte TODO string a PDFHexString (<HEX>) para evitar cualquier problema de sintaxis o escape.
+ */
+async function encryptStringsSafely(obj: unknown, cryptoKey: CryptoKey): Promise<void> {
+  if (!obj) return;
+
+  if (obj instanceof PDFDict) {
+    for (const key of obj.keys()) {
+      const keyName = key.asString();
+      if (keyName === '/Length' || keyName === '/Filter' || keyName === '/DecodeParms') continue;
+      const val = obj.get(key);
+      if (val instanceof PDFString || val instanceof PDFHexString) {
+        const bytes = val.asBytes();
+        const encrypted = await encryptObjectAES256(bytes, cryptoKey);
+        obj.set(key, PDFHexString.of(bytesToHex(encrypted)));
+      } else {
+        await encryptStringsSafely(val, cryptoKey);
+      }
+    }
+  } else if (obj instanceof PDFArray) {
+    const array = obj.asArray();
+    for (let i = 0; i < array.length; i++) {
+      const val = array[i];
+      if (val instanceof PDFString || val instanceof PDFHexString) {
+        const bytes = val.asBytes();
+        const encrypted = await encryptObjectAES256(bytes, cryptoKey);
+        obj.set(i, PDFHexString.of(bytesToHex(encrypted)));
+      } else {
+        await encryptStringsSafely(val, cryptoKey);
+      }
+    }
+  }
+}
+
+// ============================================================
+// UTILIDAD: Extraer ArrayBuffer limpio de Uint8Array
+// ============================================================
+
 function extractCleanBuffer(arr: Uint8Array): ArrayBuffer {
-  // .slice() crea un NUEVO Uint8Array con su propio ArrayBuffer
-  // del tamaño EXACTO de arr.length (sin importar byteOffset/byteLength)
   const copy: Uint8Array = arr.slice();
   return copy.buffer as ArrayBuffer;
 }
@@ -85,7 +305,6 @@ function extractCleanBuffer(arr: Uint8Array): ArrayBuffer {
 // ============================================================
 
 async function rasterizePdf(fileBuffer: ArrayBuffer): Promise<Uint8Array> {
-  const { PDFDocument } = await import('pdf-lib');
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
@@ -113,7 +332,7 @@ async function rasterizePdf(fileBuffer: ArrayBuffer): Promise<Uint8Array> {
 }
 
 // ============================================================
-// PROTECCIÓN DE UN ARCHIVO
+// PROTECCIÓN DE UN ARCHIVO PDF (MOTOR AES-256 ISO 32000-2)
 // ============================================================
 
 async function protectSinglePdf(
@@ -145,14 +364,13 @@ async function protectSinglePdf(
     pdfBytes = await rasterizePdf(fileBuffer);
     vectorPreserved = false;
   } else {
-    // Crear copia limpia del buffer original
     pdfBytes = new Uint8Array(fileBuffer);
     vectorPreserved = true;
   }
 
   report({
     type: 'progress', phase: 'encrypting', percent: 40,
-    message: 'Aplicando cifrado AES-256 (PDF 2.0 / ISO 32000-2)...',
+    message: 'Aplicando cifrado AES-256 compatible con Adobe Acrobat DC (ISO 32000-2)...',
   });
 
   const userPwd = options.userPassword || '';
@@ -162,31 +380,114 @@ async function protectSinglePdf(
       ? `${options.userPassword}_owner_master_2026`
       : 'PDFBLOCK_PROTECTED_MASTER_KEY_2026');
 
-  // Cifrar con @pdfsmaller/pdf-encrypt (motor probado en producción)
-  const rawOutput: Uint8Array = await encryptPDF(pdfBytes, userPwd, {
-    ownerPassword: ownerPwd,
-    algorithm: 'AES-256',
-    allowPrinting: options.allowPrinting,
-    allowHighQualityPrint: options.allowHighQualityPrint,
-    allowModifying: options.allowModifying,
-    allowCopying: options.allowCopying,
-    allowExtraction: options.allowExtraction,
-    allowAnnotating: options.allowAnnotating,
-    allowFillingForms: options.allowFillingForms,
-    allowAssembly: options.allowAssembly,
+  // Cargamos el documento PDF
+  const pdfDoc = await PDFDocument.load(pdfBytes, {
+    ignoreEncryption: true,
+    updateMetadata: false,
   });
+
+  const pageCount = pdfDoc.getPageCount();
+  const context = pdfDoc.context;
+  const permissions = buildPermissions(options);
+
+  const fileId = randomBytes(16);
+  const fileKey = randomBytes(32);
+
+  const userPwdBytes = saslPrepPassword(userPwd);
+  const ownerPwdBytes = saslPrepPassword(ownerPwd);
+
+  const { U, UE } = await computeUandUE(userPwdBytes, fileKey);
+  const { O, OE } = await computeOandOE(ownerPwdBytes, fileKey, U);
+  const Perms = await computePerms(permissions, fileKey, true);
+  const cryptoKey = await importAES256Key(fileKey);
+
+  const indirectObjects = context.enumerateIndirectObjects();
+
+  for (const [ref, obj] of indirectObjects) {
+    // Ignorar diccionario de cifrado si ya existiera
+    if (obj instanceof PDFDict) {
+      const filter = obj.get(PDFName.of('Filter'));
+      if (filter && filter.toString() === '/Standard') continue;
+    }
+
+    // Ignorar streams XRef o Sig
+    if (obj instanceof PDFRawStream && obj.dict) {
+      const type = obj.dict.get(PDFName.of('Type'));
+      if (type) {
+        const typeName = type.toString();
+        if (typeName === '/XRef' || typeName === '/Sig') continue;
+      }
+    }
+
+    // Cifrado de streams
+    if (obj instanceof PDFRawStream) {
+      const streamData = obj.contents;
+      const encrypted = await encryptObjectAES256(streamData, cryptoKey);
+      (obj as unknown as { contents: Uint8Array }).contents = encrypted;
+
+      // ACTUALIZAR /Length OBLIGATORIAMENTE EN EL DICCIONARIO DEL STREAM
+      obj.dict.set(PDFName.of('Length'), PDFNumber.of(encrypted.length));
+
+      if (obj.dict) {
+        await encryptStringsSafely(obj.dict, cryptoKey);
+      }
+    }
+
+    // Cifrado de strings en objetos sin stream
+    if (!(obj instanceof PDFRawStream)) {
+      await encryptStringsSafely(obj, cryptoKey);
+    }
+  }
+
+  // Construir el diccionario /Encrypt para AES-256 (PDF 2.0 / V=5 R=6)
+  const stdCF = context.obj({
+    Type: PDFName.of('CryptFilter'),
+    CFM: PDFName.of('AESV3'),
+    Length: PDFNumber.of(32),
+    AuthEvent: PDFName.of('DocOpen'),
+  });
+
+  const cfDict = context.obj({});
+  cfDict.set(PDFName.of('StdCF'), stdCF);
+
+  const encryptDict = context.obj({
+    Filter: PDFName.of('Standard'),
+    V: PDFNumber.of(5),
+    R: PDFNumber.of(6),
+    Length: PDFNumber.of(256),
+    P: PDFNumber.of(permissions),
+    O: PDFHexString.of(bytesToHex(O)),
+    U: PDFHexString.of(bytesToHex(U)),
+    OE: PDFHexString.of(bytesToHex(OE)),
+    UE: PDFHexString.of(bytesToHex(UE)),
+    Perms: PDFHexString.of(bytesToHex(Perms)),
+    StmF: PDFName.of('StdCF'),
+    StrF: PDFName.of('StdCF'),
+    CF: cfDict,
+    EncryptMetadata: context.obj(true),
+  });
+
+  const encryptRef = context.register(encryptDict);
+
+  // Actualizar Trailer Info
+  const trailer = context.trailerInfo;
+  trailer.Encrypt = encryptRef;
+
+  if (!trailer.ID) {
+    const idHex1 = PDFHexString.of(bytesToHex(fileId));
+    const idHex2 = PDFHexString.of(bytesToHex(fileId));
+    trailer.ID = context.obj([idHex1, idHex2]);
+  }
+
+  const rawOutput = await pdfDoc.save({ useObjectStreams: false });
 
   report({ type: 'progress', phase: 'packaging', percent: 100, message: 'Cifrado completado.' });
 
-  // EXTRAER BUFFER LIMPIO: encryptPDF retorna un Uint8Array que puede ser
-  // una vista parcial de un ArrayBuffer mayor (pdf-lib crea buffers así).
-  // extractCleanBuffer usa .slice() que crea un nuevo Uint8Array con un
-  // ArrayBuffer propio del tamaño exacto, eliminando bytes basura.
   return {
     type: 'result',
     protectedBytes: extractCleanBuffer(rawOutput),
     fileName,
-    pageCount: 0,
+    pageCount,
     vectorPreserved,
     userPasswordSet: !!options.userPassword,
     ownerPasswordSet: !!options.ownerPassword,

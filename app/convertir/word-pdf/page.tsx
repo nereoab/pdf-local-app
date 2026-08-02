@@ -2,7 +2,7 @@
 
 import WordPdfConverter from '../../../components/WordPdfConverter';
 import { useLanguage } from '../../../context/LanguageContext';
-import { FileText, ShieldCheck, RefreshCw, Lock, Sparkles } from 'lucide-react';
+import { FileText, ShieldCheck, AlertTriangle, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function WordToPdfPage() {
@@ -33,119 +33,146 @@ export default function WordToPdfPage() {
         </div>
 
         {/* HERRAMIENTA INTERACTIVA 2 EN 1 */}
-        <div className="mb-16">
+        <div className="mb-12">
           <WordPdfConverter defaultMode="word-to-pdf" />
         </div>
 
-        {/* SECCIÓN INFORMATIVA DETALLADA */}
-        <div className="space-y-12 text-zinc-300 font-sans border-t border-white/10 pt-12">
+        {/* SECCIÓN INFORMATIVA DE 4 PUNTOS (ESTÁNDAR MÓDULO OPTIMIZAR) */}
+        <div className="space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-10 mt-10">
           
-          {/* BLOQUE 1: PRIVACIDAD Y QUÉ SUCEDE CON SUS ARCHIVOS */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <ShieldCheck className="w-6 h-6 text-emerald-400" />
+          {/* 1. CÓMO FUNCIONA PASO A PASO */}
+          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                <FileText className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¿Qué sucede exactamente con tu archivo al convertirlo entre Word y PDF?' : 'What exactly happens to your file when converting between Word and PDF?'}
-                </h2>
-                <span className="text-xs font-mono text-emerald-400 font-semibold">
-                  {isEs ? '🔒 CONVERSIÓN DE ALTA PRECISIÓN • 100% PROCESAMIENTO LOCAL' : '🔒 HIGH PRECISION CONVERSION • 100% LOCAL PROCESSING'}
-                </span>
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '1. Cómo convertir de Word a PDF' : '1. How to convert Word to PDF'}
+              </h2>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { step: '01', es: 'Sube tu documento Microsoft Word (.docx/.doc) a la zona de carga.', en: 'Upload your Microsoft Word document (.docx/.doc) to the upload zone.' },
+                { step: '02', es: 'El motor analiza el contenido OpenXML, párrafos y estructura.', en: 'The engine analyzes OpenXML content, paragraphs, and structure.' },
+                { step: '03', es: 'Configura las Opciones Avanzadas (orientación, tamaño de papel, marca de agua).', en: 'Configure Advanced Options (orientation, paper size, watermark).' },
+                { step: '04', es: 'Haz clic en "Convertir a PDF Corporativo" y descarga tu archivo.', en: 'Click "Convert to Corporate PDF" and download your file.' },
+              ].map((item, i) => (
+                <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+                  <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">
+                    Paso {item.step}
+                  </span>
+                  <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.es : item.en}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-emerald-400" />
-                  {isEs ? '1. Conversión de Word (.docx) a PDF' : '1. Word (.docx) to PDF Conversion'}
-                </strong>
-                <p>
-                  {isEs 
-                    ? 'El motor analiza las etiquetas OpenXML del archivo Word (párrafos, tipografías, sangrías y tablas) y las recompila en un documento PDF vectorial limpio. Todo el diseño y formato visual se fija de forma profesional garantizando que se vea idéntico en cualquier dispositivo.'
-                    : 'The engine parses OpenXML tags from the Word file (paragraphs, fonts, indents, and tables) recompiling them into a clean vector PDF. Visual layout freezes professionally to look identical across all screens.'}
-                </p>
+          {/* 2. LIMITACIONES Y CONSEJOS ÚTILES */}
+          <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-amber-500/20 pb-4">
+              <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
               </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 text-emerald-400" />
-                  {isEs ? '2. Conversión de PDF a Word (.docx)' : '2. PDF to Word (.docx) Conversion'}
-                </strong>
-                <p>
-                  {isEs 
-                    ? 'Extrae las coordenadas tridimensionales de texto e imágenes del PDF, reconstruyendo párrafos continuos y celdas de tablas editables en Microsoft Word o Google Docs sin distorsionar el documento original.'
-                    : 'Extracts 3D text and image coordinates from the PDF, rebuilding continuous paragraphs and editable table cells in Microsoft Word or Google Docs without distorting layout.'}
-                </p>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '2. Limitaciones y consejos útiles' : '2. Limitations & useful tips'}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <h4 className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                  ✓ {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
+                </h4>
+                {[
+                  isEs ? 'Generar PDFs vectoriales de alta resolución para impresión corporativa.' : 'Generate high-resolution vector PDFs for corporate printing.',
+                  isEs ? 'Ajustar la orientación entre Vertical u Horizontal libremente.' : 'Adjust page orientation between Portrait or Landscape freely.',
+                  isEs ? 'Seleccionar el tamaño de hoja exacto (A4, Carta o Oficio/Legal).' : 'Select exact paper size (A4, Letter, or Legal).',
+                  isEs ? 'Incrustar marcas de agua como CONFIDENCIAL o BORRADOR.' : 'Embed watermarks like CONFIDENTIAL or DRAFT.',
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                    <span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <h4 className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                  💡 {isEs ? 'CONSEJOS' : 'TIPS'}
+                </h4>
+                {[
+                  isEs ? 'Revisa la vista previa de miniaturas en 3x4 antes de descargar.' : 'Review the 3x4 thumbnail preview before downloading.',
+                  isEs ? 'Asegúrate de que tu documento Word use fuentes estándar (Helvetica, Times).' : 'Ensure your Word document uses standard fonts (Helvetica, Times).',
+                  isEs ? 'El documento resultante mantendrá la paginación de forma consistente.' : 'The resulting document will maintain consistent pagination.',
+                  isEs ? 'Todo el procesamiento es 100% privado y se ejecuta en memoria.' : 'All processing is 100% private and runs in memory.',
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                    <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* BLOQUE 2: GUÍA DE USO PASO A PASO */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <Sparkles className="w-6 h-6 text-white" />
+          {/* 3. PRIVACIDAD Y SEGURIDAD */}
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-emerald-500/20 pb-4">
+              <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'Aprende a usar la herramienta en 3 sencillos pasos' : 'Learn how to use the tool in 3 simple steps'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Guía rápida de conversión de documentos' : 'Quick document conversion guide'}
-                </p>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '3. ¿Qué sucede con tu documento al convertirlo?' : '3. What happens to your document when converting it?'}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400 leading-relaxed">
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">🖥️ {isEs ? 'Procesamiento 100% local' : '100% local processing'}</strong>
+                <p className="text-[11px]">{isEs ? 'La conversión se procesa localmente en la memoria de tu navegador sin subir archivos.' : 'Conversion is processed locally in your browser memory without uploading files.'}</p>
+              </div>
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">🔒 {isEs ? 'Inmutabilidad vectorial' : 'Vectorial immutability'}</strong>
+                <p className="text-[11px]">{isEs ? 'El PDF resultante congela el diseño para evitar modificaciones no autorizadas.' : 'The resulting PDF freezes layout to prevent unauthorized modifications.'}</p>
+              </div>
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">📥 {isEs ? 'Descarga directa e instantánea' : 'Direct & instant download'}</strong>
+                <p className="text-[11px]">{isEs ? 'Obtienes el PDF convertido al instante sin colas de espera ni restricciones.' : 'You get the converted PDF instantly with no queues or restrictions.'}</p>
               </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 font-mono text-xs">
-              
-              {/* PASO 1 */}
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">01 / SELECCIÓN</span>
-                  <h3 className="font-bold text-white text-sm mb-2 font-sans">
-                    {isEs ? '1. Elige el Modo o Arrastra' : '1. Choose Mode or Drop File'}
+          {/* 4. PREGUNTAS FRECUENTES */}
+          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                <HelpCircle className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '4. Preguntas Frecuentes' : '4. Frequently Asked Questions'}
+              </h2>
+            </div>
+            <div className="space-y-4">
+              {[
+                {
+                  qEs: '¿El documento PDF generado es imprimible y compatible?',
+                  qEn: 'Is the generated PDF document printable and compatible?',
+                  aEs: 'Sí, el PDF cumple con el estándar ISO-19005 (PDF/A) y es completamente compatible con cualquier visor como Adobe Acrobat, navegadores web e impresoras.',
+                  aEn: 'Yes, the PDF complies with ISO-19005 (PDF/A) standard and is fully compatible with any viewer like Adobe Acrobat, web browsers, and printers.',
+                },
+                {
+                  qEs: '¿Mis archivos Word o información interna quedan guardados?',
+                  qEn: 'Are my Word files or internal information saved?',
+                  aEs: 'No. Todo el procesamiento se realiza en la memoria RAM y se borra inmediatamente al cerrar la página.',
+                  aEn: 'No. All processing occurs in RAM memory and is cleared immediately upon closing the page.',
+                },
+              ].map((faq, i) => (
+                <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 space-y-1.5">
+                  <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                    <span className="text-blue-400 font-mono">Q:</span> {isEs ? faq.qEs : faq.qEn}
                   </h3>
-                  <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">
-                    {isEs 
-                      ? 'Selecciona el modo (Word a PDF o PDF a Word) arriba, o simplemente suelta tu archivo en la zona de carga; el sistema detectará el formato automáticamente.' 
-                      : 'Select mode above or drop your file in the box; the system auto-detects format.'}
+                  <p className="text-[11px] text-zinc-400 leading-relaxed pl-5">
+                    {isEs ? faq.aEs : faq.aEn}
                   </p>
                 </div>
-              </div>
-
-              {/* PASO 2 */}
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">02 / PROCESAMIENTO</span>
-                  <h3 className="font-bold text-white text-sm mb-2 font-sans">
-                    {isEs ? '2. Clic en Convertir' : '2. Click Convert'}
-                  </h3>
-                  <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">
-                    {isEs 
-                      ? 'Haz clic en el botón principal. Nuestro motor decodificará las fuentes y maquetación en tiempo real dentro de la memoria RAM de tu navegador.' 
-                      : 'Click the action button. Our engine decodes fonts and layout in real-time inside your browser RAM.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* PASO 3 */}
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">03 / DESCARGA</span>
-                  <h3 className="font-bold text-white text-sm mb-2 font-sans">
-                    {isEs ? '3. Descarga tu Resultado' : '3. Download Result'}
-                  </h3>
-                  <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">
-                    {isEs 
-                      ? 'Obtén inmediatamente tu PDF convertido o tu archivo de Word editable listo para usar de forma 100% privada.' 
-                      : 'Get your converted PDF or editable Word document immediately, 100% private and ready to use.'}
-                  </p>
-                </div>
-              </div>
-
+              ))}
             </div>
           </div>
 
@@ -155,4 +182,3 @@ export default function WordToPdfPage() {
     </div>
   );
 }
-

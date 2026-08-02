@@ -62,6 +62,12 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
   const [addSlideNumbers, setAddSlideNumbers] = useState<boolean>(true);
   const [addSlideBorders, setAddSlideBorders] = useState<boolean>(true);
 
+  // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [activePage, setActivePage] = useState<number>(1);
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
   const parsePptxContent = async (pptFile: File): Promise<number> => {
@@ -75,10 +81,55 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
   };
 
   useEffect(() => {
-    if (file && (file.name.toLowerCase().endsWith('.pptx') || file.name.toLowerCase().endsWith('.ppt'))) {
+    if (!file) {
+      setPageDataUrls({});
+      setTotalPages(0);
+      return;
+    }
+    if (file.name.toLowerCase().endsWith('.pptx') || file.name.toLowerCase().endsWith('.ppt')) {
       parsePptxContent(file).then(count => setExtractedSlideCount(count));
+    } else if (file.name.toLowerCase().endsWith('.pdf')) {
+      cargarMiniaturasPdf(file);
     }
   }, [file]);
+
+  const cargarMiniaturasPdf = async (pdfFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      setTotalPages(pdfDoc.numPages);
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {}
+      }
+      setPageDataUrls(urls);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRendering(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -386,30 +437,82 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: PREVISUALIZACIÓN DE ARCHIVO */}
-          <div className="lg:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <Presentation className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / PREVISUALIZACIÓN DE DOCUMENTO` : `001 / DOCUMENT PREVIEW`}</span>
+                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
-            {/* VISTA PREVIA DETALLADA */}
-            <div className="w-full flex-1 bg-zinc-950 rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 relative border border-white/5 font-mono min-h-[460px]">
-              {pdfUrl ? (
-                <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} className="w-full h-full border-none bg-white rounded-lg shadow-inner min-h-[440px]" title="PDF Preview" />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-6">
-                  <PowerPointIcon className="w-24 h-24 rounded-2xl shadow-2xl" />
-                  <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
-                    ✓ {extractedSlideCount} {isEs ? 'diapositivas detectadas' : 'slides detected'}
-                  </span>
-                </div>
-              )}
+            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
+              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                </span>
+                {isRendering ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    <span>...</span>
+                  </div>
+                ) : totalPages > 0 ? (
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setActivePage(pageNum)}
+                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                        {pageDataUrls[pageNum] ? (
+                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                        )}
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                          #{pageNum}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
+                )}
+              </div>
+
+              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
+              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                {pdfUrl ? (
+                  <iframe
+                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                    title="Visor PDF Tamaño Normal"
+                  />
+                ) : pageDataUrls[activePage] ? (
+                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
+                    <img
+                      src={pageDataUrls[activePage]}
+                      alt={`Página ${activePage}`}
+                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
+                    <PowerPointIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
+                    <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
+                      ✓ {extractedSlideCount} {isEs ? 'diapositivas detectadas' : 'slides detected'}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* PIE DE ARCHIVO */}
@@ -422,7 +525,7 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">
@@ -566,174 +669,6 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
           </div>
         </motion.div>
       )}
-
-      {/* ── GUÍA DE USO: POWERPOINT ↔ PDF ── */}
-      <div className="w-full mt-14 space-y-6 font-sans">
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
-              <Presentation className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Cómo convertir entre PowerPoint y PDF?' : 'How to convert between PowerPoint and PDF?'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono">
-                {isEs ? 'Guía rápida para convertir presentaciones .pptx a PDF o extraer diapositivas de un PDF.' : 'Quick guide to convert .pptx presentations to PDF or extract slides from a PDF.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            {[
-              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "PPT → PDF" para convertir tu presentación .pptx a PDF, o "PDF → PPT" para extraer las diapositivas de un PDF a un formato de presentación editable.', descEn: 'Select "PPT → PDF" to convert your .pptx presentation to PDF, or "PDF → PPT" to extract slides from a PDF into an editable presentation format.' },
-              { step: '02', titleEs: 'Sube tu archivo', titleEn: 'Upload your file', descEs: 'Arrastra el archivo .pptx o PDF a la zona de carga. El sistema analiza automáticamente el número de diapositivas y muestra un resumen de lo que será procesado.', descEn: 'Drag your .pptx or PDF file to the upload area. The system automatically analyzes the number of slides and shows a summary of what will be processed.' },
-              { step: '03', titleEs: 'Configura las opciones de diapositivas', titleEn: 'Configure slide options', descEs: 'Elige si incluir notas del presentador en el PDF, la relación de aspecto (16:9 vs 4:3), orientación landscape/portrait, y si exportar cada diapositiva en una página separada.', descEn: 'Choose whether to include presenter notes in the PDF, aspect ratio (16:9 vs 4:3), landscape/portrait orientation, and whether to export each slide on a separate page.' },
-              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor renderiza cada diapositiva localmente y genera el PDF al instante. Tu presentación nunca sale de tu equipo.', descEn: 'Click "Convert →". The engine renders each slide locally and generates the PDF instantly. Your presentation never leaves your device.' },
-            ].map((item) => (
-              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
-                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
-                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-start gap-3 mb-5">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
-              <Grid className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                {isEs ? '💡 Consejos para convertir presentaciones PowerPoint a PDF' : '💡 Tips for converting PowerPoint presentations to PDF'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono mt-1">
-                {isEs ? 'Saca el máximo partido a las opciones de conversión de diapositivas.' : 'Get the most out of the slide conversion options.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
-            {[
-              { labelEs: 'Fuentes y colores de la presentación', labelEn: 'Presentation fonts and colors', descEs: 'Al convertir PPT a PDF, el motor preserva los colores, degradados y fuentes del tema. Si usas fuentes muy específicas no estándar, podrían sustituirse por similares en el PDF.', descEn: 'When converting PPT to PDF, the engine preserves the theme\'s colors, gradients, and fonts. If you use very specific non-standard fonts, they may be substituted by similar ones in the PDF.' },
-              { labelEs: 'Animaciones y transiciones', labelEn: 'Animations and transitions', descEs: 'Las animaciones y transiciones de PowerPoint no se transfieren al PDF. El PDF captura el estado final de cada diapositiva como una imagen estática de alta resolución.', descEn: 'PowerPoint animations and transitions are not transferred to the PDF. The PDF captures the final state of each slide as a high-resolution static image.' },
-              { labelEs: 'Notas del presentador', labelEn: 'Presenter notes', descEs: 'Activa la opción de incluir notas para generar un PDF con el diseño de "vista de presentador": cada diapositiva acompañada de su texto de notas debajo.', descEn: 'Enable the option to include notes to generate a PDF with a "presenter view" layout: each slide accompanied by its note text below.' },
-              { labelEs: 'PDF → PPT: diapositivas como imágenes', labelEn: 'PDF → PPT: slides as images', descEs: 'Al convertir PDF a PPT, cada página del PDF se convierte en una diapositiva con la imagen de esa página como fondo. El contenido no es editable como texto, sino como imagen.', descEn: 'When converting PDF to PPT, each PDF page becomes a slide with that page\'s image as background. Content is not editable as text, but as an image.' },
-            ].map((tip, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
-                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
-      <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
-        {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Qué sucede al convertir archivos PDF a diapositivas PowerPoint?' : 'What happens when converting PDF files into PowerPoint slides?'}
-              </h2>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
-                {isEs ? '🔒 RENDIMIENTO 16:9 VECTORIAL Y PROCESAMIENTO 100% LOCAL' : '🔒 100% LOCAL VECTOR & 16:9 PROCESSING'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                {isEs ? '1. Conversión de PDF a PowerPoint (.pptx)' : '1. PDF to PowerPoint (.pptx) Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Transforma cada página de tu PDF en una diapositiva OpenXML independiente editable para Microsoft PowerPoint.'
-                  : 'Transforms each PDF page into an independent OpenXML slide editable in Microsoft PowerPoint.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                {isEs ? '2. Conversión de PowerPoint (.pptx) a PDF' : '2. PowerPoint (.pptx) to PDF Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Procesa los archivos XML de cada diapositiva (`ppt/slides/slide1.xml`), convirtiendo los cuadros de texto y figuras en vectores PDF apaisados sin alterar proporciones.'
-                  : 'Parses XML slide files (`ppt/slides/slide1.xml`), converting text boxes & shapes into landscape PDF vectors with 100% aspect ratio retention.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* BLOQUE 2: GUÍA PASO A PASO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-              <HelpCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? 'Aprende a usar la herramienta en 3 sencillos pasos' : 'Learn how to use the tool in 3 simple steps'}
-              </h2>
-              <p className="text-xs font-mono text-zinc-400">
-                {isEs ? 'GUÍA RÁPIDA DE DIAPOSITIVAS' : 'QUICK SLIDES GUIDE'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                1
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Cargar Presentación' : 'Upload Presentation'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Arrastra tu PDF o documento PPTX. El sistema pre-visualizará las diapositivas al instante.' 
-                  : 'Drop your PDF or PPTX file. The system will preview slides instantly.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                2
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Ajustar Opciones' : 'Adjust Options'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Selecciona la relación de aspecto (16:9 o 4:3) y si deseas agregar marco o numerar las diapositivas.' 
-                  : 'Select aspect ratio (16:9 or 4:3) and if you want slide borders or numbering.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                3
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Convertir y Descargar' : 'Convert & Download'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Haz clic en el botón principal para compilar tu archivo listo para descarga privada.' 
-                  : 'Click the action button to compile your file ready for private download.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

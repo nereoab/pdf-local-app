@@ -6,7 +6,7 @@ import {
   Search, ChevronDown, ChevronUp, ZoomIn, ZoomOut,
   SplitSquareVertical, Database, UploadCloud,
   Hash, Copy, CheckCircle, AlertTriangle, Clock,
-  Keyboard, Filter, FileDown,
+  Keyboard, Filter, FileDown, SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -49,6 +49,12 @@ export default function PdfComparator() {
   const [isGeneratingPdfReport, setIsGeneratingPdfReport] = useState(false);
   const pdfDocRef = useRef<{ doc1: any; doc2: any } | null>(null);
   const renderedPagesRef = useRef<{ doc1: Set<number>; doc2: Set<number> }>({ doc1: new Set(), doc2: new Set() });
+
+  // === OPCIONES AVANZADAS DE COMPARACIÓN (SIEMPRE VISIBLES) ===
+  const [compareSensitivity, setCompareSensitivity] = useState<'strict' | 'normal' | 'loose'>('normal');
+  const [enableVisualDiff, setEnableVisualDiff] = useState(true);
+  const [ignoreCase, setIgnoreCase] = useState(false);
+  const [ignorePunctuation, setIgnorePunctuation] = useState(false);
 
   useEffect(() => { return () => { workerRef.current?.terminate(); }; }, []);
 
@@ -450,6 +456,7 @@ export default function PdfComparator() {
             <div className="lg:col-span-4 flex flex-col">
               <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col shadow-2xl min-h-[400px]">
                 <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3"><div><span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase block mb-1">002 / REPORT</span><h2 className="text-xl font-bold text-white uppercase">{isEs ? 'RESULTADOS' : 'RESULTS'}</h2></div><div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10"><GitCompare className="w-5 h-5 text-white" /></div></div>
+
                 {compareResult ? (<>
                   <div className="mb-3 flex flex-col gap-1.5">
                     <div className="flex items-center gap-1.5 text-[9px] font-mono"><Hash className="w-3 h-3 text-red-400" /><span className="text-zinc-500">A:</span><span className="text-red-400 font-bold">{compareResult.checksum1.slice(0, 12)}...</span><button onClick={() => { navigator.clipboard.writeText(compareResult.checksum1); toast.success('Copied'); }} className="ml-auto text-zinc-500 hover:text-white cursor-pointer"><Copy className="w-3 h-3" /></button></div>
@@ -462,6 +469,67 @@ export default function PdfComparator() {
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5 text-center"><span className="text-blue-400 font-bold text-lg block">{compareResult.pagesWithVisualChanges || 0}</span><span className="text-blue-300 text-[10px]">{isEs ? 'Cambios Visuales' : 'Visual Changes'}</span></div>
                   </div>
                   {compareResult.structuralDiffs.length > 0 && (<div className="mb-4"><button onClick={() => setShowStructuralDiffs(!showStructuralDiffs)} className="w-full flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 text-xs font-mono text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer"><span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />{isEs ? 'Cambios Estructurales' : 'Structural Changes'} ({compareResult.structuralDiffs.length})</span><ChevronDown className={`w-3.5 h-3.5 transition-transform ${showStructuralDiffs ? 'rotate-180' : ''}`} /></button><AnimatePresence>{showStructuralDiffs && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden"><div className="mt-2 space-y-1 max-h-[120px] overflow-y-auto">{compareResult.structuralDiffs.map((sd, i) => (<div key={i} className="text-[9px] font-mono text-zinc-300 bg-zinc-950/60 border border-white/5 rounded px-2 py-1"><span className={`font-bold ${sd.category === 'fonts' ? 'text-purple-400' : sd.category === 'images' ? 'text-blue-400' : sd.category === 'pages' ? 'text-amber-400' : 'text-zinc-400'}`}>[{sd.category}]</span> {sd.description}</div>))}</div></motion.div>)}</AnimatePresence></div>)}
+
+                  {/* OPCIONES AVANZADAS DE COMPARACIÓN (SIEMPRE VISIBLES DEBAJO DE CAMBIOS ESTRUCTURALES) */}
+                  <div className="mb-4 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 font-sans space-y-3.5">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
+                    </div>
+
+                    {/* Sensibilidad */}
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
+                        {isEs ? 'Sensibilidad de Análisis' : 'Analysis Sensitivity'}
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
+                        {(['strict', 'normal', 'loose'] as const).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setCompareSensitivity(s)}
+                            className={`py-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
+                              compareSensitivity === s ? 'bg-white text-black border-white' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {s === 'strict' ? (isEs ? 'Estricta' : 'Strict') : s === 'normal' ? (isEs ? 'Normal' : 'Normal') : (isEs ? 'Flexible' : 'Loose')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Toggles de configuración */}
+                    <div className="space-y-2 text-xs font-sans">
+                      <div onClick={() => setEnableVisualDiff(v => !v)} className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                        <div>
+                          <p className="text-[11px] font-bold text-white">{isEs ? 'Detección visual de imágenes' : 'Visual pixel diff'}</p>
+                          <p className="text-[9px] text-zinc-500 font-mono">{isEs ? 'Compara capas gráficas y fotos' : 'Compare graphics & photo layers'}</p>
+                        </div>
+                        <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableVisualDiff ? 'bg-white' : 'bg-zinc-700'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableVisualDiff ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                      </div>
+
+                      <div onClick={() => setIgnoreCase(v => !v)} className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                        <div>
+                          <p className="text-[11px] font-bold text-white">{isEs ? 'Ignorar mayúsculas / minúsculas' : 'Ignore case differences'}</p>
+                          <p className="text-[9px] text-zinc-500 font-mono">{isEs ? 'No resalta diferencias de capitalización' : 'Disregard letter casing'}</p>
+                        </div>
+                        <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${ignoreCase ? 'bg-white' : 'bg-zinc-700'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${ignoreCase ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                      </div>
+
+                      <div onClick={() => setIgnorePunctuation(v => !v)} className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                        <div>
+                          <p className="text-[11px] font-bold text-white">{isEs ? 'Ignorar signos de puntuación' : 'Ignore punctuation'}</p>
+                          <p className="text-[9px] text-zinc-500 font-mono">{isEs ? 'Omite comas, puntos y guiones' : 'Skip commas, periods & hyphens'}</p>
+                        </div>
+                        <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${ignorePunctuation ? 'bg-white' : 'bg-zinc-700'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${ignorePunctuation ? 'left-4' : 'left-0.5'}`} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <div className="relative mb-4 font-mono"><Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" /><input id="cmp-search" type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={isEs ? 'Filtrar...' : 'Filter...'} className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30" /></div>
                   <div className="flex-1 overflow-y-auto max-h-[40vh] space-y-2 pr-1"><span className="text-[10px] font-bold text-zinc-400 block font-mono tracking-widest uppercase mb-2">Changes ({filtDiffs.filter(p => p.removedCount + p.addedCount > 0).length})</span>
                     {filtDiffs.filter(p => p.removedCount + p.addedCount > 0).slice(0, 30).map(pd => (

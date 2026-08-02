@@ -61,12 +61,60 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     return URL.createObjectURL(file);
   }, [file]);
 
+  // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [activePage, setActivePage] = useState<number>(1);
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+
   useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    };
-  }, [pdfUrl, imagePreviewUrl]);
+    if (!file) {
+      setPageDataUrls({});
+      setTotalPages(0);
+      return;
+    }
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      cargarMiniaturasPdf(file);
+    }
+  }, [file]);
+
+  const cargarMiniaturasPdf = async (pdfFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      setTotalPages(pdfDoc.numPages);
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {}
+      }
+      setPageDataUrls(urls);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRendering(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -338,33 +386,87 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: PREVISUALIZACIÓN DE ARCHIVO */}
-          <div className="lg:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <ImageIcon className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / PREVISUALIZACIÓN DE DOCUMENTO` : `001 / DOCUMENT PREVIEW`}</span>
+                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
-            {/* VISTA PREVIA DETALLADA */}
-            <div className="w-full flex-1 bg-zinc-950 rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 relative border border-white/5 font-mono min-h-[460px]">
-              {pdfUrl ? (
-                <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} className="w-full h-full border-none bg-white rounded-lg shadow-inner min-h-[440px]" title="PDF Preview" />
-              ) : imagePreviewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-[440px] object-contain rounded-lg shadow-2xl" />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-6">
-                  <JpgIcon className="w-24 h-24 rounded-2xl shadow-2xl" />
-                  <span className="text-xs text-pink-400 font-mono bg-pink-500/10 px-3 py-1.5 rounded-full border border-pink-500/20">
-                    ✓ {isEs ? 'Archivo cargado correctamente' : 'File loaded successfully'}
-                  </span>
-                </div>
-              )}
+            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
+              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                </span>
+                {isRendering ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    <span>...</span>
+                  </div>
+                ) : totalPages > 0 ? (
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setActivePage(pageNum)}
+                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                        {pageDataUrls[pageNum] ? (
+                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                        )}
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                          #{pageNum}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
+                )}
+              </div>
+
+              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
+              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                {pdfUrl ? (
+                  <iframe
+                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                    title="Visor PDF Tamaño Normal"
+                  />
+                ) : imagePreviewUrl ? (
+                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imagePreviewUrl} alt="Preview" className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10" />
+                  </div>
+                ) : pageDataUrls[activePage] ? (
+                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
+                    <img
+                      src={pageDataUrls[activePage]}
+                      alt={`Página ${activePage}`}
+                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
+                    <JpgIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
+                    <span className="text-xs text-pink-400 font-mono bg-pink-500/10 px-3 py-1.5 rounded-full border border-pink-500/20">
+                      ✓ {isEs ? 'Imagen cargada' : 'Image loaded'}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* PIE DE ARCHIVO */}
@@ -377,7 +479,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">
@@ -528,173 +630,6 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
         </motion.div>
       )}
 
-      {/* ── GUÍA DE USO: IMAGEN ↔ PDF ── */}
-      <div className="w-full mt-14 space-y-6 font-sans">
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
-              <ImageIcon className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Cómo convertir imágenes a PDF o extraer imágenes de un PDF?' : 'How to convert images to PDF or extract images from a PDF?'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono">
-                {isEs ? 'Guía rápida para combinar fotos/imágenes en un PDF o exportar las páginas de un PDF como imágenes.' : 'Quick guide to combine photos/images into a PDF or export PDF pages as images.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            {[
-              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "JPG/PNG → PDF" para combinar imágenes en un PDF, o "PDF → JPG" para exportar cada página del PDF como una imagen de alta resolución.', descEn: 'Select "JPG/PNG → PDF" to combine images into a PDF, or "PDF → JPG" to export each PDF page as a high-resolution image.' },
-              { step: '02', titleEs: 'Sube tus imágenes o PDF', titleEn: 'Upload your images or PDF', descEs: 'En modo imágenes→PDF puedes subir múltiples fotos (JPG, PNG, WEBP, GIF) a la vez. En modo PDF→imágenes sube el PDF del que quieres exportar las páginas.', descEn: 'In images→PDF mode you can upload multiple photos (JPG, PNG, WEBP, GIF) at once. In PDF→images mode upload the PDF you want to export pages from.' },
-              { step: '03', titleEs: 'Ordena y configura', titleEn: 'Order & configure', descEs: 'En modo imágenes→PDF, arrastra para reordenar las imágenes. Configura tamaño de página, márgenes y calidad de imagen. En PDF→JPG selecciona la resolución de exportación (DPI).', descEn: 'In images→PDF mode, drag to reorder images. Configure page size, margins and image quality. In PDF→JPG select the export resolution (DPI).' },
-              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". Las imágenes resultantes o el PDF se generan localmente en tu RAM y se descargan al instante a tu dispositivo. Sin servidores.', descEn: 'Click "Convert →". The resulting images or PDF generate locally in your RAM and download instantly to your device. No servers.' },
-            ].map((item) => (
-              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
-                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
-                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-start gap-3 mb-5">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                {isEs ? '💡 Consejos para conversiones de imagen y PDF' : '💡 Tips for image and PDF conversions'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono mt-1">
-                {isEs ? 'Aprende a obtener la mejor calidad en tus conversiones de imagen.' : 'Learn how to get the best quality in your image conversions.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
-            {[
-              { labelEs: 'Resolución DPI para exportar imágenes', labelEn: 'DPI resolution for image export', descEs: 'Para uso en pantalla usa 72-96 DPI. Para impresión profesional usa 300 DPI. Mayor DPI = imágenes más nítidas pero archivos más grandes.', descEn: 'For screen use, 72-96 DPI. For professional printing, 300 DPI. Higher DPI = sharper images but larger files.' },
-              { labelEs: 'Transparencia PNG en el PDF', labelEn: 'PNG transparency in PDF', descEs: 'Las imágenes PNG con fondo transparente se insertan en el PDF manteniendo la transparencia. El fondo de página del PDF determina lo que se ve detrás de la imagen.', descEn: 'PNG images with transparent backgrounds are inserted in the PDF maintaining transparency. The PDF page background determines what shows behind the image.' },
-              { labelEs: 'Orden de páginas al combinar imágenes', labelEn: 'Page order when combining images', descEs: 'El orden en que aparezcan las imágenes en la lista es el orden de páginas en el PDF final. Arrastra las tarjetas para reordenarlas antes de convertir.', descEn: 'The order images appear in the list is the page order in the final PDF. Drag the cards to reorder them before converting.' },
-              { labelEs: 'PDF escaneado vs. PDF de texto', labelEn: 'Scanned PDF vs. text PDF', descEs: 'Al exportar PDF→JPG, obtienes capturas visuales de cada página. Un PDF de texto exportado como imagen pierde el texto seleccionable. Usa esto para compartir capturas, no para editar.', descEn: 'When exporting PDF→JPG, you get visual captures of each page. A text PDF exported as image loses selectable text. Use this for sharing screenshots, not for editing.' },
-            ].map((tip, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
-                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
-      <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
-        {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Qué sucede al extraer láminas PDF como fotos JPG?' : 'What happens when extracting PDF pages as JPG photos?'}
-              </h2>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
-                {isEs ? '🔒 EMBEDDING HD Y RENDERIZADO CANVAS 100% LOCAL' : '🔒 100% LOCAL HD EMBEDDING & CANVAS RENDERING'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                {isEs ? '1. Conversión de PDF a JPG' : '1. PDF to JPG Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Renderiza el documento mediante motores Canvas locales a una escala de 2.0x, generando fotos JPG ultra-nítidas.'
-                  : 'Renders the document via local Canvas engines at 2.0x scale, generating ultra-crisp JPG photos.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                {isEs ? '2. Conversión de JPG/PNG a PDF' : '2. JPG/PNG to PDF Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Incrusta la matriz de píxeles HD directamente en el lienzo binario del PDF sin comprimir destructivamente la resolución original.'
-                  : 'Embeds HD pixel matrices directly into the PDF binary canvas without destructively compressing original resolution.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* BLOQUE 2: GUÍA PASO A PASO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-              <HelpCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? 'Aprende a usar la herramienta en 3 sencillos pasos' : 'Learn how to use the tool in 3 simple steps'}
-              </h2>
-              <p className="text-xs font-mono text-zinc-400">
-                {isEs ? 'GUÍA RÁPIDA DE CONVERSIÓN DE IMÁGENES' : 'QUICK IMAGE CONVERSION GUIDE'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                1
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Cargar Archivo' : 'Upload File'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Arrastra tu PDF o imagen (JPG/PNG). El sistema pre-visualizará el documento al instante.' 
-                  : 'Drop your PDF or image (JPG/PNG). The system will preview it instantly.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                2
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Ajustar Calidad / Formato' : 'Adjust Quality / Format'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Selecciona la resolución DPI (300 DPI HQ, 150 DPI o 72 DPI) y el formato (JPG, PNG o WebP).' 
-                  : 'Select DPI resolution (300 DPI HQ, 150 DPI or 72 DPI) and format (JPG, PNG or WebP).'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                3
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Convertir y Descargar' : 'Convert & Download'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Haz clic en el botón principal para descargar la imagen procesada o el archivo PDF.' 
-                  : 'Click the action button to download processed image or PDF file.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

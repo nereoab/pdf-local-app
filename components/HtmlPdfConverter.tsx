@@ -63,6 +63,12 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   const [singleHtmlFile, setSingleHtmlFile] = useState<boolean>(true);
   const [addHeaderFooter, setAddHeaderFooter] = useState<boolean>(true);
 
+  // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [activePage, setActivePage] = useState<number>(1);
+  const [isRendering, setIsRendering] = useState<boolean>(false);
+
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
   const parseHtmlContent = async (htmlFile: File): Promise<number> => {
@@ -76,10 +82,55 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   };
 
   useEffect(() => {
-    if (file && (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm'))) {
+    if (!file) {
+      setPageDataUrls({});
+      setTotalPages(0);
+      return;
+    }
+    if (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
       parseHtmlContent(file).then(count => setHtmlTagCount(count));
+    } else if (file.name.toLowerCase().endsWith('.pdf')) {
+      cargarMiniaturasPdf(file);
     }
   }, [file]);
+
+  const cargarMiniaturasPdf = async (pdfFile: File) => {
+    setIsRendering(true);
+    setPageDataUrls({});
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      setTotalPages(pdfDoc.numPages);
+      const urls: Record<number, string> = {};
+      for (let p = 1; p <= pdfDoc.numPages; p++) {
+        try {
+          const page = await pdfDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+          }
+        } catch {}
+      }
+      setPageDataUrls(urls);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRendering(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -385,30 +436,82 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: PREVISUALIZACIÓN DE ARCHIVO */}
-          <div className="lg:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <Code className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / PREVISUALIZACIÓN DE DOCUMENTO` : `001 / DOCUMENT PREVIEW`}</span>
+                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
               </div>
             </div>
 
-            {/* VISTA PREVIA DETALLADA */}
-            <div className="w-full flex-1 bg-zinc-950 rounded-xl overflow-hidden flex flex-col items-center justify-center p-4 relative border border-white/5 font-mono min-h-[460px]">
-              {pdfUrl ? (
-                <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} className="w-full h-full border-none bg-white rounded-lg shadow-inner min-h-[440px]" title="PDF Preview" />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-4 text-center p-6">
-                  <HtmlIcon className="w-24 h-24 rounded-2xl shadow-2xl" />
-                  <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
-                    ✓ {htmlTagCount} {isEs ? 'etiquetas HTML detectadas' : 'HTML tags detected'}
-                  </span>
-                </div>
-              )}
+            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
+              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                </span>
+                {isRendering ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    <span>...</span>
+                  </div>
+                ) : totalPages > 0 ? (
+                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setActivePage(pageNum)}
+                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                        {pageDataUrls[pageNum] ? (
+                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                        ) : (
+                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                        )}
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                          #{pageNum}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
+                )}
+              </div>
+
+              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
+              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                {pdfUrl ? (
+                  <iframe
+                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                    title="Visor PDF Tamaño Normal"
+                  />
+                ) : pageDataUrls[activePage] ? (
+                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
+                    <img
+                      src={pageDataUrls[activePage]}
+                      alt={`Página ${activePage}`}
+                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
+                    <HtmlIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
+                    <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
+                      ✓ {htmlTagCount} {isEs ? 'etiquetas HTML detectadas' : 'HTML tags detected'}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* PIE DE ARCHIVO */}
@@ -421,7 +524,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">
@@ -582,174 +685,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           </div>
         </motion.div>
       )}
-
-      {/* ── GUÍA DE USO: HTML ↔ PDF ── */}
-      <div className="w-full mt-14 space-y-6 font-sans">
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-            <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
-              <Code className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Cómo convertir entre HTML y PDF?' : 'How to convert between HTML and PDF?'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono">
-                {isEs ? 'Guía rápida para convertir páginas web o código HTML a PDF, o extraer el contenido HTML de un PDF.' : 'Quick guide to convert web pages or HTML code to PDF, or extract HTML content from a PDF.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            {[
-              { step: '01', titleEs: 'Elige el modo de conversión', titleEn: 'Choose conversion mode', descEs: 'Selecciona "HTML → PDF" para convertir código HTML/CSS a PDF, o "PDF → HTML" para extraer el contenido estructurado de un PDF como documento HTML.', descEn: 'Select "HTML → PDF" to convert HTML/CSS code to PDF, or "PDF → HTML" to extract the structured content from a PDF as an HTML document.' },
-              { step: '02', titleEs: 'Sube tu archivo o pega el HTML', titleEn: 'Upload your file or paste HTML', descEs: 'Puedes subir un archivo .html/.htm, o pegar directamente el código HTML en el editor de texto integrado para convertirlo al instante a PDF.', descEn: 'You can upload an .html/.htm file, or paste HTML code directly in the integrated text editor to instantly convert it to PDF.' },
-              { step: '03', titleEs: 'Configura el diseño de página', titleEn: 'Configure page layout', descEs: 'Ajusta el tamaño de página (A4, Letter), márgenes, si incluir estilos CSS externos, y el nivel de zoom de renderizado para que el PDF se vea exactamente como en el navegador.', descEn: 'Adjust page size (A4, Letter), margins, whether to include external CSS styles, and the rendering zoom level so the PDF looks exactly as it does in the browser.' },
-              { step: '04', titleEs: 'Convertir y Descargar', titleEn: 'Convert & Download', descEs: 'Haz clic en "Convertir →". El motor renderiza el HTML localmente con el motor de tu navegador y genera el PDF al instante. Sin servidores, 100% privado.', descEn: 'Click "Convert →". The engine renders the HTML locally with your browser engine and generates the PDF instantly. No servers, 100% private.' },
-            ].map((item) => (
-              <div key={item.step} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 flex flex-col gap-2 hover:border-white/20 transition-all">
-                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2.5 py-1 rounded-full w-fit">{item.step}</span>
-                <h4 className="text-sm font-bold text-white">{isEs ? item.titleEs : item.titleEn}</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.descEs : item.descEn}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-start gap-3 mb-5">
-            <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30 flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                {isEs ? '💡 Consejos para convertir HTML a PDF correctamente' : '💡 Tips for correctly converting HTML to PDF'}
-              </h3>
-              <p className="text-xs text-zinc-400 font-mono mt-1">
-                {isEs ? 'Conoce las particularidades del renderizado HTML en PDF.' : 'Learn the particularities of HTML rendering in PDF.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-zinc-300">
-            {[
-              { labelEs: 'CSS externo e imágenes online', labelEn: 'External CSS and online images', descEs: 'Si tu HTML referencia recursos externos (CDN de Bootstrap, Google Fonts, imágenes remotas), asegúrate de tener conexión a internet al convertir para que el motor pueda cargarlos.', descEn: 'If your HTML references external resources (Bootstrap CDN, Google Fonts, remote images), make sure you have internet connection when converting so the engine can load them.' },
-              { labelEs: 'Paginación de contenido largo', labelEn: 'Long content pagination', descEs: 'Para documentos HTML largos, el motor inserta saltos de página automáticos. Puedes usar la propiedad CSS "page-break-before: always" para controlar manualmente dónde comienzan las páginas.', descEn: 'For long HTML documents, the engine inserts automatic page breaks. You can use the CSS property "page-break-before: always" to manually control where pages start.' },
-              { labelEs: 'JavaScript no se ejecuta en la conversión', labelEn: 'JavaScript does not run during conversion', descEs: 'El motor convierte el HTML estático. El JavaScript de la página no se ejecuta durante la conversión, por lo que el contenido dinámico generado por JS podría no aparecer en el PDF.', descEn: 'The engine converts static HTML. The page\'s JavaScript does not execute during conversion, so dynamic content generated by JS may not appear in the PDF.' },
-              { labelEs: 'PDF → HTML: estructura semántica', labelEn: 'PDF → HTML: semantic structure', descEs: 'Al convertir PDF a HTML, el motor analiza la jerarquía de texto y genera etiquetas semánticas (h1, p, table). Es útil para reutilizar el contenido de un PDF en una web.', descEn: 'When converting PDF to HTML, the engine analyzes text hierarchy and generates semantic tags (h1, p, table). Useful for reusing PDF content in a website.' },
-            ].map((tip, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <HelpCircle className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
-                <span><strong className="text-white">{isEs ? tip.labelEs : tip.labelEn}:</strong> {isEs ? tip.descEs : tip.descEn}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* SECCIÓN INFORMATIVA INFERIOR (DEBAJO DE LAS CAJAS PRINCIPALES) */}
-      <div className="w-full space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12 mb-12">
-        {/* BLOQUE 1: GARANTÍA Y PROCESAMIENTO DETALLADO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-              <ShieldCheck className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? '¿Qué sucede al exportar documentos PDF a código HTML5?' : 'What happens when exporting PDF documents into HTML5 code?'}
-              </h2>
-              <span className="text-xs font-mono text-emerald-400 font-semibold">
-                {isEs ? '🔒 RENDERIZADO WEB DOM HTML5 Y PROCESAMIENTO 100% LOCAL' : '🔒 100% LOCAL HTML5 DOM RENDERING'}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                {isEs ? '1. Conversión de PDF a HTML' : '1. PDF to HTML Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Traduce párrafos, títulos e imágenes fijas del PDF en marcas sintácticas de HTML5 totalmente estructuradas.'
-                  : 'Translates paragraphs, headings, and static PDF images into fully structured HTML5 syntax.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                {isEs ? '2. Conversión de HTML a PDF' : '2. HTML to PDF Conversion'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Procesa el árbol DOM y estilos CSS3 de la página web, renderizándolos con precisión vectorial en un documento PDF de alta fidelidad.'
-                  : 'Parses DOM trees and CSS3 styles from the web page, vector-rendering them into a high-precision PDF.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* BLOQUE 2: GUÍA PASO A PASO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-              <HelpCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                {isEs ? 'Aprende a usar la herramienta en 3 sencillos pasos' : 'Learn how to use the tool in 3 simple steps'}
-              </h2>
-              <p className="text-xs font-mono text-zinc-400">
-                {isEs ? 'GUÍA RÁPIDA DE CÓDIGO HTML' : 'QUICK HTML CODE GUIDE'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                1
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Cargar Archivo Web' : 'Upload Web File'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Arrastra tu PDF o documento HTML. El sistema pre-visualizará las etiquetas al instante.' 
-                  : 'Drop your PDF or HTML file. The system will preview tags instantly.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                2
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Configurar DOM' : 'Configure DOM'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Selecciona si deseas 1 archivo autónomo con CSS e imágenes incrustadas en Base64.' 
-                  : 'Select if you want 1 standalone file with embedded CSS and Base64 images.'}
-              </p>
-            </div>
-
-            <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 text-white font-mono font-bold flex items-center justify-center text-xs mb-1">
-                3
-              </div>
-              <strong className="text-white font-bold text-sm block">
-                {isEs ? 'Exportar y Descargar' : 'Export & Download'}
-              </strong>
-              <p>
-                {isEs 
-                  ? 'Haz clic en el botón principal para descargar tu código HTML5 o archivo PDF listo para usar.' 
-                  : 'Click the action button to download your HTML5 code or PDF file ready to use.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

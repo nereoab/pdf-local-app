@@ -409,99 +409,140 @@ function ConvertirContent() {
                 </div>
               </div>
 
-              {/* SECCIÓN DETALLADA: ¿QUÉ SUCEDE CON TU ARCHIVO PDF Y EXPLICACIÓN DE HERRAMIENTAS DE CONVERSIÓN */}
+              {/* SECCIÓN DE 4 PUNTOS ESTANDARIZADA */}
               <div className="w-full mt-12 space-y-8 font-sans">
                 
-                {/* BLOQUE 1: ¿QUÉ SUCEDE CON TU ARCHIVO PDF? (PRIVACIDAD Y SEGURIDAD LOCAL) */}
-                <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                      <ShieldCheck className="w-6 h-6 text-emerald-400" />
+                {/* 1. CÓMO FUNCIONA PASO A PASO */}
+                <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+                    <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                      <FileText className="w-5 h-5 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white tracking-tight">
-                        {isEs ? '¿Qué sucede exactamente con tu archivo PDF al convertirlo?' : 'What exactly happens to your PDF file when converted?'}
-                      </h3>
-                      <span className="text-xs font-mono text-emerald-400 font-semibold">
-                        {isEs ? '🔒 PRIVACIDAD ABSOLUTA • PROCESAMIENTO 100% LOCAL EN RAM • SIN SERVIDORES' : '🔒 ABSOLUTE PRIVACY • 100% LOCAL RAM PROCESSING • ZERO SERVERS'}
-                      </span>
-                    </div>
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      {isEs ? '1. Cómo convertir archivos PDF y documentos paso a paso' : '1. How to convert PDF files & documents step by step'}
+                    </h3>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      { step: '01', es: 'Selecciona la herramienta deseada o sube tu documento PDF.', en: 'Select desired tool or upload your PDF document.' },
+                      { step: '02', es: 'El motor decodifica la estructura de texto, tablas e imágenes.', en: 'The engine decodes text, table, and image structure.' },
+                      { step: '03', es: 'Ajusta los parámetros avanzados según el formato de salida.', en: 'Adjust advanced parameters according to output format.' },
+                      { step: '04', es: 'Haz clic en convertir y descarga tu archivo 100% procesado.', en: 'Click convert and download your 100% processed file.' },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+                        <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">
+                          Paso {item.step}
+                        </span>
+                        <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.es : item.en}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed font-sans">
-                    <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                      <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                        <HardDrive className="w-4 h-4 text-emerald-400" />
-                        {isEs ? '1. Ejecución Local en tu Navegador' : '1. Local Browser Execution'}
-                      </strong>
-                      <p>
-                        {isEs
-                          ? 'Tus archivos PDF se transforman a Word, Excel, PowerPoint, imágenes u otros formatos directamente en tu navegador. Tus documentos privados no se suben a ningún servidor externo.'
-                          : 'Your PDF files are converted to Word, Excel, PowerPoint, images, or other formats directly in your browser. Private files are never uploaded to external servers.'}
-                      </p>
+                {/* 2. LIMITACIONES Y CONSEJOS ÚTILES */}
+                <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-5 border-b border-amber-500/20 pb-4">
+                    <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
+                      <Sparkles className="w-5 h-5 text-amber-400" />
                     </div>
-
-                    <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                      <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                        <Lock className="w-4 h-4 text-emerald-400" />
-                        {isEs ? '2. Fidelidad de Texto y Tablas' : '2. Text & Table Layout Fidelity'}
-                      </strong>
-                      <p>
-                        {isEs
-                          ? 'El motor de conversión analiza la estructura del documento extrayendo listas, párrafos, gráficos y hojas de cálculo para generar archivos limpios y totalmente editables.'
-                          : 'The conversion engine parses document layout extracting lists, paragraphs, charts, and spreadsheets to generate clean, fully editable files.'}
-                      </p>
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      {isEs ? '2. Limitaciones y consejos útiles' : '2. Limitations & useful tips'}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                        ✓ {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
+                      </h4>
+                      {[
+                        isEs ? 'Exportar PDF a Word, Excel, PowerPoint, imágenes y texto.' : 'Export PDF to Word, Excel, PowerPoint, images and text.',
+                        isEs ? 'Convertir formatos Microsoft Office hacia PDF vectorial de alta calidad.' : 'Convert Microsoft Office formats to high quality vector PDF.',
+                        isEs ? 'Configurar maquetación, orientación de hoja y marcas de agua.' : 'Configure page layout, orientation and watermarks.',
+                        isEs ? 'Extraer elementos gráficos e imágenes sin pérdida de resolución.' : 'Extract graphic elements and images without resolution loss.',
+                      ].map((t, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                          <span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span>
+                          <span>{t}</span>
+                        </div>
+                      ))}
                     </div>
-
-                    <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                      <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
-                        <Sparkles className="w-4 h-4 text-emerald-400" />
-                        {isEs ? '3. Purga Automática de Memoria' : '3. Automatic Memory Purge'}
-                      </strong>
-                      <p>
-                        {isEs
-                          ? 'Al finalizar la descarga del archivo convertido o al cerrar la ventana, la memoria RAM elimina automáticamente todos los datos y temporales procesados.'
-                          : 'Upon downloading your converted file or closing the tab, browser RAM automatically purges all processed temp data.'}
-                      </p>
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                        💡 {isEs ? 'CONSEJOS' : 'TIPS'}
+                      </h4>
+                      {[
+                        isEs ? 'Asegúrate de que tus archivos PDF no contengan contraseñas de apertura.' : 'Ensure your PDF files do not contain open passwords.',
+                        isEs ? 'Aplica OCR a documentos escaneados para permitir extracción de texto.' : 'Run OCR on scanned documents to enable text extraction.',
+                        isEs ? 'Utiliza navegadores modernos para obtener el máximo rendimiento de conversión.' : 'Use modern browsers for maximum conversion performance.',
+                        isEs ? 'Todo el procesamiento se completa localmente en memoria RAM.' : 'All processing completes locally in RAM memory.',
+                      ].map((t, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                          <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
+                          <span>{t}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* BLOQUE 2: GUÍA EXPLICATIVA DE TODAS LAS HERRAMIENTAS DE CONVERSIÓN */}
-                <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-                  <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-                    <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
-                      <RefreshCw className="w-5 h-5 text-white" />
+                {/* 3. PRIVACIDAD Y PROCESAMIENTO LOCAL */}
+                <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-5 border-b border-emerald-500/20 pb-4">
+                    <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30">
+                      <ShieldCheck className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white tracking-tight font-sans">
-                        {isEs ? 'Herramientas disponibles en el Módulo de Conversión' : 'Available Tools in the Conversion Module'}
-                      </h3>
-                      <p className="text-xs text-zinc-400 font-mono">
-                        {isEs ? 'Conoce en detalle las 6 funciones avanzadas para exportar y convertir tus documentos PDF.' : 'Learn in detail about the 6 advanced functions to export and convert your PDF documents.'}
-                      </p>
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      {isEs ? '3. ¿Qué sucede con tu documento al convertirlo?' : '3. What happens to your document when converting it?'}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400 leading-relaxed">
+                    <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                      <strong className="text-white font-bold text-xs block">🖥️ {isEs ? 'Procesamiento 100% local' : '100% local processing'}</strong>
+                      <p className="text-[11px]">{isEs ? 'El procesamiento se realiza en tu navegador. Tus archivos nunca tocan servidores externos.' : 'Processing runs in your browser. Your files never touch external servers.'}</p>
+                    </div>
+                    <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                      <strong className="text-white font-bold text-xs block">🔒 {isEs ? 'Seguridad y confidencialidad' : 'Security & confidentiality'}</strong>
+                      <p className="text-[11px]">{isEs ? 'Tus contratos y datos empresariales se mantienen privados sin rastreadores.' : 'Your contracts and enterprise data stay private with zero trackers.'}</p>
+                    </div>
+                    <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                      <strong className="text-white font-bold text-xs block">📥 {isEs ? 'Descarga directa' : 'Direct download'}</strong>
+                      <p className="text-[11px]">{isEs ? 'Archivos resultantes disponibles al instante en tu equipo.' : 'Resulting files available instantly on your device.'}</p>
                     </div>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 font-sans">
-                    {conversionTools.map((tool) => (
-                      <div key={tool.id} className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 hover:border-white/20 transition-all flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center gap-2.5 mb-2.5">
-                            <div className="p-1.5 rounded-lg bg-zinc-900 border border-white/10 text-white">
-                              <tool.icon className="w-5 h-5" />
-                            </div>
-                            <span className="text-[10px] font-mono text-zinc-400 font-bold tracking-wider">
-                              {isEs ? tool.tagEs : tool.tagEn}
-                            </span>
-                          </div>
-                          <h4 className="text-sm font-bold text-white mb-2">{isEs ? tool.titleEs : tool.titleEn}</h4>
-                          <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? tool.descEs : tool.descEn}</p>
-                        </div>
-                        <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-emerald-400">
-                          <span>✓ 100% Local</span>
-                          <span className="text-zinc-500 font-sans">{isEs ? 'Sin Servidores' : 'No Servers'}</span>
-                        </div>
+                {/* 4. PREGUNTAS FRECUENTES */}
+                <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+                    <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                      <HardDrive className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      {isEs ? '4. Preguntas Frecuentes' : '4. Frequently Asked Questions'}
+                    </h3>
+                  </div>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        qEs: '¿Necesito instalar software adicional o plugins para convertir mis archivos?',
+                        qEn: 'Do I need to install extra software or plugins to convert my files?',
+                        aEs: 'No. Todas las herramientas de conversión funcionan de manera autónoma en cualquier navegador moderno mediante WebAssembly y JavaScript local.',
+                        aEn: 'No. All conversion tools run autonomously in any modern browser using local WebAssembly and JavaScript.',
+                      },
+                      {
+                        qEs: '¿Existe algún límite de tamaño de archivo para la conversión local?',
+                        qEn: 'Is there any file size limit for local conversion?',
+                        aEs: 'El único límite depende de la memoria RAM disponible en tu dispositivo. Puedes procesar documentos extensos sin restricciones artificiales.',
+                        aEn: 'The only limit depends on your device\'s available RAM. You can process extensive documents with no artificial restrictions.',
+                      },
+                    ].map((faq, i) => (
+                      <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 space-y-1.5">
+                        <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                          <span className="text-emerald-400 font-mono">Q:</span> {isEs ? faq.qEs : faq.qEn}
+                        </h4>
+                        <p className="text-[11px] text-zinc-400 leading-relaxed pl-5">
+                          {isEs ? faq.aEs : faq.aEn}
+                        </p>
                       </div>
                     ))}
                   </div>

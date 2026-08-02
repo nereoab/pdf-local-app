@@ -29,11 +29,11 @@ export default function PdfProtector() {
   const [files, setFiles] = useState<File[]>(globalFile ? [globalFile] : []);
   const [activeFileIdx, setActiveFileIdx] = useState<number>(0);
 
-  // === PREVISUALIZACIÓN ===
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  // === PREVISUALIZACIÓN / MINIATURAS ===
   const [previewPageNum, setPreviewPageNum] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
+  const [thumbnails, setThumbnails] = useState<{ pageNum: number; dataUrl: string }[]>([]);
+  const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
 
   // === CONTRASEÑAS ===
   const [userPassword, setUserPassword] = useState('');
@@ -109,51 +109,55 @@ export default function PdfProtector() {
     };
   }, []);
 
-  useEffect(() => {
-    if (activeFile) {
-      setPreviewPageNum(1);
-      renderPagePreview(activeFile, 1);
-    } else {
-      setPreviewDataUrl(null);
-      setTotalPages(1);
-    }
-  }, [activeFile]);
-
-  // === VISTA PREVIA ===
-  const renderPagePreview = useCallback(async (pdfFile: File, pageNum: number) => {
-    setIsLoadingPreview(true);
+  // === GENERACIÓN DE MINIATURAS ===
+  const loadFileThumbnails = useCallback(async (pdfFile: File) => {
+    setIsLoadingThumbnails(true);
+    setThumbnails([]);
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
       const arrayBuffer = await pdfFile.arrayBuffer();
-      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      setTotalPages(pdfDoc.numPages);
-      const targetPageNum = Math.min(Math.max(1, pageNum), pdfDoc.numPages);
-      const page = await pdfDoc.getPage(targetPageNum);
-      const viewport = page.getViewport({ scale: 1.5 });
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      const total = pdfDoc.numPages;
+      setTotalPages(total);
+
+      const generated: { pageNum: number; dataUrl: string }[] = [];
+      const maxThumbnails = Math.min(total, 60);
+
+      for (let pn = 1; pn <= maxThumbnails; pn++) {
+        const page = await pdfDoc.getPage(pn);
+        const viewport = page.getViewport({ scale: 0.5 });
+        const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-        setPreviewDataUrl(canvas.toDataURL('image/jpeg', 0.85));
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+          generated.push({ pageNum: pn, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
+        }
       }
+      setThumbnails(generated);
     } catch {
-      setPreviewDataUrl(null);
+      setThumbnails([]);
     } finally {
-      setIsLoadingPreview(false);
+      setIsLoadingThumbnails(false);
     }
   }, []);
 
-  const changePreviewPage = (delta: number) => {
-    if (!activeFile) return;
-    const newPage = Math.min(Math.max(1, previewPageNum + delta), totalPages);
-    if (newPage !== previewPageNum) {
-      setPreviewPageNum(newPage);
-      renderPagePreview(activeFile, newPage);
+  useEffect(() => {
+    if (activeFile) {
+      setPreviewPageNum(1);
+      loadFileThumbnails(activeFile);
+    } else {
+      setThumbnails([]);
+      setTotalPages(1);
     }
-  };
+  }, [activeFile, loadFileThumbnails]);
 
   // === MANEJO DE ARCHIVOS (BATCH) ===
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -475,48 +479,72 @@ export default function PdfProtector() {
               </div>
             )}
 
-            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono flex-1 min-h-[520px]">
-              <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10">
+            {/* VISTA PREVIA CON GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS) */}
+            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono flex-1 min-h-[580px]">
+              <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10 font-sans">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0">
-                    <FileText className="w-4 h-4 text-white" />
+                  <div className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 flex-shrink-0">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   </div>
-                  <div className="flex flex-col overflow-hidden">
+                  <div className="flex flex-col overflow-hidden font-mono">
                     <span className="text-white font-bold text-xs truncate w-28 sm:w-44">{activeFile?.name || ''}</span>
                     <span className="text-zinc-400 text-[10px]">{activeFile ? formatFileSize(activeFile.size) : ''}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center bg-zinc-950 border border-white/10 rounded-xl px-2 py-1 text-xs text-zinc-300">
-                    <button onClick={() => changePreviewPage(-1)} disabled={previewPageNum <= 1 || isLoadingPreview} className="p-1 hover:text-white disabled:opacity-30 cursor-pointer">
-                      <ChevronDown className="w-4 h-4 rotate-90" />
-                    </button>
-                    <span className="px-2 text-[11px] font-mono font-bold text-white">{previewPageNum} / {totalPages}</span>
-                    <button onClick={() => changePreviewPage(1)} disabled={previewPageNum >= totalPages || isLoadingPreview} className="p-1 hover:text-white disabled:opacity-30 cursor-pointer">
-                      <ChevronDown className="w-4 h-4 -rotate-90" />
-                    </button>
-                  </div>
+
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="bg-zinc-950 border border-white/10 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>{isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}</span>
+                  </span>
                 </div>
               </div>
 
-              <div className="w-full flex-1 bg-[#09090b] relative flex items-center justify-center p-3 sm:p-5 min-h-[440px]">
-                {isLoadingPreview ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
-                    <Loader2 className="w-8 h-8 animate-spin text-white" />
-                    <span className="text-xs font-mono">{isEs ? 'Cargando preview...' : 'Loading preview...'}</span>
+              {/* CONTENEDOR DE MINIATURAS EN GRILLA (3 COLUMNAS X 4 FILAS) */}
+              <div className="w-full flex-1 bg-[#09090b] relative p-3 sm:p-4 h-[580px] max-h-[600px] overflow-y-auto font-sans flex flex-col justify-start">
+                {isLoadingThumbnails ? (
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                    <span className="text-xs font-mono">{isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}</span>
                   </div>
-                ) : previewDataUrl ? (
-                  <div className="w-full h-full max-h-[480px] flex items-center justify-center relative">
-                    <img src={previewDataUrl} alt={`Página ${previewPageNum}`} className="max-h-[470px] w-auto max-w-full object-contain rounded-lg shadow-2xl border border-white/15 bg-white" />
-                    <div className="absolute top-4 right-4 bg-emerald-950/90 border border-emerald-500/40 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-md">
-                      <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>AES 256-BIT</span>
-                    </div>
+                ) : thumbnails.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full">
+                    {thumbnails.map((thumb) => (
+                      <div
+                        key={thumb.pageNum}
+                        onClick={() => setPreviewPageNum(thumb.pageNum)}
+                        className={`group relative bg-zinc-900/90 rounded-xl p-1.5 sm:p-2 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-1.5 shadow-md ${
+                          previewPageNum === thumb.pageNum
+                            ? 'border-emerald-400 ring-2 ring-emerald-500/30 bg-zinc-800'
+                            : 'border-white/10 hover:border-white/30 hover:bg-zinc-800/80'
+                        }`}
+                      >
+                        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white flex items-center justify-center h-[110px] sm:h-[125px] w-full p-1">
+                          <img
+                            src={thumb.dataUrl}
+                            alt={`Página ${thumb.pageNum}`}
+                            className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                          />
+                        </div>
+                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[9px] sm:text-[10px]">
+                          <span className={`font-bold px-1.5 py-0.5 rounded-full ${
+                            previewPageNum === thumb.pageNum
+                              ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
+                              : 'bg-zinc-800 text-zinc-300 border border-white/10'
+                          }`}>
+                            {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
+                          </span>
+                          {previewPageNum === thumb.pageNum && (
+                            <span className="text-emerald-400 text-[8px] sm:text-[9px] font-bold">✓</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
                     <FileText className="w-10 h-10 text-zinc-600" />
-                    <span className="text-xs font-mono">{isEs ? 'Vista previa no disponible' : 'Preview unavailable'}</span>
+                    <span className="text-xs font-mono">{isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}</span>
                   </div>
                 )}
               </div>
@@ -527,7 +555,7 @@ export default function PdfProtector() {
           <div className="lg:col-span-7 flex flex-col">
             <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans flex-1">
 
-              <div className="overflow-y-auto pr-1 max-h-[calc(100vh-250px)]">
+              <div>
                 {/* CABECERA PANEL */}
                 <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
                   <div>
@@ -726,38 +754,32 @@ export default function PdfProtector() {
                   )}
                 </div>
 
-                {/* === OPCIONES AVANZADAS === */}
-                <div className="mb-5">
-                  <button onClick={() => setShowAdvanced(v => !v)}
-                    className="w-full flex items-center justify-between py-2.5 px-3 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 hover:border-white/20 rounded-xl transition-all cursor-pointer">
-                    <span className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider">
-                      <Settings className="w-3.5 h-3.5 text-white" />
-                      {isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}
-                    </span>
-                    {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-                  </button>
-                  {showAdvanced && (
-                    <div className="mt-3 space-y-4 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
-                      <div onClick={() => setEnableRasterize(!enableRasterize)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
-                        <div>
-                          <p className="text-[11px] font-bold text-white">{isEs ? 'Rasterizar contenido (máxima seguridad)' : 'Rasterize content (maximum security)'}</p>
-                          <p className="text-[9px] text-zinc-500 font-mono">{isEs ? 'Convierte todo a imagen no editable ni buscable' : 'Converts all to non-editable, non-searchable image'}</p>
-                        </div>
-                        <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableRasterize ? 'bg-white' : 'bg-zinc-700'}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableRasterize ? 'left-4' : 'left-0.5'}`} />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">{isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}</label>
-                        <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
-                        />
-                        <p className="text-[9px] font-mono text-zinc-600 mt-1">
-                          {isEs ? `Ejemplo: archivo${customSuffix}.pdf` : `Example: file${customSuffix}.pdf`}
-                        </p>
-                      </div>
+                {/* === OPCIONES AVANZADAS (SIEMPRE VISIBLES) === */}
+                <div className="mb-5 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5 font-sans space-y-4">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
+                    <Settings className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
+                  </div>
+
+                  <div onClick={() => setEnableRasterize(!enableRasterize)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                    <div>
+                      <p className="text-[11px] font-bold text-white">{isEs ? 'Rasterizar contenido (máxima seguridad)' : 'Rasterize content (maximum security)'}</p>
+                      <p className="text-[9px] text-zinc-500 font-mono">{isEs ? 'Convierte todo a imagen no editable ni buscable' : 'Converts all to non-editable, non-searchable image'}</p>
                     </div>
-                  )}
+                    <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableRasterize ? 'bg-white' : 'bg-zinc-700'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableRasterize ? 'left-4' : 'left-0.5'}`} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">{isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}</label>
+                    <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
+                    />
+                    <p className="text-[9px] font-mono text-zinc-600 mt-1">
+                      {isEs ? `Ejemplo: archivo${customSuffix}.pdf` : `Example: file${customSuffix}.pdf`}
+                    </p>
+                  </div>
                 </div>
               </div>
 

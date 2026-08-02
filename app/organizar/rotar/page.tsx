@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Loader2, ShieldCheck, Cpu, RotateCw, CheckCircle2, Lock, Sparkles, Layers } from 'lucide-react';
+import { Loader2, ShieldCheck, RotateCw, AlertTriangle, ChevronDown, HelpCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 
 const PdfRotator = dynamic(() => import('@/components/PdfRotator'), {
@@ -11,7 +11,7 @@ const PdfRotator = dynamic(() => import('@/components/PdfRotator'), {
       <Loader2 className="w-10 h-10 animate-spin text-white" />
       <p className="text-zinc-400 font-mono text-xs">Cargando herramienta para rotar páginas PDF...</p>
     </div>
-  ),
+  )
 });
 
 export default function RotarPdfPage() {
@@ -23,173 +23,189 @@ export default function RotarPdfPage() {
       <div className="w-full max-w-7xl">
         <PdfRotator />
 
-        {/* SECCIÓN INFORMATIVA DETALLADA */}
-        <div className="space-y-12 text-zinc-300 font-sans border-t border-white/10 pt-12 mt-12">
-
-          {/* BLOQUE 1: PRIVACIDAD */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <ShieldCheck className="w-6 h-6 text-emerald-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¿Qué sucede exactamente con tu PDF al rotar sus páginas?' : 'What exactly happens to your PDF when rotating its pages?'}
-                </h2>
-                <span className="text-xs font-mono text-emerald-400 font-semibold">
-                  {isEs ? '🔒 PRIVACIDAD ABSOLUTA • ROTACIÓN SIN RECODIFICACIÓN • 100% LOCAL' : '🔒 ABSOLUTE PRIVACY • ROTATION WITHOUT RE-ENCODING • 100% LOCAL'}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed mt-4">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-emerald-400" />
-                  {isEs ? 'Tu documento nunca sale de tu dispositivo' : 'Your document never leaves your device'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'La rotación de páginas se ejecuta completamente en la memoria RAM de tu navegador usando pdf-lib. Ningún byte de tu documento — planos técnicos, contratos, expedientes — se transmite a servidores externos. Todo el procesamiento es instantáneo, privado y 100% local en tu equipo.'
-                    : 'Page rotation runs entirely in your browser RAM using pdf-lib. Not a single byte of your document — blueprints, contracts, dossiers — is transmitted to external servers. All processing is instant, private, and 100% local on your machine.'}
-                </p>
-              </div>
-
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
-                  {isEs ? 'Rotación lossless: sin recodificación ni pérdida de calidad' : 'Lossless rotation: no re-encoding or quality loss'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'La rotación modifica únicamente el valor del campo `/Rotate` en el diccionario de la página — un campo entero de la especificación PDF que acepta valores 0, 90, 180 y 270 grados. No se recodifican imágenes, fuentes ni vectores: cero pérdida de calidad, sin importar cuántas veces se rote el documento.'
-                    : 'Rotation only modifies the `/Rotate` field value in the page dictionary — an integer field in the PDF spec accepting values 0, 90, 180, and 270 degrees. Images, fonts, and vectors are never re-encoded: zero quality loss, regardless of how many times the document is rotated.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOQUE 2: PROCEDIMIENTO TÉCNICO */}
+        {/* ESTRUCTURA INFORMATIVA EN 4 PUNTOS CON ESTILO PDFBLACK */}
+        <div className="space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-10 mt-10">
+          
+          {/* SECCIÓN 1: CÓMO USAR LA HERRAMIENTA */}
           <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <Cpu className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                <RotateCw className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'El procedimiento técnico de rotación de páginas paso a paso' : 'Step-by-step technical page rotation procedure'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Cómo el motor modifica el ángulo de orientación de cada página en el PDF' : 'How the engine modifies the orientation angle of each page in the PDF'}
-                </p>
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '1. Cómo rotar páginas de un PDF' : '1. How to rotate PDF pages'}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { step: '01 / CARGA', title: isEs ? '1. Deserialización del PDF' : '1. PDF Deserialization', desc: isEs ? 'pdf-lib deserializa el archivo PDF cargado en memoria, reconstruyendo su árbol de objetos (páginas, recursos, fuentes, imágenes) en estructuras JavaScript manejables en tiempo real.' : 'pdf-lib deserializes the loaded PDF file in memory, reconstructing its object tree (pages, resources, fonts, images) into manageable JavaScript structures in real time.' },
-                { step: '02 / SELECCIÓN', title: isEs ? '2. Marcado de Páginas' : '2. Page Selection', desc: isEs ? 'El usuario selecciona páginas individuales o rangos completos usando miniaturas interactivas. Cada página marcada se registra con su número de índice para aplicar la rotación correspondiente.' : 'The user selects individual pages or complete ranges using interactive thumbnails. Each marked page is registered with its index number to apply the corresponding rotation.' },
-                { step: '03 / ROTACIÓN', title: isEs ? '3. Modificación del Campo /Rotate' : '3. /Rotate Field Modification', desc: isEs ? 'pdf-lib actualiza el campo `/Rotate` en el diccionario de cada página seleccionada con el ángulo elegido (90°, 180°, 270°). Este es el único cambio binario aplicado — cero recodificación de contenido.' : 'pdf-lib updates the `/Rotate` field in each selected page dictionary with the chosen angle (90°, 180°, 270°). This is the only binary change applied — zero content re-encoding.' },
-                { step: '04 / EXPORTACIÓN', title: isEs ? '4. PDF Rotado Listo' : '4. Rotated PDF Ready', desc: isEs ? 'Se serializa un nuevo PDF 1.7 estándar con los valores de rotación actualizados. El documento resultante abre correctamente en cualquier visor sin señales de degradación en imágenes ni texto.' : 'A new standard PDF 1.7 is serialized with updated rotation values. The resulting document opens correctly in any viewer with no image or text degradation signals.' },
+                {
+                  step: '01',
+                  es: 'Sube tu documento PDF. Las miniaturas se cargarán en una cuadrícula 4x4 interactiva.',
+                  en: 'Upload your PDF document. Thumbnails will load in an interactive 4x4 grid.'
+                },
+                {
+                  step: '02',
+                  es: 'Usa los botones de rotación individual (+90°, -90°) en cada tarjeta o la rotación masiva.',
+                  en: 'Use individual rotation buttons (+90°, -90°) on each card or mass rotation.'
+                },
+                {
+                  step: '03',
+                  es: 'Aplica el filtro "Normalizar Horizontales" para orientar automáticamente planos o escaneos A3.',
+                  en: 'Apply "Normalize Landscapes" filter to auto-orient blueprints or A3 scans.'
+                },
+                {
+                  step: '04',
+                  es: 'Haz clic en "Guardar Cambios y Rotar PDF →" para procesar y descargar tu documento.',
+                  en: 'Click "Save Changes & Rotate PDF →" to process and download your document.'
+                }
               ].map((item, i) => (
-                <div key={i} className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 flex flex-col justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-zinc-500 mb-2 block font-mono">{item.step}</span>
-                    <h3 className="font-bold text-white text-sm mb-2 font-sans">{item.title}</h3>
-                    <p className="text-zinc-400 text-[11px] leading-relaxed font-sans">{item.desc}</p>
-                  </div>
+                <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+                  <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">
+                    Paso {item.step}
+                  </span>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    {isEs ? item.es : item.en}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* BLOQUE 3: OPCIONES DE ROTACIÓN */}
-          <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <RotateCw className="w-6 h-6 text-white" />
+          {/* SECCIÓN 2: LIMITACIONES Y CONSEJOS ÚTILES */}
+          <div className="bg-[#09090b] border border-amber-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-amber-500/20 pb-4">
+              <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/30">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'Opciones de rotación y selección de páginas' : 'Rotation options and page selection'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Control completo sobre el ángulo y las páginas a rotar en el documento' : 'Complete control over the rotation angle and pages to rotate in the document'}
-                </p>
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '2. Limitaciones y consejos útiles' : '2. Limitations & useful tips'}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-white" />
-                  {isEs ? 'Ángulos de Rotación Disponibles' : 'Available Rotation Angles'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Rota páginas exactamente 90° (sentido horario), 180° (inversión completa) o 270° (sentido antihorario). Los cuatro ángulos admitidos por la especificación PDF — 0°, 90°, 180° y 270° — se aplican directamente mediante el campo `/Rotate` sin interpolación de píxeles.'
-                    : 'Rotate pages exactly 90° (clockwise), 180° (full inversion), or 270° (counterclockwise). All four angles supported by the PDF spec — 0°, 90°, 180°, and 270° — are applied directly via the `/Rotate` field without pixel interpolation.'}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <h4 className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                  ✓ {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
+                </h4>
+                {[
+                  isEs ? 'Rotar hojas individualmente a 90°, 180° y 270°.' : 'Rotate sheets individually to 90°, 180°, and 270°.',
+                  isEs ? 'Girar todo el documento con rotación unificada masiva.' : 'Rotate the whole document with mass unified rotation.',
+                  isEs ? 'Filtrar y rotar solo páginas impares, pares u horizontales.' : 'Filter and rotate only odd, even, or landscape pages.',
+                  isEs ? 'Normalizar hojas horizontales automáticamente en 1-clic.' : 'Normalize landscape sheets automatically in 1-click.',
+                  isEs ? 'Desbloquear PDFs protegidos con contraseña antes de rotar.' : 'Unlock password-protected PDFs before rotating.'
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                    <span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                  💡 {isEs ? 'CONSEJOS' : 'TIPS'}
+                </h4>
+                {[
+                  isEs ? 'Ideal para corregir escaneos al revés o planos horizontales.' : 'Ideal for fixing upside-down scans or landscape blueprints.',
+                  isEs ? 'La rotación modifica el parámetro /Rotate (100% sin pérdida).' : 'Rotation modifies the /Rotate parameter (100% lossless).',
+                  isEs ? 'El archivo original se mantiene seguro e intacto en tu dispositivo.' : 'The original file remains safe and untouched on your device.',
+                  isEs ? 'Estampa metadatos de Título y Autor en las Opciones Avanzadas.' : 'Stamp Title and Author metadata in Advanced Options.'
+                ].map((t, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                    <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 3: ¿QUÉ SUCEDE CON TU DOCUMENTO? */}
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 mb-5 border-b border-emerald-500/20 pb-4">
+              <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '3. ¿Qué sucede con tu documento al rotarlo?' : '3. What happens to your document when rotating?'}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400 leading-relaxed">
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">🖥️ {isEs ? 'Procesamiento 100% Local en Web Worker' : '100% Local Web Worker Processing'}</strong>
+                <p className="text-[11px]">
+                  {isEs ? 'La modificación del diccionario del PDF se ejecuta en la RAM de tu navegador sin subirse a ningún servidor.' : 'PDF dictionary modification runs in browser RAM without uploading to servers.'}
                 </p>
               </div>
 
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-white" />
-                  {isEs ? 'Selección Granular de Páginas' : 'Granular Page Selection'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Elige rotar todas las páginas a la vez, seleccionar páginas individuales mediante miniaturas interactivas, aplicar rotación solo a páginas pares o impares, o definir rangos específicos como "3-7, 12, 15-20" para documentos con orientación mixta.'
-                    : 'Choose to rotate all pages at once, select individual pages via interactive thumbnails, apply rotation to even or odd pages only, or define specific ranges like "3-7, 12, 15-20" for documents with mixed orientation.'}
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">🔄 {isEs ? 'Rotación Lossless Sin Pérdida' : 'Lossless Zero-Quality Loss Rotation'}</strong>
+                <p className="text-[11px]">
+                  {isEs ? 'No se recodifican imágenes ni texto; únicamente se actualiza el ángulo binario /Rotate de cada página.' : 'Images and text are never re-encoded; only the binary /Rotate angle is updated.'}
                 </p>
               </div>
 
-              <div className="bg-zinc-900/60 p-5 rounded-xl border border-white/5 space-y-2">
-                <strong className="text-white font-bold text-sm block flex items-center gap-2">
-                  <RotateCw className="w-4 h-4 text-white" />
-                  {isEs ? 'Vista Previa en Tiempo Real' : 'Real-Time Preview'}
-                </strong>
-                <p>
-                  {isEs
-                    ? 'Las miniaturas de página reflejan la rotación aplicada en tiempo real antes de generar el PDF final. Puedes ajustar y corregir la orientación de cada página individualmente desde el visor interactivo sin necesidad de procesar el documento cada vez.'
-                    : 'Page thumbnails reflect the applied rotation in real time before generating the final PDF. You can individually adjust and correct each page orientation from the interactive viewer without processing the document each time.'}
+              <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
+                <strong className="text-white font-bold text-xs block">🔒 {isEs ? 'Privacidad e Integridad Garantizada' : 'Privacy & Integrity Guaranteed'}</strong>
+                <p className="text-[11px]">
+                  {isEs ? 'Tu archivo original nunca es modificado ni sobrescrito. La descarga genera un nuevo PDF limpio al instante.' : 'Your original file is never modified or overwritten. Download generates a clean new PDF.'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* BLOQUE 4: BENEFICIOS */}
+          {/* SECCIÓN 4: PREGUNTAS FRECUENTES (FAQ) - ACORDEÓN INTERACTIVO */}
           <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-zinc-900 p-3 rounded-xl border border-white/10">
-                <CheckCircle2 className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                <HelpCircle className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? 'Beneficios del PDF con páginas rotadas' : 'Benefits of the PDF with rotated pages'}
-                </h2>
-                <p className="text-xs font-mono text-zinc-400">
-                  {isEs ? 'Calidad lossless y compatibilidad garantizadas' : 'Lossless quality and compatibility guaranteed'}
-                </p>
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                {isEs ? '4. Preguntas frecuentes (FAQ)' : '4. Frequently Asked Questions (FAQ)'}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 font-mono text-xs">
+            <div className="space-y-3 font-sans">
               {[
-                { title: isEs ? 'Calidad Lossless (Sin Pérdida)' : 'Lossless Quality (No Loss)', desc: isEs ? 'Solo el campo /Rotate cambia. Imágenes, vectores y texto permanecen bit a bit idénticos al original.' : 'Only the /Rotate field changes. Images, vectors, and text remain bit-for-bit identical to the original.' },
-                { title: isEs ? 'Sin Límite de Páginas' : 'No Page Limit', desc: isEs ? 'Rota cualquier número de páginas en documentos de cualquier tamaño sin restricciones.' : 'Rotate any number of pages in documents of any size without restrictions.' },
-                { title: isEs ? 'Compatible con Adobe' : 'Adobe Compatible', desc: isEs ? 'El PDF resultante abre correctamente en Adobe Acrobat, Chrome, Edge, Foxit, iOS y Android.' : 'The resulting PDF opens correctly in Adobe Acrobat, Chrome, Edge, Foxit, iOS, and Android.' },
-                { title: isEs ? 'Rotación Acumulable' : 'Stackable Rotation', desc: isEs ? 'Puedes volver a rotar el documento resultante sin ninguna degradación adicional.' : 'You can rotate the resulting document again without any additional degradation.' },
-                { title: isEs ? 'Planos y Documentos Técnicos' : 'Blueprints & Technical Docs', desc: isEs ? 'Ideal para corregir la orientación de planos escaneados en A3/A0 o fotos de documentos.' : 'Ideal for correcting orientation of scanned A3/A0 blueprints or document photos.' },
-                { title: isEs ? 'Privacidad Total' : 'Total Privacy', desc: isEs ? 'Cero bytes enviados a servidores. Toda la rotación ocurre en tu RAM local.' : 'Zero bytes sent to servers. All rotation happens in your local RAM.' },
-              ].map((item, i) => (
-                <div key={i} className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="text-white font-bold text-xs block mb-1 font-sans">{item.title}</strong>
-                    <span className="text-zinc-400 text-[11px] leading-relaxed font-sans">{item.desc}</span>
+                {
+                  q: isEs ? '¿Rotar las páginas afecta la calidad de las imágenes o fuentes?' : 'Does rotating pages affect image or font quality?',
+                  a: isEs 
+                    ? 'No. La rotación modifica únicamente la etiqueta binaria /Rotate en las especificaciones PDF. No se recodifican vectores ni imágenes, por lo que la calidad es 100% exacta al original.'
+                    : 'No. Rotation only modifies the binary /Rotate tag in the PDF spec. Vectors and images are not re-encoded, keeping quality 100% exact.'
+                },
+                {
+                  q: isEs ? '¿Puedo rotar solo páginas específicas usando rangos?' : 'Can I rotate only specific pages using ranges?',
+                  a: isEs
+                    ? 'Sí. En el campo "Rotación por Texto / Rango" puedes escribir listas como "1, 3, 5-8" para seleccionar solo esas páginas y aplicarles la rotación deseada.'
+                    : 'Yes. In the "Range Selection Input" field you can type lists like "1, 3, 5-8" to select those pages and apply rotation.'
+                },
+                {
+                  q: isEs ? '¿Mis documentos o datos se envían a algún servidor?' : 'Are my documents or data sent to any server?',
+                  a: isEs
+                    ? 'No. Todo el procesamiento se realiza 100% en tu navegador usando Web Workers. Ningún byte sale de tu equipo.'
+                    : 'No. All processing happens 100% inside your browser using Web Workers. No bytes leave your machine.'
+                },
+                {
+                  q: isEs ? '¿Puedo rotar páginas de un PDF protegido con contraseña?' : 'Can I rotate pages from a password-protected PDF?',
+                  a: isEs
+                    ? 'Sí. Al cargar un PDF encriptado, aparecerá un widget inline de clave. Ingresa la contraseña de apertura una vez para desbloquear el visor y proceder.'
+                    : 'Yes. Upon loading an encrypted PDF, an inline key widget will appear. Enter the open password once to unlock the viewer and proceed.'
+                }
+              ].map((faq, idx) => (
+                <details 
+                  key={idx} 
+                  className="group bg-zinc-900/60 border border-white/5 rounded-xl transition-all duration-200 overflow-hidden"
+                >
+                  <summary className="flex items-center justify-between p-4 cursor-pointer font-semibold text-xs sm:text-sm text-white select-none group-hover:text-zinc-200">
+                    <span>{faq.q}</span>
+                    <ChevronDown className="w-4 h-4 text-zinc-400 group-open:rotate-180 transition-transform duration-300 flex-shrink-0 ml-2" />
+                  </summary>
+                  <div className="px-4 pb-4 text-xs text-zinc-400 leading-relaxed border-t border-white/5 pt-3 font-sans">
+                    {faq.a}
                   </div>
-                </div>
+                </details>
               ))}
             </div>
           </div>

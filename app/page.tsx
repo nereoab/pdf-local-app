@@ -8,7 +8,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { 
   ShieldCheck, Edit3, RefreshCw, Zap, FolderOpen, 
   FileText, Clock, HardDrive, Sparkles, X, ArrowRight, UploadCloud, FilePlus,
-  Search, FileArchive, Bot, CheckCircle2, Star, Eye, Download, Trash2
+  Search, FileArchive, CheckCircle2, Star, Eye, Download, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -99,7 +99,6 @@ export default function DashboardPage() {
   const { lang } = useLanguage();
   const emptySubscribe = () => () => {};
   const isMounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
-  const [isAiOpen, setIsAiOpen] = useState(false);
   const isEs = lang === 'es';
 
   const setGlobalFile = useFileStore((state) => state.setGlobalFile);
@@ -841,41 +840,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-      </div>
-
-      {/* ASISTENTE IA */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
-        <AnimatePresence>
-          {isAiOpen && (
-            <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.95 }} className="mb-4 w-80 sm:w-96 bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden font-mono">
-              <div className="bg-zinc-900 p-4 border-b border-white/10 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <Sparkles className="w-4 h-4 text-white" />
-                  <span className="font-bold text-white text-xs tracking-wider">{isEs ? '006 / ASISTENTE LOCAL' : '006 / LOCAL ASSISTANT'}</span>
-                </div>
-                <button onClick={() => setIsAiOpen(false)} className="text-zinc-400 hover:text-white transition-colors"><X className="w-4 h-4"/></button>
-              </div>
-              <div className="p-4 h-44 flex flex-col justify-end bg-[#09090b]">
-                <div className="bg-zinc-900 border border-white/10 p-3.5 rounded-xl rounded-bl-none w-[90%] mb-2">
-                  <p className="text-xs text-zinc-300 font-sans">{isEs ? '¡Hola! Todo el procesamiento es local. ¿Qué necesitas transformar hoy?' : 'Hello! All processing is local. What do you need to transform today?'}</p>
-                </div>
-              </div>
-              <div className="p-3 border-t border-white/10 bg-zinc-900">
-                <input type="text" placeholder={isEs ? "$ Escribe una consulta..." : "$ Type a command..."} className="w-full bg-[#09090b] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-white/30" />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <div className="relative group">
-          <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-xs font-mono text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            {isEs ? '$ asistente-local' : '$ local-assistant'}
-          </div>
-          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setIsAiOpen(!isAiOpen)} className="bg-white text-black hover:bg-zinc-200 p-3.5 rounded-full shadow-2xl transition-all cursor-pointer border border-white/20">
-            <Bot className="w-5 h-5 text-black" />
-          </motion.button>
-        </div>
       </div>
 
     </div>

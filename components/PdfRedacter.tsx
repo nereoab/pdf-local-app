@@ -140,7 +140,11 @@ export default function PdfRedacter() {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
       const count = pdfDoc.numPages;
       setTotalPages(count);
 
@@ -149,9 +153,11 @@ export default function PdfRedacter() {
       const extracted: ExtractedTextItem[] = [];
 
       for (let p = 1; p <= count; p++) {
+        setProgressMsg(isEs ? `Cargando página ${p} de ${count}...` : `Loading page ${p} of ${count}...`);
+        setProgressPercent(Math.round((p / count) * 100));
         try {
           const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 3.2 });
+          const viewport = page.getViewport({ scale: 1.8 });
           const textViewport = page.getViewport({ scale: 1.0 });
 
           const textContent = await page.getTextContent();
@@ -177,13 +183,16 @@ export default function PdfRedacter() {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-            urls[p] = canvas.toDataURL('image/jpeg', 0.85);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            urls[p] = dataUrl;
             const blob = await new Promise<Blob>((resolve, reject) => {
               canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Blob conversion failed')); }, 'image/jpeg', 0.85);
             });
             jpegs[p] = await blob.arrayBuffer();
           }
-        } catch { /* skip page errors */ }
+        } catch (pageErr) {
+          console.warn(`Error al renderizar página ${p}:`, pageErr);
+        }
       }
 
       setExtractedTextItems(extracted);
@@ -795,8 +804,8 @@ export default function PdfRedacter() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
           
-          {/* LADO IZQUIERDO: VISOR DE PDF (8 COLUMNAS) */}
-          <div className="lg:col-span-8 flex flex-col">
+          {/* LADO IZQUIERDO: VISOR DE PDF (7 COLUMNAS) */}
+          <div className="lg:col-span-7 flex flex-col">
             <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono h-[92vh] min-h-[860px]">
               <div className="bg-zinc-900 border-b border-white/10 p-3 flex justify-between items-center z-10 flex-shrink-0">
                 <div className="flex items-center gap-3 overflow-hidden">
@@ -893,8 +902,8 @@ export default function PdfRedacter() {
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL (4 COLUMNAS) */}
-          <div className="lg:col-span-4 flex flex-col">
+          {/* LADO DERECHO: PANEL DE CONTROL (5 COLUMNAS - MÁS ANCHO) */}
+          <div className="lg:col-span-5 flex flex-col">
             <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans h-[92vh] min-h-[860px]">
               <div className="flex-1 overflow-y-auto [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex flex-col gap-3 font-sans">
                 
@@ -987,63 +996,57 @@ export default function PdfRedacter() {
                   </button>
                 </div>
 
-                {/* OPCIONES AVANZADAS */}
-                <div className="mt-1">
-                  <button onClick={() => setShowAdvanced(v => !v)}
-                    className="w-full flex items-center justify-between py-2.5 px-3 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/10 hover:border-white/20 rounded-xl transition-all cursor-pointer font-mono">
-                    <span className="flex items-center gap-2 text-[11px] font-bold text-white tracking-wider">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-white" />{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}
-                    </span>
-                    {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-                  </button>
-                  {showAdvanced && (
-                    <div className="mt-2.5 space-y-3.5 bg-zinc-950/60 border border-white/8 rounded-xl p-3.5 font-sans">
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <EyeOff className="w-3 h-3 text-zinc-400" />{isEs ? 'Estilo de Parche' : 'Patch Style'}
-                        </label>
-                        <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
-                          <button onClick={() => setRedactionStyle('black')} className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionStyle === 'black' ? 'bg-black border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}>
-                            {isEs ? '⬛ Negro Sólido' : '⬛ Solid Black'}
-                          </button>
-                          <button onClick={() => setRedactionStyle('gray')} className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionStyle === 'gray' ? 'bg-zinc-700 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}>
-                            {isEs ? '🩶 Gris' : '🩶 Gray'}
-                          </button>
-                        </div>
-                      </div>
-                      <div onClick={() => setExactMatch(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
-                        <div>
-                          <p className="text-[11px] font-bold text-white">{isEs ? 'Coincidencia exacta' : 'Exact Case Match'}</p>
-                          <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Sensible a mayúsculas/minúsculas' : 'Case-sensitive'}</p>
-                        </div>
-                        <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${exactMatch ? 'bg-white' : 'bg-zinc-700'}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${exactMatch ? 'left-4' : 'left-0.5'}`} />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <Zap className="w-3 h-3 text-zinc-400" />{isEs ? 'Modo de Censura' : 'Redaction Mode'}
-                        </label>
-                        <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
-                          <button onClick={() => setRedactionMode('precision')}
-                            className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionMode === 'precision' ? 'bg-emerald-500 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
-                            title={isEs ? 'Preserva texto no censurado, bookmarks y fuentes. Edita content streams nativos.' : 'Preserves non-redacted text, bookmarks and fonts. Edits native content streams.'}>
-                            🎯 {isEs ? 'Precisión' : 'Precision'}
-                          </button>
-                          <button onClick={() => setRedactionMode('raster')}
-                            className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionMode === 'raster' ? 'bg-zinc-700 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
-                            title={isEs ? 'Rasteriza cada página a JPEG. Compatible con cualquier PDF.' : 'Rasterizes each page to JPEG. Compatible with any PDF.'}>
-                            📸 {isEs ? 'Raster' : 'Raster'}
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">{isEs ? 'Sufijo del archivo:' : 'Output suffix:'}</label>
-                        <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-1.5 focus:outline-none focus:border-white/40 transition" />
-                      </div>
+                {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES) */}
+                <div className="mt-2 space-y-3.5 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 font-sans">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <EyeOff className="w-3 h-3 text-zinc-400" />{isEs ? 'Estilo de Parche' : 'Patch Style'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                      <button onClick={() => setRedactionStyle('black')} className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionStyle === 'black' ? 'bg-black border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}>
+                        {isEs ? '⬛ Negro Sólido' : '⬛ Solid Black'}
+                      </button>
+                      <button onClick={() => setRedactionStyle('gray')} className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionStyle === 'gray' ? 'bg-zinc-700 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}>
+                        {isEs ? '🩶 Gris' : '🩶 Gray'}
+                      </button>
                     </div>
-                  )}
+                  </div>
+                  <div onClick={() => setExactMatch(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                    <div>
+                      <p className="text-[11px] font-bold text-white">{isEs ? 'Coincidencia exacta' : 'Exact Case Match'}</p>
+                      <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Sensible a mayúsculas/minúsculas' : 'Case-sensitive'}</p>
+                    </div>
+                    <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${exactMatch ? 'bg-white' : 'bg-zinc-700'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${exactMatch ? 'left-4' : 'left-0.5'}`} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <Zap className="w-3 h-3 text-zinc-400" />{isEs ? 'Modo de Censura' : 'Redaction Mode'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                      <button onClick={() => setRedactionMode('precision')}
+                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionMode === 'precision' ? 'bg-emerald-500 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
+                        title={isEs ? 'Preserva texto no censurado, bookmarks y fuentes. Edita content streams nativos.' : 'Preserves non-redacted text, bookmarks and fonts. Edits native content streams.'}>
+                        🎯 {isEs ? 'Precisión' : 'Precision'}
+                      </button>
+                      <button onClick={() => setRedactionMode('raster')}
+                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionMode === 'raster' ? 'bg-zinc-700 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
+                        title={isEs ? 'Rasteriza cada página a JPEG. Compatible con cualquier PDF.' : 'Rasterizes each page to JPEG. Compatible with any PDF.'}>
+                        📸 {isEs ? 'Raster' : 'Raster'}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">{isEs ? 'Sufijo del archivo:' : 'Output suffix:'}</label>
+                    <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-1.5 focus:outline-none focus:border-white/40 transition" />
+                  </div>
                 </div>
 
                 {/* Barra de progreso */}

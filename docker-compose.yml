@@ -1,0 +1,48 @@
+# ============================================================
+# PDFBlack — Docker Compose para desarrollo y producción
+# ============================================================
+
+version: "3.9"
+
+services:
+  # ── Servicio principal: Next.js App ──
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pdfblack-app
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.pdfblack.description=PDFBlack PDF processing tools"
+      - "com.pdfblack.version=2.0"
+
+  # ── Desarrollo local con hot-reload ──
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: pdfblack-dev
+    command: npm run dev
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    profiles:
+      - dev

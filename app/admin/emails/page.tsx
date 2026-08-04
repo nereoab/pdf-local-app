@@ -51,9 +51,9 @@ export default function AdminEmailsPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = 'Email,Password,Registered At,Email Confirmed';
+    const headers = 'Email,UID,Registered At,Email Confirmed';
     const rows = registeredUsers.map((u) =>
-      `${u.email},${u.password},${u.registeredAt},${u.emailConfirmed}`
+      `${u.email},${u.uid || ''},${u.registeredAt},${u.emailConfirmed}`
     );
     const csv = [headers, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -171,7 +171,7 @@ export default function AdminEmailsPage() {
                   <tr className="border-b border-white/10">
                     <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider pl-2">#</th>
                     <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'Email' : 'Email'}</th>
-                    <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'Contraseña' : 'Password'}</th>
+                    <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'UID / ID' : 'UID / ID'}</th>
                     <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'Registro' : 'Registered'}</th>
                     <th className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider">{isEs ? 'Estado' : 'Status'}</th>
                   </tr>
@@ -183,20 +183,14 @@ export default function AdminEmailsPage() {
                       <td className="py-3 font-sans text-white text-xs">{user.email}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
-                          <code className={`text-xs ${showPasswords[user.email] ? 'text-emerald-400' : 'text-zinc-500 blur-sm select-none group-hover:blur-none transition-all'}`}>
-                            {showPasswords[user.email] ? user.password : user.password.replace(/./g, '•')}
+                          <code className="text-xs text-emerald-400 font-mono">
+                            {user.uid || 'Firebase Auth'}
                           </code>
                           <button
-                            onClick={() => togglePassword(user.email)}
+                            onClick={() => copyToClipboard(user.uid || user.email, `uid-${user.email}`)}
                             className="p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
                           >
-                            {showPasswords[user.email] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                          </button>
-                          <button
-                            onClick={() => copyToClipboard(user.password, `pass-${user.email}`)}
-                            className="p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                          >
-                            {copiedId === `pass-${user.email}` ? (
+                            {copiedId === `uid-${user.email}` ? (
                               <Check className="w-3 h-3 text-emerald-400" />
                             ) : (
                               <Copy className="w-3 h-3" />

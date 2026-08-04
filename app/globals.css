@@ -3,11 +3,29 @@
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
+/* ============================================================
+   🎨 PDF BLACK — Theme System
+   Light mode = default base, Dark mode = .dark override
+   ============================================================ */
+
 :root {
-  --background: #09090b;
-  --foreground: #ffffff;
+  /* Light mode (base / default) */
+  --background: #fafafa;
+  --foreground: #1a1a2e;
   --font-inter: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --color-surface: #ffffff;
+  --color-muted: #6b7280;
+  --color-border: #e5e7eb;
+}
+
+.dark {
+  /* Dark mode overrides */
+  --background: #09090b;
+  --foreground: #ffffff;
+  --color-surface: #121215;
+  --color-muted: #9ca3af;
+  --color-border: #27272a;
 }
 
 @theme inline {
@@ -15,16 +33,18 @@
   --color-foreground: var(--foreground);
   --color-obsidian: #09090b;
   --color-zinc-card: #121215;
+  --color-surface: var(--color-surface);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-mono);
 }
 
 body {
-  background-color: #09090b;
-  color: #ffffff;
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-inter);
   letter-spacing: -0.02em;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -32,3 +52,63 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.03em;
 }
 
+/* ============================================================
+   ACCESIBILIDAD WCAG 2.1 AA
+   ============================================================ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+*:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.8) !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: high) {
+  body {
+    color: #ffffff;
+    background-color: #000000;
+  }
+}
+
+/* Skip-to-content link */
+a.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--foreground);
+  color: var(--background);
+  padding: 8px 16px;
+  z-index: 9999;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 0 0 8px 0;
+  transition: top 0.2s;
+}
+
+a.skip-to-content:focus {
+  top: 0;
+}

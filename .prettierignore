@@ -1,0 +1,25 @@
+# Dependencias
+node_modules
+.next
+.cache
+
+# Build output
+dist
+out
+build
+
+# Generated
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Assets estáticos pesados
+public/tesseract
+public/webviewer
+
+# CI/CD
+.vercel
+coverage
+
+# Misc
+*.md
+*.log

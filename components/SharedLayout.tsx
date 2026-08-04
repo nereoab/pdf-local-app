@@ -1,22 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
-import { Globe, ArrowLeft, ShieldCheck, Spade, Plus, Edit3, FolderOpen, RefreshCw, Zap, ChevronDown, User, LogOut } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { Globe, ArrowLeft, ShieldCheck, Spade, ChevronDown, User, LogOut, Sun, Moon } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '../store/useAuthStore';
 import AuthModal from './AuthModal';
+import CookieConsent from './CookieConsent';
+import Breadcrumbs from './Breadcrumbs';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
   const { lang, toggleLanguage } = useLanguage();
+  const { theme, toggle: toggleTheme } = useTheme();
   const pathname = usePathname();
   const isEs = lang === 'es';
+  const isZh = lang === 'zh';
   const isHome = pathname === '/';
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { currentUser, logout } = useAuthStore();
+  const { currentUser, logout, hydrate: hydrateAuth, isHydrated } = useAuthStore();
+
+  useEffect(() => {
+    hydrateAuth();
+  }, [hydrateAuth]);
 
   // Obtener iniciales del usuario
   const getUserInitials = () => {
@@ -29,24 +38,24 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <div className="flex min-h-screen flex-col transition-colors duration-500 selection:bg-white/20 selection:text-white relative overflow-x-hidden font-sans text-white bg-[#09090b]">
-      <Toaster position="bottom-right" richColors closeButton theme="dark" />
+    <div className="flex min-h-screen flex-col transition-colors duration-500 selection:bg-foreground/20 selection:text-foreground relative overflow-x-hidden font-sans text-foreground bg-background">
+      <Toaster position="bottom-right" richColors closeButton theme={theme === 'dark' ? 'dark' : 'light'} />
 
       {/* ENCABEZADO CONTENT ARCHITECTURE STYLING */}
-      <header className="w-full bg-[#09090b]/90 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50 transition-all duration-300">
+      <header className="w-full bg-background/90 backdrop-blur-xl border-b border-zinc-200 dark:border-white/10 sticky top-0 z-50 transition-all duration-300" role="banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
           
           {/* LOGO TECHNICAL - AS DE ESPADAS */}
-          <Link href="/" className="flex-shrink-0">
+          <Link href="/" className="flex-shrink-0" aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}>
             <motion.div whileHover={{ opacity: 0.8 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-3 cursor-pointer group">
-              <div className="bg-white text-black p-2 rounded-xl flex items-center justify-center shadow-md border border-white/20">
-                <Spade className="w-5 h-5 text-black fill-black" />
+              <div className="bg-zinc-800 dark:bg-white text-white dark:text-black p-2 rounded-xl flex items-center justify-center shadow-md border border-white/20" aria-hidden="true">
+                <Spade className="w-5 h-5 text-white dark:text-black fill-current" />
               </div>
               <div className="flex items-baseline gap-2 font-mono">
-                <span className="text-base tracking-tight text-white font-bold">
-                  PDF<span className="text-zinc-400 font-light">BLACK</span>
+                <span className="text-base tracking-tight text-zinc-900 dark:text-white font-bold">
+                  PDF<span className="text-zinc-500 dark:text-zinc-400 font-light">BLACK</span>
                 </span>
-                <span className="text-[10px] text-zinc-500 font-medium hidden sm:inline-block">
+                <span className="text-[10px] text-zinc-500 font-medium hidden sm:inline-block" aria-label="Versión 2.0">
                   v2.0
                 </span>
               </div>
@@ -54,112 +63,99 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           </Link>
 
           {/* MENÚ DE NAVEGACIÓN */}
-          <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-mono text-xs">
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-8 font-mono text-xs" aria-label={isZh ? '主导航' : isEs ? 'Navegación principal' : 'Main navigation'}>
             <DropdownMenu 
-              title={isEs ? '01 / EDITAR' : '01 / EDIT'} 
+              title={isZh ? '01 / 编辑' : isEs ? '01 / EDITAR' : '01 / EDIT'} 
               basePath="/editar" 
               items={[
-                { label: isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images', path: '/editar?tool=texto' },
-                { label: isEs ? 'Poner Números a Páginas (Foliado)' : 'Add Page Numbers', path: '/editar?tool=foliado' },
-                { label: isEs ? 'Poner Sello de Agua' : 'Add Watermark', path: '/editar?tool=poner-marca-agua' },
-                { label: isEs ? 'Quitar Sello de Agua' : 'Remove Watermark', path: '/editar?tool=quitar-marca-agua' },
-                { label: isEs ? 'Firmar PDF' : 'Sign PDF', path: '/editar?tool=firmar' },
-                { label: isEs ? 'OCR PDF (Texto Seleccionable)' : 'OCR PDF (Searchable Text)', path: '/editar?tool=ocr' }
+                { label: isZh ? '编辑文本与图片' : isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images', path: '/editar?tool=texto' },
+                { label: isZh ? '添加页码' : isEs ? 'Poner Números a Páginas (Foliado)' : 'Add Page Numbers', path: '/editar?tool=foliado' },
+                { label: isZh ? '添加水印' : isEs ? 'Poner Sello de Agua' : 'Add Watermark', path: '/editar?tool=poner-marca-agua' },
+                { label: isZh ? '移除水印' : isEs ? 'Quitar Sello de Agua' : 'Remove Watermark', path: '/editar?tool=quitar-marca-agua' },
+                { label: isZh ? 'PDF 签名' : isEs ? 'Firmar PDF' : 'Sign PDF', path: '/editar?tool=firmar' },
+                { label: isZh ? 'OCR 文字识别' : isEs ? 'OCR PDF (Texto Seleccionable)' : 'OCR PDF (Searchable Text)', path: '/editar?tool=ocr' }
               ]} 
             />
             <DropdownMenu 
-              title={isEs ? '02 / ORGANIZAR' : '02 / ORGANIZE'} 
+              title={isZh ? '02 / 排列' : isEs ? '02 / ORGANIZAR' : '02 / ORGANIZE'} 
               basePath="/organizar" 
               items={[
-                { label: isEs ? 'Unir PDF' : 'Merge PDF', path: '/organizar?tool=unir' },
-                { label: isEs ? 'Dividir PDF' : 'Split PDF', path: '/organizar?tool=dividir' },
-                { label: isEs ? 'Eliminar Páginas' : 'Delete Pages', path: '/organizar?tool=eliminar' },
-                { label: isEs ? 'Ordenar PDF' : 'Reorder PDF', path: '/organizar?tool=reordenar' },
-                { label: isEs ? 'Rotar PDF' : 'Rotate PDF', path: '/organizar?tool=rotar' },
-                { label: isEs ? 'Recortar PDF' : 'Crop PDF', path: '/organizar?tool=recortar' }
+                { label: isZh ? '合并 PDF' : isEs ? 'Unir PDF' : 'Merge PDF', path: '/organizar?tool=unir' },
+                { label: isZh ? '拆分 PDF' : isEs ? 'Dividir PDF' : 'Split PDF', path: '/organizar?tool=dividir' },
+                { label: isZh ? '删除页面' : isEs ? 'Eliminar Páginas' : 'Delete Pages', path: '/organizar?tool=eliminar' },
+                { label: isZh ? '重新排序' : isEs ? 'Ordenar PDF' : 'Reorder PDF', path: '/organizar?tool=reordenar' },
+                { label: isZh ? '旋转 PDF' : isEs ? 'Rotar PDF' : 'Rotate PDF', path: '/organizar?tool=rotar' },
+                { label: isZh ? '裁剪 PDF' : isEs ? 'Recortar PDF' : 'Crop PDF', path: '/organizar?tool=recortar' }
               ]} 
             />
             <DropdownMenu 
-              title={isEs ? '03 / CONVERTIR' : '03 / CONVERT'} 
+              title={isZh ? '03 / 转换' : isEs ? '03 / CONVERTIR' : '03 / CONVERT'} 
               basePath="/convertir" 
               items={[
-                { label: isEs ? 'PDF ↔ Word' : 'PDF ↔ Word', path: '/convertir?tool=pdf-word' },
-                { label: isEs ? 'PDF ↔ Excel' : 'PDF ↔ Excel', path: '/convertir?tool=pdf-excel' },
-                { label: isEs ? 'PDF ↔ PowerPoint' : 'PDF ↔ PowerPoint', path: '/convertir?tool=pdf-powerpoint' },
-                { label: isEs ? 'PDF ↔ JPG / Imagen' : 'PDF ↔ JPG / Image', path: '/convertir?tool=pdf-jpg' },
-                { label: isEs ? 'PDF ↔ HTML' : 'PDF ↔ HTML', path: '/convertir?tool=pdf-html' },
-                { label: isEs ? 'PDF ↔ Texto' : 'PDF ↔ Text', path: '/convertir?tool=pdf-texto' }
+                { label: 'PDF ↔ Word', path: '/convertir?tool=pdf-word' },
+                { label: 'PDF ↔ Excel', path: '/convertir?tool=pdf-excel' },
+                { label: 'PDF ↔ PowerPoint', path: '/convertir?tool=pdf-powerpoint' },
+                { label: isZh ? 'PDF ↔ JPG / 图片' : isEs ? 'PDF ↔ JPG / Imagen' : 'PDF ↔ JPG / Image', path: '/convertir?tool=pdf-jpg' },
+                { label: 'PDF ↔ HTML', path: '/convertir?tool=pdf-html' },
+                { label: isZh ? 'PDF ↔ 纯文本' : isEs ? 'PDF ↔ Texto' : 'PDF ↔ Text', path: '/convertir?tool=pdf-texto' }
               ]} 
             />
             <DropdownMenu 
-              title={isEs ? '04 / OPTIMIZAR' : '04 / OPTIMIZE'} 
+              title={isZh ? '04 / 优化' : isEs ? '04 / OPTIMIZAR' : '04 / OPTIMIZE'} 
               basePath="/optimizar" 
               items={[
-                { label: isEs ? 'Comprimir PDF' : 'Compress PDF', path: '/optimizar?tool=comprimir' },
-                { label: isEs ? 'Reparar PDF' : 'Repair PDF', path: '/optimizar?tool=reparar' },
-                { label: isEs ? 'Desbloquear PDF' : 'Unlock PDF', path: '/optimizar?tool=desbloquear' },
-                { label: isEs ? 'Proteger PDF' : 'Protect PDF', path: '/optimizar?tool=proteger' },
-                { label: isEs ? 'Censurar PDF' : 'Redact PDF', path: '/optimizar?tool=censurar' },
-                { label: isEs ? 'Comparar PDF' : 'Compare PDF', path: '/optimizar?tool=comparar' }
+                { label: isZh ? '压缩 PDF' : isEs ? 'Comprimir PDF' : 'Compress PDF', path: '/optimizar?tool=comprimir' },
+                { label: isZh ? '修复 PDF' : isEs ? 'Reparar PDF' : 'Repair PDF', path: '/optimizar?tool=reparar' },
+                { label: isZh ? '解密 PDF' : isEs ? 'Desbloquear PDF' : 'Unlock PDF', path: '/optimizar?tool=desbloquear' },
+                { label: isZh ? '加密 PDF' : isEs ? 'Proteger PDF' : 'Protect PDF', path: '/optimizar?tool=proteger' },
+                { label: isZh ? '涂黑遮蔽' : isEs ? 'Censurar PDF' : 'Redact PDF', path: '/optimizar?tool=censurar' },
+                { label: isZh ? '对比 PDF' : isEs ? 'Comparar PDF' : 'Compare PDF', path: '/optimizar?tool=comparar' }
               ]} 
             />
-          </div>
+          </nav>
 
           {/* ACCIONES DERECHA */}
-          <div className="flex items-center gap-3 font-mono">
+          <div className="flex items-center gap-3 font-mono" role="toolbar" aria-label={isEs ? 'Acciones de usuario' : 'User actions'}>
             
             <AnimatePresence mode="wait">
               {!isHome && (
                 <Link href="/">
-                  <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="hidden sm:flex items-center gap-2 text-xs text-zinc-300 hover:text-white bg-zinc-900 border border-white/10 px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap">
-                    <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? 'INICIO' : 'HOME'}
+                  <motion.button
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="hidden sm:flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap"
+                    aria-label={isEs ? 'Volver al inicio' : 'Back to home'}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" /> {isEs ? 'INICIO' : 'HOME'}
                   </motion.button>
                 </Link>
               )}
             </AnimatePresence>
 
-            {/* BOTÓN BLANCO TIPO CONTENT ARCHITECTURE (GET ACCESS / NUEVO) */}
-            {isHome && (
-              <div className="relative group cursor-pointer hidden sm:block">
-                <motion.button 
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 bg-white text-black hover:bg-zinc-200 px-4 py-1.5 rounded-full font-sans font-semibold text-xs transition-all shadow-md whitespace-nowrap"
-                >
-                  <Plus className="w-3.5 h-3.5 text-black" /> {isEs ? 'NUEVO ARCHIVO' : 'NEW FILE'}
-                </motion.button>
-                
-                <div className="absolute right-0 top-9 pt-3 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right scale-95 group-hover:scale-100 z-50">
-                  <div className="bg-[#09090b] border border-white/10 rounded-xl p-2 flex flex-col gap-1 shadow-2xl">
-                    <div className="px-3 py-1.5 border-b border-white/5 mb-1">
-                      <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{isEs ? 'ACCIONES RÁPIDAS' : 'QUICK ACTIONS'}</p>
-                    </div>
-                    <Link href="/editar" className="flex items-center gap-3 px-3 py-2 hover:bg-zinc-900 rounded-lg group/item transition-colors">
-                      <Edit3 className="w-4 h-4 text-zinc-400 group-hover/item:text-white" />
-                      <span className="text-xs font-mono text-zinc-300 group-hover/item:text-white">{isEs ? '01 / Editar PDF' : '01 / Edit PDF'}</span>
-                    </Link>
-                    <Link href="/organizar" className="flex items-center gap-3 px-3 py-2 hover:bg-zinc-900 rounded-lg group/item transition-colors">
-                      <FolderOpen className="w-4 h-4 text-zinc-400 group-hover/item:text-white" />
-                      <span className="text-xs font-mono text-zinc-300 group-hover/item:text-white">{isEs ? '02 / Organizar PDF' : '02 / Organize PDF'}</span>
-                    </Link>
-                    <Link href="/convertir" className="flex items-center gap-3 px-3 py-2 hover:bg-zinc-900 rounded-lg group/item transition-colors">
-                      <RefreshCw className="w-4 h-4 text-zinc-400 group-hover/item:text-white" />
-                      <span className="text-xs font-mono text-zinc-300 group-hover/item:text-white">{isEs ? '03 / Convertir PDF' : '03 / Convert PDF'}</span>
-                    </Link>
-                    <Link href="/optimizar" className="flex items-center gap-3 px-3 py-2 hover:bg-zinc-900 rounded-lg group/item transition-colors">
-                      <Zap className="w-4 h-4 text-zinc-400 group-hover/item:text-white" />
-                      <span className="text-xs font-mono text-zinc-300 group-hover/item:text-white">{isEs ? '04 / Optimizar PDF' : '04 / Optimize PDF'}</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            <motion.button onClick={toggleLanguage} className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-full text-xs font-mono transition-all border border-white/10 flex-shrink-0">
-              <Globe className="w-3.5 h-3.5 text-zinc-400" /> {lang === 'es' ? 'EN' : 'ES'}
+
+            <motion.button
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white px-3 py-1.5 rounded-full text-xs font-mono transition-all border border-zinc-200 dark:border-white/10 flex-shrink-0 cursor-pointer"
+              aria-label="Cambiar idioma / Switch language / 切换语言"
+              title="Español / English / 中文"
+            >
+              <Globe className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
+              {lang === 'es' ? 'ES' : lang === 'en' ? 'EN' : '中文'}
+            </motion.button>
+
+            {/* TEMA — Toggle oscuro/claro */}
+            <motion.button
+              onClick={toggleTheme}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center justify-center w-10 h-10 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full text-lg transition-all border border-zinc-200 dark:border-white/10 flex-shrink-0"
+              aria-label={isEs ? 'Cambiar tema' : 'Toggle theme'}
+              title={isEs ? (theme === 'dark' ? 'Modo claro' : 'Modo oscuro') : (theme === 'dark' ? 'Light mode' : 'Dark mode')}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </motion.button>
 
             {/* BOTÓN DE REGISTRO / CUENTA */}
-            {currentUser ? (
+            {isHydrated && currentUser ? (
               <div className="relative group cursor-pointer flex-shrink-0">
                 <button
                   onClick={() => {
@@ -168,16 +164,16 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                       : `Log out from ${currentUser.email}?`);
                     if (confirmed) logout();
                   }}
-                  className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-full text-xs font-mono transition-all group"
-                  title={isEs ? 'Cerrar sesión' : 'Log out'}
+                  className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/30 px-3 py-1.5 rounded-full text-xs font-mono transition-all group"
+                  aria-label={isEs ? `Cerrar sesión de ${currentUser.email}` : `Log out from ${currentUser.email}`}
                 >
-                  <div className="w-5 h-5 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-mono text-[10px] font-bold">
+                  <div className="w-5 h-5 rounded-full bg-zinc-200 dark:bg-white/10 border border-zinc-300 dark:border-white/20 text-zinc-600 dark:text-white flex items-center justify-center font-mono text-[10px] font-bold" aria-hidden="true">
                     {getUserInitials()}
                   </div>
-                  <span className="text-zinc-300 group-hover:text-white hidden sm:inline-block max-w-[100px] truncate">
+                  <span className="text-zinc-600 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white hidden sm:inline-block max-w-[100px] truncate">
                     {currentUser.email.split('@')[0]}
                   </span>
-                  <LogOut className="w-3 h-3 text-zinc-400 group-hover:text-red-400 transition-colors" />
+                  <LogOut className="w-3 h-3 text-zinc-500 dark:text-zinc-400 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" aria-hidden="true" />
                 </button>
               </div>
             ) : (
@@ -186,8 +182,9 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setIsAuthModalOpen(true)}
                 className="flex items-center gap-2 bg-white text-black hover:bg-zinc-200 px-4 py-1.5 rounded-full font-sans font-semibold text-xs transition-all shadow-md whitespace-nowrap flex-shrink-0 cursor-pointer"
+                aria-label={isEs ? 'Abrir formulario de registro' : 'Open sign up form'}
               >
-                <User className="w-3.5 h-3.5 text-black" />
+                <User className="w-3.5 h-3.5 text-black" aria-hidden="true" />
                 {isEs ? 'REGISTRARSE' : 'SIGN UP'}
               </motion.button>
             )}
@@ -199,36 +196,42 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
       {/* MODAL DE AUTENTICACIÓN */}
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
-      <main className="flex-1 w-full max-w-[100%] mx-auto flex flex-col z-10 relative">
+      {/* BREADCRUMBS — Navegación jerárquica */}
+      <Breadcrumbs />
+
+      <main className="flex-1 w-full max-w-[100%] mx-auto flex flex-col z-10 relative" id="main-content" tabIndex={-1}>
         {children}
       </main>
 
-      <footer className="w-full border-t border-white/10 py-10 z-10 mt-auto bg-[#09090b]">
+      {/* BANNER DE COOKIES — GDPR/ePrivacy Compliance */}
+      <CookieConsent />
+
+      <footer className="w-full border-t border-zinc-200 dark:border-white/10 py-10 z-10 mt-auto bg-background" role="contentinfo">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs">
           <div className="flex items-center gap-2">
-            <Spade className="w-4 h-4 text-white" fill="currentColor" />
-            <span className="text-zinc-400">PDFBLACK © {new Date().getFullYear()}</span>
+            <Spade className="w-4 h-4 text-zinc-700 dark:text-white" fill="currentColor" aria-hidden="true" />
+            <span className="text-zinc-500 dark:text-zinc-400">PDFBLACK © {new Date().getFullYear()}</span>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-zinc-300 text-[11px]">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 text-[11px]">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
             <span>{isEs ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR' : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}</span>
           </div>
 
-          <div className="flex items-center gap-5 text-zinc-400">
-            <Link href="/privacidad" className="hover:text-white transition-colors">
+          <nav className="flex items-center gap-5 text-zinc-400" aria-label={isEs ? 'Enlaces legales' : 'Legal links'}>
+            <Link href="/privacidad" className="hover:text-zinc-700 dark:hover:text-white transition-colors">
               {isEs ? 'Privacidad' : 'Privacy'}
             </Link>
-            <Link href="/terminos" className="hover:text-white transition-colors">
+            <Link href="/terminos" className="hover:text-zinc-700 dark:hover:text-white transition-colors">
               {isEs ? 'Términos' : 'Terms'}
             </Link>
-            <Link href="/faq" className="hover:text-white transition-colors">
+            <Link href="/faq" className="hover:text-zinc-700 dark:hover:text-white transition-colors">
               {isEs ? 'FAQ' : 'FAQ'}
             </Link>
-            <Link href="/contacto" className="hover:text-white transition-colors">
+            <Link href="/contacto" className="hover:text-zinc-700 dark:hover:text-white transition-colors">
               {isEs ? 'Contacto' : 'Contact'}
             </Link>
-          </div>
+          </nav>
         </div>
       </footer>
     </div>
@@ -246,22 +249,22 @@ function DropdownMenu({ title, basePath, items }: { title: string; basePath: str
 
   return (
     <div className="relative group">
-      <Link href={basePath} className="flex items-center gap-1 py-5 outline-none">
+      <Link href={basePath} className="flex items-center gap-1 py-5 outline-none" aria-haspopup="true" aria-expanded={undefined}>
         <span className={`
           whitespace-nowrap transition-colors
-          ${isActive ? 'text-white font-bold' : 'text-zinc-400 group-hover:text-white'}
+          ${isActive ? 'text-zinc-900 dark:text-white font-bold' : 'text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white'}
         `}>
           {title}
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 group-hover:rotate-180 flex-shrink-0 ${isActive ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 group-hover:rotate-180 flex-shrink-0 ${isActive ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'}`} aria-hidden="true" />
       </Link>
       
-      <div className="absolute top-[52px] left-1/2 -translate-x-1/2 w-52 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top scale-95 group-hover:scale-100 z-50">
-        <div className="bg-[#09090b] border border-white/10 rounded-xl p-1.5 flex flex-col gap-0.5 shadow-2xl">
-          {items.map((item) => {
+      <div className="absolute top-[52px] left-1/2 -translate-x-1/2 w-52 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top scale-95 group-hover:scale-100 z-50" role="menu" aria-label={title}>
+        <div className="bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-white/10 rounded-xl p-1.5 flex flex-col gap-0.5 shadow-2xl">
+          {items.map((item, idx) => {
             const isItemActive = pathname === item.path;
             return (
-              <Link key={item.path} href={item.path} className={`text-left px-3 py-2 text-xs font-mono transition-colors rounded-lg ${isItemActive ? 'bg-white/10 text-white font-bold' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}>
+              <Link key={`${item.path}-${idx}`} href={item.path} className={`text-left px-3 py-2 text-xs font-mono transition-colors rounded-lg ${isItemActive ? 'bg-zinc-100 dark:bg-white/10 text-zinc-900 dark:text-white font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900'}`} role="menuitem">
                 {item.label}
               </Link>
             );

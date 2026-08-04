@@ -1,27 +1,58 @@
 'use client';
 
-import { createContext, useContext, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+
+type Theme = 'dark' | 'light';
 
 interface ThemeContextType {
-  theme: 'dark';
+  theme: Theme;
+  toggle: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType>({ theme: 'dark' });
+const ThemeContext = createContext<ThemeContextType>({
+  theme: 'dark',
+  toggle: () => {},
+});
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  
+  const [theme, setTheme] = useState<Theme>('dark');
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
-    // Al cargar la página, inyectamos la clase 'dark' a la fuerza en el HTML
-    document.documentElement.classList.add('dark');
-    // Le decimos al navegador que el fondo general será oscuro (para el scrollbar)
-    document.documentElement.style.colorScheme = 'dark';
+    setMounted(true);
+    if (typeof document !== 'undefined') {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'dark' : 'light');
+    }
+  }, []);
+
+  const toggle = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      if (typeof document !== 'undefined') {
+        const root = document.documentElement;
+        if (next === 'dark') {
+          root.classList.add('dark');
+          root.style.colorScheme = 'dark';
+        } else {
+          root.classList.remove('dark');
+          root.style.colorScheme = 'light';
+        }
+        try {
+          localStorage.setItem('pdfblack-theme', next);
+        } catch (e) {}
+      }
+      return next;
+    });
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme: 'dark' }}>
+    <ThemeContext.Provider value={{ theme: mounted ? theme : 'dark', toggle }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
-export const useTheme = () => useContext(ThemeContext);
+export function useTheme(): ThemeContextType {
+  return useContext(ThemeContext);
+}

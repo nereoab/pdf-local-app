@@ -1,0 +1,4 @@
+# PDFBlack — Pre-commit hook (Husky + lint-staged)
+# Ejecuta Prettier + ESLint en archivos staged antes de cada commit
+
+npx lint-staged

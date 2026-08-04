@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "frameworksBackend": {
+      "memory": "1GiB",
+      "maxInstances": 10
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

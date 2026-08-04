@@ -1,38 +1,145 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-
-// 1. Importamos tu contexto de idioma
 import { LanguageProvider } from '../context/LanguageContext';
+import { ThemeProvider } from '../context/ThemeContext';
+import { FirebaseAuthProvider } from '../context/FirebaseAuthContext';
+import SharedLayout from '../components/SharedLayout';
 
-// 2. IMPORTAMOS TU CABECERA Y PIE DE PÁGINA (El archivo que vi en tu captura)
-import SharedLayout from '../components/SharedLayout'; 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdfblack-proy.web.app';
+const SITE_NAME = 'PDFBlack';
 
 export const viewport: Viewport = {
-  themeColor: '#0a0400',
-  colorScheme: 'dark',
+  themeColor: '#09090b',
+  colorScheme: 'dark light',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export const metadata: Metadata = {
-  title: 'PDFBlack ♠️ | Herramientas PDF Gratuitas',
-  description: 'Edición de PDF 100% local, privada y en modo oscuro.',
+  // ── Básico ──
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} ♠️ | Herramientas PDF Gratuitas, Privadas y Locales`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description:
+    'Edita, organiza, convierte y optimiza archivos PDF 100% gratis y sin registro. Procesamiento local en tu navegador — cero servidores, privacidad total.',
+  keywords: [
+    'PDF',
+    'editar PDF',
+    'comprimir PDF',
+    'unir PDF',
+    'convertir PDF',
+    'firma digital',
+    'OCR',
+    'PDF gratis',
+    'privacidad PDF',
+    'procesamiento local',
+    'sin servidores',
+  ],
+  authors: [{ name: 'PDFBlack', url: SITE_URL }],
+  generator: 'Next.js',
+  applicationName: SITE_NAME,
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+
+  // ── Robots / Canonical ──
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
+  alternates: {
+    canonical: SITE_URL,
+    languages: {
+      es: `${SITE_URL}/es`,
+      en: `${SITE_URL}/en`,
+    },
+  },
+
+  // ── Open Graph ──
+  openGraph: {
+    title: `${SITE_NAME} ♠️ | Herramientas PDF 100% Locales y Privadas`,
+    description:
+      'Edita, organiza, convierte y optimiza PDFs sin servidores. Privacidad total, procesamiento local en tu navegador. 24 herramientas gratis.',
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    locale: 'es_ES',
+    type: 'website',
+  },
+
+  // ── Twitter Cards ──
+  twitter: {
+    card: 'summary_large_image',
+    title: `${SITE_NAME} ♠️ | PDF Tools 100% Local & Private`,
+    description:
+      '24 free PDF tools running entirely in your browser. Zero servers. Absolute privacy. Edit, compress, merge, sign, OCR, and more.',
+    creator: '@pdfblack',
+  },
+
+  // ── Icons ──
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
+
+  // ── Verificación search engines ──
+  verification: {
+    google: undefined, // Agregar código de verificación cuando esté disponible
+  },
+
+  // ── App Links / Mobile ──
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: SITE_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="dark" style={{ colorScheme: 'dark' }}>
-      <body className="bg-[#0a0400] text-gray-100 antialiased min-h-screen">
-        
-        <LanguageProvider>
-          {/* 3. RESTAURAMOS EL LAYOUT COMPARTIDO (Header + Footer) */}
-          <SharedLayout>
-            {children}
-          </SharedLayout>
-        </LanguageProvider>
+     <html lang="es" className="dark" style={{ colorScheme: 'dark light' }} suppressHydrationWarning>
+      <head>
+        {/* Preconexiones para mejorar rendimiento de CDNs */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+        <link rel="dns-prefetch" href="https://cdn.syncfusion.com" />
+      </head>
+       <body className="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen" suppressHydrationWarning>
+        {/* SKIP-TO-CONTENT LINK — Accesibilidad WCAG 2.1 */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[200] focus:px-4 focus:py-2 focus:bg-white focus:text-black focus:rounded-lg focus:font-bold focus:text-sm focus:shadow-2xl focus:outline-none"
+        >
+          Saltar al contenido principal
+        </a>
 
+         <ThemeProvider>
+           <LanguageProvider>
+             <FirebaseAuthProvider>
+               <SharedLayout>
+                 <div id="main-content" tabIndex={-1}>
+                   {children}
+                 </div>
+               </SharedLayout>
+             </FirebaseAuthProvider>
+           </LanguageProvider>
+         </ThemeProvider>
       </body>
     </html>
   );

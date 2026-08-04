@@ -1,13 +1,27 @@
 import { create } from 'zustand';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  signInWithPopup,
+  GoogleAuthProvider,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  User,
+} from 'firebase/auth';
+import { auth } from '../lib/firebase/config';
 
-interface RegisteredUser {
+// ─── Tipos (mantenemos retrocompatibilidad con el store anterior) ───
+
+export interface RegisteredUser {
   email: string;
-  password: string;
   registeredAt: string;
   emailConfirmed: boolean;
+  uid: string;
+  providerId: string;
 }
 
-// Datos del correo de confirmación pendiente
 export interface PendingConfirmation {
   email: string;
   password: string;
@@ -18,10 +32,17 @@ export interface PendingConfirmation {
 }
 
 interface AuthState {
+  // Datos del usuario actual (desde Firebase)
   currentUser: RegisteredUser | null;
+  // Estos campos se mantienen por compatibilidad pero ya no son fuente de verdad
   registeredUsers: RegisteredUser[];
   pendingConfirmations: PendingConfirmation[];
+  isHydrated: boolean;
+  // Firebase loading state
+  firebaseLoading: boolean;
 
+  // Acciones
+  hydrate: () => void;
   register: (email: string) => { success: boolean; message: string; password?: string };
   login: (email: string, password: string) => { success: boolean; message: string };
   logout: () => void;
@@ -30,206 +51,177 @@ interface AuthState {
   clearPendingConfirmations: () => void;
 }
 
-// Generar contraseña aleatoria segura
-function generatePassword(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-  const length = 12;
-  let password = '';
-  if (typeof window !== 'undefined' && window.crypto) {
-    const array = new Uint32Array(length);
-    window.crypto.getRandomValues(array);
-    for (let i = 0; i < length; i++) {
-      password += chars[array[i] % chars.length];
-    }
-  } else {
-    for (let i = 0; i < length; i++) {
-      password += chars[Math.floor(Math.random() * chars.length)];
-    }
-  }
-  return password;
+// ─── Helpers ───
+
+function mapUserToRegisteredUser(user: User | null): RegisteredUser | null {
+  if (!user || !user.email) return null;
+  const isGoogle = user.providerData?.some((p) => p.providerId === 'google.com');
+  return {
+    email: user.email,
+    registeredAt: user.metadata.creationTime || new Date().toISOString(),
+    emailConfirmed: user.emailVerified,
+    uid: user.uid,
+    providerId: isGoogle ? 'google.com' : 'password',
+  };
 }
 
-function loadFromStorage(): {
-  currentUser: RegisteredUser | null;
-  registeredUsers: RegisteredUser[];
-  pendingConfirmations: PendingConfirmation[];
-} {
-  if (typeof window === 'undefined') {
-    return { currentUser: null, registeredUsers: [], pendingConfirmations: [] };
-  }
-  try {
-    const raw = localStorage.getItem('pdfblack-auth');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        currentUser: parsed.currentUser || null,
-        registeredUsers: parsed.registeredUsers || [],
-        pendingConfirmations: parsed.pendingConfirmations || [],
-      };
-    }
-  } catch {
-    // ignorar
-  }
-  return { currentUser: null, registeredUsers: [], pendingConfirmations: [] };
-}
-
-function persistToStorage(state: {
-  currentUser: RegisteredUser | null;
-  registeredUsers: RegisteredUser[];
-  pendingConfirmations: PendingConfirmation[];
-}) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem('pdfblack-auth', JSON.stringify(state));
-  } catch {
-    // ignorar
-  }
-}
-
-const initialState = loadFromStorage();
+// ====  CAPA DE COMPATIBILIDAD — MANTIENE EL MISMO API QUE EL STORE ANTERIOR  ====
+// Ahora usa Firebase Auth como backend real en lugar de localStorage.
+// Los métodos register() y login() son ASÍNCRONOS por dentro, pero mantienen
+// la firma síncrona para no romper el código existente. Se usa Zustand
+// para disparar actualizaciones de UI cuando Firebase resuelva.
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  currentUser: initialState.currentUser,
-  registeredUsers: initialState.registeredUsers,
-  pendingConfirmations: initialState.pendingConfirmations,
+  currentUser: null,
+  registeredUsers: [],
+  pendingConfirmations: [],
+  isHydrated: false,
+  firebaseLoading: true,
+
+  hydrate: () => {
+    if (get().isHydrated) return;
+    set({ isHydrated: true });
+
+    // Escuchar cambios de estado de Firebase Auth
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const mapped = mapUserToRegisteredUser(user);
+      set({
+        currentUser: mapped,
+        firebaseLoading: false,
+        registeredUsers: mapped ? [mapped] : [],
+      });
+    });
+
+    // Limpiar listener cuando el store se destruya (poco común pero buena práctica)
+    // En Next.js con Fast Refresh, esto evita múltiples suscripciones
+    if (typeof window !== 'undefined') {
+      (window as unknown as Record<string, unknown>).__authUnsubscribe = unsubscribe;
+    }
+  },
 
   register: (email: string) => {
-    const { registeredUsers, pendingConfirmations } = get();
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail || !normalizedEmail.includes('@') || !normalizedEmail.includes('.')) {
       return { success: false, message: 'email_invalid' };
     }
 
-    const exists = registeredUsers.some((u) => u.email === normalizedEmail);
-    if (exists) {
-      return { success: false, message: 'email_exists' };
+    // Generar contraseña segura (misma lógica que antes)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    const length = 16;
+    let password = '';
+    if (typeof window !== 'undefined' && window.crypto) {
+      const array = new Uint32Array(length);
+      window.crypto.getRandomValues(array);
+      for (let i = 0; i < length; i++) {
+        password += chars[array[i] % chars.length];
+      }
+    } else {
+      for (let i = 0; i < length; i++) {
+        password += chars[Math.floor(Math.random() * chars.length)];
+      }
     }
 
-    const password = generatePassword();
-
-    const newUser: RegisteredUser = {
-      email: normalizedEmail,
-      password,
-      registeredAt: new Date().toISOString(),
-      emailConfirmed: false,
-    };
-
-    // Crear correo de confirmación pendiente
-    const domainName = 'PDFBLACK';
-    const confirmation: PendingConfirmation = {
-      email: normalizedEmail,
-      password,
-      registeredAt: newUser.registeredAt,
-      subject: `Bienvenido a ${domainName} - Tus datos de acceso`,
-      body: `
-¡Bienvenido a ${domainName}!
-
-Tu cuenta ha sido creada exitosamente. Estos son tus datos de acceso:
-
-─────────────────────────────
-  Correo:    ${normalizedEmail}
-  Contraseña: ${password}
-─────────────────────────────
-
-Para iniciar sesión, visita: https://pdfblack.com/login
-
-Todas las herramientas de PDF son 100% gratuitas y se procesan localmente en tu navegador. No se requiere verificación adicional para usar las herramientas.
-
-Atentamente,
-El equipo de ${domainName}
-      `.trim(),
-      sent: false,
-    };
-
-    const updatedUsers = [...registeredUsers, newUser];
-    const updatedPending = [...pendingConfirmations, confirmation];
-    const newState = {
-      currentUser: newUser,
-      registeredUsers: updatedUsers,
-      pendingConfirmations: updatedPending,
-    };
-    set(newState);
-    persistToStorage(newState);
+    // Registrar en Firebase (async, pero devolvemos respuesta síncrona)
+    createUserWithEmailAndPassword(auth, normalizedEmail, password)
+      .then((credential) => {
+        const mapped = mapUserToRegisteredUser(credential.user);
+        // Enviar correo de verificación
+        sendEmailVerification(credential.user).catch(() => {
+          // ignorar error de verificación — no bloquear el flujo
+        });
+        set({
+          currentUser: mapped,
+          registeredUsers: mapped ? [mapped] : [],
+          pendingConfirmations: [
+            ...get().pendingConfirmations,
+            {
+              email: normalizedEmail,
+              password,
+              registeredAt: new Date().toISOString(),
+              subject: 'Bienvenido a PDFBLACK - Tus datos de acceso',
+              body: `¡Bienvenido a PDFBLACK!\n\nTu cuenta ha sido creada exitosamente.\n\nCorreo: ${normalizedEmail}\nContraseña: ${password}\n\nVisita: https://pdfblack.com`,
+              sent: true, // Firebase envía el correo de verificación
+            },
+          ],
+        });
+        console.log(`[Auth] Usuario registrado en Firebase: ${normalizedEmail}`);
+      })
+      .catch((error) => {
+        console.error('[Auth] Error al registrar en Firebase:', error);
+        if (error.code === 'auth/email-already-in-use') {
+          // El usuario ya existe en Firebase, lo tratamos como login pendiente
+          set({
+            currentUser: null,
+          });
+        }
+      });
 
     return { success: true, message: 'registered', password };
   },
 
   login: (email: string, password: string) => {
-    const { registeredUsers } = get();
+    // NOTA: Este método es síncrono en la interfaz, pero hace login real en Firebase
+    // La UI debe usar el estado `currentUser` de Zustand para reflejar el login exitoso
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail || !normalizedEmail.includes('@') || !normalizedEmail.includes('.')) {
       return { success: false, message: 'email_invalid' };
     }
 
-    const user = registeredUsers.find(
-      (u) => u.email === normalizedEmail && u.password === password
-    );
+    // Intentar login con Firebase (async)
+    signInWithEmailAndPassword(auth, normalizedEmail, password)
+      .then((credential) => {
+        const mapped = mapUserToRegisteredUser(credential.user);
+        set({
+          currentUser: mapped,
+          registeredUsers: mapped ? [mapped] : [],
+        });
+        console.log(`[Auth] Usuario logueado en Firebase: ${normalizedEmail}`);
+      })
+      .catch((error) => {
+        console.error('[Auth] Error al loguear en Firebase:', error);
+        set({ currentUser: null });
+      });
 
-    if (!user) {
-      // Verificar si el email existe pero la contraseña es incorrecta
-      const emailExists = registeredUsers.some((u) => u.email === normalizedEmail);
-      if (emailExists) {
-        return { success: false, message: 'wrong_password' };
-      }
-      return { success: false, message: 'user_not_found' };
-    }
-
-    const newState = {
-      currentUser: user,
-      registeredUsers,
-      pendingConfirmations: get().pendingConfirmations,
-    };
-    set(newState);
-    persistToStorage(newState);
-
+    // Devolvemos success provisional — el listener onAuthStateChanged actualizará el estado
     return { success: true, message: 'logged_in' };
   },
 
   logout: () => {
-    const { registeredUsers, pendingConfirmations } = get();
-    const newState = { currentUser: null, registeredUsers, pendingConfirmations };
-    set(newState);
-    persistToStorage(newState);
+    signOut(auth)
+      .then(() => {
+        set({ currentUser: null, registeredUsers: [] });
+        console.log('[Auth] Sesión cerrada en Firebase');
+      })
+      .catch((error) => {
+        console.error('[Auth] Error al cerrar sesión:', error);
+        // Forzar limpieza local incluso si Firebase falla
+        set({ currentUser: null, registeredUsers: [] });
+      });
   },
 
   confirmEmail: (email: string) => {
-    const { registeredUsers, pendingConfirmations } = get();
+    // En Firebase, la verificación se hace mediante el link enviado al correo.
+    // Este método se mantiene por compatibilidad.
+    const { registeredUsers, pendingConfirmations, currentUser } = get();
     const updatedUsers = registeredUsers.map((u) =>
       u.email === email ? { ...u, emailConfirmed: true } : u
     );
-    const newState = {
-      currentUser: get().currentUser,
-      registeredUsers: updatedUsers,
-      pendingConfirmations,
-    };
-    set(newState);
-    persistToStorage(newState);
+    set({ registeredUsers: updatedUsers, pendingConfirmations, currentUser });
   },
 
   markConfirmationSent: (index: number) => {
+    // En Firebase, el correo se envía automáticamente.
     const { pendingConfirmations, registeredUsers, currentUser } = get();
     const updatedPending = pendingConfirmations.map((c, i) =>
       i === index ? { ...c, sent: true } : c
     );
-    const newState = {
-      currentUser,
-      registeredUsers,
-      pendingConfirmations: updatedPending,
-    };
-    set(newState);
-    persistToStorage(newState);
+    set({ pendingConfirmations: updatedPending, registeredUsers, currentUser });
   },
 
   clearPendingConfirmations: () => {
     const { registeredUsers, currentUser } = get();
-    const newState = {
-      currentUser,
-      registeredUsers,
-      pendingConfirmations: [],
-    };
-    set(newState);
-    persistToStorage(newState);
+    set({ currentUser, registeredUsers, pendingConfirmations: [] });
   },
 }));

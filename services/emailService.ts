@@ -38,14 +38,8 @@ export interface EmailLogEntry {
 /**
  * Construye el HTML del correo de confirmación
  */
-export function buildConfirmationEmailHtml(
-  email: string,
-  password: string,
-  isEs: boolean
-): string {
-  const title = isEs
-    ? '¡Bienvenido a PDFBLACK!'
-    : 'Welcome to PDFBLACK!';
+export function buildConfirmationEmailHtml(email: string, password: string, isEs: boolean): string {
+  const title = isEs ? '¡Bienvenido a PDFBLACK!' : 'Welcome to PDFBLACK!';
   const subtitle = isEs
     ? 'Tu cuenta ha sido creada exitosamente'
     : 'Your account has been created successfully';
@@ -190,15 +184,15 @@ export function clearEmailLog(): void {
 export async function sendConfirmationEmail(
   email: string,
   password: string,
-  isEs: boolean = true
+  isEs: boolean = true,
 ): Promise<{ success: boolean; logId: string; error?: string }> {
   const subject = isEs
     ? 'Bienvenido a PDFBLACK - Tus datos de acceso'
     : 'Welcome to PDFBLACK - Your login details';
 
   const text = isEs
-    ? `¡Bienvenido a PDFBLACK!\n\nTu cuenta ha sido creada exitosamente.\n\nTus datos de acceso:\n  Correo: ${email}\n  Contraseña: ${password}\n\nTodas las herramientas son 100% gratuitas y locales.\nVisita: https://pdfblack.com\n\nEl equipo de PDFBLACK`
-    : `Welcome to PDFBLACK!\n\nYour account has been created successfully.\n\nYour login details:\n  Email: ${email}\n  Password: ${password}\n\nAll tools are 100% free and local.\nVisit: https://pdfblack.com\n\nThe PDFBLACK Team`;
+    ? `¡Bienvenido a PDFBLACK!\n\nTu cuenta ha sido creada exitosamente.\n\nTus datos de acceso:\n  Correo: ${email}\n  Contraseña: ${password}\n\nTodas las herramientas son 100% gratuitas y locales.\nVisita: https://pdf-black.com\n\nEl equipo de PDFBLACK`
+    : `Welcome to PDFBLACK!\n\nYour account has been created successfully.\n\nYour login details:\n  Email: ${email}\n  Password: ${password}\n\nAll tools are 100% free and local.\nVisit: https://pdf-black.com\n\nThe PDFBLACK Team`;
 
   const html = buildConfirmationEmailHtml(email, password, isEs);
 
@@ -211,10 +205,8 @@ export async function sendConfirmationEmail(
     createdAt: new Date().toISOString(),
   };
 
-  // ─── ENVÍO REAL (Descomentar cuando se configure SMTP) ───
-  /*
+  // ─── ENVÍO REAL con Resend vía API endpoint ───
   try {
-    // Puedes usar fetch() hacia un API endpoint propio o un servicio externo:
     const response = await fetch('/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -227,19 +219,17 @@ export async function sendConfirmationEmail(
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
     logEntry.status = 'sent';
     logEntry.sentAt = new Date().toISOString();
   } catch (error: unknown) {
     logEntry.status = 'failed';
-    logEntry.error = (error instanceof Error) ? error.message : 'Error desconocido';
+    logEntry.error = error instanceof Error ? error.message : 'Error al enviar el email';
+    console.error('[EmailService] Error al enviar email de confirmación:', error);
   }
-  */
-
-  // Por ahora, marcamos como pendiente (se mostrará en /admin/emails)
-  logEntry.status = 'pending';
 
   logEmail(logEntry);
 

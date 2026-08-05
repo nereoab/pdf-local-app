@@ -12,9 +12,15 @@ export default function AvisoLegalPage() {
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12 font-sans">
       <div className="max-w-4xl mx-auto">
-        
-        <div className="mb-8 flex items-center justify-between font-mono" role="navigation" aria-label={isEs ? 'Navegación de documento' : 'Document navigation'}>
-          <Link href="/" className="inline-flex items-center gap-2 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 px-4 py-1.5 rounded-full border border-white/10 transition-all">
+        <div
+          className="mb-8 flex items-center justify-between font-mono"
+          role="navigation"
+          aria-label={isEs ? 'Navegación de documento' : 'Document navigation'}
+        >
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 px-4 py-1.5 rounded-full border border-white/10 transition-all"
+          >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
             {isEs ? 'Volver al Inicio' : 'Back to Home'}
           </Link>
@@ -24,7 +30,11 @@ export default function AvisoLegalPage() {
           </span>
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12 font-mono">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-12 font-mono"
+        >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold mb-4">
             <Globe className="w-3.5 h-3.5 text-white" aria-hidden="true" />
             {isEs ? '009 / AVISO LEGAL' : '009 / LEGAL NOTICE'}
@@ -33,36 +43,56 @@ export default function AvisoLegalPage() {
             {isEs ? 'Aviso Legal — LSSI-CE' : 'Legal Notice — Information Society Services'}
           </h1>
           <p className="text-zinc-400 text-xs sm:text-sm font-sans max-w-2xl mx-auto leading-relaxed">
-            {isEs 
+            {isEs
               ? 'En cumplimiento de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y de Comercio Electrónico (LSSI-CE), se informa al usuario de los siguientes datos generales del sitio web.'
               : 'In compliance with Law 34/2002, of July 11, on Information Society Services and Electronic Commerce (LSSI-CE), the user is informed of the following general website details.'}
           </p>
         </motion.div>
 
         {/* CONTENIDO LEGAL */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8 font-sans" role="article" aria-label={isEs ? 'Aviso legal completo' : 'Full legal notice'}>
-          
+        <div
+          className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8 font-sans"
+          role="article"
+          aria-label={isEs ? 'Aviso legal completo' : 'Full legal notice'}
+        >
           <section className="space-y-3" aria-labelledby="legal-1">
-            <h2 id="legal-1" className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+            <h2
+              id="legal-1"
+              className="text-lg font-bold text-white flex items-center gap-2 font-mono"
+            >
               <FileText className="w-4 h-4 text-emerald-400" aria-hidden="true" />
               {isEs ? '1. Titularidad del Sitio Web' : '1. Website Ownership'}
             </h2>
             <div className="space-y-2 text-zinc-400 text-xs sm:text-sm leading-relaxed">
               <p>
                 {isEs
-                  ? 'El presente sitio web, accesible a través del nombre de dominio pdfblack.com, es titularidad de PDFBlack.'
-                  : 'This website, accessible through the domain name pdfblack.com, is owned by PDFBlack.'}
+                  ? 'El presente sitio web, accesible a través del nombre de dominio pdf-black.com, es titularidad de PDFBlack.'
+                  : 'This website, accessible through the domain name pdf-black.com, is owned by PDFBlack.'}
               </p>
-              <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm" aria-label={isEs ? 'Datos del titular' : 'Owner details'}>
+              <ul
+                className="list-disc pl-5 space-y-1 text-xs sm:text-sm"
+                aria-label={isEs ? 'Datos del titular' : 'Owner details'}
+              >
                 <li>{isEs ? 'Denominación comercial: PDFBlack' : 'Trade name: PDFBlack'}</li>
-                <li>{isEs ? 'Correo electrónico de contacto: info@pdfblack.com' : 'Contact email: info@pdfblack.com'}</li>
-                <li>{isEs ? 'Actividad: Herramientas de procesamiento de archivos PDF en línea' : 'Activity: Online PDF file processing tools'}</li>
+                <li>
+                  {isEs
+                    ? 'Correo electrónico de contacto: contacto@pdf-black.com'
+                    : 'Contact email: contacto@pdf-black.com'}
+                </li>
+                <li>
+                  {isEs
+                    ? 'Actividad: Herramientas de procesamiento de archivos PDF en línea'
+                    : 'Activity: Online PDF file processing tools'}
+                </li>
               </ul>
             </div>
           </section>
 
           <section className="space-y-3 pt-6 border-t border-white/10" aria-labelledby="legal-2">
-            <h2 id="legal-2" className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+            <h2
+              id="legal-2"
+              className="text-lg font-bold text-white flex items-center gap-2 font-mono"
+            >
               <FileText className="w-4 h-4 text-emerald-400" aria-hidden="true" />
               {isEs ? '2. Condiciones Generales de Uso' : '2. General Terms of Use'}
             </h2>
@@ -74,21 +104,31 @@ export default function AvisoLegalPage() {
           </section>
 
           <section className="space-y-3 pt-6 border-t border-white/10" aria-labelledby="legal-3">
-            <h2 id="legal-3" className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+            <h2
+              id="legal-3"
+              className="text-lg font-bold text-white flex items-center gap-2 font-mono"
+            >
               <FileText className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-              {isEs ? '3. Propiedad Intelectual e Industrial' : '3. Intellectual and Industrial Property'}
+              {isEs
+                ? '3. Propiedad Intelectual e Industrial'
+                : '3. Intellectual and Industrial Property'}
             </h2>
             <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">
               {isEs
-                ? 'Todos los contenidos del sitio web (textos, gráficos, imágenes, diseño, código fuente, estructura de navegación, bases de datos, y demás elementos) son propiedad exclusiva de PDFBlack o de terceros que han autorizado su uso. Queda prohibida la reproducción, distribución, comunicación pública, transformación o cualquier otra actividad no autorizada expresamente por escrito. PDFBlack y su logotipo son marcas registradas. El nombre de dominio pdfblack.com es propiedad exclusiva de PDFBlack.'
-                : 'All website content (texts, graphics, images, design, source code, navigation structure, databases, and other elements) is the exclusive property of PDFBlack or third parties who have authorized their use. Reproduction, distribution, public communication, transformation, or any other activity not expressly authorized in writing is prohibited. PDFBlack and its logo are registered trademarks. The domain name pdfblack.com is the exclusive property of PDFBlack.'}
+                ? 'Todos los contenidos del sitio web (textos, gráficos, imágenes, diseño, código fuente, estructura de navegación, bases de datos, y demás elementos) son propiedad exclusiva de PDFBlack o de terceros que han autorizado su uso. Queda prohibida la reproducción, distribución, comunicación pública, transformación o cualquier otra actividad no autorizada expresamente por escrito. PDFBlack y su logotipo son marcas registradas. El nombre de dominio pdf-black.com es propiedad exclusiva de PDFBlack.'
+                : 'All website content (texts, graphics, images, design, source code, navigation structure, databases, and other elements) is the exclusive property of PDFBlack or third parties who have authorized their use. Reproduction, distribution, public communication, transformation, or any other activity not expressly authorized in writing is prohibited. PDFBlack and its logo are registered trademarks. The domain name pdf-black.com is the exclusive property of PDFBlack.'}
             </p>
           </section>
 
           <section className="space-y-3 pt-6 border-t border-white/10" aria-labelledby="legal-4">
-            <h2 id="legal-4" className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+            <h2
+              id="legal-4"
+              className="text-lg font-bold text-white flex items-center gap-2 font-mono"
+            >
               <FileText className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-              {isEs ? '4. Legislación Aplicable y Jurisdicción' : '4. Applicable Law and Jurisdiction'}
+              {isEs
+                ? '4. Legislación Aplicable y Jurisdicción'
+                : '4. Applicable Law and Jurisdiction'}
             </h2>
             <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">
               {isEs
@@ -98,9 +138,14 @@ export default function AvisoLegalPage() {
           </section>
 
           <section className="space-y-3 pt-6 border-t border-white/10" aria-labelledby="legal-5">
-            <h2 id="legal-5" className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+            <h2
+              id="legal-5"
+              className="text-lg font-bold text-white flex items-center gap-2 font-mono"
+            >
               <FileText className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-              {isEs ? '5. Exclusión de Garantías y Responsabilidad' : '5. Exclusion of Warranties and Liability'}
+              {isEs
+                ? '5. Exclusión de Garantías y Responsabilidad'
+                : '5. Exclusion of Warranties and Liability'}
             </h2>
             <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">
               {isEs
@@ -110,7 +155,10 @@ export default function AvisoLegalPage() {
           </section>
 
           <section className="space-y-3 pt-6 border-t border-white/10" aria-labelledby="legal-6">
-            <h2 id="legal-6" className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+            <h2
+              id="legal-6"
+              className="text-lg font-bold text-white flex items-center gap-2 font-mono"
+            >
               <FileText className="w-4 h-4 text-emerald-400" aria-hidden="true" />
               {isEs ? '6. Política de Enlaces (Links)' : '6. Links Policy'}
             </h2>
@@ -122,7 +170,10 @@ export default function AvisoLegalPage() {
           </section>
 
           <section className="space-y-3 pt-6 border-t border-white/10" aria-labelledby="legal-7">
-            <h2 id="legal-7" className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+            <h2
+              id="legal-7"
+              className="text-lg font-bold text-white flex items-center gap-2 font-mono"
+            >
               <FileText className="w-4 h-4 text-emerald-400" aria-hidden="true" />
               {isEs ? '7. Protección de Datos Personales' : '7. Personal Data Protection'}
             </h2>
@@ -132,7 +183,6 @@ export default function AvisoLegalPage() {
                 : 'In accordance with the General Data Protection Regulation (GDPR) and applicable data protection laws, all information relating to the processing of personal data is detailed in our Privacy Policy, accessible from the footer of this website.'}
             </p>
           </section>
-
         </div>
 
         {/* ENLACES RELACIONADOS */}
@@ -141,18 +191,26 @@ export default function AvisoLegalPage() {
             {isEs ? 'Documentos legales relacionados:' : 'Related legal documents:'}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/privacidad" className="text-xs text-zinc-400 hover:text-white bg-zinc-900 border border-white/10 px-4 py-1.5 rounded-full transition-all">
+            <Link
+              href="/privacidad"
+              className="text-xs text-zinc-400 hover:text-white bg-zinc-900 border border-white/10 px-4 py-1.5 rounded-full transition-all"
+            >
               {isEs ? 'Política de Privacidad' : 'Privacy Policy'}
             </Link>
-            <Link href="/terminos" className="text-xs text-zinc-400 hover:text-white bg-zinc-900 border border-white/10 px-4 py-1.5 rounded-full transition-all">
+            <Link
+              href="/terminos"
+              className="text-xs text-zinc-400 hover:text-white bg-zinc-900 border border-white/10 px-4 py-1.5 rounded-full transition-all"
+            >
               {isEs ? 'Términos y Condiciones' : 'Terms & Conditions'}
             </Link>
-            <Link href="/dpa" className="text-xs text-zinc-400 hover:text-white bg-zinc-900 border border-white/10 px-4 py-1.5 rounded-full transition-all">
+            <Link
+              href="/dpa"
+              className="text-xs text-zinc-400 hover:text-white bg-zinc-900 border border-white/10 px-4 py-1.5 rounded-full transition-all"
+            >
               {isEs ? 'DPA (Acuerdo de Procesamiento)' : 'DPA (Data Processing Agreement)'}
             </Link>
           </div>
         </div>
-
       </div>
     </div>
   );

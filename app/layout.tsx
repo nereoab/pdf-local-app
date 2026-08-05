@@ -5,7 +5,7 @@ import { ThemeProvider } from '../context/ThemeContext';
 import { FirebaseAuthProvider } from '../context/FirebaseAuthContext';
 import SharedLayout from '../components/SharedLayout';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdfblack-proy.web.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 const SITE_NAME = 'PDFBlack';
 
 export const viewport: Viewport = {
@@ -111,7 +111,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-     <html lang="es" className="dark" style={{ colorScheme: 'dark light' }} suppressHydrationWarning>
+    <html lang="es" className="dark" style={{ colorScheme: 'dark light' }} suppressHydrationWarning>
       <head>
         {/* Preconexiones para mejorar rendimiento de CDNs */}
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
@@ -120,7 +120,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
         <link rel="dns-prefetch" href="https://cdn.syncfusion.com" />
       </head>
-       <body className="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen" suppressHydrationWarning>
+      <body
+        className="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen"
+        suppressHydrationWarning
+      >
         {/* SKIP-TO-CONTENT LINK — Accesibilidad WCAG 2.1 */}
         <a
           href="#main-content"
@@ -129,17 +132,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Saltar al contenido principal
         </a>
 
-         <ThemeProvider>
-           <LanguageProvider>
-             <FirebaseAuthProvider>
-               <SharedLayout>
-                 <div id="main-content" tabIndex={-1}>
-                   {children}
-                 </div>
-               </SharedLayout>
-             </FirebaseAuthProvider>
-           </LanguageProvider>
-         </ThemeProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <FirebaseAuthProvider>
+              <SharedLayout>
+                <div id="main-content" tabIndex={-1}>
+                  {children}
+                </div>
+              </SharedLayout>
+            </FirebaseAuthProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

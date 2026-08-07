@@ -1,0 +1,415 @@
+{
+  "nodes": [
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_md",
+      "label": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "label": "\ud83d\udd0d PDFBlack \u2014 Inspecci\u00f3n Exhaustiva de Errores con Graphify + Herramientas Nativas",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_resumen_ejecutivo_de_la_inspecci\u00f3n",
+      "label": "\ud83d\udcca RESUMEN EJECUTIVO DE LA INSPECCI\u00d3N",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L9"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_cr\u00edticos",
+      "label": "\ud83d\udd34 HALLAZGOS CR\u00cdTICOS",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L25"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_1_npm_audit_vulnerabilidades_de_seguridad_6_total_4_high",
+      "label": "1. npm audit \u2014 Vulnerabilidades de Seguridad (6 total, 4 HIGH)",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L27"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_2_eslint_463_problemas_191_errores_272_warnings",
+      "label": "2. ESLint \u2014 463 Problemas (191 errores, 272 warnings)",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L38"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_clasificaci\u00f3n_de_errores_191",
+      "label": "Clasificaci\u00f3n de errores (191):",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L40"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_archivos_m\u00e1s_problem\u00e1ticos_top_5_por_errores",
+      "label": "Archivos m\u00e1s problem\u00e1ticos (top 5 por errores):",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L51"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_3_graphify_an\u00e1lisis_de_grafo_de_dependencias",
+      "label": "3. Graphify \u2014 An\u00e1lisis de Grafo de Dependencias",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L61"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_m\u00e9tricas_del_grafo",
+      "label": "M\u00e9tricas del grafo:",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L63"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_god_nodes_hubs_arquitect\u00f3nicos",
+      "label": "God Nodes (hubs arquitect\u00f3nicos):",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L70"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_archivos_grandes_que_no_deber\u00edan_estar_en_el_repo",
+      "label": "\ud83d\udce6 Archivos grandes que no deber\u00edan estar en el repo:",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L75"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_moderados",
+      "label": "\ud83d\udfe1 HALLAZGOS MODERADOS",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L80"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_4_workers_sin_tests_13_de_18_workers",
+      "label": "4. Workers sin Tests (13 de 18 workers)",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L82"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_5_react_anti_patterns_detectados",
+      "label": "5. React Anti-Patterns Detectados",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L93"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_setstate_s\u00edncrono_en_useeffect_8_instancias",
+      "label": "`setState` s\u00edncrono en `useEffect` (8 instancias):",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L95"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_componentes_creados_durante_render_2_instancias",
+      "label": "Componentes creados durante render (2 instancias):",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L110"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_6_dependencia_de_react_quill_new_con_breaking_change",
+      "label": "6. Dependencia de `react-quill-new` con breaking change",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L117"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_fortalezas_confirmadas_por_graphify",
+      "label": "\u2705 FORTALEZAS CONFIRMADAS POR GRAPHIFY",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L123"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_plan_de_soluci\u00f3n_priorizado",
+      "label": "\ud83d\uddfa\ufe0f PLAN DE SOLUCI\u00d3N PRIORIZADO",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L132"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_1_seguridad_urgente_d\u00eda_1",
+      "label": "\ud83d\udd34 FASE 1: Seguridad (Urgente \u2014 D\u00eda 1)",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L134"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_2_calidad_de_c\u00f3digo_semana_1",
+      "label": "\ud83d\udfe0 FASE 2: Calidad de C\u00f3digo (Semana 1)",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L142"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_3_cobertura_de_tests_semanas_1_2",
+      "label": "\ud83d\udfe1 FASE 3: Cobertura de Tests (Semanas 1-2)",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L153"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_4_optimizaci\u00f3n_mes_1",
+      "label": "\ud83d\udd35 FASE 4: Optimizaci\u00f3n (Mes 1)",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L163"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_m\u00e9tricas_post_soluci\u00f3n_esperadas",
+      "label": "\ud83d\udcc8 M\u00c9TRICAS POST-SOLUCI\u00d3N ESPERADAS",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L173"
+    },
+    {
+      "id": "$graphify-root$_informe_graphify_errores_2026_08_05_comandos_de_ejecuci\u00f3n_del_plan",
+      "label": "\ud83d\udd27 COMANDOS DE EJECUCI\u00d3N DEL PLAN",
+      "file_type": "document",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L186"
+    }
+  ],
+  "edges": [
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_md",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_resumen_ejecutivo_de_la_inspecci\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_cr\u00edticos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L25",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_cr\u00edticos",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_1_npm_audit_vulnerabilidades_de_seguridad_6_total_4_high",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_cr\u00edticos",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_2_eslint_463_problemas_191_errores_272_warnings",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L38",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_2_eslint_463_problemas_191_errores_272_warnings",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_clasificaci\u00f3n_de_errores_191",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L40",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_2_eslint_463_problemas_191_errores_272_warnings",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_archivos_m\u00e1s_problem\u00e1ticos_top_5_por_errores",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L51",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_cr\u00edticos",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_3_graphify_an\u00e1lisis_de_grafo_de_dependencias",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L61",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_3_graphify_an\u00e1lisis_de_grafo_de_dependencias",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_m\u00e9tricas_del_grafo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L63",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_3_graphify_an\u00e1lisis_de_grafo_de_dependencias",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_god_nodes_hubs_arquitect\u00f3nicos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L70",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_3_graphify_an\u00e1lisis_de_grafo_de_dependencias",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_archivos_grandes_que_no_deber\u00edan_estar_en_el_repo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L75",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_moderados",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L80",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_moderados",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_4_workers_sin_tests_13_de_18_workers",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L82",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_moderados",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_5_react_anti_patterns_detectados",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L93",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_5_react_anti_patterns_detectados",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_setstate_s\u00edncrono_en_useeffect_8_instancias",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L95",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_5_react_anti_patterns_detectados",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_componentes_creados_durante_render_2_instancias",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L110",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_hallazgos_moderados",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_6_dependencia_de_react_quill_new_con_breaking_change",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L117",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_fortalezas_confirmadas_por_graphify",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L123",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_plan_de_soluci\u00f3n_priorizado",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L132",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_plan_de_soluci\u00f3n_priorizado",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_1_seguridad_urgente_d\u00eda_1",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L134",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_plan_de_soluci\u00f3n_priorizado",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_2_calidad_de_c\u00f3digo_semana_1",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L142",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_plan_de_soluci\u00f3n_priorizado",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_3_cobertura_de_tests_semanas_1_2",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L153",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_plan_de_soluci\u00f3n_priorizado",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_fase_4_optimizaci\u00f3n_mes_1",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L163",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_m\u00e9tricas_post_soluci\u00f3n_esperadas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L173",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_informe_graphify_errores_2026_08_05_pdfblack_inspecci\u00f3n_exhaustiva_de_errores_con_graphify_herramientas_nativas",
+      "target": "$graphify-root$_informe_graphify_errores_2026_08_05_comandos_de_ejecuci\u00f3n_del_plan",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "INFORME_GRAPHIFY_ERRORES_2026-08-05.md",
+      "source_location": "L186",
+      "weight": 1.0
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

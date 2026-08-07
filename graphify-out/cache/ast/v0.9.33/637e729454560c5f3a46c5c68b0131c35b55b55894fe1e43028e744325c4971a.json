@@ -1,0 +1,1007 @@
+{
+  "nodes": [
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_md",
+      "label": "EVALUACION_PDFBLACK.md",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "label": "\ud83d\udd10 Evaluaci\u00f3n Detallada de PDFBlack vs. Herramientas PDF Enterprise",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_\u00edndice",
+      "label": "\u00cdNDICE",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L11"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_1_resumen_ejecutivo",
+      "label": "1. RESUMEN EJECUTIVO",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L30"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_2_matriz_de_funcionalidades",
+      "label": "2. MATRIZ DE FUNCIONALIDADES",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L47"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_2_1_herramientas_de_edici\u00f3n",
+      "label": "2.1 Herramientas de Edici\u00f3n",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L49"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_2_2_herramientas_de_organizaci\u00f3n",
+      "label": "2.2 Herramientas de Organizaci\u00f3n",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L61"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_2_3_conversi\u00f3n_de_formatos",
+      "label": "2.3 Conversi\u00f3n de Formatos",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L72"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_2_4_optimizaci\u00f3n_y_seguridad",
+      "label": "2.4 Optimizaci\u00f3n y Seguridad",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L83"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_3_arquitectura_t\u00e9cnica_deep_dive",
+      "label": "3. ARQUITECTURA T\u00c9CNICA \u2014 DEEP DIVE",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L100"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_3_1_stack_tecnol\u00f3gico",
+      "label": "3.1 Stack Tecnol\u00f3gico",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L102"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_3_2_dependencias_clave_y_su_rol",
+      "label": "3.2 Dependencias Clave y su Rol",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L131"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_3_3_patrones_arquitect\u00f3nicos",
+      "label": "3.3 Patrones Arquitect\u00f3nicos",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L145"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_3_4_cat\u00e1logo_de_workers",
+      "label": "3.4 Cat\u00e1logo de Workers",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L157"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_4_an\u00e1lisis_granular_por_worker",
+      "label": "4. AN\u00c1LISIS GRANULAR POR WORKER",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L184"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_4_1_pdf_compress_worker_ts_compresi\u00f3n_inteligente_586_l\u00edneas",
+      "label": "4.1 `pdf-compress.worker.ts` \u2014 Compresi\u00f3n Inteligente (586 l\u00edneas)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L186"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_4_2_pdf_protect_worker_ts_cifrado_aes_256_iso_32000_2_540_l\u00edneas",
+      "label": "4.2 `pdf-protect.worker.ts` \u2014 Cifrado AES-256 ISO 32000-2 (540 l\u00edneas)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L216"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_4_3_pdf_repair_worker_ts_reparaci\u00f3n_de_pdf_846_l\u00edneas",
+      "label": "4.3 `pdf-repair.worker.ts` \u2014 Reparaci\u00f3n de PDF (846 l\u00edneas)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L261"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_4_4_pdf_redact_v3_worker_ts_censura_de_precisi\u00f3n_578_l\u00edneas",
+      "label": "4.4 `pdf-redact-v3.worker.ts` \u2014 Censura de Precisi\u00f3n (578 l\u00edneas)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L296"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_5_seguridad_y_criptograf\u00eda_deep_dive",
+      "label": "5. SEGURIDAD Y CRIPTOGRAF\u00cdA \u2014 DEEP DIVE",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L330"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_5_1_cifrado_aes_256_iso_32000_2",
+      "label": "5.1 Cifrado AES-256 (ISO 32000-2)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L332"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_5_2_hashing_y_cadena_de_custodia",
+      "label": "5.2 Hashing y Cadena de Custodia",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L347"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_5_3_content_security_policy",
+      "label": "5.3 Content Security Policy",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L360"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_5_4_headers_de_seguridad_en_vercel",
+      "label": "5.4 Headers de Seguridad en Vercel",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L381"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_5_5_patrones_de_detecci\u00f3n_de_datos_sensibles",
+      "label": "5.5 Patrones de Detecci\u00f3n de Datos Sensibles",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L391"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "label": "6. AN\u00c1LISIS DE C\u00d3DIGO FUENTE \u2014 CODE REVIEW",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L422"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_6_1_pdf_content_stream_parser_ts_762_l\u00edneas",
+      "label": "6.1 `pdf-content-stream-parser.ts` (762 l\u00edneas)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L424"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_6_2_pdf_text_coordinate_mapper_ts_371_l\u00edneas",
+      "label": "6.2 `pdf-text-coordinate-mapper.ts` (371 l\u00edneas)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L454"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_6_3_zustand_stores",
+      "label": "6.3 Zustand Stores",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L474"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_6_4_app_layout_tsx_seo_y_metadatos",
+      "label": "6.4 `app/layout.tsx` \u2014 SEO y Metadatos",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L493"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_6_5_vercel_json_configuraci\u00f3n_de_despliegue",
+      "label": "6.5 `vercel.json` \u2014 Configuraci\u00f3n de Despliegue",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L507"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_6_6_env_example_variables_de_entorno",
+      "label": "6.6 `.env.example` \u2014 Variables de Entorno",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L519"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_7_comparativa_enterprise_completa",
+      "label": "7. COMPARATIVA ENTERPRISE COMPLETA",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L532"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_7_1_tabla_comparativa_general",
+      "label": "7.1 Tabla Comparativa General",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L534"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_7_2_an\u00e1lisis_de_madurez_por_dimensiones",
+      "label": "7.2 An\u00e1lisis de Madurez por Dimensiones",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L558"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_8_rendimiento_y_escalabilidad",
+      "label": "8. RENDIMIENTO Y ESCALABILIDAD",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L577"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_8_1_puntos_fuertes",
+      "label": "8.1 Puntos Fuertes",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L579"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_8_2_cuellos_de_botella_identificados",
+      "label": "8.2 Cuellos de Botella Identificados",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L589"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_8_3_rendimiento_estimado_por_operaci\u00f3n",
+      "label": "8.3 Rendimiento Estimado por Operaci\u00f3n",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L600"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_9_cumplimiento_normativo_compliance",
+      "label": "9. CUMPLIMIENTO NORMATIVO (Compliance)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L616"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_10_devops_ci_cd_y_calidad",
+      "label": "10. DEVOPS, CI/CD Y CALIDAD",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L632"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_10_1_pipeline_ci_cd",
+      "label": "10.1 Pipeline CI/CD",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L634"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_10_2_herramientas_de_calidad",
+      "label": "10.2 Herramientas de Calidad",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L649"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_10_3_cobertura_de_tests",
+      "label": "10.3 Cobertura de Tests",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L662"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_11_seo_ux_ui_y_accesibilidad",
+      "label": "11. SEO, UX/UI Y ACCESIBILIDAD",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L686"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_11_1_seo",
+      "label": "11.1 SEO",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L688"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_11_2_ux_ui",
+      "label": "11.2 UX/UI",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L701"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_11_3_accesibilidad_wcag_2_1",
+      "label": "11.3 Accesibilidad (WCAG 2.1)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L714"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_12_fortalezas_debilidades_y_riesgos_t\u00e9cnicos",
+      "label": "12. FORTALEZAS, DEBILIDADES Y RIESGOS T\u00c9CNICOS",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L729"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_12_1_fortalezas_diferenciadores_competitivos",
+      "label": "12.1 FORTALEZAS (Diferenciadores Competitivos)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L731"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_12_2_debilidades_gaps_cr\u00edticos",
+      "label": "12.2 DEBILIDADES (Gaps Cr\u00edticos)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L767"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_12_3_riesgos_t\u00e9cnicos",
+      "label": "12.3 RIESGOS T\u00c9CNICOS",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L789"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_13_recomendaciones_estrat\u00e9gicas",
+      "label": "13. RECOMENDACIONES ESTRAT\u00c9GICAS",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L802"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_13_1_prioridad_cr\u00edtica_semanas_1_4",
+      "label": "13.1 Prioridad CR\u00cdTICA (Semanas 1-4)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L804"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_13_2_prioridad_alta_meses_1_2",
+      "label": "13.2 Prioridad ALTA (Meses 1-2)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L813"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_13_3_prioridad_media_meses_3_6",
+      "label": "13.3 Prioridad MEDIA (Meses 3-6)",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L823"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_13_4_visi\u00f3n_a_largo_plazo",
+      "label": "13.4 Visi\u00f3n a Largo Plazo",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L833"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_14_conclusi\u00f3n_y_roadmap",
+      "label": "14. CONCLUSI\u00d3N Y ROADMAP",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L841"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_14_1_veredicto_por_perfil_de_usuario",
+      "label": "14.1 Veredicto por Perfil de Usuario",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L843"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_14_2_puntuaci\u00f3n_global",
+      "label": "14.2 Puntuaci\u00f3n Global",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L854"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_14_3_roadmap_de_madurez",
+      "label": "14.3 Roadmap de Madurez",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L874"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_14_4_comparativa_visual_final",
+      "label": "14.4 Comparativa Visual Final",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L908"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_pdfblack_14_5_reflexi\u00f3n_final",
+      "label": "14.5 Reflexi\u00f3n Final",
+      "file_type": "document",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L919"
+    }
+  ],
+  "edges": [
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_md",
+      "target": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_\u00edndice",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_1_resumen_ejecutivo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L30",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_2_matriz_de_funcionalidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_2_matriz_de_funcionalidades",
+      "target": "$graphify-root$_evaluacion_pdfblack_2_1_herramientas_de_edici\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L49",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_2_matriz_de_funcionalidades",
+      "target": "$graphify-root$_evaluacion_pdfblack_2_2_herramientas_de_organizaci\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L61",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_2_matriz_de_funcionalidades",
+      "target": "$graphify-root$_evaluacion_pdfblack_2_3_conversi\u00f3n_de_formatos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L72",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_2_matriz_de_funcionalidades",
+      "target": "$graphify-root$_evaluacion_pdfblack_2_4_optimizaci\u00f3n_y_seguridad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L83",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_3_arquitectura_t\u00e9cnica_deep_dive",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L100",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_3_arquitectura_t\u00e9cnica_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_3_1_stack_tecnol\u00f3gico",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L102",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_3_arquitectura_t\u00e9cnica_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_3_2_dependencias_clave_y_su_rol",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L131",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_3_arquitectura_t\u00e9cnica_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_3_3_patrones_arquitect\u00f3nicos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L145",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_3_arquitectura_t\u00e9cnica_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_3_4_cat\u00e1logo_de_workers",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L157",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_4_an\u00e1lisis_granular_por_worker",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L184",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_4_an\u00e1lisis_granular_por_worker",
+      "target": "$graphify-root$_evaluacion_pdfblack_4_1_pdf_compress_worker_ts_compresi\u00f3n_inteligente_586_l\u00edneas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L186",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_4_an\u00e1lisis_granular_por_worker",
+      "target": "$graphify-root$_evaluacion_pdfblack_4_2_pdf_protect_worker_ts_cifrado_aes_256_iso_32000_2_540_l\u00edneas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L216",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_4_an\u00e1lisis_granular_por_worker",
+      "target": "$graphify-root$_evaluacion_pdfblack_4_3_pdf_repair_worker_ts_reparaci\u00f3n_de_pdf_846_l\u00edneas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L261",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_4_an\u00e1lisis_granular_por_worker",
+      "target": "$graphify-root$_evaluacion_pdfblack_4_4_pdf_redact_v3_worker_ts_censura_de_precisi\u00f3n_578_l\u00edneas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L296",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_5_seguridad_y_criptograf\u00eda_deep_dive",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L330",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_5_seguridad_y_criptograf\u00eda_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_5_1_cifrado_aes_256_iso_32000_2",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L332",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_5_seguridad_y_criptograf\u00eda_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_5_2_hashing_y_cadena_de_custodia",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L347",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_5_seguridad_y_criptograf\u00eda_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_5_3_content_security_policy",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L360",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_5_seguridad_y_criptograf\u00eda_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_5_4_headers_de_seguridad_en_vercel",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L381",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_5_seguridad_y_criptograf\u00eda_deep_dive",
+      "target": "$graphify-root$_evaluacion_pdfblack_5_5_patrones_de_detecci\u00f3n_de_datos_sensibles",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L391",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L422",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "target": "$graphify-root$_evaluacion_pdfblack_6_1_pdf_content_stream_parser_ts_762_l\u00edneas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L424",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "target": "$graphify-root$_evaluacion_pdfblack_6_2_pdf_text_coordinate_mapper_ts_371_l\u00edneas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L454",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "target": "$graphify-root$_evaluacion_pdfblack_6_3_zustand_stores",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L474",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "target": "$graphify-root$_evaluacion_pdfblack_6_4_app_layout_tsx_seo_y_metadatos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L493",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "target": "$graphify-root$_evaluacion_pdfblack_6_5_vercel_json_configuraci\u00f3n_de_despliegue",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L507",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_6_an\u00e1lisis_de_c\u00f3digo_fuente_code_review",
+      "target": "$graphify-root$_evaluacion_pdfblack_6_6_env_example_variables_de_entorno",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L519",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_7_comparativa_enterprise_completa",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L532",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_7_comparativa_enterprise_completa",
+      "target": "$graphify-root$_evaluacion_pdfblack_7_1_tabla_comparativa_general",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L534",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_7_comparativa_enterprise_completa",
+      "target": "$graphify-root$_evaluacion_pdfblack_7_2_an\u00e1lisis_de_madurez_por_dimensiones",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L558",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_8_rendimiento_y_escalabilidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L577",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_8_rendimiento_y_escalabilidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_8_1_puntos_fuertes",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L579",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_8_rendimiento_y_escalabilidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_8_2_cuellos_de_botella_identificados",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L589",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_8_rendimiento_y_escalabilidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_8_3_rendimiento_estimado_por_operaci\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L600",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_9_cumplimiento_normativo_compliance",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L616",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_10_devops_ci_cd_y_calidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L632",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_10_devops_ci_cd_y_calidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_10_1_pipeline_ci_cd",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L634",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_10_devops_ci_cd_y_calidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_10_2_herramientas_de_calidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L649",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_10_devops_ci_cd_y_calidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_10_3_cobertura_de_tests",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L662",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_11_seo_ux_ui_y_accesibilidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L686",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_11_seo_ux_ui_y_accesibilidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_11_1_seo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L688",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_11_seo_ux_ui_y_accesibilidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_11_2_ux_ui",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L701",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_11_seo_ux_ui_y_accesibilidad",
+      "target": "$graphify-root$_evaluacion_pdfblack_11_3_accesibilidad_wcag_2_1",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L714",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_12_fortalezas_debilidades_y_riesgos_t\u00e9cnicos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L729",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_12_fortalezas_debilidades_y_riesgos_t\u00e9cnicos",
+      "target": "$graphify-root$_evaluacion_pdfblack_12_1_fortalezas_diferenciadores_competitivos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L731",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_12_fortalezas_debilidades_y_riesgos_t\u00e9cnicos",
+      "target": "$graphify-root$_evaluacion_pdfblack_12_2_debilidades_gaps_cr\u00edticos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L767",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_12_fortalezas_debilidades_y_riesgos_t\u00e9cnicos",
+      "target": "$graphify-root$_evaluacion_pdfblack_12_3_riesgos_t\u00e9cnicos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L789",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_13_recomendaciones_estrat\u00e9gicas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L802",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_13_recomendaciones_estrat\u00e9gicas",
+      "target": "$graphify-root$_evaluacion_pdfblack_13_1_prioridad_cr\u00edtica_semanas_1_4",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L804",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_13_recomendaciones_estrat\u00e9gicas",
+      "target": "$graphify-root$_evaluacion_pdfblack_13_2_prioridad_alta_meses_1_2",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L813",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_13_recomendaciones_estrat\u00e9gicas",
+      "target": "$graphify-root$_evaluacion_pdfblack_13_3_prioridad_media_meses_3_6",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L823",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_13_recomendaciones_estrat\u00e9gicas",
+      "target": "$graphify-root$_evaluacion_pdfblack_13_4_visi\u00f3n_a_largo_plazo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L833",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_evaluaci\u00f3n_detallada_de_pdfblack_vs_herramientas_pdf_enterprise",
+      "target": "$graphify-root$_evaluacion_pdfblack_14_conclusi\u00f3n_y_roadmap",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L841",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_14_conclusi\u00f3n_y_roadmap",
+      "target": "$graphify-root$_evaluacion_pdfblack_14_1_veredicto_por_perfil_de_usuario",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L843",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_14_conclusi\u00f3n_y_roadmap",
+      "target": "$graphify-root$_evaluacion_pdfblack_14_2_puntuaci\u00f3n_global",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L854",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_14_conclusi\u00f3n_y_roadmap",
+      "target": "$graphify-root$_evaluacion_pdfblack_14_3_roadmap_de_madurez",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L874",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_14_conclusi\u00f3n_y_roadmap",
+      "target": "$graphify-root$_evaluacion_pdfblack_14_4_comparativa_visual_final",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L908",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_pdfblack_14_conclusi\u00f3n_y_roadmap",
+      "target": "$graphify-root$_evaluacion_pdfblack_14_5_reflexi\u00f3n_final",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_PDFBLACK.md",
+      "source_location": "L919",
+      "weight": 1.0
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

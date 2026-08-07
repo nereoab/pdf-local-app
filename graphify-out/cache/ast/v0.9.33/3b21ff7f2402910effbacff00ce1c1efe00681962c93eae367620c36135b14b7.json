@@ -1,0 +1,495 @@
+{
+  "nodes": [
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_md",
+      "label": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "label": "\ud83d\udd10 PDFBlack \u2014 Evaluaci\u00f3n Integral Actualizada",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_resumen_ejecutivo",
+      "label": "\ud83d\udccb RESUMEN EJECUTIVO",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L10"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_comparativa_del_proyecto_antes_vs_despu\u00e9s",
+      "label": "\ud83d\udcca COMPARATIVA DEL PROYECTO: ANTES vs DESPU\u00c9S",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L25"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_2_de_agosto_5_de_agosto_de_2026",
+      "label": "2 de Agosto \u2192 5 de Agosto de 2026",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L27"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_cambios_principales_commit_b9937de",
+      "label": "\ud83d\udd04 CAMBIOS PRINCIPALES (commit `b9937de`)",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L46"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_1_autenticaci\u00f3n_migraci\u00f3n_completa_a_firebase_auth",
+      "label": "1. \ud83d\udfe2 Autenticaci\u00f3n: Migraci\u00f3n Completa a Firebase Auth",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L48"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_2_servicio_de_email_de_simulaci\u00f3n_a_resend_api_real",
+      "label": "2. \ud83d\udfe2 Servicio de Email: De Simulaci\u00f3n a Resend API Real",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L92"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_3_panel_de_administraci\u00f3n_admin_emails",
+      "label": "3. \ud83d\udfe2 Panel de Administraci\u00f3n (`/admin/emails`)",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L126"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_4_health_check_endpoint_api_health",
+      "label": "4. \ud83d\udd35 Health Check Endpoint (`/api/health`)",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L137"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "label": "\ud83c\udfc6 FORTALEZAS CONSOLIDADAS",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L154"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_1_privacidad_absoluta_zero_trust_client_side",
+      "label": "1. Privacidad Absoluta (Zero-Trust Client-Side) \u2b50\u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L156"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_2_criptograf\u00eda_de_grado_profesional",
+      "label": "2. Criptograf\u00eda de Grado Profesional \u2b50\u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L159"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_3_motor_trueredact_v3",
+      "label": "3. Motor TrueRedact v3 \u2b50\u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L164"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_4_18_web_workers_con_comlink",
+      "label": "4. 18 Web Workers con Comlink \u2b50\u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L169"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_5_autenticaci\u00f3n_empresarial_nuevo",
+      "label": "5. Autenticaci\u00f3n Empresarial (NUEVO) \u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L172"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_6_infraestructura_de_email_real_nuevo",
+      "label": "6. Infraestructura de Email Real (NUEVO) \u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L177"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_7_devops_de_clase_mundial",
+      "label": "7. DevOps de Clase Mundial \u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L182"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_8_stack_de_\u00faltima_generaci\u00f3n",
+      "label": "8. Stack de \u00daltima Generaci\u00f3n \u2b50\u2b50\u2b50\u2b50",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L188"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_debilidades_persistentes",
+      "label": "\ud83d\udd34 DEBILIDADES PERSISTENTES",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L193"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_cr\u00edticas_bloquean_adopci\u00f3n_enterprise",
+      "label": "Cr\u00edticas (Bloquean adopci\u00f3n enterprise)",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L195"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_altas_impacto_significativo_en_calidad",
+      "label": "Altas (Impacto significativo en calidad)",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L204"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_medias_mejoras_deseables",
+      "label": "Medias (Mejoras deseables)",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L214"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_an\u00e1lisis_de_madurez_por_dimensi\u00f3n",
+      "label": "\ud83d\udcc8 AN\u00c1LISIS DE MADUREZ POR DIMENSI\u00d3N",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L229"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_roadmap_recomendado",
+      "label": "\ud83d\uddfa\ufe0f ROADMAP RECOMENDADO",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L250"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_fase_1_fundamentos_semanas_1_2",
+      "label": "Fase 1: Fundamentos (Semanas 1-2) \ud83d\udd34",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L252"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_fase_2_crecimiento_meses_1_2",
+      "label": "Fase 2: Crecimiento (Meses 1-2) \ud83d\udfe0",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L261"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_fase_3_enterprise_meses_3_6",
+      "label": "Fase 3: Enterprise (Meses 3-6) \ud83d\udfe1",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L272"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_estado_actual_de_tests",
+      "label": "\ud83d\udcca ESTADO ACTUAL DE TESTS",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L285"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_estado_de_seguridad_post_migraci\u00f3n",
+      "label": "\ud83d\udd12 ESTADO DE SEGURIDAD POST-MIGRACI\u00d3N",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L307"
+    },
+    {
+      "id": "$graphify-root$_evaluacion_actualizada_2026_08_05_conclusi\u00f3n",
+      "label": "\ud83c\udfaf CONCLUSI\u00d3N",
+      "file_type": "document",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L323"
+    }
+  ],
+  "edges": [
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_md",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_resumen_ejecutivo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L10",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_comparativa_del_proyecto_antes_vs_despu\u00e9s",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L25",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_comparativa_del_proyecto_antes_vs_despu\u00e9s",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_2_de_agosto_5_de_agosto_de_2026",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_cambios_principales_commit_b9937de",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L46",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_cambios_principales_commit_b9937de",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_1_autenticaci\u00f3n_migraci\u00f3n_completa_a_firebase_auth",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L48",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_cambios_principales_commit_b9937de",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_2_servicio_de_email_de_simulaci\u00f3n_a_resend_api_real",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L92",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_cambios_principales_commit_b9937de",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_3_panel_de_administraci\u00f3n_admin_emails",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L126",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_cambios_principales_commit_b9937de",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_4_health_check_endpoint_api_health",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L137",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L154",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_1_privacidad_absoluta_zero_trust_client_side",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L156",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_2_criptograf\u00eda_de_grado_profesional",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L159",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_3_motor_trueredact_v3",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L164",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_4_18_web_workers_con_comlink",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L169",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_5_autenticaci\u00f3n_empresarial_nuevo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L172",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_6_infraestructura_de_email_real_nuevo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L177",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_7_devops_de_clase_mundial",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L182",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_fortalezas_consolidadas",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_8_stack_de_\u00faltima_generaci\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L188",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_debilidades_persistentes",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L193",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_debilidades_persistentes",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_cr\u00edticas_bloquean_adopci\u00f3n_enterprise",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L195",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_debilidades_persistentes",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_altas_impacto_significativo_en_calidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L204",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_debilidades_persistentes",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_medias_mejoras_deseables",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L214",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_an\u00e1lisis_de_madurez_por_dimensi\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L229",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_roadmap_recomendado",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L250",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_roadmap_recomendado",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_fase_1_fundamentos_semanas_1_2",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L252",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_roadmap_recomendado",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_fase_2_crecimiento_meses_1_2",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L261",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_roadmap_recomendado",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_fase_3_enterprise_meses_3_6",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L272",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_estado_actual_de_tests",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L285",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_estado_de_seguridad_post_migraci\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L307",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_evaluacion_actualizada_2026_08_05_pdfblack_evaluaci\u00f3n_integral_actualizada",
+      "target": "$graphify-root$_evaluacion_actualizada_2026_08_05_conclusi\u00f3n",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EVALUACION_ACTUALIZADA_2026-08-05.md",
+      "source_location": "L323",
+      "weight": 1.0
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

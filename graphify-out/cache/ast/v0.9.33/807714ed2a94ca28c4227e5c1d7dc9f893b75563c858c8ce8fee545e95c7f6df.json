@@ -1,0 +1,527 @@
+{
+  "nodes": [
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_md",
+      "label": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "label": "\ud83d\udcca PDFBlack \u2014 Fortalezas y Debilidades por Aspecto (\u00c9nfasis en Servicio al Usuario)",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_\u00edndice",
+      "label": "\u00cdNDICE",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L9"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_1_visi\u00f3n_general",
+      "label": "1. VISI\u00d3N GENERAL",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L24"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_2_servicio_al_usuario",
+      "label": "2. SERVICIO AL USUARIO",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L30"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_2_1_fortalezas",
+      "label": "2.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L32"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_2_2_debilidades",
+      "label": "2.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L51"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_3_onboarding_y_primera_experiencia",
+      "label": "3. ONBOARDING Y PRIMERA EXPERIENCIA",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L76"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_3_1_fortalezas",
+      "label": "3.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L78"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_3_2_debilidades",
+      "label": "3.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L90"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_4_funcionalidad_y_herramientas",
+      "label": "4. FUNCIONALIDAD Y HERRAMIENTAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L101"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_4_1_fortalezas",
+      "label": "4.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L103"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_4_2_debilidades",
+      "label": "4.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L118"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_5_seguridad_y_privacidad",
+      "label": "5. SEGURIDAD Y PRIVACIDAD",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L135"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_5_1_fortalezas",
+      "label": "5.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L137"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_5_2_debilidades",
+      "label": "5.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L154"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_6_rendimiento_y_velocidad",
+      "label": "6. RENDIMIENTO Y VELOCIDAD",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L171"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_6_1_fortalezas",
+      "label": "6.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L173"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_6_2_debilidades",
+      "label": "6.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L186"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_7_ux_ui_y_accesibilidad",
+      "label": "7. UX/UI Y ACCESIBILIDAD",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L201"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_7_1_fortalezas",
+      "label": "7.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L203"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_7_2_debilidades",
+      "label": "7.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L226"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_8_seo_y_descubribilidad",
+      "label": "8. SEO Y DESCUBRIBILIDAD",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L242"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_8_1_fortalezas",
+      "label": "8.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L244"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_8_2_debilidades",
+      "label": "8.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L260"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_9_calidad_t\u00e9cnica_y_devops",
+      "label": "9. CALIDAD T\u00c9CNICA Y DEVOPS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L271"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_9_1_fortalezas",
+      "label": "9.1 FORTALEZAS",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L273"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_9_2_debilidades",
+      "label": "9.2 DEBILIDADES",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L288"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_10_resumen_ejecutivo",
+      "label": "10. RESUMEN EJECUTIVO",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L303"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_10_1_resumen_de_fortalezas_diferenciadores_clave",
+      "label": "10.1 Resumen de Fortalezas (Diferenciadores Clave)",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L305"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_10_2_resumen_de_debilidades_gaps_cr\u00edticos",
+      "label": "10.2 Resumen de Debilidades (Gaps Cr\u00edticos)",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L318"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_10_3_matriz_de_prioridades_para_mejora_de_servicio_al_usuario",
+      "label": "10.3 Matriz de Prioridades para Mejora de Servicio al Usuario",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L336"
+    },
+    {
+      "id": "$graphify-root$_fortalezas_debilidades_servicio_10_4_veredicto_final_sobre_servicio_al_usuario",
+      "label": "10.4 Veredicto Final sobre Servicio al Usuario",
+      "file_type": "document",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L352"
+    }
+  ],
+  "edges": [
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_md",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_\u00edndice",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L9",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_1_visi\u00f3n_general",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L24",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_2_servicio_al_usuario",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L30",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_2_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_2_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_2_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_2_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L51",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_3_onboarding_y_primera_experiencia",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L76",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_3_onboarding_y_primera_experiencia",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_3_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L78",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_3_onboarding_y_primera_experiencia",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_3_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L90",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_4_funcionalidad_y_herramientas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L101",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_4_funcionalidad_y_herramientas",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_4_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L103",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_4_funcionalidad_y_herramientas",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_4_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L118",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_5_seguridad_y_privacidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L135",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_5_seguridad_y_privacidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_5_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L137",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_5_seguridad_y_privacidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_5_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L154",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_6_rendimiento_y_velocidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L171",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_6_rendimiento_y_velocidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_6_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L173",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_6_rendimiento_y_velocidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_6_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L186",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_7_ux_ui_y_accesibilidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L201",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_7_ux_ui_y_accesibilidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_7_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L203",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_7_ux_ui_y_accesibilidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_7_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L226",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_8_seo_y_descubribilidad",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L242",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_8_seo_y_descubribilidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_8_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L244",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_8_seo_y_descubribilidad",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_8_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L260",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_9_calidad_t\u00e9cnica_y_devops",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L271",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_9_calidad_t\u00e9cnica_y_devops",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_9_1_fortalezas",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L273",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_9_calidad_t\u00e9cnica_y_devops",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_9_2_debilidades",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L288",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_pdfblack_fortalezas_y_debilidades_por_aspecto_\u00e9nfasis_en_servicio_al_usuario",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_10_resumen_ejecutivo",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L303",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_10_resumen_ejecutivo",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_10_1_resumen_de_fortalezas_diferenciadores_clave",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L305",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_10_resumen_ejecutivo",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_10_2_resumen_de_debilidades_gaps_cr\u00edticos",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L318",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_10_resumen_ejecutivo",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_10_3_matriz_de_prioridades_para_mejora_de_servicio_al_usuario",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L336",
+      "weight": 1.0
+    },
+    {
+      "source": "$graphify-root$_fortalezas_debilidades_servicio_10_resumen_ejecutivo",
+      "target": "$graphify-root$_fortalezas_debilidades_servicio_10_4_veredicto_final_sobre_servicio_al_usuario",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "FORTALEZAS_DEBILIDADES_SERVICIO.md",
+      "source_location": "L352",
+      "weight": 1.0
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

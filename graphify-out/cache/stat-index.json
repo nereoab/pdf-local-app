@@ -1,0 +1,3098 @@
+{
+  ".github/workflows/ci-cd.yml": {
+    "size": 4976,
+    "mtime_ns": 1785854758697414700,
+    "word_count": 374,
+    "hashes": {
+      ".github/workflows/ci-cd.yml": "0feb4360985b1e1b376f90e4575f0bcafae43b3f22b8fd404921740337f9816a"
+    }
+  },
+  ".lintstagedrc.json": {
+    "size": 183,
+    "mtime_ns": 1785854758698957800,
+    "word_count": 17,
+    "hashes": {
+      ".lintstagedrc.json": "71e8513345e357af3b22c27c63a7b210c04310dba95b6a8b0b1c793a0f2f9a76"
+    }
+  },
+  ".vscode/settings.json": {
+    "size": 42,
+    "mtime_ns": 1785159782463448400,
+    "word_count": 4,
+    "hashes": {
+      ".vscode/settings.json": "037dc0cc27dbe2419182790adbf95bfe56d0eb1d4d96cff7c1bdc737c3a9c5ff"
+    }
+  },
+  "AGENTS.md": {
+    "size": 327,
+    "mtime_ns": 1784238900147019000,
+    "word_count": 45,
+    "hashes": { "agents.md": "f56c045273213f32f4acd96e98dfb664cfc7c3f71d6775317d19c60d38439655" }
+  },
+  "CLAUDE.md": {
+    "size": 12,
+    "mtime_ns": 1785942578614654100,
+    "word_count": 1,
+    "hashes": { "claude.md": "72de41f65b9893c2899b2a4ad29528036b0943bfef8d6c034859d9ea8160345d" }
+  },
+  "EVALUACION_PDFBLACK.md": {
+    "size": 52004,
+    "mtime_ns": 1785854758700511900,
+    "word_count": 7173,
+    "hashes": {
+      "evaluacion_pdfblack.md": "637e729454560c5f3a46c5c68b0131c35b55b55894fe1e43028e744325c4971a"
+    }
+  },
+  "FORTALEZAS_DEBILIDADES_SERVICIO.md": {
+    "size": 26433,
+    "mtime_ns": 1785854758700511900,
+    "word_count": 4271,
+    "hashes": {
+      "fortalezas_debilidades_servicio.md": "807714ed2a94ca28c4227e5c1d7dc9f893b75563c858c8ce8fee545e95c7f6df"
+    }
+  },
+  "README.md": {
+    "size": 1450,
+    "mtime_ns": 1784238630592898200,
+    "word_count": 155,
+    "hashes": { "readme.md": "0b44daaa94766d385f056c95e8aabb30ad6e49ef3aa9c7eb9e32606055f4eaf2" }
+  },
+  "__tests__/pdf-compress-worker.test.ts": {
+    "size": 5656,
+    "mtime_ns": 1785854758701026800,
+    "word_count": 603
+  },
+  "__tests__/pdf-merge-worker.test.ts": {
+    "size": 2491,
+    "mtime_ns": 1785854758701545700,
+    "word_count": 299
+  },
+  "__tests__/pdf-protect-worker.test.ts": {
+    "size": 8192,
+    "mtime_ns": 1785854758702063300,
+    "word_count": 773
+  },
+  "__tests__/pdf-redact-worker.test.ts": {
+    "size": 8607,
+    "mtime_ns": 1785854758702578300,
+    "word_count": 864
+  },
+  "__tests__/pdf-unlock-worker.test.ts": {
+    "size": 6347,
+    "mtime_ns": 1785854758702578300,
+    "word_count": 615
+  },
+  "__tests__/security-audit.test.ts": {
+    "size": 9044,
+    "mtime_ns": 1785854758703116800,
+    "word_count": 714
+  },
+  "__tests__/sensitive-patterns-registry.test.ts": {
+    "size": 8224,
+    "mtime_ns": 1785854758703636400,
+    "word_count": 711
+  },
+  "app/admin/emails/page.tsx": {
+    "size": 19163,
+    "mtime_ns": 1785854758704156700,
+    "word_count": 1469
+  },
+  "app/api/contact/route.ts": { "size": 2860, "mtime_ns": 1785895650079892300, "word_count": 292 },
+  "app/api/health/route.ts": { "size": 988, "mtime_ns": 1785854758704675900, "word_count": 119 },
+  "app/api/pdf/sign/route.ts": { "size": 6678, "mtime_ns": 1785529071489160900, "word_count": 673 },
+  "app/api/send-email/route.ts": {
+    "size": 2387,
+    "mtime_ns": 1785895650111977600,
+    "word_count": 276
+  },
+  "app/aviso-legal/page.tsx": {
+    "size": 14461,
+    "mtime_ns": 1785895650155337900,
+    "word_count": 1556
+  },
+  "app/contacto/page.tsx": { "size": 9006, "mtime_ns": 1785895650194972800, "word_count": 795 },
+  "app/convertir/excel-pdf/page.tsx": {
+    "size": 10661,
+    "mtime_ns": 1785647999082444500,
+    "word_count": 1061
+  },
+  "app/convertir/html-pdf/page.tsx": {
+    "size": 10210,
+    "mtime_ns": 1785648014859359600,
+    "word_count": 1012
+  },
+  "app/convertir/jpg-pdf/page.tsx": {
+    "size": 10294,
+    "mtime_ns": 1785648030627269200,
+    "word_count": 1028
+  },
+  "app/convertir/page.tsx": { "size": 34836, "mtime_ns": 1785647683543340600, "word_count": 3067 },
+  "app/convertir/pdf-excel/page.tsx": {
+    "size": 10630,
+    "mtime_ns": 1785648007065404400,
+    "word_count": 1050
+  },
+  "app/convertir/pdf-html/page.tsx": {
+    "size": 10174,
+    "mtime_ns": 1785648022647505600,
+    "word_count": 1009
+  },
+  "app/convertir/pdf-jpg/page.tsx": {
+    "size": 10319,
+    "mtime_ns": 1785648038608917300,
+    "word_count": 1041
+  },
+  "app/convertir/pdf-powerpoint/page.tsx": {
+    "size": 10280,
+    "mtime_ns": 1785648257341415900,
+    "word_count": 994
+  },
+  "app/convertir/pdf-texto/page.tsx": {
+    "size": 10254,
+    "mtime_ns": 1785648070155735900,
+    "word_count": 1000
+  },
+  "app/convertir/pdf-word/page.tsx": {
+    "size": 10929,
+    "mtime_ns": 1785647550859828800,
+    "word_count": 1097
+  },
+  "app/convertir/powerpoint-pdf/page.tsx": {
+    "size": 10346,
+    "mtime_ns": 1785648261344743400,
+    "word_count": 997
+  },
+  "app/convertir/texto-pdf/page.tsx": {
+    "size": 10101,
+    "mtime_ns": 1785648061339033300,
+    "word_count": 990
+  },
+  "app/convertir/word-pdf/page.tsx": {
+    "size": 11643,
+    "mtime_ns": 1785647557565632700,
+    "word_count": 1154
+  },
+  "app/dpa/page.tsx": { "size": 18455, "mtime_ns": 1785895650235611800, "word_count": 1880 },
+  "app/editar/firma/page.tsx": {
+    "size": 13266,
+    "mtime_ns": 1785691027176796000,
+    "word_count": 1363
+  },
+  "app/editar/foliar/page.tsx": {
+    "size": 13038,
+    "mtime_ns": 1785689765093521200,
+    "word_count": 1379
+  },
+  "app/editar/marca-agua/page.tsx": {
+    "size": 13280,
+    "mtime_ns": 1785690002138322600,
+    "word_count": 1401
+  },
+  "app/editar/ocr/page.tsx": { "size": 16465, "mtime_ns": 1785692555261077100, "word_count": 1777 },
+  "app/editar/page.tsx": { "size": 41594, "mtime_ns": 1785506411587029200, "word_count": 3520 },
+  "app/editar/quitar-marca-agua/page.tsx": {
+    "size": 13417,
+    "mtime_ns": 1785690173689884400,
+    "word_count": 1390
+  },
+  "app/editar/texto/page.tsx": {
+    "size": 13080,
+    "mtime_ns": 1785689469015169900,
+    "word_count": 1356
+  },
+  "app/faq/page.tsx": { "size": 7288, "mtime_ns": 1785117547396180200, "word_count": 831 },
+  "app/layout.tsx": { "size": 5406, "mtime_ns": 1785947653507070100, "word_count": 493 },
+  "app/not-found.tsx": { "size": 2042, "mtime_ns": 1785199456053366000, "word_count": 211 },
+  "app/optimizar/censurar/page.tsx": {
+    "size": 16835,
+    "mtime_ns": 1785627606582881000,
+    "word_count": 1820
+  },
+  "app/optimizar/comparar/page.tsx": {
+    "size": 15998,
+    "mtime_ns": 1785602655594190400,
+    "word_count": 1798
+  },
+  "app/optimizar/comprimir-pdf/page.tsx": {
+    "size": 18453,
+    "mtime_ns": 1785208057004320500,
+    "word_count": 1803
+  },
+  "app/optimizar/comprimir/page.tsx": {
+    "size": 802,
+    "mtime_ns": 1785558469629588900,
+    "word_count": 79
+  },
+  "app/optimizar/desbloquear-pdf/page.tsx": {
+    "size": 4145,
+    "mtime_ns": 1785041229907127000,
+    "word_count": 426
+  },
+  "app/optimizar/desbloquear/page.tsx": {
+    "size": 15141,
+    "mtime_ns": 1785642196634909400,
+    "word_count": 1593
+  },
+  "app/optimizar/page.tsx": { "size": 30650, "mtime_ns": 1785442811293798200, "word_count": 2591 },
+  "app/optimizar/proteger-pdf/page.tsx": {
+    "size": 4228,
+    "mtime_ns": 1785041235455202900,
+    "word_count": 432
+  },
+  "app/optimizar/proteger/page.tsx": {
+    "size": 19854,
+    "mtime_ns": 1785629089958454600,
+    "word_count": 2276
+  },
+  "app/optimizar/reparar/page.tsx": {
+    "size": 792,
+    "mtime_ns": 1785558486208613700,
+    "word_count": 79
+  },
+  "app/organizar/dividir/page.tsx": {
+    "size": 14759,
+    "mtime_ns": 1785686446871800800,
+    "word_count": 1539
+  },
+  "app/organizar/eliminar/page.tsx": {
+    "size": 13411,
+    "mtime_ns": 1785687855224668200,
+    "word_count": 1409
+  },
+  "app/organizar/page.tsx": { "size": 30451, "mtime_ns": 1785442530770779600, "word_count": 2573 },
+  "app/organizar/recortar/page.tsx": {
+    "size": 13260,
+    "mtime_ns": 1785688961774077900,
+    "word_count": 1373
+  },
+  "app/organizar/reordenar/page.tsx": {
+    "size": 13187,
+    "mtime_ns": 1785688123135676800,
+    "word_count": 1358
+  },
+  "app/organizar/rotar/page.tsx": {
+    "size": 13104,
+    "mtime_ns": 1785688702928190000,
+    "word_count": 1341
+  },
+  "app/organizar/unir/page.tsx": {
+    "size": 14511,
+    "mtime_ns": 1785684849018563900,
+    "word_count": 1527
+  },
+  "app/page.tsx": { "size": 73200, "mtime_ns": 1785948016338340300, "word_count": 6175 },
+  "app/privacidad/page.tsx": { "size": 22989, "mtime_ns": 1785895650289371400, "word_count": 2393 },
+  "app/template.tsx": { "size": 352, "mtime_ns": 1784648320754638400, "word_count": 45 },
+  "app/terminos/page.tsx": { "size": 21046, "mtime_ns": 1785895650323730100, "word_count": 2220 },
+  "components/AuthModal.tsx": {
+    "size": 27275,
+    "mtime_ns": 1785945833966457200,
+    "word_count": 2147
+  },
+  "components/Breadcrumbs.tsx": {
+    "size": 4461,
+    "mtime_ns": 1785854758710679700,
+    "word_count": 515
+  },
+  "components/CloudBackupToggle.tsx": {
+    "size": 10498,
+    "mtime_ns": 1785854758711679800,
+    "word_count": 999
+  },
+  "components/CookieConsent.tsx": {
+    "size": 5620,
+    "mtime_ns": 1785854758711679800,
+    "word_count": 529
+  },
+  "components/DownloadSuccessCard.tsx": {
+    "size": 10424,
+    "mtime_ns": 1785694522561691500,
+    "word_count": 970
+  },
+  "components/ExcelPdfConverter.tsx": {
+    "size": 44103,
+    "mtime_ns": 1785649171739256800,
+    "word_count": 3766
+  },
+  "components/ExcelToPdf.tsx": {
+    "size": 17305,
+    "mtime_ns": 1785252980955040600,
+    "word_count": 1513
+  },
+  "components/HtmlPdfConverter.tsx": {
+    "size": 34635,
+    "mtime_ns": 1785649232219526500,
+    "word_count": 3018
+  },
+  "components/HtmlToPdf.tsx": {
+    "size": 15385,
+    "mtime_ns": 1785252965718406800,
+    "word_count": 1333
+  },
+  "components/JpgPdfConverter.tsx": {
+    "size": 32409,
+    "mtime_ns": 1785649217175574300,
+    "word_count": 2836
+  },
+  "components/JpgToPdf.tsx": { "size": 10650, "mtime_ns": 1785197995733830400, "word_count": 972 },
+  "components/PdfComparator.tsx": {
+    "size": 50496,
+    "mtime_ns": 1785646791661644100,
+    "word_count": 4795
+  },
+  "components/PdfCompressor.tsx": {
+    "size": 64357,
+    "mtime_ns": 1785645106221867900,
+    "word_count": 5370
+  },
+  "components/PdfCropper.tsx": {
+    "size": 37013,
+    "mtime_ns": 1785947199088480900,
+    "word_count": 3036
+  },
+  "components/PdfEditor.tsx": {
+    "size": 24806,
+    "mtime_ns": 1785689461161053900,
+    "word_count": 2205
+  },
+  "components/PdfFoliador.tsx": {
+    "size": 39152,
+    "mtime_ns": 1785697525744058200,
+    "word_count": 3185
+  },
+  "components/PdfMerger.tsx": {
+    "size": 53592,
+    "mtime_ns": 1785685090647650400,
+    "word_count": 4334
+  },
+  "components/PdfOcr.tsx": { "size": 35680, "mtime_ns": 1785694552706206200, "word_count": 3189 },
+  "components/PdfOrganizer.tsx": {
+    "size": 42754,
+    "mtime_ns": 1785947218703307800,
+    "word_count": 3681
+  },
+  "components/PdfPageDeleter.tsx": {
+    "size": 36831,
+    "mtime_ns": 1785687847775260300,
+    "word_count": 3254
+  },
+  "components/PdfProtector.tsx": {
+    "size": 46071,
+    "mtime_ns": 1785945652876750800,
+    "word_count": 3767
+  },
+  "components/PdfRedacter.tsx": {
+    "size": 63681,
+    "mtime_ns": 1785646424795331600,
+    "word_count": 5636
+  },
+  "components/PdfRepairer.tsx": {
+    "size": 70740,
+    "mtime_ns": 1785947250555554000,
+    "word_count": 6317
+  },
+  "components/PdfRotator.tsx": {
+    "size": 41560,
+    "mtime_ns": 1785947211607927100,
+    "word_count": 3597
+  },
+  "components/PdfSigner.tsx": {
+    "size": 61319,
+    "mtime_ns": 1785945652876750800,
+    "word_count": 5247
+  },
+  "components/PdfSplitter.tsx": {
+    "size": 48759,
+    "mtime_ns": 1785687228253728400,
+    "word_count": 4253
+  },
+  "components/PdfToExcel.tsx": {
+    "size": 16989,
+    "mtime_ns": 1785196208099595800,
+    "word_count": 1382
+  },
+  "components/PdfToHtml.tsx": { "size": 10279, "mtime_ns": 1785197671984022400, "word_count": 897 },
+  "components/PdfToJpg.tsx": { "size": 10691, "mtime_ns": 1785253029390126500, "word_count": 960 },
+  "components/PdfToPowerPoint.tsx": {
+    "size": 11820,
+    "mtime_ns": 1785197611257160000,
+    "word_count": 958
+  },
+  "components/PdfToText.tsx": {
+    "size": 11912,
+    "mtime_ns": 1785253096977645100,
+    "word_count": 1052
+  },
+  "components/PdfToWord.tsx": {
+    "size": 23234,
+    "mtime_ns": 1785647145803872800,
+    "word_count": 1871
+  },
+  "components/PdfUnlocker.tsx": {
+    "size": 53024,
+    "mtime_ns": 1785945652876750800,
+    "word_count": 4413
+  },
+  "components/PdfUploader.tsx": {
+    "size": 11387,
+    "mtime_ns": 1785453707257064100,
+    "word_count": 1040
+  },
+  "components/PdfWatermark.tsx": {
+    "size": 40693,
+    "mtime_ns": 1785694836338135500,
+    "word_count": 3316
+  },
+  "components/PdfWatermarkRemover.tsx": {
+    "size": 32728,
+    "mtime_ns": 1785694590404584700,
+    "word_count": 2737
+  },
+  "components/PowerPointPdfConverter.tsx": {
+    "size": 34259,
+    "mtime_ns": 1785649203557086800,
+    "word_count": 2950
+  },
+  "components/PowerPointToPdf.tsx": {
+    "size": 14470,
+    "mtime_ns": 1785252940407614800,
+    "word_count": 1234
+  },
+  "components/ProgramIcons.tsx": {
+    "size": 3973,
+    "mtime_ns": 1785196584771188100,
+    "word_count": 381
+  },
+  "components/SharedLayout.tsx": {
+    "size": 16760,
+    "mtime_ns": 1785854758712680100,
+    "word_count": 1551
+  },
+  "components/Skeleton.tsx": { "size": 3625, "mtime_ns": 1785854758712680100, "word_count": 342 },
+  "components/TextPdfConverter.tsx": {
+    "size": 37627,
+    "mtime_ns": 1785649248425187600,
+    "word_count": 3169
+  },
+  "components/TextToPdf.tsx": {
+    "size": 13172,
+    "mtime_ns": 1785252934566422700,
+    "word_count": 1145
+  },
+  "components/WordPdfConverter.tsx": {
+    "size": 45756,
+    "mtime_ns": 1785649153380816400,
+    "word_count": 3983
+  },
+  "components/WordToPdf.tsx": {
+    "size": 25118,
+    "mtime_ns": 1785945652876750800,
+    "word_count": 2170
+  },
+  "context/FirebaseAuthContext.tsx": {
+    "size": 9927,
+    "mtime_ns": 1785854758713679700,
+    "word_count": 1065
+  },
+  "context/LanguageContext.tsx": {
+    "size": 16965,
+    "mtime_ns": 1785854758713679700,
+    "word_count": 1868
+  },
+  "context/ThemeContext.tsx": { "size": 1867, "mtime_ns": 1785947644713430900, "word_count": 196 },
+  "docker-compose.yml": {
+    "size": 1258,
+    "mtime_ns": 1785854758714679600,
+    "word_count": 104,
+    "hashes": {
+      "docker-compose.yml": "7a5ce90bebf04114f127c7b87a9249abee792754b9946c0875a9c027e8861164"
+    }
+  },
+  "eslint.config.mjs": { "size": 539, "mtime_ns": 1785897209501922600, "word_count": 45 },
+  "firebase.json": {
+    "size": 282,
+    "mtime_ns": 1785854758714679600,
+    "word_count": 25,
+    "hashes": {
+      "firebase.json": "082ad7c26c5321c48c2de7ba4a47c1d81cefcccb717bdc83524596c5399d50e9"
+    }
+  },
+  "jest.config.ts": { "size": 760, "mtime_ns": 1785854758715679800, "word_count": 75 },
+  "lib/firebase/config.ts": { "size": 1155, "mtime_ns": 1785854758715679800, "word_count": 112 },
+  "lib/firebase/firestore.ts": { "size": 4800, "mtime_ns": 1785854758716684000, "word_count": 471 },
+  "lib/firebase/storage.ts": { "size": 6457, "mtime_ns": 1785854758716684000, "word_count": 617 },
+  "lib/pdf-content-stream-parser.ts": {
+    "size": 25460,
+    "mtime_ns": 1785945652876750800,
+    "word_count": 3197
+  },
+  "lib/pdf-text-coordinate-mapper.ts": {
+    "size": 12474,
+    "mtime_ns": 1785606279660363500,
+    "word_count": 1679
+  },
+  "lib/security-audit.ts": { "size": 9349, "mtime_ns": 1785607165975637700, "word_count": 998 },
+  "lib/sensitive-patterns-registry.ts": {
+    "size": 18548,
+    "mtime_ns": 1785606777772205000,
+    "word_count": 1791
+  },
+  "next-sitemap.config.js": { "size": 1443, "mtime_ns": 1785895650047989300, "word_count": 139 },
+  "next.config.ts": { "size": 2327, "mtime_ns": 1786037131412200600, "word_count": 197 },
+  "package.json": {
+    "size": 2047,
+    "mtime_ns": 1785945629072329900,
+    "word_count": 162,
+    "hashes": { "package.json": "6bb8ac4954882a6241d41c8505347a8a9026587ad4aaacfcbbcb6696183ad655" }
+  },
+  "postcss.config.mjs": { "size": 94, "mtime_ns": 1784238630628185800, "word_count": 13 },
+  "public/file.svg": {
+    "size": 391,
+    "mtime_ns": 1784238630631800100,
+    "word_count": 50,
+    "hashes": {
+      "public/file.svg": "52163ecb5257da6ecb3ddf8967f0d51a0da93d79d48caa09e9d307ea1c1d3f17"
+    }
+  },
+  "public/globe.svg": {
+    "size": 1035,
+    "mtime_ns": 1784238630638138600,
+    "word_count": 154,
+    "hashes": {
+      "public/globe.svg": "8c99baedee05ada37bd392e179350c9a8e893c25c08cb2e1a8ec25f4f8a33868"
+    }
+  },
+  "public/manifest.json": {
+    "size": 488,
+    "mtime_ns": 1784565114335229600,
+    "word_count": 40,
+    "hashes": {
+      "public/manifest.json": "641fe5800f2bc94a8709ab9a10e1cd8f18db4bdb53d6c0da7fe6a9b487329c8d"
+    }
+  },
+  "public/next.svg": {
+    "size": 1375,
+    "mtime_ns": 1784238630651302000,
+    "word_count": 183,
+    "hashes": {
+      "public/next.svg": "9caa34ac82b48d59fd2add4c0dbf6fcceaf3c3904254c3ccd89dd00644b375ad"
+    }
+  },
+  "public/robots.txt": {
+    "size": 104,
+    "mtime_ns": 1785854758720682700,
+    "word_count": 10,
+    "hashes": {
+      "public/robots.txt": "4492d46cae1761318cb5524a90b116e323cf6e27b53ac2fc6822b97e09981f08"
+    }
+  },
+  "public/vercel.svg": {
+    "size": 128,
+    "mtime_ns": 1784238630658455000,
+    "word_count": 12,
+    "hashes": {
+      "public/vercel.svg": "dd579ec801cede14607350aa14a79bf784424d7144e1b63dbcbc4b9e32c12474"
+    }
+  },
+  "public/webviewer/core/CORSWorker.js": {
+    "size": 419,
+    "mtime_ns": 1785511539772286800,
+    "word_count": 25
+  },
+  "public/webviewer/core/DecryptWorker.js": {
+    "size": 15082,
+    "mtime_ns": 1785511539781230500,
+    "word_count": 246
+  },
+  "public/webviewer/core/Worker.js": {
+    "size": 105210,
+    "mtime_ns": 1785511540096993800,
+    "word_count": 1150
+  },
+  "public/webviewer/core/assets/1px.png": {
+    "size": 119,
+    "mtime_ns": 1785511545745320000,
+    "word_count": 8,
+    "hashes": {
+      "public/webviewer/core/assets/1px.png": "1906f841f1a5b7480ea4bb0a5636643b500b9c2bb2870691cb06ad1f0e1f18e7"
+    }
+  },
+  "public/webviewer/core/assets/dragginghand.png": {
+    "size": 130,
+    "mtime_ns": 1785511545754723800,
+    "word_count": 11,
+    "hashes": {
+      "public/webviewer/core/assets/dragginghand.png": "0b124ef945de77ca033766714b360ffbfbf6b4a134d491d2d94536f70a44c267"
+    }
+  },
+  "public/webviewer/core/assets/hand.png": {
+    "size": 164,
+    "mtime_ns": 1785511545756050200,
+    "word_count": 12,
+    "hashes": {
+      "public/webviewer/core/assets/hand.png": "815ba37ab1daccf56daecbe2b1b5d09081ff102e9f9f612237b33cc2ec94378b"
+    }
+  },
+  "public/webviewer/core/contentEdit/InfixServer.js": {
+    "size": 143028,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 19583
+  },
+  "public/webviewer/core/contentEdit/InfixServerModule.js": {
+    "size": 48647,
+    "mtime_ns": 1785511539856845400,
+    "word_count": 842
+  },
+  "public/webviewer/core/contentEdit/InfixServerWasm.js": {
+    "size": 112193,
+    "mtime_ns": 1785511539856845400,
+    "word_count": 1888
+  },
+  "public/webviewer/core/external/Promise.js": {
+    "size": 8363,
+    "mtime_ns": 1785511539945579300,
+    "word_count": 886
+  },
+  "public/webviewer/core/external/decode.min.js": {
+    "size": 153748,
+    "mtime_ns": 1785511539781230500,
+    "word_count": 6062
+  },
+  "public/webviewer/core/external/pako_inflate.min.js": {
+    "size": 23156,
+    "mtime_ns": 1785511539913215200,
+    "word_count": 371
+  },
+  "public/webviewer/core/external/webcomponents-bundle.js": {
+    "size": 128814,
+    "mtime_ns": 1785511540046774700,
+    "word_count": 3716
+  },
+  "public/webviewer/core/legacyOffice/LegacyOfficeWorker.js": {
+    "size": 41659,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 858
+  },
+  "public/webviewer/core/legacyOffice/WebB2XOfficeWorkerWasm.js": {
+    "size": 109198,
+    "mtime_ns": 1785511540044563100,
+    "word_count": 2029
+  },
+  "public/webviewer/core/officeEditor/OfficeEditorModule.js": {
+    "size": 38854,
+    "mtime_ns": 1785511539895481500,
+    "word_count": 735
+  },
+  "public/webviewer/core/office/OfficeWorker.js": {
+    "size": 41802,
+    "mtime_ns": 1785511539896486800,
+    "word_count": 863
+  },
+  "public/webviewer/core/office/WebOfficeWorkerWasm.js": {
+    "size": 134582,
+    "mtime_ns": 1785511540046774700,
+    "word_count": 2450
+  },
+  "public/webviewer/core/pdf/PDFNet.js": {
+    "size": 567443,
+    "mtime_ns": 1785511539913215200,
+    "word_count": 5638
+  },
+  "public/webviewer/core/pdf/PDFNet.prod.js": {
+    "size": 565006,
+    "mtime_ns": 1785511539922531000,
+    "word_count": 5429
+  },
+  "public/webviewer/core/pdf/PDFNetLean.js": {
+    "size": 5606,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 71
+  },
+  "public/webviewer/core/pdf/PDFworker.js": {
+    "size": 118228,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 1977
+  },
+  "public/webviewer/core/pdf/WasmThread.js": {
+    "size": 10215,
+    "mtime_ns": 1785511540040557800,
+    "word_count": 226
+  },
+  "public/webviewer/core/pdf/full/PDFNetCWasm.js": {
+    "size": 715512,
+    "mtime_ns": 1785511539928878800,
+    "word_count": 5830
+  },
+  "public/webviewer/core/pdf/full/PDFNetThreadedWasm.worker.js": {
+    "size": 2745,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 42
+  },
+  "public/webviewer/core/pdf/full/optimized/PDFNetCWasm.js": {
+    "size": 665902,
+    "mtime_ns": 1785511539922531000,
+    "word_count": 5070
+  },
+  "public/webviewer/core/pdf/full/optimized/PDFNetThreadedWasm.worker.js": {
+    "size": 2745,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 42
+  },
+  "public/webviewer/core/pdf/iframe.html": {
+    "size": 145,
+    "mtime_ns": 1785511539706563400,
+    "word_count": 6,
+    "hashes": {
+      "public/webviewer/core/pdf/iframe.html": "50746cf683ff767833dd59a86e32446947486ec3f20e8314c63349cf2b2b0597"
+    }
+  },
+  "public/webviewer/core/pdf/lean/PDFNetCWasm.js": {
+    "size": 185254,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 3035
+  },
+  "public/webviewer/core/pdf/lean/PDFNetThreadedWasm.worker.js": {
+    "size": 2745,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 42
+  },
+  "public/webviewer/core/pdf/lean/optimized/PDFNetCWasm.js": {
+    "size": 148859,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 2460
+  },
+  "public/webviewer/core/pdf/lean/optimized/PDFNetThreadedWasm.worker.js": {
+    "size": 2745,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 42
+  },
+  "public/webviewer/core/pdf/simple_wasm/MemGrow.js": {
+    "size": 68138,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 1143
+  },
+  "public/webviewer/core/pdf/simple_wasm/MemGrow.worker.js": {
+    "size": 3327,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 54
+  },
+  "public/webviewer/core/rolldown-runtime.B_aV2nOj.chunk.js": {
+    "size": 1242,
+    "mtime_ns": 1785511539968290500,
+    "word_count": 47
+  },
+  "public/webviewer/core/spreadsheetEditor/SpreadsheetEditor.d.ts": {
+    "size": 34671,
+    "mtime_ns": 1785511545856844700,
+    "word_count": 2598
+  },
+  "public/webviewer/core/spreadsheetEditor/SpreadsheetEditor.js": {
+    "size": 5779616,
+    "mtime_ns": 1785511540006732300,
+    "word_count": 26387
+  },
+  "public/webviewer/core/spreadsheetEditor/SpreadsheetEditorEngine.js": {
+    "size": 160190,
+    "mtime_ns": 1785511540006732300,
+    "word_count": 19668
+  },
+  "public/webviewer/core/spreadsheetEditor/SpreadsheetEditorModule.js": {
+    "size": 2571,
+    "mtime_ns": 1785511540006732300,
+    "word_count": 82
+  },
+  "public/webviewer/core/spreadsheetEditor/jquery-3.7.1.min.js": {
+    "size": 87533,
+    "mtime_ns": 1785511539863495200,
+    "word_count": 1262
+  },
+  "public/webviewer/core/spreadsheetEditor/jquery.mousewheel-3.1.13.min.js": {
+    "size": 2674,
+    "mtime_ns": 1785511539863495200,
+    "word_count": 43
+  },
+  "public/webviewer/core/vendor.BpFyif2n.chunk.js": {
+    "size": 44269,
+    "mtime_ns": 1785511540034547500,
+    "word_count": 651
+  },
+  "public/webviewer/core/webviewer-core.min.js": {
+    "size": 2751657,
+    "mtime_ns": 1785511540072819300,
+    "word_count": 48401
+  },
+  "public/webviewer/ui/assets/apryse.svg": {
+    "size": 1309,
+    "mtime_ns": 1785511545856844700,
+    "word_count": 105,
+    "hashes": {
+      "public/webviewer/ui/assets/apryse.svg": "5d09fd3026d441ae92d9e237e5a1a08014e01684c3ed1617b046adfdae82c3b7"
+    }
+  },
+  "public/webviewer/ui/chunks/22XCFXMR.js": {
+    "size": 3103,
+    "mtime_ns": 1785511539708632300,
+    "word_count": 78
+  },
+  "public/webviewer/ui/chunks/25GMPWUS.js": {
+    "size": 11681,
+    "mtime_ns": 1784427275007130200,
+    "word_count": 153
+  },
+  "public/webviewer/ui/chunks/25Z4F2OG.js": {
+    "size": 777,
+    "mtime_ns": 1785511539709632900,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/2CDCR7ZL.js": {
+    "size": 9378,
+    "mtime_ns": 1785511539709632900,
+    "word_count": 34
+  },
+  "public/webviewer/ui/chunks/2DUMKEYZ.js": {
+    "size": 461,
+    "mtime_ns": 1785511539710627000,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/2GHGXLCZ.js": {
+    "size": 865,
+    "mtime_ns": 1784427275140772300,
+    "word_count": 33
+  },
+  "public/webviewer/ui/chunks/2HFRDE5E.js": {
+    "size": 1210,
+    "mtime_ns": 1785511539711626800,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/2LE2UMPP.js": {
+    "size": 775,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/2N57MNCB.js": {
+    "size": 389,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 22
+  },
+  "public/webviewer/ui/chunks/2O7FSOQ2.js": {
+    "size": 8591,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 124
+  },
+  "public/webviewer/ui/chunks/2R3I6CDM.js": {
+    "size": 1653,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 37
+  },
+  "public/webviewer/ui/chunks/2SPDHZ2S.js": {
+    "size": 14657,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 205
+  },
+  "public/webviewer/ui/chunks/2TTL4Y3T.js": {
+    "size": 160,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/2YO2AGPB.js": {
+    "size": 682,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/32HFSJK6.js": {
+    "size": 17232,
+    "mtime_ns": 1784427275166870200,
+    "word_count": 402
+  },
+  "public/webviewer/ui/chunks/32ILYGNR.js": {
+    "size": 571,
+    "mtime_ns": 1785511539713446200,
+    "word_count": 23
+  },
+  "public/webviewer/ui/chunks/34TLX5MJ.js": {
+    "size": 6485,
+    "mtime_ns": 1785511539719753400,
+    "word_count": 104
+  },
+  "public/webviewer/ui/chunks/36NYHMVS.js": {
+    "size": 1470,
+    "mtime_ns": 1784427275170333700,
+    "word_count": 65
+  },
+  "public/webviewer/ui/chunks/3A7PZ2ZU.js": {
+    "size": 5999,
+    "mtime_ns": 1784427275170333700,
+    "word_count": 101
+  },
+  "public/webviewer/ui/chunks/3H7DFMX7.js": {
+    "size": 1979,
+    "mtime_ns": 1785511539719753400,
+    "word_count": 60
+  },
+  "public/webviewer/ui/chunks/3LLZJTBJ.js": {
+    "size": 174,
+    "mtime_ns": 1785511539719753400,
+    "word_count": 13
+  },
+  "public/webviewer/ui/chunks/3OV7XH2Z.js": {
+    "size": 264,
+    "mtime_ns": 1785511539719753400,
+    "word_count": 10
+  },
+  "public/webviewer/ui/chunks/3PAVKU77.js": {
+    "size": 4397,
+    "mtime_ns": 1785511539719753400,
+    "word_count": 90
+  },
+  "public/webviewer/ui/chunks/3Q463Y7W.js": {
+    "size": 1974,
+    "mtime_ns": 1784427275172925400,
+    "word_count": 45
+  },
+  "public/webviewer/ui/chunks/3XWQOA7U.js": {
+    "size": 7578,
+    "mtime_ns": 1785511539719753400,
+    "word_count": 108
+  },
+  "public/webviewer/ui/chunks/3ZIY76FK.js": {
+    "size": 1874,
+    "mtime_ns": 1785511539719753400,
+    "word_count": 57
+  },
+  "public/webviewer/ui/chunks/3ZVP6XYV.js": {
+    "size": 1265,
+    "mtime_ns": 1785511539725178100,
+    "word_count": 48
+  },
+  "public/webviewer/ui/chunks/43RDECQM.js": {
+    "size": 4465,
+    "mtime_ns": 1784427275172925400,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/44GJACTO.js": {
+    "size": 6187,
+    "mtime_ns": 1785511539725178100,
+    "word_count": 62
+  },
+  "public/webviewer/ui/chunks/475PLPE6.js": {
+    "size": 1766,
+    "mtime_ns": 1785511539725178100,
+    "word_count": 42
+  },
+  "public/webviewer/ui/chunks/4HCJ7RWV.js": {
+    "size": 1763,
+    "mtime_ns": 1785511539725178100,
+    "word_count": 41
+  },
+  "public/webviewer/ui/chunks/4HNKOKHZ.js": {
+    "size": 3530,
+    "mtime_ns": 1785511539728556200,
+    "word_count": 67
+  },
+  "public/webviewer/ui/chunks/4MYC3HU4.js": {
+    "size": 1199,
+    "mtime_ns": 1785511539729566000,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/4QRGQ6OQ.js": {
+    "size": 2552,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 50
+  },
+  "public/webviewer/ui/chunks/4RT746EM.js": {
+    "size": 3902,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 65
+  },
+  "public/webviewer/ui/chunks/4TMVQ3JO.js": {
+    "size": 9643,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 159
+  },
+  "public/webviewer/ui/chunks/4VMRVDRN.js": {
+    "size": 1586,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 63
+  },
+  "public/webviewer/ui/chunks/4WAKMMDZ.js": {
+    "size": 1999,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 42
+  },
+  "public/webviewer/ui/chunks/4WDRXP4U.js": {
+    "size": 3687,
+    "mtime_ns": 1784427275181152100,
+    "word_count": 88
+  },
+  "public/webviewer/ui/chunks/5EIK247T.js": {
+    "size": 584,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 28
+  },
+  "public/webviewer/ui/chunks/5GCVL6CB.js": {
+    "size": 1229,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/5L3FAWHS.js": {
+    "size": 36435,
+    "mtime_ns": 1784427275181152100,
+    "word_count": 370
+  },
+  "public/webviewer/ui/chunks/5PEY7FCN.js": {
+    "size": 313235,
+    "mtime_ns": 1784427275189617400,
+    "word_count": 5825
+  },
+  "public/webviewer/ui/chunks/5PNTSPS2.js": {
+    "size": 8591,
+    "mtime_ns": 1784427275190620300,
+    "word_count": 124
+  },
+  "public/webviewer/ui/chunks/5QLHZLQV.js": {
+    "size": 1822,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 60
+  },
+  "public/webviewer/ui/chunks/5SBEF76I.js": {
+    "size": 11140,
+    "mtime_ns": 1784427275192620100,
+    "word_count": 143
+  },
+  "public/webviewer/ui/chunks/5ZHPJPTC.js": {
+    "size": 3328,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/64JWEYIC.js": {
+    "size": 5999,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 101
+  },
+  "public/webviewer/ui/chunks/64SRIGI7.js": {
+    "size": 11099,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 161
+  },
+  "public/webviewer/ui/chunks/6A5R4PWZ.js": {
+    "size": 840,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/6ASCXVL3.js": {
+    "size": 1339,
+    "mtime_ns": 1784427275193622400,
+    "word_count": 41
+  },
+  "public/webviewer/ui/chunks/6BBWSXTT.js": {
+    "size": 3507,
+    "mtime_ns": 1784427275194614900,
+    "word_count": 76
+  },
+  "public/webviewer/ui/chunks/6CW3P25E.js": {
+    "size": 4276,
+    "mtime_ns": 1784427275195621500,
+    "word_count": 107
+  },
+  "public/webviewer/ui/chunks/6DFEF577.js": {
+    "size": 11561,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 142
+  },
+  "public/webviewer/ui/chunks/6HVNOGKO.js": {
+    "size": 6125,
+    "mtime_ns": 1784427275196615000,
+    "word_count": 78
+  },
+  "public/webviewer/ui/chunks/6IH4YHW3.js": {
+    "size": 1332,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 49
+  },
+  "public/webviewer/ui/chunks/6LDW2HM4.js": {
+    "size": 6750,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 128
+  },
+  "public/webviewer/ui/chunks/6M2JLQJ2.js": {
+    "size": 3656,
+    "mtime_ns": 1785511539729987300,
+    "word_count": 62
+  },
+  "public/webviewer/ui/chunks/6MUQINWL.js": {
+    "size": 5860,
+    "mtime_ns": 1784427275197622900,
+    "word_count": 124
+  },
+  "public/webviewer/ui/chunks/6O4LI7JC.js": {
+    "size": 9327,
+    "mtime_ns": 1785511539745247700,
+    "word_count": 141
+  },
+  "public/webviewer/ui/chunks/6OJ5VQNM.js": {
+    "size": 22150,
+    "mtime_ns": 1784427275198620000,
+    "word_count": 257
+  },
+  "public/webviewer/ui/chunks/6PZWQEYA.js": {
+    "size": 962,
+    "mtime_ns": 1785511539745247700,
+    "word_count": 37
+  },
+  "public/webviewer/ui/chunks/77L7XDZO.js": {
+    "size": 1287,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 50
+  },
+  "public/webviewer/ui/chunks/7BAAOBZM.js": {
+    "size": 1408,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/7BSNV6QZ.js": {
+    "size": 1974,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 45
+  },
+  "public/webviewer/ui/chunks/7JTSZOOG.js": {
+    "size": 1470,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 65
+  },
+  "public/webviewer/ui/chunks/7LSLS4NI.js": {
+    "size": 1363,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 58
+  },
+  "public/webviewer/ui/chunks/7MKAIOYI.js": {
+    "size": 302,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 25
+  },
+  "public/webviewer/ui/chunks/7PIIMD67.js": {
+    "size": 108183,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 2125
+  },
+  "public/webviewer/ui/chunks/7PM6NO3E.js": {
+    "size": 11869,
+    "mtime_ns": 1784427275201620200,
+    "word_count": 139
+  },
+  "public/webviewer/ui/chunks/7R32JAMQ.js": {
+    "size": 11099,
+    "mtime_ns": 1784427275202622200,
+    "word_count": 161
+  },
+  "public/webviewer/ui/chunks/7WNUAEFH.js": {
+    "size": 7578,
+    "mtime_ns": 1784427275203619900,
+    "word_count": 108
+  },
+  "public/webviewer/ui/chunks/A2YBBE3B.js": {
+    "size": 1335,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 41
+  },
+  "public/webviewer/ui/chunks/A3RTCIYN.js": {
+    "size": 468,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 28
+  },
+  "public/webviewer/ui/chunks/A5CQZBAZ.js": {
+    "size": 6187,
+    "mtime_ns": 1784427275204735300,
+    "word_count": 62
+  },
+  "public/webviewer/ui/chunks/ABPU6A4P.js": {
+    "size": 6750,
+    "mtime_ns": 1784427275205840300,
+    "word_count": 128
+  },
+  "public/webviewer/ui/chunks/ADCVDB7Y.js": {
+    "size": 11681,
+    "mtime_ns": 1785511539746561500,
+    "word_count": 153
+  },
+  "public/webviewer/ui/chunks/ALHYWJDH.js": {
+    "size": 366,
+    "mtime_ns": 1785511539756739300,
+    "word_count": 18
+  },
+  "public/webviewer/ui/chunks/ASJMXCFP.js": {
+    "size": 5485,
+    "mtime_ns": 1785511539756739300,
+    "word_count": 86
+  },
+  "public/webviewer/ui/chunks/B3XY7B2L.js": {
+    "size": 29660,
+    "mtime_ns": 1785511539756739300,
+    "word_count": 338
+  },
+  "public/webviewer/ui/chunks/B4M77ATI.js": {
+    "size": 286,
+    "mtime_ns": 1785511539756739300,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/B4TQ7AR7.js": {
+    "size": 2843,
+    "mtime_ns": 1784427275207836900,
+    "word_count": 70
+  },
+  "public/webviewer/ui/chunks/BCVWJDEL.js": {
+    "size": 1253,
+    "mtime_ns": 1785511539756739300,
+    "word_count": 67
+  },
+  "public/webviewer/ui/chunks/BLZEJJ7Y.js": {
+    "size": 20309,
+    "mtime_ns": 1785511539761888100,
+    "word_count": 233
+  },
+  "public/webviewer/ui/chunks/BMKGX62U.js": {
+    "size": 774,
+    "mtime_ns": 1784427275209725100,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/BRNZCAP2.js": {
+    "size": 432,
+    "mtime_ns": 1785511539763367300,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/BT2VZESI.js": {
+    "size": 22317,
+    "mtime_ns": 1785511539763367300,
+    "word_count": 391
+  },
+  "public/webviewer/ui/chunks/BVTHN3N2.js": {
+    "size": 4455,
+    "mtime_ns": 1784427275210732900,
+    "word_count": 98
+  },
+  "public/webviewer/ui/chunks/BYUU3HFC.js": {
+    "size": 7136,
+    "mtime_ns": 1784427275211732000,
+    "word_count": 138
+  },
+  "public/webviewer/ui/chunks/C3PXVVOR.js": {
+    "size": 22150,
+    "mtime_ns": 1785511539763367300,
+    "word_count": 257
+  },
+  "public/webviewer/ui/chunks/C4LKIVGU.js": {
+    "size": 812,
+    "mtime_ns": 1785511539763367300,
+    "word_count": 16
+  },
+  "public/webviewer/ui/chunks/C6X2GETY.js": {
+    "size": 988,
+    "mtime_ns": 1784427275212728400,
+    "word_count": 42
+  },
+  "public/webviewer/ui/chunks/CCASJK7D.js": {
+    "size": 150,
+    "mtime_ns": 1785511539763367300,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/CESACAPL.js": {
+    "size": 1490,
+    "mtime_ns": 1784427275212728400,
+    "word_count": 46
+  },
+  "public/webviewer/ui/chunks/CGUMWBHL.js": {
+    "size": 14105,
+    "mtime_ns": 1785511539763367300,
+    "word_count": 346
+  },
+  "public/webviewer/ui/chunks/CH5XTF33.js": {
+    "size": 4442,
+    "mtime_ns": 1784427275212728400,
+    "word_count": 118
+  },
+  "public/webviewer/ui/chunks/CICYZSB3.js": {
+    "size": 341,
+    "mtime_ns": 1785511539763367300,
+    "word_count": 17
+  },
+  "public/webviewer/ui/chunks/CIYC2IU5.js": {
+    "size": 9988,
+    "mtime_ns": 1784427275212728400,
+    "word_count": 174
+  },
+  "public/webviewer/ui/chunks/CJKZC732.js": {
+    "size": 34983,
+    "mtime_ns": 1784427275212728400,
+    "word_count": 677
+  },
+  "public/webviewer/ui/chunks/CN5BCC27.js": {
+    "size": 104343,
+    "mtime_ns": 1784427275212728400,
+    "word_count": 1249
+  },
+  "public/webviewer/ui/chunks/CN5ED5BU.js": {
+    "size": 840,
+    "mtime_ns": 1784427275222838900,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/CPAWV43H.js": {
+    "size": 1329,
+    "mtime_ns": 1785511539772286800,
+    "word_count": 51
+  },
+  "public/webviewer/ui/chunks/CPW5SM7N.js": {
+    "size": 3674,
+    "mtime_ns": 1785511539772286800,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/CVJG3WOD.js": {
+    "size": 440,
+    "mtime_ns": 1785511539772286800,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/CXOJOV7E.js": {
+    "size": 9827,
+    "mtime_ns": 1785511539772286800,
+    "word_count": 160
+  },
+  "public/webviewer/ui/chunks/CY2GFCAT.js": {
+    "size": 3283,
+    "mtime_ns": 1785511539772286800,
+    "word_count": 62
+  },
+  "public/webviewer/ui/chunks/CYKZXURJ.js": {
+    "size": 3687,
+    "mtime_ns": 1785511539779834500,
+    "word_count": 88
+  },
+  "public/webviewer/ui/chunks/D5YKDVES.js": {
+    "size": 104343,
+    "mtime_ns": 1785511539781230500,
+    "word_count": 1249
+  },
+  "public/webviewer/ui/chunks/DBT3UXVS.js": {
+    "size": 313235,
+    "mtime_ns": 1785511539781230500,
+    "word_count": 5825
+  },
+  "public/webviewer/ui/chunks/DCTKF3JI.js": {
+    "size": 4364,
+    "mtime_ns": 1785511539781230500,
+    "word_count": 48
+  },
+  "public/webviewer/ui/chunks/DFIORXUP.js": {
+    "size": 434,
+    "mtime_ns": 1785511539781230500,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/DFNVYA4A.js": {
+    "size": 1302,
+    "mtime_ns": 1785511539781230500,
+    "word_count": 50
+  },
+  "public/webviewer/ui/chunks/DGRIEBAH.js": {
+    "size": 155,
+    "mtime_ns": 1785511539795368600,
+    "word_count": 14
+  },
+  "public/webviewer/ui/chunks/DJFP2RVK.js": {
+    "size": 2145,
+    "mtime_ns": 1785511539796921200,
+    "word_count": 53
+  },
+  "public/webviewer/ui/chunks/DND3SVQ3.js": {
+    "size": 37,
+    "mtime_ns": 1785511539796921200,
+    "word_count": 2
+  },
+  "public/webviewer/ui/chunks/DNIS4IL7.js": {
+    "size": 13160,
+    "mtime_ns": 1785511539796921200,
+    "word_count": 173
+  },
+  "public/webviewer/ui/chunks/DNYWL3US.js": {
+    "size": 1199,
+    "mtime_ns": 1784427275228509700,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/DOGARMQ5.js": {
+    "size": 5949,
+    "mtime_ns": 1785511539796921200,
+    "word_count": 120
+  },
+  "public/webviewer/ui/chunks/DP6N5KLU.js": {
+    "size": 432,
+    "mtime_ns": 1785511539796921200,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/DPFECJXQ.js": {
+    "size": 4442,
+    "mtime_ns": 1785511539796921200,
+    "word_count": 118
+  },
+  "public/webviewer/ui/chunks/DPUI4UUX.js": {
+    "size": 1573,
+    "mtime_ns": 1785511539806552900,
+    "word_count": 63
+  },
+  "public/webviewer/ui/chunks/DX6K5XJC.js": {
+    "size": 169710,
+    "mtime_ns": 1785511539806552900,
+    "word_count": 2176
+  },
+  "public/webviewer/ui/chunks/EANRAI3H.js": {
+    "size": 257,
+    "mtime_ns": 1785511539806552900,
+    "word_count": 21
+  },
+  "public/webviewer/ui/chunks/EBY3I7TI.js": {
+    "size": 1332,
+    "mtime_ns": 1784427275228509700,
+    "word_count": 49
+  },
+  "public/webviewer/ui/chunks/EBZHKWGV.js": {
+    "size": 9827,
+    "mtime_ns": 1784427275228509700,
+    "word_count": 160
+  },
+  "public/webviewer/ui/chunks/EDYW3RHM.js": {
+    "size": 770,
+    "mtime_ns": 1784427275228509700,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/EE6VCLSO.js": {
+    "size": 4465,
+    "mtime_ns": 1785511539812065800,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/EJ2QV6Q5.js": {
+    "size": 8957,
+    "mtime_ns": 1784427275228509700,
+    "word_count": 182
+  },
+  "public/webviewer/ui/chunks/ESG6ZX7N.js": {
+    "size": 37,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 2
+  },
+  "public/webviewer/ui/chunks/EWZU53UY.js": {
+    "size": 9988,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 174
+  },
+  "public/webviewer/ui/chunks/EXX6I4M3.js": {
+    "size": 3656,
+    "mtime_ns": 1784427275228509700,
+    "word_count": 62
+  },
+  "public/webviewer/ui/chunks/F5YCLPBX.js": {
+    "size": 17297,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 404
+  },
+  "public/webviewer/ui/chunks/F7FRK5OG.js": {
+    "size": 4309,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 53
+  },
+  "public/webviewer/ui/chunks/FAA63FNJ.js": {
+    "size": 70699,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 1082
+  },
+  "public/webviewer/ui/chunks/FEIKIFLU.js": {
+    "size": 515,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 22
+  },
+  "public/webviewer/ui/chunks/FL6YWB7D.js": {
+    "size": 1490,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 46
+  },
+  "public/webviewer/ui/chunks/FRDTM2DH.js": {
+    "size": 409,
+    "mtime_ns": 1785511539813553600,
+    "word_count": 18
+  },
+  "public/webviewer/ui/chunks/FXUKHJFZ.js": {
+    "size": 43226,
+    "mtime_ns": 1785511539822455500,
+    "word_count": 1933
+  },
+  "public/webviewer/ui/chunks/FZHFSNTA.js": {
+    "size": 4455,
+    "mtime_ns": 1785511539822455500,
+    "word_count": 98
+  },
+  "public/webviewer/ui/chunks/G6DYQ4YU.js": {
+    "size": 623,
+    "mtime_ns": 1785511539822455500,
+    "word_count": 46
+  },
+  "public/webviewer/ui/chunks/G6ZMA4XN.js": {
+    "size": 19798,
+    "mtime_ns": 1785511539822455500,
+    "word_count": 369
+  },
+  "public/webviewer/ui/chunks/G72MHP2V.js": {
+    "size": 7373,
+    "mtime_ns": 1785511539822455500,
+    "word_count": 261
+  },
+  "public/webviewer/ui/chunks/GDZZJLSC.js": {
+    "size": 34983,
+    "mtime_ns": 1785511539822455500,
+    "word_count": 677
+  },
+  "public/webviewer/ui/chunks/GENO4MUG.js": {
+    "size": 2672,
+    "mtime_ns": 1785511539829745100,
+    "word_count": 50
+  },
+  "public/webviewer/ui/chunks/GEY23CXY.js": {
+    "size": 278350,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 5082
+  },
+  "public/webviewer/ui/chunks/GOAON6WI.js": {
+    "size": 37,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 2
+  },
+  "public/webviewer/ui/chunks/GPTFLFDQ.js": {
+    "size": 6125,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 78
+  },
+  "public/webviewer/ui/chunks/GWRVGUKJ.js": {
+    "size": 6485,
+    "mtime_ns": 1784427275256119400,
+    "word_count": 104
+  },
+  "public/webviewer/ui/chunks/GXKEVJW2.js": {
+    "size": 3370,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 71
+  },
+  "public/webviewer/ui/chunks/H5PAYAYQ.js": {
+    "size": 3381,
+    "mtime_ns": 1784427275257307000,
+    "word_count": 65
+  },
+  "public/webviewer/ui/chunks/H7VMBSRN.js": {
+    "size": 1626,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 48
+  },
+  "public/webviewer/ui/chunks/HAT2XR7W.js": {
+    "size": 4695,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 72
+  },
+  "public/webviewer/ui/chunks/HCIMQJQX.js": {
+    "size": 9421,
+    "mtime_ns": 1784427275257307000,
+    "word_count": 140
+  },
+  "public/webviewer/ui/chunks/HCTL6LC6.js": {
+    "size": 12364,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 255
+  },
+  "public/webviewer/ui/chunks/HG4DQ5WT.js": {
+    "size": 726,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/HQKQ7AYI.js": {
+    "size": 385,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 24
+  },
+  "public/webviewer/ui/chunks/HTM2FPCC.js": {
+    "size": 8940,
+    "mtime_ns": 1785511539830487400,
+    "word_count": 141
+  },
+  "public/webviewer/ui/chunks/I37SDUQI.js": {
+    "size": 24381,
+    "mtime_ns": 1785511539846474600,
+    "word_count": 248
+  },
+  "public/webviewer/ui/chunks/I3CWQJJI.js": {
+    "size": 5644,
+    "mtime_ns": 1784427275257307000,
+    "word_count": 88
+  },
+  "public/webviewer/ui/chunks/IBEEHPMD.js": {
+    "size": 1185,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 20
+  },
+  "public/webviewer/ui/chunks/ID3LHC7I.js": {
+    "size": 1218,
+    "mtime_ns": 1784427275263883400,
+    "word_count": 51
+  },
+  "public/webviewer/ui/chunks/IDE3KFV5.js": {
+    "size": 1244,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 46
+  },
+  "public/webviewer/ui/chunks/IF4ZU6YB.js": {
+    "size": 1919,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 35
+  },
+  "public/webviewer/ui/chunks/IFMKAI6Q.js": {
+    "size": 1702,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 59
+  },
+  "public/webviewer/ui/chunks/IG72ONJZ.js": {
+    "size": 562,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/IGBAVWKU.js": {
+    "size": 751,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 27
+  },
+  "public/webviewer/ui/chunks/IKGRV4D6.js": {
+    "size": 3381,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 65
+  },
+  "public/webviewer/ui/chunks/ILNLZNFG.js": {
+    "size": 147,
+    "mtime_ns": 1785511539847000600,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/IQGTU4PI.js": {
+    "size": 2373,
+    "mtime_ns": 1784427275274695000,
+    "word_count": 70
+  },
+  "public/webviewer/ui/chunks/IQVGKYTP.js": {
+    "size": 1619,
+    "mtime_ns": 1784427275274695000,
+    "word_count": 49
+  },
+  "public/webviewer/ui/chunks/IT36772B.js": {
+    "size": 11140,
+    "mtime_ns": 1785511539856845400,
+    "word_count": 143
+  },
+  "public/webviewer/ui/chunks/IYHGYNPT.js": {
+    "size": 3674,
+    "mtime_ns": 1784427275275698700,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/J2TLBBBD.js": {
+    "size": 416,
+    "mtime_ns": 1785511539862113600,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/J3N445BI.js": {
+    "size": 3982,
+    "mtime_ns": 1785511539862113600,
+    "word_count": 70
+  },
+  "public/webviewer/ui/chunks/J65TEVGL.js": {
+    "size": 767,
+    "mtime_ns": 1784427275278055200,
+    "word_count": 19
+  },
+  "public/webviewer/ui/chunks/JRCZJ5TY.js": {
+    "size": 5949,
+    "mtime_ns": 1784427275281058700,
+    "word_count": 120
+  },
+  "public/webviewer/ui/chunks/JZES5B56.js": {
+    "size": 1408,
+    "mtime_ns": 1784427275282068400,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/K2GUT7XH.js": {
+    "size": 1170,
+    "mtime_ns": 1785511539863495200,
+    "word_count": 49
+  },
+  "public/webviewer/ui/chunks/K2VF53Q6.js": {
+    "size": 515,
+    "mtime_ns": 1784427275283062700,
+    "word_count": 22
+  },
+  "public/webviewer/ui/chunks/K5MVKDOL.js": {
+    "size": 5485,
+    "mtime_ns": 1784427275284066900,
+    "word_count": 86
+  },
+  "public/webviewer/ui/chunks/KKO5M2NN.js": {
+    "size": 7241,
+    "mtime_ns": 1784427275285059100,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/KNRL5SSW.js": {
+    "size": 3177,
+    "mtime_ns": 1784427275285059100,
+    "word_count": 90
+  },
+  "public/webviewer/ui/chunks/KNXHTMO6.js": {
+    "size": 454,
+    "mtime_ns": 1785511539863495200,
+    "word_count": 29
+  },
+  "public/webviewer/ui/chunks/KWCLOKST.js": {
+    "size": 20304,
+    "mtime_ns": 1784427275287062800,
+    "word_count": 233
+  },
+  "public/webviewer/ui/chunks/KZSUKYDM.js": {
+    "size": 550,
+    "mtime_ns": 1784427275288058500,
+    "word_count": 23
+  },
+  "public/webviewer/ui/chunks/KZV4JRO4.js": {
+    "size": 836,
+    "mtime_ns": 1785511539863495200,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/L2WKZ5HW.js": {
+    "size": 28617,
+    "mtime_ns": 1785511539863495200,
+    "word_count": 950
+  },
+  "public/webviewer/ui/chunks/L5RMZEIO.js": {
+    "size": 9643,
+    "mtime_ns": 1784427275290066200,
+    "word_count": 159
+  },
+  "public/webviewer/ui/chunks/L6OAMGFD.js": {
+    "size": 726,
+    "mtime_ns": 1784427275291177100,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/LAQH7RZM.js": {
+    "size": 108183,
+    "mtime_ns": 1784427275293320300,
+    "word_count": 2125
+  },
+  "public/webviewer/ui/chunks/LFN72I46.js": {
+    "size": 1690,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 32
+  },
+  "public/webviewer/ui/chunks/LPCEIMMG.js": {
+    "size": 552,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 19
+  },
+  "public/webviewer/ui/chunks/LPX2DVJX.js": {
+    "size": 12563,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 148
+  },
+  "public/webviewer/ui/chunks/LSMLEKI7.js": {
+    "size": 2826,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 87
+  },
+  "public/webviewer/ui/chunks/LWKHOJCO.js": {
+    "size": 22821,
+    "mtime_ns": 1784427275297604500,
+    "word_count": 303
+  },
+  "public/webviewer/ui/chunks/M2NUEJL4.js": {
+    "size": 280,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 10
+  },
+  "public/webviewer/ui/chunks/MBNDHK6K.js": {
+    "size": 1559,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 81
+  },
+  "public/webviewer/ui/chunks/MCDZXVDF.js": {
+    "size": 3056,
+    "mtime_ns": 1785511539872410900,
+    "word_count": 157
+  },
+  "public/webviewer/ui/chunks/MFWRVSXH.js": {
+    "size": 518,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/MLDSI3SC.js": {
+    "size": 893,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 39
+  },
+  "public/webviewer/ui/chunks/MNIB7VIY.js": {
+    "size": 287,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 20
+  },
+  "public/webviewer/ui/chunks/MPGMTPZ4.js": {
+    "size": 14657,
+    "mtime_ns": 1784427275303817800,
+    "word_count": 205
+  },
+  "public/webviewer/ui/chunks/MRDVL6A7.js": {
+    "size": 624,
+    "mtime_ns": 1784427275304827100,
+    "word_count": 9
+  },
+  "public/webviewer/ui/chunks/MSKVANKO.js": {
+    "size": 682,
+    "mtime_ns": 1784427275304827100,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/MTJP337W.js": {
+    "size": 2633,
+    "mtime_ns": 1784427275305822000,
+    "word_count": 73
+  },
+  "public/webviewer/ui/chunks/MWMLVTRR.js": {
+    "size": 190,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 13
+  },
+  "public/webviewer/ui/chunks/MXQ356PA.js": {
+    "size": 3982,
+    "mtime_ns": 1784427275306825500,
+    "word_count": 70
+  },
+  "public/webviewer/ui/chunks/N3YVKYCJ.js": {
+    "size": 1128,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 34
+  },
+  "public/webviewer/ui/chunks/N6NL57K2.js": {
+    "size": 1417,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 60
+  },
+  "public/webviewer/ui/chunks/NFK36AW3.js": {
+    "size": 344,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 21
+  },
+  "public/webviewer/ui/chunks/NIANDVLI.js": {
+    "size": 6779,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 95
+  },
+  "public/webviewer/ui/chunks/NRPSGKSH.js": {
+    "size": 3727,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 74
+  },
+  "public/webviewer/ui/chunks/NRU5SAEN.js": {
+    "size": 5770,
+    "mtime_ns": 1784427275308821600,
+    "word_count": 88
+  },
+  "public/webviewer/ui/chunks/NSGJGDTO.js": {
+    "size": 132036,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 2868
+  },
+  "public/webviewer/ui/chunks/NSJSIS6K.js": {
+    "size": 709,
+    "mtime_ns": 1784427275308821600,
+    "word_count": 7
+  },
+  "public/webviewer/ui/chunks/O3KHI6WS.js": {
+    "size": 2145,
+    "mtime_ns": 1784427275314189900,
+    "word_count": 53
+  },
+  "public/webviewer/ui/chunks/O5UPNUFJ.js": {
+    "size": 510,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 9
+  },
+  "public/webviewer/ui/chunks/O64VIM7X.js": {
+    "size": 5975,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 270
+  },
+  "public/webviewer/ui/chunks/O7TJJFO2.js": {
+    "size": 3507,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 76
+  },
+  "public/webviewer/ui/chunks/OETFZYRU.js": {
+    "size": 1290,
+    "mtime_ns": 1785511539879787400,
+    "word_count": 51
+  },
+  "public/webviewer/ui/chunks/OHVTHVDR.js": {
+    "size": 12941,
+    "mtime_ns": 1785511539896486800,
+    "word_count": 156
+  },
+  "public/webviewer/ui/chunks/OKVU7PCM.js": {
+    "size": 2792,
+    "mtime_ns": 1785511539896486800,
+    "word_count": 65
+  },
+  "public/webviewer/ui/chunks/OMPIYIBB.js": {
+    "size": 9821,
+    "mtime_ns": 1785511539896486800,
+    "word_count": 133
+  },
+  "public/webviewer/ui/chunks/ONIDEO73.js": {
+    "size": 378811,
+    "mtime_ns": 1785511539906655900,
+    "word_count": 33848
+  },
+  "public/webviewer/ui/chunks/OP7PNHED.js": {
+    "size": 988,
+    "mtime_ns": 1785511539906655900,
+    "word_count": 42
+  },
+  "public/webviewer/ui/chunks/OPPQWHF7.js": {
+    "size": 1321,
+    "mtime_ns": 1785511539906655900,
+    "word_count": 56
+  },
+  "public/webviewer/ui/chunks/OQXXQAVN.js": {
+    "size": 11158,
+    "mtime_ns": 1785511539906655900,
+    "word_count": 260
+  },
+  "public/webviewer/ui/chunks/OTTAYBWF.js": {
+    "size": 4397,
+    "mtime_ns": 1784427275327195500,
+    "word_count": 90
+  },
+  "public/webviewer/ui/chunks/OTWPXWCS.js": {
+    "size": 687,
+    "mtime_ns": 1784427275328183600,
+    "word_count": 7
+  },
+  "public/webviewer/ui/chunks/OUGOUZIL.js": {
+    "size": 3147,
+    "mtime_ns": 1785511539912160400,
+    "word_count": 74
+  },
+  "public/webviewer/ui/chunks/OYXLYRAN.js": {
+    "size": 438,
+    "mtime_ns": 1784427275329184000,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/P5BVR7XQ.js": {
+    "size": 562,
+    "mtime_ns": 1784427275329184000,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/PAHTJ7C6.js": {
+    "size": 670,
+    "mtime_ns": 1785511539912160400,
+    "word_count": 32
+  },
+  "public/webviewer/ui/chunks/PJXYQZCS.js": {
+    "size": 2879,
+    "mtime_ns": 1785511539931838600,
+    "word_count": 44
+  },
+  "public/webviewer/ui/chunks/POKXUX4M.js": {
+    "size": 24381,
+    "mtime_ns": 1784427275359335100,
+    "word_count": 248
+  },
+  "public/webviewer/ui/chunks/PUCDDKP7.js": {
+    "size": 1335,
+    "mtime_ns": 1784427275361108600,
+    "word_count": 41
+  },
+  "public/webviewer/ui/chunks/PWXKXD44.js": {
+    "size": 12563,
+    "mtime_ns": 1784427275361858700,
+    "word_count": 148
+  },
+  "public/webviewer/ui/chunks/PXMWIBU7.js": {
+    "size": 746,
+    "mtime_ns": 1785511539946589600,
+    "word_count": 35
+  },
+  "public/webviewer/ui/chunks/PXUK4GMJ.js": {
+    "size": 279,
+    "mtime_ns": 1785511539947584000,
+    "word_count": 18
+  },
+  "public/webviewer/ui/chunks/PXZGMS2B.js": {
+    "size": 962,
+    "mtime_ns": 1784427275363862500,
+    "word_count": 37
+  },
+  "public/webviewer/ui/chunks/Q3QAWOMX.js": {
+    "size": 8957,
+    "mtime_ns": 1785511539948583400,
+    "word_count": 182
+  },
+  "public/webviewer/ui/chunks/Q6TDRD6Z.js": {
+    "size": 2851,
+    "mtime_ns": 1785511539949583200,
+    "word_count": 54
+  },
+  "public/webviewer/ui/chunks/Q7XZTVHU.js": {
+    "size": 98161,
+    "mtime_ns": 1785511539951587400,
+    "word_count": 2878
+  },
+  "public/webviewer/ui/chunks/QALJFSQ7.js": {
+    "size": 4160,
+    "mtime_ns": 1785511539951587400,
+    "word_count": 99
+  },
+  "public/webviewer/ui/chunks/QAQ2OXCF.js": {
+    "size": 182069,
+    "mtime_ns": 1785511539955589000,
+    "word_count": 2957
+  },
+  "public/webviewer/ui/chunks/QAQVOVVI.js": {
+    "size": 3363,
+    "mtime_ns": 1785511539955589000,
+    "word_count": 76
+  },
+  "public/webviewer/ui/chunks/QIXPCBMQ.js": {
+    "size": 5381,
+    "mtime_ns": 1785511539956588300,
+    "word_count": 77
+  },
+  "public/webviewer/ui/chunks/QJPTQTKU.js": {
+    "size": 6779,
+    "mtime_ns": 1784427275370321300,
+    "word_count": 95
+  },
+  "public/webviewer/ui/chunks/QPECZ57A.js": {
+    "size": 5770,
+    "mtime_ns": 1785511539957648100,
+    "word_count": 88
+  },
+  "public/webviewer/ui/chunks/QPMCBFAP.js": {
+    "size": 2351,
+    "mtime_ns": 1785511539958643700,
+    "word_count": 91
+  },
+  "public/webviewer/ui/chunks/QQ7FU5CU.js": {
+    "size": 418,
+    "mtime_ns": 1785511539959642700,
+    "word_count": 12
+  },
+  "public/webviewer/ui/chunks/QS5V4BDM.js": {
+    "size": 3177,
+    "mtime_ns": 1785511539959642700,
+    "word_count": 90
+  },
+  "public/webviewer/ui/chunks/QXVQRESH.js": {
+    "size": 438,
+    "mtime_ns": 1785511539960646700,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/R2CTMZH5.js": {
+    "size": 865,
+    "mtime_ns": 1785511539961643100,
+    "word_count": 33
+  },
+  "public/webviewer/ui/chunks/RBROYRCS.js": {
+    "size": 12941,
+    "mtime_ns": 1784427275372316200,
+    "word_count": 156
+  },
+  "public/webviewer/ui/chunks/RBW33ACO.js": {
+    "size": 130152,
+    "mtime_ns": 1785511539964286700,
+    "word_count": 2137
+  },
+  "public/webviewer/ui/chunks/RENWBWT5.js": {
+    "size": 7136,
+    "mtime_ns": 1785511539965290400,
+    "word_count": 138
+  },
+  "public/webviewer/ui/chunks/RHB5WARG.js": {
+    "size": 1538,
+    "mtime_ns": 1785511539966291000,
+    "word_count": 40
+  },
+  "public/webviewer/ui/chunks/RI6KYY4J.js": {
+    "size": 1711,
+    "mtime_ns": 1785511539967290500,
+    "word_count": 37
+  },
+  "public/webviewer/ui/chunks/RLMJPXHX.js": {
+    "size": 1092,
+    "mtime_ns": 1785511539968290500,
+    "word_count": 57
+  },
+  "public/webviewer/ui/chunks/RPHVTUJ3.js": {
+    "size": 21755,
+    "mtime_ns": 1785511539969286300,
+    "word_count": 201
+  },
+  "public/webviewer/ui/chunks/RRGP5WIM.js": {
+    "size": 1016,
+    "mtime_ns": 1785511539970287200,
+    "word_count": 61
+  },
+  "public/webviewer/ui/chunks/RS3G73JU.js": {
+    "size": 4276,
+    "mtime_ns": 1785511539970287200,
+    "word_count": 107
+  },
+  "public/webviewer/ui/chunks/RT7K3DBS.js": {
+    "size": 2359,
+    "mtime_ns": 1785511539971793400,
+    "word_count": 60
+  },
+  "public/webviewer/ui/chunks/RX63AR4V.js": {
+    "size": 3899,
+    "mtime_ns": 1785511539972797400,
+    "word_count": 70
+  },
+  "public/webviewer/ui/chunks/S4UKW5HF.js": {
+    "size": 687,
+    "mtime_ns": 1785511539972797400,
+    "word_count": 7
+  },
+  "public/webviewer/ui/chunks/S7IRES5H.js": {
+    "size": 3727,
+    "mtime_ns": 1784427275379439000,
+    "word_count": 74
+  },
+  "public/webviewer/ui/chunks/SB2CER6C.js": {
+    "size": 510,
+    "mtime_ns": 1784427275380432100,
+    "word_count": 9
+  },
+  "public/webviewer/ui/chunks/SBAMDTCF.js": {
+    "size": 5385,
+    "mtime_ns": 1785511539973800000,
+    "word_count": 162
+  },
+  "public/webviewer/ui/chunks/SBGYEHAY.js": {
+    "size": 5038,
+    "mtime_ns": 1785511539974808300,
+    "word_count": 95
+  },
+  "public/webviewer/ui/chunks/SDF3JQ66.js": {
+    "size": 97830,
+    "mtime_ns": 1784427275382614600,
+    "word_count": 2872
+  },
+  "public/webviewer/ui/chunks/SG6JOY4Y.js": {
+    "size": 375,
+    "mtime_ns": 1785511539975797200,
+    "word_count": 25
+  },
+  "public/webviewer/ui/chunks/SLQHFDEP.js": {
+    "size": 550,
+    "mtime_ns": 1784427275383618400,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/SND7LJ2N.js": {
+    "size": 29660,
+    "mtime_ns": 1784427275384618100,
+    "word_count": 338
+  },
+  "public/webviewer/ui/chunks/SPII3QCN.js": {
+    "size": 1243,
+    "mtime_ns": 1785511539975797200,
+    "word_count": 37
+  },
+  "public/webviewer/ui/chunks/SQWE3XWK.js": {
+    "size": 4773,
+    "mtime_ns": 1784427275501279200,
+    "word_count": 107
+  },
+  "public/webviewer/ui/chunks/STSFYH32.js": {
+    "size": 1772,
+    "mtime_ns": 1784427275502447000,
+    "word_count": 52
+  },
+  "public/webviewer/ui/chunks/SXL2AO7K.js": {
+    "size": 43226,
+    "mtime_ns": 1784427275503894700,
+    "word_count": 1933
+  },
+  "public/webviewer/ui/chunks/T5SZZ7TA.js": {
+    "size": 16530,
+    "mtime_ns": 1785511540012333200,
+    "word_count": 766
+  },
+  "public/webviewer/ui/chunks/TB4IUC4W.js": {
+    "size": 13160,
+    "mtime_ns": 1784427275503894700,
+    "word_count": 173
+  },
+  "public/webviewer/ui/chunks/TBWCL6N7.js": {
+    "size": 1503968,
+    "mtime_ns": 1785511540013339200,
+    "word_count": 152349
+  },
+  "public/webviewer/ui/chunks/THFMOZST.js": {
+    "size": 21755,
+    "mtime_ns": 1784427275517317100,
+    "word_count": 201
+  },
+  "public/webviewer/ui/chunks/TLHPHFJ6.js": {
+    "size": 308,
+    "mtime_ns": 1785511540013339200,
+    "word_count": 16
+  },
+  "public/webviewer/ui/chunks/TMGGCTO6.js": {
+    "size": 31172,
+    "mtime_ns": 1785511540021840900,
+    "word_count": 399
+  },
+  "public/webviewer/ui/chunks/TNDJQZED.js": {
+    "size": 17797,
+    "mtime_ns": 1784427275519316500,
+    "word_count": 187
+  },
+  "public/webviewer/ui/chunks/TVJDS4YQ.js": {
+    "size": 17797,
+    "mtime_ns": 1785511540021840900,
+    "word_count": 187
+  },
+  "public/webviewer/ui/chunks/TZGNUE23.js": {
+    "size": 11561,
+    "mtime_ns": 1784427275520811200,
+    "word_count": 142
+  },
+  "public/webviewer/ui/chunks/U2O5YMMO.js": {
+    "size": 1619,
+    "mtime_ns": 1785511540021840900,
+    "word_count": 49
+  },
+  "public/webviewer/ui/chunks/UC3VTVTE.js": {
+    "size": 96689,
+    "mtime_ns": 1785511540021840900,
+    "word_count": 2573
+  },
+  "public/webviewer/ui/chunks/UDC3S6DF.js": {
+    "size": 587,
+    "mtime_ns": 1785511540021840900,
+    "word_count": 31
+  },
+  "public/webviewer/ui/chunks/UDP4OEKP.js": {
+    "size": 9821,
+    "mtime_ns": 1784427275521339500,
+    "word_count": 133
+  },
+  "public/webviewer/ui/chunks/UETKFP4B.js": {
+    "size": 957,
+    "mtime_ns": 1785511540021840900,
+    "word_count": 43
+  },
+  "public/webviewer/ui/chunks/UJCS4O6K.js": {
+    "size": 1394,
+    "mtime_ns": 1785511540028002400,
+    "word_count": 34
+  },
+  "public/webviewer/ui/chunks/UJLYUWZJ.js": {
+    "size": 1858,
+    "mtime_ns": 1785511540029069800,
+    "word_count": 54
+  },
+  "public/webviewer/ui/chunks/ULNVSZWQ.js": {
+    "size": 463,
+    "mtime_ns": 1785511540030079400,
+    "word_count": 19
+  },
+  "public/webviewer/ui/chunks/UNVSQYVN.js": {
+    "size": 770,
+    "mtime_ns": 1785511540030079400,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/USM5E2R3.js": {
+    "size": 3634,
+    "mtime_ns": 1785511540030079400,
+    "word_count": 93
+  },
+  "public/webviewer/ui/chunks/UT2FIDEX.js": {
+    "size": 22317,
+    "mtime_ns": 1784427275528781900,
+    "word_count": 391
+  },
+  "public/webviewer/ui/chunks/V2MENKE3.js": {
+    "size": 1626,
+    "mtime_ns": 1784427275529788400,
+    "word_count": 48
+  },
+  "public/webviewer/ui/chunks/V76R5I3S.js": {
+    "size": 36435,
+    "mtime_ns": 1785511540032544500,
+    "word_count": 370
+  },
+  "public/webviewer/ui/chunks/VCGQO3CF.js": {
+    "size": 3264,
+    "mtime_ns": 1785511540032544500,
+    "word_count": 64
+  },
+  "public/webviewer/ui/chunks/VEWNHGBN.js": {
+    "size": 33686,
+    "mtime_ns": 1785511540036551500,
+    "word_count": 1030
+  },
+  "public/webviewer/ui/chunks/VK7GX2NT.js": {
+    "size": 9327,
+    "mtime_ns": 1784427275536784600,
+    "word_count": 141
+  },
+  "public/webviewer/ui/chunks/VKR7RMGH.js": {
+    "size": 2633,
+    "mtime_ns": 1785511540036551500,
+    "word_count": 73
+  },
+  "public/webviewer/ui/chunks/VMGSHE7P.js": {
+    "size": 3634,
+    "mtime_ns": 1784427275537780500,
+    "word_count": 93
+  },
+  "public/webviewer/ui/chunks/VMLSZ4PM.js": {
+    "size": 1229,
+    "mtime_ns": 1784427275538784800,
+    "word_count": 38
+  },
+  "public/webviewer/ui/chunks/VN3UJWZW.js": {
+    "size": 440,
+    "mtime_ns": 1784427275539785100,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/VVAO5DGL.js": {
+    "size": 395,
+    "mtime_ns": 1785511540038555400,
+    "word_count": 23
+  },
+  "public/webviewer/ui/chunks/W52EH32X.js": {
+    "size": 27621,
+    "mtime_ns": 1785511540038555400,
+    "word_count": 709
+  },
+  "public/webviewer/ui/chunks/W5KYREA6.js": {
+    "size": 1210,
+    "mtime_ns": 1784427275543787500,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/W7DQF4M2.js": {
+    "size": 1328,
+    "mtime_ns": 1785511540040557800,
+    "word_count": 50
+  },
+  "public/webviewer/ui/chunks/W7MSTL7T.js": {
+    "size": 774,
+    "mtime_ns": 1785511540040557800,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/WETXWISE.js": {
+    "size": 24830,
+    "mtime_ns": 1785511540095990100,
+    "word_count": 999
+  },
+  "public/webviewer/ui/chunks/WGMVF4JK.js": {
+    "size": 3147,
+    "mtime_ns": 1784427275578142600,
+    "word_count": 74
+  },
+  "public/webviewer/ui/chunks/WLJBNFLG.js": {
+    "size": 709,
+    "mtime_ns": 1785511540096993800,
+    "word_count": 7
+  },
+  "public/webviewer/ui/chunks/WYY744LP.js": {
+    "size": 6672,
+    "mtime_ns": 1785511540096993800,
+    "word_count": 144
+  },
+  "public/webviewer/ui/chunks/X4R4QM2G.js": {
+    "size": 893,
+    "mtime_ns": 1784427275578142600,
+    "word_count": 39
+  },
+  "public/webviewer/ui/chunks/XA54DNPS.js": {
+    "size": 1919,
+    "mtime_ns": 1784427275578142600,
+    "word_count": 35
+  },
+  "public/webviewer/ui/chunks/XDY3ETTS.js": {
+    "size": 836,
+    "mtime_ns": 1784427275583593400,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/XG7AXJOI.js": {
+    "size": 2373,
+    "mtime_ns": 1785511540096993800,
+    "word_count": 70
+  },
+  "public/webviewer/ui/chunks/XHBQSTO3.js": {
+    "size": 3328,
+    "mtime_ns": 1784427275584361700,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/XJJKV535.js": {
+    "size": 3297,
+    "mtime_ns": 1784427275584361700,
+    "word_count": 74
+  },
+  "public/webviewer/ui/chunks/XJX722Y2.js": {
+    "size": 800,
+    "mtime_ns": 1785511540096993800,
+    "word_count": 21
+  },
+  "public/webviewer/ui/chunks/XK6KQJEX.js": {
+    "size": 22821,
+    "mtime_ns": 1785511540096993800,
+    "word_count": 303
+  },
+  "public/webviewer/ui/chunks/XKYOWFIV.js": {
+    "size": 1218,
+    "mtime_ns": 1785511540106661600,
+    "word_count": 51
+  },
+  "public/webviewer/ui/chunks/XS4GNPCX.js": {
+    "size": 3216,
+    "mtime_ns": 1785511540106661600,
+    "word_count": 63
+  },
+  "public/webviewer/ui/chunks/XSKDFR5U.js": {
+    "size": 96689,
+    "mtime_ns": 1784427275586423800,
+    "word_count": 2573
+  },
+  "public/webviewer/ui/chunks/XW7O4257.js": {
+    "size": 7241,
+    "mtime_ns": 1785511540106661600,
+    "word_count": 79
+  },
+  "public/webviewer/ui/chunks/XX35BKGU.js": {
+    "size": 624,
+    "mtime_ns": 1785511540106661600,
+    "word_count": 9
+  },
+  "public/webviewer/ui/chunks/XXC5JFVP.js": {
+    "size": 2879,
+    "mtime_ns": 1784427275586423800,
+    "word_count": 44
+  },
+  "public/webviewer/ui/chunks/XY7EHVRM.js": {
+    "size": 1867,
+    "mtime_ns": 1785511540106661600,
+    "word_count": 57
+  },
+  "public/webviewer/ui/chunks/Y2PORJ5M.js": {
+    "size": 8940,
+    "mtime_ns": 1784427275590211900,
+    "word_count": 141
+  },
+  "public/webviewer/ui/chunks/Y2VZAAMY.js": {
+    "size": 1772,
+    "mtime_ns": 1785511540106661600,
+    "word_count": 52
+  },
+  "public/webviewer/ui/chunks/Y464Q5BV.js": {
+    "size": 3297,
+    "mtime_ns": 1785511540112498600,
+    "word_count": 74
+  },
+  "public/webviewer/ui/chunks/Y4JSZHBF.js": {
+    "size": 440,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/YAGXBIVA.js": {
+    "size": 4815,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 109
+  },
+  "public/webviewer/ui/chunks/YF2ZIWAS.js": {
+    "size": 9908,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 374
+  },
+  "public/webviewer/ui/chunks/YHS7FLIO.js": {
+    "size": 2843,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 70
+  },
+  "public/webviewer/ui/chunks/YJ36BSVK.js": {
+    "size": 528,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 19
+  },
+  "public/webviewer/ui/chunks/YKXNP4HT.js": {
+    "size": 2573,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 59
+  },
+  "public/webviewer/ui/chunks/YNEAXAD3.js": {
+    "size": 550,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/YQ4WPP53.js": {
+    "size": 552,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 19
+  },
+  "public/webviewer/ui/chunks/YRYYESQK.js": {
+    "size": 3530,
+    "mtime_ns": 1784427275590669200,
+    "word_count": 67
+  },
+  "public/webviewer/ui/chunks/YXSLRMMN.js": {
+    "size": 5385,
+    "mtime_ns": 1784427275590669200,
+    "word_count": 162
+  },
+  "public/webviewer/ui/chunks/ZBDRHVIT.js": {
+    "size": 338,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 15
+  },
+  "public/webviewer/ui/chunks/ZDNFTNGT.js": {
+    "size": 1790,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 47
+  },
+  "public/webviewer/ui/chunks/ZFQNXIBO.js": {
+    "size": 5038,
+    "mtime_ns": 1784427275590669200,
+    "word_count": 95
+  },
+  "public/webviewer/ui/chunks/ZGFQ2DGO.js": {
+    "size": 11869,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 139
+  },
+  "public/webviewer/ui/chunks/ZHLAW2QI.js": {
+    "size": 3363,
+    "mtime_ns": 1784427275597134100,
+    "word_count": 76
+  },
+  "public/webviewer/ui/chunks/ZJ2TJMF6.js": {
+    "size": 82,
+    "mtime_ns": 1785511540113503700,
+    "word_count": 3
+  },
+  "public/webviewer/ui/chunks/ZLBUS2AU.js": {
+    "size": 92453,
+    "mtime_ns": 1785511540122792300,
+    "word_count": 1324
+  },
+  "public/webviewer/ui/chunks/ZLW6JBWR.js": {
+    "size": 440,
+    "mtime_ns": 1784427275599142000,
+    "word_count": 5
+  },
+  "public/webviewer/ui/chunks/ZM3KJNWI.js": {
+    "size": 1586,
+    "mtime_ns": 1784427275599142000,
+    "word_count": 63
+  },
+  "public/webviewer/ui/chunks/ZM7JOMFE.js": {
+    "size": 1763,
+    "mtime_ns": 1784427275599142000,
+    "word_count": 41
+  },
+  "public/webviewer/ui/chunks/ZN2BH5G5.js": {
+    "size": 824,
+    "mtime_ns": 1785511540122792300,
+    "word_count": 26
+  },
+  "public/webviewer/ui/chunks/ZP3X6PIW.js": {
+    "size": 1339,
+    "mtime_ns": 1785511540122792300,
+    "word_count": 41
+  },
+  "public/webviewer/ui/chunks/ZQCDALU3.js": {
+    "size": 155,
+    "mtime_ns": 1784427275603547400,
+    "word_count": 14
+  },
+  "public/webviewer/ui/chunks/ZQJYZE3O.js": {
+    "size": 5644,
+    "mtime_ns": 1785511540122792300,
+    "word_count": 88
+  },
+  "public/webviewer/ui/chunks/ZRZ7XMDJ.js": {
+    "size": 62508,
+    "mtime_ns": 1785511540122792300,
+    "word_count": 1983
+  },
+  "public/webviewer/ui/chunks/ZSGS273V.js": {
+    "size": 2792,
+    "mtime_ns": 1784427275603547400,
+    "word_count": 65
+  },
+  "public/webviewer/ui/chunks/ZTKJXM5M.js": {
+    "size": 31046,
+    "mtime_ns": 1784427275607639500,
+    "word_count": 396
+  },
+  "public/webviewer/ui/chunks/ZWG57VJC.js": {
+    "size": 60090,
+    "mtime_ns": 1785511540129741700,
+    "word_count": 804
+  },
+  "public/webviewer/ui/chunks/ZWJDM6U5.js": {
+    "size": 5860,
+    "mtime_ns": 1785511540130293800,
+    "word_count": 124
+  },
+  "public/webviewer/ui/chunks/ZZIMCXYM.js": {
+    "size": 9421,
+    "mtime_ns": 1785511540130293800,
+    "word_count": 140
+  },
+  "public/webviewer/ui/configorigin.txt": {
+    "size": 153,
+    "mtime_ns": 1785511546082082600,
+    "word_count": 32,
+    "hashes": {
+      "public/webviewer/ui/configorigin.txt": "f4dca44f30b4e9a80549752a6873bbe017e2930449cac614e76f4093ad9e81f3"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-ar.json": {
+    "size": 260849,
+    "mtime_ns": 1785511540130293800,
+    "word_count": 21385,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-ar.json": "2312dc00647d6f9eec7e4ed24539e3e3a849c9e18c5ece14a9b1df14d06fd167"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-bn.json": {
+    "size": 356807,
+    "mtime_ns": 1785511540130293800,
+    "word_count": 21643,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-bn.json": "74049c1b9599a6c0536b54477bd16702f21719aea6d48bf16f7a0d58d7e381ca"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-cs.json": {
+    "size": 222544,
+    "mtime_ns": 1785511540145920600,
+    "word_count": 21182,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-cs.json": "6872ac4c8e7ebdb82fbcd754ffd29f39491c31da1268730ca2acd3a3597dcb1d"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-de.json": {
+    "size": 228601,
+    "mtime_ns": 1785511540146930800,
+    "word_count": 22350,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-de.json": "885d8c5f019d7701a4293661b8719081b98eccd81e9ff964f813bafce09c475d"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-el.json": {
+    "size": 318530,
+    "mtime_ns": 1785511540151060900,
+    "word_count": 23798,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-el.json": "96ce8548bf4f4cb6f7dc66b0aba4859e13044b6b670b093421937f26682dc309"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-en.json": {
+    "size": 208127,
+    "mtime_ns": 1785511540156679300,
+    "word_count": 22678,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-en.json": "8f9e8a92d83c309c85f21046a55ac5916184a80b9ae08bdd7dba39b79b300df6"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-es.json": {
+    "size": 224556,
+    "mtime_ns": 1785511540163664500,
+    "word_count": 24949,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-es.json": "792d6d8ecc86ec8a679a3452e4ad575a4a4fcaffdfb52b877d90a22a3a910a7a"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-fa.json": {
+    "size": 275062,
+    "mtime_ns": 1785511540164380100,
+    "word_count": 23832,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-fa.json": "3a307fca7daca9801c2396b489014664827157eadbbff192f86b34f7681afa00"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-fr.json": {
+    "size": 229055,
+    "mtime_ns": 1785511540172978100,
+    "word_count": 24980,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-fr.json": "45713493b34c1ab8db997a44e335133a3fbf7a5201e4780c599ee8abc6a916ad"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-he.json": {
+    "size": 246113,
+    "mtime_ns": 1785511540172978100,
+    "word_count": 20391,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-he.json": "4fc083b2c7e18f0566641676cc0044285b72299efbcac57280d760650a0901a6"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-hi.json": {
+    "size": 350907,
+    "mtime_ns": 1785511540180694500,
+    "word_count": 24275,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-hi.json": "a9be68fe7d52c8d57d6f52570c0ff6891b572b5f772aa3cb4e6c7334339eb510"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-hu.json": {
+    "size": 230007,
+    "mtime_ns": 1785511540180694500,
+    "word_count": 20886,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-hu.json": "cd867946831648827b63108757b7ebd1e4c14e900ba7a6eeb672bf7dfbd708b3"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-id.json": {
+    "size": 214853,
+    "mtime_ns": 1785511540180694500,
+    "word_count": 21052,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-id.json": "cf17ab110f6b30f973ea62f685f656be89e25a3642c83da744ef87c749a496bd"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-it.json": {
+    "size": 223112,
+    "mtime_ns": 1785511540195956500,
+    "word_count": 23473,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-it.json": "4187e8ce4b0dc693f7d20c298775c2bf2f8d341d3ef615d41481ff0f704f7a81"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-ja.json": {
+    "size": 223762,
+    "mtime_ns": 1785511540196962500,
+    "word_count": 11558,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-ja.json": "9b27ced6b187cec23dc805ea9726afc57869d3602329740e273fa49a7add6c7a"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-ko.json": {
+    "size": 217554,
+    "mtime_ns": 1785511540206581900,
+    "word_count": 18170,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-ko.json": "a4b112fddb2f9fe87c030771338ddf89cf3e42a9cfd5ea5efc30d7af01fff6d5"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-ms.json": {
+    "size": 213119,
+    "mtime_ns": 1785511540216816000,
+    "word_count": 20842,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-ms.json": "9a9ff9aed187f107afe3d2730eb3c9e8420a4eb3790f873267fe291f9b4535d9"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-nl.json": {
+    "size": 224642,
+    "mtime_ns": 1785511540223196200,
+    "word_count": 23134,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-nl.json": "27035413f96d72b3f82800f539d166ce1b8aa83eb221f71bafa0663c5e728ed2"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-pl.json": {
+    "size": 224591,
+    "mtime_ns": 1785511540223196200,
+    "word_count": 21033,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-pl.json": "91ced5cb2527f505764358f7c10b15851f39dbd87707f58b9b02f8817e929536"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-pt_br.json": {
+    "size": 222001,
+    "mtime_ns": 1785511540230416000,
+    "word_count": 23933,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-pt_br.json": "114ddb936dc382ed8bb1c5e5d67221c01fe01eb3d2c7bb85c1ca42a25fbd2b34"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-ro.json": {
+    "size": 226860,
+    "mtime_ns": 1785511540230416000,
+    "word_count": 23057,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-ro.json": "4e62d25e787a68f57e37cc21e008bfda72742ca463761c155e3df90bb68c2aae"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-ru.json": {
+    "size": 306326,
+    "mtime_ns": 1785511540230416000,
+    "word_count": 20641,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-ru.json": "90e3f72580775f36a624c46a9fd61c50393bde07b2f0c0cc3c36402ac613efbe"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-sv.json": {
+    "size": 217308,
+    "mtime_ns": 1785511540230416000,
+    "word_count": 21205,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-sv.json": "029f43069cd379df5902cefacd6339f41e8a00d404bed325660ad5041d104f1f"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-th.json": {
+    "size": 342293,
+    "mtime_ns": 1785511540248834200,
+    "word_count": 12010,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-th.json": "b73f1bbf050ca3db9946c1acaa45957f371dfa5053a95d7cbba720e86fb0a246"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-tr.json": {
+    "size": 217376,
+    "mtime_ns": 1785511540248834200,
+    "word_count": 19695,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-tr.json": "61de5054470deec38ee57b87ac6bf07be00ed5aa0677e00cdcfafba760160ce0"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-uk.json": {
+    "size": 301904,
+    "mtime_ns": 1785511540256667900,
+    "word_count": 20842,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-uk.json": "0ca0054206cdb6fe0d1114fc8695b757fa64fb57e984973cc7ce62660f0b5a5f"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-ur.json": {
+    "size": 271595,
+    "mtime_ns": 1785511540567434400,
+    "word_count": 25869,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-ur.json": "52ad6aec1148472dfba2e17f98edc79e2f179729fa69da114368556f729e336f"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-vi.json": {
+    "size": 238769,
+    "mtime_ns": 1785511540573938300,
+    "word_count": 27842,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-vi.json": "ea9ffbc09d2af42170983cb9783833af38236e6e78b5c9e948b4409460ee195c"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-zh_cn.json": {
+    "size": 194182,
+    "mtime_ns": 1785511540577941800,
+    "word_count": 11159,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-zh_cn.json": "9ad8f3f3304224ece456ce8ff19d87d6adcdaab07d8fa837191496bce6327101"
+    }
+  },
+  "public/webviewer/ui/i18n/translation-zh_tw.json": {
+    "size": 194246,
+    "mtime_ns": 1785511540581943100,
+    "word_count": 11174,
+    "hashes": {
+      "public/webviewer/ui/i18n/translation-zh_tw.json": "5e9f8afe53d575d9bb9b9b54927641c27749a5a0462fa692d08f8740ed1a7f9f"
+    }
+  },
+  "public/webviewer/ui/index-wc.html": {
+    "size": 606,
+    "mtime_ns": 1785511539706563400,
+    "word_count": 39,
+    "hashes": {
+      "public/webviewer/ui/index-wc.html": "052bcc8e34944b7aca84939f036cecd8cf0585a0d98837e212c44fb4d17634e9"
+    }
+  },
+  "public/webviewer/ui/index.html": {
+    "size": 645,
+    "mtime_ns": 1785511539707626900,
+    "word_count": 42,
+    "hashes": {
+      "public/webviewer/ui/index.html": "eb6316e11783db203be75f0328dd841d3b7e8fb797151919d225f843cc178a13"
+    }
+  },
+  "public/webviewer/ui/webviewer-ui.min.js": {
+    "size": 492322,
+    "mtime_ns": 1785511540080519200,
+    "word_count": 6472
+  },
+  "public/window.svg": {
+    "size": 385,
+    "mtime_ns": 1784238630671868900,
+    "word_count": 63,
+    "hashes": {
+      "public/window.svg": "58d233ee9a0b0231d74f31667bfd20bc006b78d64d40f6521293bd71f06d435e"
+    }
+  },
+  "scratch/test-compress.mjs": { "size": 3108, "mtime_ns": 1785645165091483300, "word_count": 325 },
+  "scripts/test-tesseract-wasm.mjs": {
+    "size": 3250,
+    "mtime_ns": 1785523261681777800,
+    "word_count": 318
+  },
+  "services/emailService.ts": { "size": 9582, "mtime_ns": 1785895650363237800, "word_count": 885 },
+  "storage.r": { "size": 1003, "mtime_ns": 1785854758720682700, "word_count": 121 },
+  "store/useActivityStore.ts": { "size": 5010, "mtime_ns": 1785854758721682400, "word_count": 467 },
+  "store/useAuthStore.ts": { "size": 8211, "mtime_ns": 1785947225524316200, "word_count": 886 },
+  "store/useFileStore.ts": { "size": 1121, "mtime_ns": 1784992329752339600, "word_count": 145 },
+  "tsconfig.json": {
+    "size": 732,
+    "mtime_ns": 1785854758722683700,
+    "word_count": 59,
+    "hashes": {
+      "tsconfig.json": "226d13b280a7bbe3bf80227e78becfe745f60a5b870a8469a5da39b479ef8de3"
+    }
+  },
+  "vercel.json": {
+    "size": 2724,
+    "mtime_ns": 1785854758723683800,
+    "word_count": 260,
+    "hashes": { "vercel.json": "fdb7936057e2299d22acfbc362ee9bb09eae1ad7d20706008e77f66d734aff4e" }
+  },
+  "workers/pdf-compare.worker.ts": {
+    "size": 29487,
+    "mtime_ns": 1785601927060898000,
+    "word_count": 3343
+  },
+  "workers/pdf-compress.worker.ts": {
+    "size": 21383,
+    "mtime_ns": 1785594204427627000,
+    "word_count": 2359
+  },
+  "workers/pdf-crop.worker.ts": {
+    "size": 4315,
+    "mtime_ns": 1785688940553961500,
+    "word_count": 495
+  },
+  "workers/pdf-delete-pages.worker.ts": {
+    "size": 3180,
+    "mtime_ns": 1785687835459342700,
+    "word_count": 317
+  },
+  "workers/pdf-edit.worker.ts": {
+    "size": 2621,
+    "mtime_ns": 1785689450609475000,
+    "word_count": 271
+  },
+  "workers/pdf-merge.worker.ts": {
+    "size": 10237,
+    "mtime_ns": 1785683745815197300,
+    "word_count": 1095
+  },
+  "workers/pdf-number.worker.ts": {
+    "size": 6225,
+    "mtime_ns": 1785945652876750800,
+    "word_count": 796
+  },
+  "workers/pdf-ocr.worker.ts": {
+    "size": 12727,
+    "mtime_ns": 1785945728178237800,
+    "word_count": 1322
+  },
+  "workers/pdf-protect.worker.ts": {
+    "size": 18492,
+    "mtime_ns": 1785633078302932600,
+    "word_count": 1995
+  },
+  "workers/pdf-redact-v3.worker.ts": {
+    "size": 19360,
+    "mtime_ns": 1785606460968243800,
+    "word_count": 2013
+  },
+  "workers/pdf-redact.worker.ts": {
+    "size": 7352,
+    "mtime_ns": 1785606474807791900,
+    "word_count": 771
+  },
+  "workers/pdf-reorder.worker.ts": {
+    "size": 4003,
+    "mtime_ns": 1785688104361243500,
+    "word_count": 400
+  },
+  "workers/pdf-repair.worker.ts": {
+    "size": 28765,
+    "mtime_ns": 1785945652876750800,
+    "word_count": 3001
+  },
+  "workers/pdf-rotate.worker.ts": {
+    "size": 3455,
+    "mtime_ns": 1785688681775091700,
+    "word_count": 359
+  },
+  "workers/pdf-sign.worker.ts": {
+    "size": 7427,
+    "mtime_ns": 1785691721492142100,
+    "word_count": 817
+  },
+  "workers/pdf-split.worker.ts": {
+    "size": 7968,
+    "mtime_ns": 1785686990976767200,
+    "word_count": 754
+  },
+  "workers/pdf-unlock.worker.ts": {
+    "size": 28671,
+    "mtime_ns": 1785947162786022100,
+    "word_count": 2982
+  },
+  "workers/pdf-watermark-remove.worker.ts": {
+    "size": 12674,
+    "mtime_ns": 1785947169856820000,
+    "word_count": 1337
+  },
+  "workers/pdf-watermark.worker.ts": {
+    "size": 6906,
+    "mtime_ns": 1785689984199201600,
+    "word_count": 862
+  },
+  ".agents/rules/graphify.md": {
+    "size": 947,
+    "mtime_ns": 1785943893222855200,
+    "word_count": 127,
+    "hashes": {
+      ".agents/rules/graphify.md": "e55792958648fb69255e3ce3f71a8fcead36307c34b2d67feda9ac650ac61803"
+    }
+  },
+  ".agents/workflows/graphify.md": {
+    "size": 239,
+    "mtime_ns": 1785943893222855200,
+    "word_count": 37,
+    "hashes": {
+      ".agents/workflows/graphify.md": "d92622463299d313da48e2cdbebf79d7ea24ffaf2ae2de2a1714be8ee42b22b3"
+    }
+  },
+  ".claude/settings.json": {
+    "size": 45,
+    "mtime_ns": 1785942578614654100,
+    "word_count": 7,
+    "hashes": {
+      ".claude/settings.json": "deefa51eb97856689fa7b4ed19f5377459f3cf32bbe5b77996fe471ab74f7644"
+    }
+  },
+  "EVALUACION_ACTUALIZADA_2026-08-05.md": {
+    "size": 15119,
+    "mtime_ns": 1785943786473145700,
+    "word_count": 2051,
+    "hashes": {
+      "evaluacion_actualizada_2026-08-05.md": "3b21ff7f2402910effbacff00ce1c1efe00681962c93eae367620c36135b14b7"
+    }
+  },
+  "INFORME_GRAPHIFY_ERRORES_2026-08-05.md": {
+    "size": 10009,
+    "mtime_ns": 1785945261058129300,
+    "word_count": 1525,
+    "hashes": {
+      "informe_graphify_errores_2026-08-05.md": "a991046467b79acc77c748dc51a2c8a8fad64c33e01f81c69fc2833462caf916"
+    }
+  },
+  "lib/pdfjs-worker-config.ts": { "size": 679, "mtime_ns": 1785947149675532400, "word_count": 70 },
+  "public/pdf.worker.min.mjs": {
+    "size": 1255067,
+    "mtime_ns": 1784306716699974300,
+    "word_count": 20829
+  },
+  "types/worker-messages.ts": { "size": 1191, "mtime_ns": 1785946703151662800, "word_count": 143 },
+  "app/robots.ts": { "size": 354, "mtime_ns": 1785966569882822500, "word_count": 36 },
+  "app/sitemap.ts": { "size": 1382, "mtime_ns": 1785966562305464600, "word_count": 93 }
+}

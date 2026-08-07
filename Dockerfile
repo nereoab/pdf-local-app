@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Copiar solo archivos de dependencias para cachear la capa
 COPY package.json package-lock.json ./
-RUN npm ci --frozen-lockfile --ignore-scripts
+RUN npm ci --ignore-scripts
 
 # ── Stage 2: Builder ──
 FROM node:20-alpine AS builder

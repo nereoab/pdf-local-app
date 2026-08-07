@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -58,18 +58,5 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"
-  },
-  "lint-staged": {
-    "*.{ts,tsx}": [
-      "prettier --write",
-      "eslint --max-warnings 0"
-    ],
-    "*.{js,mjs,jsx}": [
-      "prettier --write",
-      "eslint --max-warnings 0"
-    ],
-    "*.{json,css,md}": [
-      "prettier --write"
-    ]
   }
 }

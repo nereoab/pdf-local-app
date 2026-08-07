@@ -18,6 +18,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@next/bundle-analyzer": "^15.4.8",
     "@pdfsmaller/pdf-encrypt": "^1.0.2",
     "@pdftron/webviewer": "^12.0.1",
     "@syncfusion/ej2-react-documenteditor": "^34.1.31",
@@ -41,7 +42,6 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^15.4.8",
     "@tailwindcss/postcss": "^4",
     "@types/jest": "^29.5.14",
     "@types/node": "^20",

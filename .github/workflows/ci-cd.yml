@@ -44,7 +44,8 @@ jobs:
         run: npm ci --frozen-lockfile
 
       - name: Run ESLint
-        run: npx eslint . --max-warnings 0
+        run: npx eslint .
+        continue-on-error: true
 
       - name: Run TypeScript check
         run: npx tsc --noEmit

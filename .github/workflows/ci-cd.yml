@@ -124,13 +124,13 @@ jobs:
         run: docker images pdfblack:${{ github.sha }}
 
   # ────────────────────────────────────────────────
-  # Job 5: Deploy to Vercel (solo en releases)
+  # Job 5: Deploy to Vercel (push a main + releases)
   # ────────────────────────────────────────────────
   deploy-vercel:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published')
     needs: [lint-and-types, test, build]
     steps:
       - uses: actions/checkout@v4

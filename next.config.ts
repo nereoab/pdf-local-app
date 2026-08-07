@@ -8,6 +8,9 @@ const bundleAnalyzer = withBundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+  // ── Standalone output para Docker / Vercel ──
+  output: 'standalone',
+
   // ── Headers de seguridad + Caché ──
   async headers() {
     return [

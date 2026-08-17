@@ -44,3 +44,10 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# scratch & temp test files
+scratch/
+*.traineddata
+tess-out.json
+*.pdf
+

@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner';
 import { useActivityStore } from '../store/useActivityStore';
 import { SkeletonTableRow } from '../components/Skeleton';
+import PdfPreviewThumbnail from '../components/PdfPreviewThumbnail';
 
 // ─── JSON-LD Structured Data (Rich Snippets) ───
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdfblack-proy.web.app';
@@ -266,6 +267,7 @@ export default function DashboardPage() {
       <AnimatePresence>
         {file && (
           <motion.div 
+            key="focus-overlay"
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
@@ -280,6 +282,7 @@ export default function DashboardPage() {
       <AnimatePresence>
         {dragCounter > 0 && !file && !isUploading && (
           <motion.div 
+            key="drag-drop-overlay"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
             role="alert"
@@ -412,16 +415,8 @@ export default function DashboardPage() {
                         </div>
                       </div>
                        
-                      <div className="w-full flex-1 bg-[#09090b] relative pointer-events-none overflow-hidden">
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[90%] aspect-[1/1.414]">
-                          <iframe 
-                            src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
-                            className="w-full h-full border-none bg-white shadow-2xl rounded-md" 
-                            scrolling="no"
-                            title={isEs ? `Vista previa de ${file.name}` : `Preview of ${file.name}`}
-                            aria-label={isEs ? `Documento PDF: ${file.name}` : `PDF document: ${file.name}`}
-                          />
-                        </div>
+                      <div className="w-full flex-1 bg-[#09090b] relative overflow-hidden flex items-center justify-center">
+                        <PdfPreviewThumbnail file={file} />
                       </div>
                     </div>
                   )}
@@ -937,9 +932,9 @@ export default function DashboardPage() {
                 <tbody className="divide-y divide-white/5 text-zinc-300">
                   {!isHistoryLoaded ? (
                     <>
-                      <SkeletonTableRow />
-                      <SkeletonTableRow />
-                      <SkeletonTableRow />
+                      <SkeletonTableRow key="skel-row-1" />
+                      <SkeletonTableRow key="skel-row-2" />
+                      <SkeletonTableRow key="skel-row-3" />
                     </>
                   ) : recentFiles.length > 0 ? (
                     recentFiles.map((entry) => (
@@ -954,9 +949,9 @@ export default function DashboardPage() {
                     ))
                   ) : (
                     <>
-                      <TableRow name="CAO_Presupuesto_Final.pdf" size="2.4 MB" action={isEs ? "Convertido a Excel" : "Converted to Excel"} status={isEs ? "Completado" : "Completed"} icon={FileText} />
-                      <TableRow name="Planos_Estructurales_v2.pdf" size="15.1 MB" action={isEs ? "Comprimido (-45%)" : "Compressed (-45%)"} status={isEs ? "Completado" : "Completed"} icon={FileArchive} />
-                      <TableRow name="Contrato_Firmado.pdf" size="840 KB" action={isEs ? "Protegido (AES-256)" : "Protected (AES-256)"} status={isEs ? "Completado" : "Completed"} icon={ShieldCheck} />
+                      <TableRow key="demo-row-1" name="CAO_Presupuesto_Final.pdf" size="2.4 MB" action={isEs ? "Convertido a Excel" : "Converted to Excel"} status={isEs ? "Completado" : "Completed"} icon={FileText} />
+                      <TableRow key="demo-row-2" name="Planos_Estructurales_v2.pdf" size="15.1 MB" action={isEs ? "Comprimido (-45%)" : "Compressed (-45%)"} status={isEs ? "Completado" : "Completed"} icon={FileArchive} />
+                      <TableRow key="demo-row-3" name="Contrato_Firmado.pdf" size="840 KB" action={isEs ? "Protegido (AES-256)" : "Protected (AES-256)"} status={isEs ? "Completado" : "Completed"} icon={ShieldCheck} />
                     </>
                   )}
                 </tbody>

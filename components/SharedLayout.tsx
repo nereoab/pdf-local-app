@@ -119,7 +119,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             
             <AnimatePresence mode="wait">
               {!isHome && (
-                <Link href="/">
+                <Link key="home-nav-link" href="/">
                   <motion.button
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                     className="hidden sm:flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap"
@@ -200,7 +200,14 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
       <Breadcrumbs />
 
       <main className="flex-1 w-full max-w-[100%] mx-auto flex flex-col z-10 relative" id="main-content" tabIndex={-1}>
-        {children}
+        <motion.div
+          key={pathname}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+        >
+          {children}
+        </motion.div>
       </main>
 
       {/* BANNER DE COOKIES — GDPR/ePrivacy Compliance */}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   PenTool, Loader2, Settings2, ShieldCheck, Download, ArrowLeft, Sparkles, 
   FileText, Trash2, Plus, LayoutGrid, Check, Image as ImageIcon, Type, RotateCcw, 
-  ChevronLeft, ChevronRight, Sliders, UploadCloud, Lock, Unlock, Move, FileLock2, Building2, BadgeCheck, Edit3, Layers, FileCheck
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Sliders, UploadCloud, Lock, Unlock, Move, FileLock2, Building2, BadgeCheck, Edit3, Layers, FileCheck
 } from 'lucide-react';
 import { useFileStore } from '@/store/useFileStore';
 import { useLanguage } from '@/context/LanguageContext';
@@ -107,6 +107,39 @@ export default function PdfSigner() {
   const stampInputRef = useRef<HTMLInputElement>(null);
   const certInputRef = useRef<HTMLInputElement>(null);
   const batchInputRef = useRef<HTMLInputElement>(null);
+  const controlPanelRef = useRef<HTMLDivElement>(null);
+  const topContainerRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
+  const [previewHeight, setPreviewHeight] = useState<number>(0);
+  const pageCacheRef = useRef<Map<number, string>>(new Map());
+  const [pageInput, setPageInput] = useState<string>('1');
+  const [isRenderingPage, setIsRenderingPage] = useState<boolean>(false);
+
+  // Scroll automático suave e inmediato hacia el inicio de la herramienta (debajo del Navbar global)
+  useEffect(() => {
+    if (completedResult) {
+      const timer = setTimeout(() => {
+        if (topContainerRef.current) {
+          topContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [completedResult]);
+
+  // Sincronizar dinámicamente la altura de la vista previa con el panel de control
+  useEffect(() => {
+    if (!controlPanelRef.current) return;
+    const updateHeight = () => {
+      if (controlPanelRef.current) {
+        setPreviewHeight(controlPanelRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(controlPanelRef.current);
+    return () => resizeObserver.disconnect();
+  }, [file, isEncrypted, isUnlocked, creationTab, isBatchMode, enterpriseMode]);
 
   // Ajustar showPrintedName automáticamente según la pestaña de creación
   const handleTabChange = (tab: CreationTab) => {
@@ -118,13 +151,38 @@ export default function PdfSigner() {
     }
   };
 
-  const loadThumbnails = useCallback(async (selectedFile: File, pass?: string) => {
+  const isPageInCustomRange = useCallback((pageNum: number) => {
+    if (pageScope === 'all') return true;
+    if (pageScope === 'current') return targetPage === pageNum;
+    if (pageScope === 'custom') {
+      try {
+        const ranges = customPageRange.split(',');
+        for (const r of ranges) {
+          const parts = r.trim().split('-');
+          if (parts.length === 2) {
+            const s = parseInt(parts[0]);
+            const e = parseInt(parts[1]);
+            if (pageNum >= s && pageNum <= e) return true;
+          } else if (parts.length === 1) {
+            if (pageNum === parseInt(parts[0])) return true;
+          }
+        }
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }, [pageScope, targetPage, customPageRange]);
+
+  const loadDocumentInfo = useCallback(async (selectedFile: File, pass?: string) => {
     setIsLoadingThumbs(true);
     setFilePrefix(selectedFile.name.replace(/\.[^/.]+$/, "") + '_Firmado');
+    pageCacheRef.current.clear();
+    setViewerHiResImage(null);
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
 
       const buffer = await selectedFile.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({ data: buffer, password: pass });
@@ -132,40 +190,17 @@ export default function PdfSigner() {
 
       setTotalPages(pdfDoc.numPages);
       setTargetPage(1);
-
-      const thumbs: string[] = [];
-      const countToRender = Math.min(pdfDoc.numPages, 32);
-
-      for (let i = 1; i <= countToRender; i++) {
-        if (i % 4 === 0) await new Promise(r => setTimeout(r, 5));
-        const page = await pdfDoc.getPage(i);
-        const viewport = page.getViewport({ scale: 0.25 });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        if (context) {
-          await page.render({ canvasContext: context, viewport, canvas } as any).promise;
-          thumbs.push(canvas.toDataURL());
-        }
-      }
-
-      for (let i = countToRender + 1; i <= pdfDoc.numPages; i++) {
-        thumbs.push('');
-      }
-
-      setPageThumbnails(thumbs);
+      setPageInput('1');
       setIsEncrypted(false);
       setIsUnlocked(true);
-      toast.success(isEs ? `${pdfDoc.numPages} páginas listas para firma` : `${pdfDoc.numPages} pages ready for signature`);
+      toast.success(isEs ? `Documento cargado (${pdfDoc.numPages} páginas)` : `Document loaded (${pdfDoc.numPages} pages)`);
     } catch (err: any) {
       if (err?.name === 'PasswordException' || err?.code === 1) {
         setIsEncrypted(true);
         setIsUnlocked(false);
         toast.warning(isEs ? 'El archivo requiere contraseña para abrirse' : 'File requires password to open');
       } else {
-        console.error("Error al cargar miniaturas:", err);
+        console.error("Error al cargar PDF:", err);
         toast.error(isEs ? 'Error al cargar el PDF' : 'Error loading PDF');
       }
     } finally {
@@ -174,35 +209,60 @@ export default function PdfSigner() {
   }, [isEs]);
 
   useEffect(() => {
-    if (file && pageThumbnails.length === 0 && !isEncrypted) {
-      loadThumbnails(file);
+    if (file && totalPages === 0 && !isEncrypted) {
+      loadDocumentInfo(file);
     }
-  }, [file, pageThumbnails.length, isEncrypted, loadThumbnails]);
+  }, [file, totalPages, isEncrypted, loadDocumentInfo]);
 
-  // Visor alta resolución de la página actual
+  // Visor de alta resolución enfocado en la página activa con caché instantánea
   useEffect(() => {
-    if (!file || totalPages === 0 || targetPage < 1 || !isUnlocked) { setViewerHiResImage(null); return; }
+    if (!file || totalPages === 0 || targetPage < 1 || !isUnlocked) { 
+      setViewerHiResImage(null); 
+      return; 
+    }
+
+    setPageInput(targetPage.toString());
+
+    // Si ya fue renderizada previamente, mostrar de inmediato (0ms de latencia)
+    const cached = pageCacheRef.current.get(targetPage);
+    if (cached) {
+      setViewerHiResImage(cached);
+      return;
+    }
+
     let isMounted = true;
+    setIsRenderingPage(true);
+
     (async () => {
       try {
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
         const buffer = await file.arrayBuffer();
         const pdfDoc = await pdfjsLib.getDocument({ data: buffer, password: unlockedPassword }).promise;
         if (!isMounted) return;
         const pg = await pdfDoc.getPage(targetPage);
-        const vp = pg.getViewport({ scale: 1.5 });
+        const vp = pg.getViewport({ scale: 1.6 });
         const c = document.createElement('canvas');
-        const ctx = c.getContext('2d'); c.height = vp.height; c.width = vp.width;
-        if (ctx) { await pageRenderPromise(pg, ctx, vp, c); if (isMounted) setViewerHiResImage(c.toDataURL()); }
-      } catch(e) {}
+        const ctx = c.getContext('2d');
+        c.height = vp.height; 
+        c.width = vp.width;
+        if (ctx) { 
+          await pg.render({ canvasContext: ctx, viewport: vp, canvas: c } as any).promise;
+          if (isMounted) {
+            const dataUrl = c.toDataURL('image/webp', 0.9);
+            pageCacheRef.current.set(targetPage, dataUrl);
+            setViewerHiResImage(dataUrl); 
+          }
+        }
+      } catch (e) {
+        console.error("Error al renderizar página:", e);
+      } finally {
+        if (isMounted) setIsRenderingPage(false);
+      }
     })();
+
     return () => { isMounted = false; };
   }, [file, targetPage, totalPages, isUnlocked, unlockedPassword]);
-
-  const pageRenderPromise = (pg: any, ctx: CanvasRenderingContext2D, vp: any, c: HTMLCanvasElement) => {
-    return (pg.render({ canvasContext: ctx, viewport: vp, canvas: c } as any)).promise;
-  };
 
   // Generación de firma por texto con múltiples estilos de fuente
   useEffect(() => {
@@ -213,25 +273,38 @@ export default function PdfSigner() {
 
   const generateTypedSignature = (text: string, color: string, style: FontStyleOption) => {
     const offCanvas = document.createElement('canvas');
-    offCanvas.width = 480; offCanvas.height = 140;
+    const width = 600;
+    const height = 160;
+    offCanvas.width = width;
+    offCanvas.height = height;
     const ctx = offCanvas.getContext('2d');
     if (ctx) {
-      let fontStr = 'italic bold 40px "Brush Script MT", "Caveat", cursive, sans-serif';
+      ctx.clearRect(0, 0, width, height);
+      let fontSize = 44;
+      let fontName = '"Brush Script MT", "Caveat", cursive, sans-serif';
       if (style === 'calligraphy') {
-        fontStr = 'italic bold 38px "Great Vibes", "Dancing Script", cursive, sans-serif';
+        fontName = '"Great Vibes", "Dancing Script", cursive, sans-serif';
       } else if (style === 'formal') {
-        fontStr = 'italic 36px "Lucida Handwriting", "Dancing Script", cursive, sans-serif';
+        fontName = '"Lucida Handwriting", "Dancing Script", cursive, sans-serif';
       } else if (style === 'modern') {
-        fontStr = 'bold 36px "Outfit", "Inter", sans-serif';
+        fontName = '"Outfit", "Inter", sans-serif';
       } else if (style === 'serif') {
-        fontStr = 'bold italic 36px "Playfair Display", "Georgia", serif';
+        fontName = '"Playfair Display", "Georgia", serif';
       }
 
-      ctx.font = fontStr; 
+      ctx.font = `italic bold ${fontSize}px ${fontName}`;
+      // Auto-escala para nombres largos
+      let metrics = ctx.measureText(text);
+      while (metrics.width > width - 40 && fontSize > 16) {
+        fontSize -= 2;
+        ctx.font = `italic bold ${fontSize}px ${fontName}`;
+        metrics = ctx.measureText(text);
+      }
+
       ctx.fillStyle = color; 
       ctx.textAlign = 'center'; 
       ctx.textBaseline = 'middle'; 
-      ctx.fillText(text, 240, 70); 
+      ctx.fillText(text, width / 2, height / 2); 
     }
     setSignatureDataUrl(offCanvas.toDataURL('image/png'));
   };
@@ -267,7 +340,7 @@ export default function PdfSigner() {
       setIsUnlocked(false);
       setPasswordInput('');
       setUnlockedPassword(undefined);
-      await loadThumbnails(selected);
+      await loadDocumentInfo(selected);
     }
     e.target.value = '';
   };
@@ -275,7 +348,7 @@ export default function PdfSigner() {
   const unlockFileWithPassword = async () => {
     if (!file || !passwordInput) return;
     try {
-      await loadThumbnails(file, passwordInput);
+      await loadDocumentInfo(file, passwordInput);
       setUnlockedPassword(passwordInput);
       setIsUnlocked(true);
       setIsEncrypted(false);
@@ -286,7 +359,18 @@ export default function PdfSigner() {
   };
 
   const handleStampImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) { const f = e.target.files[0]; setStampImageFile(f); setSignatureDataUrl(URL.createObjectURL(f)); } e.target.value = '';
+    if (e.target.files && e.target.files.length > 0) { 
+      const f = e.target.files[0]; 
+      setStampImageFile(f); 
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (typeof event.target?.result === 'string') {
+          setSignatureDataUrl(event.target.result);
+        }
+      };
+      reader.readAsDataURL(f);
+    } 
+    e.target.value = '';
   };
   const handleCertChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) { setCertFile(e.target.files[0]); setCertInfo(null); } e.target.value = '';
@@ -294,7 +378,20 @@ export default function PdfSigner() {
   const handleBatchFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) setFiles(Array.from(e.target.files)); e.target.value = '';
   };
-  const handleRemoveFile = () => { setFile(null); setGlobalFile(null); setPageThumbnails([]); setTotalPages(0); setIsEncrypted(false); setIsUnlocked(false); setPasswordInput(''); setUnlockedPassword(undefined); };
+  const handleRemoveFile = () => { 
+    setFile(null); 
+    setGlobalFile(null); 
+    setPageThumbnails([]); 
+    setTotalPages(0); 
+    setTargetPage(1);
+    setPageInput('1');
+    setViewerHiResImage(null);
+    pageCacheRef.current.clear();
+    setIsEncrypted(false); 
+    setIsUnlocked(false); 
+    setPasswordInput(''); 
+    setUnlockedPassword(undefined); 
+  };
 
   const handleGridPositionSelect = (pos: Position9) => {
     setPosition(pos);
@@ -305,9 +402,9 @@ export default function PdfSigner() {
       case 'center-left': setFreeX(8); setFreeY(50); break;
       case 'center': setFreeX(50); setFreeY(50); break;
       case 'center-right': setFreeX(92); setFreeY(50); break;
-      case 'bottom-left': setFreeX(8); setFreeY(92); break;
-      case 'bottom-center': setFreeX(50); setFreeY(92); break;
-      case 'bottom-right': setFreeX(92); setFreeY(92); break;
+      case 'bottom-left': setFreeX(8); setFreeY(85); break;
+      case 'bottom-center': setFreeX(50); setFreeY(85); break;
+      case 'bottom-right': setFreeX(85); setFreeY(85); break;
     }
   };
 
@@ -328,6 +425,31 @@ export default function PdfSigner() {
     window.addEventListener('touchmove', handleMove, { passive: false }); window.addEventListener('touchend', handleUp);
     return () => { window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleUp); window.removeEventListener('touchmove', handleMove); window.removeEventListener('touchend', handleUp); };
   }, [isDraggingSig]);
+
+  // Conversor directo de DataURL / BlobURL a ArrayBuffer y Base64 sin fetch
+  const parseSignatureUrl = async (url: string): Promise<{ buffer: ArrayBuffer; mime: string; base64: string }> => {
+    if (url.startsWith('data:')) {
+      const commaIdx = url.indexOf(',');
+      const header = url.substring(0, commaIdx);
+      const rawBase64 = url.substring(commaIdx + 1);
+      const mimeMatch = header.match(/data:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+
+      const binaryStr = atob(rawBase64);
+      const len = binaryStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      return { buffer: bytes.buffer, mime, base64: rawBase64 };
+    } else {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const buffer = await blob.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      return { buffer, mime: blob.type || 'image/png', base64 };
+    }
+  };
 
   // EJECUCIÓN CON WEB WORKER DE FIRMA LOCAL O FIRMA PAdES
   const executeSignPdf = async () => {
@@ -352,9 +474,8 @@ export default function PdfSigner() {
 
         let sigBase64: string | undefined;
         if (signatureDataUrl) {
-          const sigRes = await fetch(signatureDataUrl);
-          const sigBlob = await sigRes.blob();
-          sigBase64 = Buffer.from(await sigBlob.arrayBuffer()).toString('base64');
+          const parsed = await parseSignatureUrl(signatureDataUrl);
+          sigBase64 = parsed.base64;
         }
 
         const apiBody: any = {
@@ -418,10 +539,9 @@ export default function PdfSigner() {
         let signatureMime: string | undefined = undefined;
 
         if (signatureDataUrl) {
-          const sigRes = await fetch(signatureDataUrl);
-          const sigBlob = await sigRes.blob();
-          signatureBuffer = await sigBlob.arrayBuffer();
-          signatureMime = sigBlob.type;
+          const parsed = await parseSignatureUrl(signatureDataUrl);
+          signatureBuffer = parsed.buffer;
+          signatureMime = parsed.mime;
         }
 
         const worker = new Worker(new URL('../workers/pdf-sign.worker.ts', import.meta.url), { type: 'module' });
@@ -504,8 +624,25 @@ export default function PdfSigner() {
     }
   };
 
+  const handleStartOver = () => {
+    setCompletedResult(null);
+    setFile(null);
+    setFiles([]);
+    setGlobalFile(null);
+    setPageThumbnails([]);
+    setTotalPages(0);
+    setIsEncrypted(false);
+    setIsUnlocked(false);
+    setPasswordInput('');
+    setUnlockedPassword(undefined);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (stampInputRef.current) stampInputRef.current.value = '';
+    if (certInputRef.current) certInputRef.current.value = '';
+    if (batchInputRef.current) batchInputRef.current.value = '';
+  };
+
   return (
-    <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
+    <div ref={topContainerRef} className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
       <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
       <input type="file" accept="image/png, image/jpeg" className="hidden" ref={stampInputRef} onChange={handleStampImageChange} />
       <input type="file" accept=".p12,.pfx" className="hidden" ref={certInputRef} onChange={handleCertChange} />
@@ -529,7 +666,7 @@ export default function PdfSigner() {
           </div>
         </div>
 
-        {file && (
+        {file && !completedResult && (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1.5 rounded-xl border border-white/10 text-xs font-mono text-white">
               <button 
@@ -563,7 +700,73 @@ export default function PdfSigner() {
         )}
       </div>
 
-      {!file ? (
+      {completedResult ? (
+        /* ── PANTALLA DE ÉXITO DEDICADA (ESTILO EXACTO /EDITAR/TEXTO) ── */
+        <motion.div
+          ref={successContainerRef}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE FIRMA */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <PenTool className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA FIRMA DIGITAL' : 'DIGITAL SIGNATURE RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                    {isEs ? '¡Documento firmado con éxito!' : 'Document signed successfully!'}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Seguridad y Validación' : 'Security & Validation'}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {enterpriseMode ? (isEs ? 'PAdES Criptográfico' : 'PAdES Cryptographic') : (isEs ? '100% Local & Privado' : '100% Local & Private')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Firmante' : 'Signer'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5 truncate" title={fullName}>
+                  {fullName || (isEs ? 'Firma Gráfica' : 'Graphic Signature')}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Firmadas' : 'Signed Pages'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {pageScope === 'all' ? `${totalPages} (Todas)` : (pageScope === 'current' ? `Pág. ${targetPage}` : customPageRange)}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Estilo de Firma' : 'Signature Style'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {enterpriseMode ? 'Certificado PAdES' : (creationTab === 'draw' ? (isEs ? 'Trazo Manual' : 'Hand-drawn') : (creationTab === 'image' ? (isEs ? 'Sello/Imagen' : 'Stamp/Image') : (isEs ? 'Tipografía Digital' : 'Digital Typography')))}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            onReset={handleStartOver}
+          />
+        </motion.div>
+      ) : !file ? (
         <motion.div 
           initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }} 
@@ -597,126 +800,224 @@ export default function PdfSigner() {
           animate={{ opacity: 1, y: 0 }} 
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: MINIATURAS EN UNA SOLA COLUMNA VERTICAL */}
-          <div className="lg:col-span-2 xl:col-span-2 bg-[#09090b] border border-white/10 rounded-2xl p-3 shadow-2xl overflow-y-auto max-h-[750px] flex flex-col gap-3 font-mono">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                <LayoutGrid className="w-3.5 h-3.5 text-white" />
-                {isEs ? "Páginas" : "Pages"}
-              </span>
-              <span className="text-[10px] text-emerald-400 font-bold">1 Col</span>
+          {/* LADO IZQUIERDO: VISOR ENFOCADO DE ALTA RESOLUCIÓN (COL-SPAN-7) */}
+          <div 
+            style={previewHeight > 0 ? { height: `${previewHeight}px` } : undefined}
+            className="lg:col-span-7 xl:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between min-h-0 relative overflow-hidden"
+          >
+            {/* CABECERA SUPERIOR CON NAVEGACIÓN INTELIGENTE Y SALTOS RÁPIDOS */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold w-full">
+              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+                <PenTool className="w-4 h-4 text-white" />
+                <span>{isEs ? `001 / VISTA PREVIA Y POSICIONAMIENTO` : `001 / PREVIEW & SIGNATURE POSITION`}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1 bg-zinc-900 border border-white/10 px-1.5 py-1 rounded-lg text-xs font-mono text-white shadow-sm">
+                    {/* BOTÓN PRIMERA PÁGINA */}
+                    <button
+                      type="button"
+                      disabled={targetPage <= 1}
+                      onClick={() => setTargetPage(1)}
+                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      title={isEs ? "Ir a la primera página (Pág. 1)" : "First page (Page 1)"}
+                    >
+                      <ChevronsLeft className="w-3.5 h-3.5" />
+                    </button>
+                    {/* BOTÓN PÁGINA ANTERIOR */}
+                    <button
+                      type="button"
+                      disabled={targetPage <= 1}
+                      onClick={() => setTargetPage(prev => Math.max(1, prev - 1))}
+                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      title={isEs ? "Página anterior" : "Previous page"}
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    {/* INPUT DIRECTO DE PÁGINA */}
+                    <div className="flex items-center gap-1 px-1">
+                      <span className="text-[11px] text-zinc-400 font-mono">{isEs ? "Pág." : "Pg."}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={totalPages}
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        onBlur={() => {
+                          const val = parseInt(pageInput);
+                          if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                            setTargetPage(val);
+                          } else {
+                            setPageInput(targetPage.toString());
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseInt(pageInput);
+                            if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                              setTargetPage(val);
+                            } else {
+                              setPageInput(targetPage.toString());
+                            }
+                          }
+                        }}
+                        className="w-10 bg-zinc-950 border border-white/20 rounded px-1 py-0.5 text-center text-xs text-white font-mono font-bold outline-none focus:border-white"
+                      />
+                      <span className="text-[11px] text-zinc-400 font-mono">/ {totalPages}</span>
+                    </div>
+
+                    {/* BOTÓN PÁGINA SIGUIENTE */}
+                    <button
+                      type="button"
+                      disabled={targetPage >= totalPages}
+                      onClick={() => setTargetPage(prev => Math.min(totalPages, prev + 1))}
+                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      title={isEs ? "Página siguiente" : "Next page"}
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* BOTÓN ÚLTIMA PÁGINA (LÍNEA DE FIRMA) */}
+                    <button
+                      type="button"
+                      disabled={targetPage >= totalPages}
+                      onClick={() => setTargetPage(totalPages)}
+                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      title={isEs ? `Ir a la última página (Pág. ${totalPages} - Línea de firma)` : `Last page (Page ${totalPages})`}
+                    >
+                      <ChevronsRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                </div>
+              </div>
             </div>
 
             {/* PASSWORD WIDGET FOR ENCRYPTED PDF */}
             {isEncrypted && !isUnlocked && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 font-mono text-xs">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 font-mono text-xs mb-3">
                 <div className="flex items-center gap-1.5 text-amber-400 font-bold">
                   <Lock className="w-3.5 h-3.5" />
-                  <span>{isEs ? "PDF Protegido" : "Protected PDF"}</span>
+                  <span>{isEs ? "PDF Protegido con contraseña" : "Password Protected PDF"}</span>
                 </div>
-                <input
-                  type="password"
-                  placeholder={isEs ? "Contraseña..." : "Password..."}
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
-                  className="w-full bg-zinc-900 border border-white/15 rounded-lg py-1 px-2 text-xs text-white outline-none focus:border-white/40 font-mono"
-                />
-                <button
-                  onClick={unlockFileWithPassword}
-                  className="w-full py-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center gap-1 font-mono"
-                >
-                  <Unlock className="w-3.5 h-3.5" />
-                  <span>{isEs ? "Desbloquear" : "Unlock"}</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    placeholder={isEs ? "Ingresa la contraseña..." : "Enter password..."}
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
+                    className="flex-1 bg-zinc-900 border border-white/15 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40 font-mono"
+                  />
+                  <button
+                    onClick={unlockFileWithPassword}
+                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 font-mono"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>{isEs ? "Desbloquear" : "Unlock"}</span>
+                  </button>
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-3">
-              {pageThumbnails.map((thumb, idx) => {
-                const pageNum = idx + 1;
-                return (
-                  <div 
-                    key={idx} 
-                    onClick={() => setTargetPage(pageNum)} 
-                    className={`relative cursor-pointer rounded-xl border p-1.5 transition-all aspect-[1/1.414] flex items-center justify-center overflow-hidden ${pageNum === targetPage ? 'border-white ring-2 ring-white/40 bg-zinc-900 scale-105 shadow-lg' : 'border-white/10 opacity-60 hover:opacity-100'}`}
-                  >
-                    {typeof thumb === 'string' && thumb.length > 0 ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt={`Página ${pageNum}`} className="w-full h-full object-contain rounded-lg bg-white" />
-                    ) : (
-                      <div className="w-full h-full bg-zinc-900 rounded-md flex items-center justify-center text-zinc-600 text-xs font-mono font-bold">
-                        {pageNum}
-                      </div>
-                    )}
-                    <span className="absolute top-1.5 left-1.5 bg-zinc-900/90 text-white font-mono font-bold text-[9px] px-1.5 py-0.5 rounded border border-white/10">
-                      {pageNum}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* VISOR CENTRAL CON DRAG & DROP DE FIRMA */}
-          <div className="lg:col-span-6 xl:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col items-center justify-center min-h-[750px] relative overflow-hidden">
-            {isLoadingThumbs ? (
-              <div className="flex flex-col items-center justify-center gap-3 font-mono">
-                <Loader2 className="w-8 h-8 animate-spin text-white" />
-                <span className="text-xs text-zinc-400">{isEs ? "Cargando visor..." : "Loading viewer..."}</span>
-              </div>
-            ) : viewerHiResImage || pageThumbnails[targetPage - 1] ? (
-              <div ref={viewerContainerRef} className="relative w-full max-w-[500px] aspect-[1/1.414] bg-white rounded-xl shadow-2xl flex items-center justify-center overflow-hidden border border-zinc-700">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={viewerHiResImage || pageThumbnails[targetPage - 1]} alt="Visualización de página" className="w-full h-full object-contain select-none pointer-events-none" />
-                
-                {/* DRAG & DROP OVERLAY DE LA FIRMA */}
+            {/* ESCENARIO PRINCIPAL: PÁGINA EN ALTA RESOLUCIÓN Y DRAG & DROP */}
+            <div className="flex-1 w-full flex items-center justify-center min-h-0 relative p-1 overflow-hidden">
+              {isLoadingThumbs || isRenderingPage ? (
+                <div className="flex flex-col items-center justify-center min-h-[350px] gap-3 font-mono">
+                  <Loader2 className="w-8 h-8 animate-spin text-white" />
+                  <span className="text-xs text-zinc-400">
+                    {isEs ? `Cargando página ${targetPage} en alta resolución...` : `Loading page ${targetPage} in high resolution...`}
+                  </span>
+                </div>
+              ) : viewerHiResImage ? (
                 <div 
-                  ref={sigOverlayRef} 
-                  className={`absolute z-30 cursor-grab ${isDraggingSig ? 'cursor-grabbing' : ''}`} 
-                  style={{ left: `${freeX}%`, top: `${freeY}%`, transform: 'translate(-50%, -50%)', transition: isDraggingSig ? 'none' : 'left 0.15s ease, top 0.15s ease' }} 
-                  onMouseDown={handleSigDragStart} 
-                  onTouchStart={handleSigDragStart}
+                  ref={viewerContainerRef} 
+                  className="relative aspect-[1/1.414] max-h-full w-auto max-w-full bg-white rounded-xl shadow-2xl flex items-center justify-center overflow-hidden border border-zinc-700 select-none"
                 >
-                  <div className="border-2 border-dashed border-zinc-900 bg-zinc-950/90 backdrop-blur-md p-3 rounded-xl shadow-2xl flex flex-col items-center justify-center min-w-[180px] max-w-[240px] font-mono text-center select-none">
-                    {/* 1. Imagen / Trazo manuscrito */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {signatureDataUrl ? (
-                      <img src={signatureDataUrl} alt="Firma" className="max-h-[55px] object-contain mb-1 pointer-events-none" />
-                    ) : (
-                      <span className="font-serif italic font-bold text-white text-base mb-1">{fullName}</span>
-                    )}
-                    
-                    {/* 2. Línea divisoria elegante */}
-                    <div className="w-full h-px bg-white/20 my-1" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={viewerHiResImage} 
+                    alt={`Página ${targetPage}`} 
+                    className="w-full h-full object-contain pointer-events-none select-none" 
+                  />
 
-                    {/* 3. Nombre impreso solo si showPrintedName es true */}
-                    {showPrintedName && (
-                      <span className="font-bold text-white text-xs block font-sans uppercase tracking-tight mb-0.5">
-                        {fullName || 'Firmante'}
-                      </span>
-                    )}
+                  {/* ETIQUETA FLOTANTE DE PÁGINA */}
+                  <div className="absolute top-2.5 left-2.5 z-20 bg-zinc-900/90 text-white font-mono font-bold text-[10px] px-2.5 py-1 rounded-md border border-white/10 shadow-md">
+                    {isEs ? `Página ${targetPage} de ${totalPages}` : `Page ${targetPage} of ${totalPages}`}
+                  </div>
+                  
+                  {/* DRAG & DROP OVERLAY DE LA FIRMA */}
+                  <div 
+                    ref={sigOverlayRef} 
+                    className={`absolute z-30 cursor-grab ${isDraggingSig ? 'cursor-grabbing' : ''}`} 
+                    style={{ 
+                      left: `${freeX}%`, 
+                      top: `${freeY}%`, 
+                      transform: 'translate(-50%, -50%)', 
+                      transition: isDraggingSig ? 'none' : 'left 0.15s ease, top 0.15s ease' 
+                    }} 
+                    onMouseDown={handleSigDragStart} 
+                    onTouchStart={handleSigDragStart}
+                  >
+                    <div className="border-2 border-dashed border-emerald-400 ring-2 ring-emerald-500/30 bg-zinc-950/90 backdrop-blur-md p-3 rounded-xl shadow-2xl flex flex-col items-center justify-center min-w-[180px] max-w-[240px] font-mono text-center select-none">
+                      {/* 1. Imagen / Trazo manuscrito */}
+                      {signatureDataUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={signatureDataUrl} alt="Firma" className="max-h-[55px] object-contain mb-1 pointer-events-none" />
+                      ) : (
+                        <span className="font-serif italic font-bold text-white text-base mb-1">{fullName}</span>
+                      )}
+                      
+                      {/* 2. Línea divisoria elegante */}
+                      <div className="w-full h-px bg-white/20 my-1" />
 
-                    {/* 4. Cargo / Razón social */}
-                    {signerRole && <span className="text-[10px] text-zinc-300 font-bold uppercase block">{signerRole}</span>}
+                      {/* 3. Nombre impreso solo si showPrintedName es true */}
+                      {showPrintedName && (
+                        <span className="font-bold text-white text-xs block font-sans uppercase tracking-tight mb-0.5">
+                          {fullName || 'Firmante'}
+                        </span>
+                      )}
 
-                    {/* 5. Fecha y Hora */}
-                    {includeDate && <span className="text-[9px] text-zinc-400 mt-0.5 block">{new Date().toLocaleDateString('es-ES')} • {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>}
+                      {/* 4. Cargo / Razón social */}
+                      {signerRole && <span className="text-[10px] text-zinc-300 font-bold uppercase block">{signerRole}</span>}
 
-                    {/* 6. Hash de verificación */}
-                    {includeHash && <span className="text-[8px] text-emerald-400 mt-0.5 block font-mono font-bold">HASH: {Math.random().toString(36).substring(2, 10).toUpperCase()}</span>}
+                      {/* 5. Fecha y Hora */}
+                      {includeDate && <span className="text-[9px] text-zinc-400 mt-0.5 block">{new Date().toLocaleDateString('es-ES')} • {new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>}
+
+                      {/* 6. Hash de verificación */}
+                      {includeHash && <span className="text-[8px] text-emerald-400 mt-0.5 block font-mono font-bold">HASH: {Math.random().toString(36).substring(2, 10).toUpperCase()}</span>}
+                    </div>
                   </div>
                 </div>
+              ) : null}
+            </div>
+
+            {/* PIE DE VISTA PREVIA CON ESTADO Y AYUDA */}
+            <div className="mt-2 pt-2 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-zinc-400 font-mono w-full">
+              <div className="flex items-center gap-1.5 text-zinc-300">
+                <span className="px-2 py-0.5 bg-zinc-900 border border-white/10 rounded text-emerald-400 font-bold">
+                  {pageScope === 'all' 
+                    ? (isEs ? `Se estampará en las ${totalPages} páginas` : `Stamping on all ${totalPages} pages`)
+                    : pageScope === 'current'
+                    ? (isEs ? `Se estampará en la Pág. ${targetPage}` : `Stamping on Page ${targetPage}`)
+                    : (isEs ? `Rango: ${customPageRange}` : `Range: ${customPageRange}`)}
+                </span>
               </div>
-            ) : null}
-            <div className="mt-3 flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
-              <Move className="w-3.5 h-3.5" />
-              <span>{isEs ? 'Arrastra la firma con el ratón para posicionarla libremente' : 'Drag signature with mouse to position it freely'}</span>
+              <div className="flex items-center gap-1.5 text-zinc-400">
+                <Move className="w-3.5 h-3.5 text-zinc-400" />
+                <span>{isEs ? 'Arrastra la firma con el ratón para posicionarla libremente' : 'Drag signature with mouse to position it freely'}</span>
+              </div>
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-4 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          {/* LADO DERECHO: PANEL DE CONTROL (AMPLIADO A COL-SPAN-5) */}
+          <div 
+            ref={controlPanelRef}
+            className="lg:col-span-5 xl:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6"
+          >
             <div>
               <div className="mb-5 pb-3 border-b border-white/10">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
@@ -852,7 +1153,26 @@ export default function PdfSigner() {
                     <canvas ref={drawCanvasRef} width={320} height={120} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} className="w-full h-[120px] bg-zinc-900/80 rounded-lg cursor-crosshair touch-none" />
                     {!hasDrawn && <span className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs pointer-events-none">{isEs ? "Dibuja tu firma aquí..." : "Draw signature here..."}</span>}
                   </div>
-                  <div className="flex items-center justify-between"><span className="text-[10px] text-zinc-400 uppercase">{isEs ? "Color:" : "Color:"}</span><div className="flex items-center gap-2">{[{ name: 'white', hex: '#ffffff' },{ name: 'blue', hex: '#3b82f6' },{ name: 'red', hex: '#ef4444' },{ name: 'dark', hex: '#18181b' }].map(c => (<button key={c.name} type="button" onClick={() => setStrokeColor(c.hex)} className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${strokeColor === c.hex ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: c.hex }} />))}</div></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-zinc-400 uppercase">{isEs ? "Color de Tinta:" : "Ink Color:"}</span>
+                    <div className="flex items-center gap-2">
+                      {[
+                        { name: 'blue', hex: '#1d4ed8', title: 'Azul Notarial' },
+                        { name: 'dark', hex: '#09090b', title: 'Negro Tinta' },
+                        { name: 'red', hex: '#dc2626', title: 'Rojo Registro' },
+                        { name: 'emerald', hex: '#059669', title: 'Verde Oficial' }
+                      ].map(c => (
+                        <button 
+                          key={c.name} 
+                          type="button" 
+                          onClick={() => setStrokeColor(c.hex)} 
+                          title={c.title}
+                          className={`w-6 h-6 rounded-full border border-white/20 transition-all cursor-pointer ${strokeColor === c.hex ? 'ring-2 ring-white scale-110 shadow-lg' : 'opacity-70 hover:opacity-100'}`} 
+                          style={{ backgroundColor: c.hex }} 
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -893,10 +1213,22 @@ export default function PdfSigner() {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-zinc-400 uppercase">{isEs ? "Color:" : "Color:"}</span>
+                    <span className="text-[10px] text-zinc-400 uppercase">{isEs ? "Color de Tinta:" : "Ink Color:"}</span>
                     <div className="flex items-center gap-2">
-                      {[{ name: 'red', hex: '#ef4444' },{ name: 'white', hex: '#ffffff' },{ name: 'blue', hex: '#3b82f6' },{ name: 'dark', hex: '#18181b' }].map(c => (
-                        <button key={c.name} type="button" onClick={() => setStrokeColor(c.hex)} className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${strokeColor === c.hex ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'}`} style={{ backgroundColor: c.hex }} />
+                      {[
+                        { name: 'blue', hex: '#1d4ed8', title: 'Azul Notarial' },
+                        { name: 'dark', hex: '#09090b', title: 'Negro Tinta' },
+                        { name: 'red', hex: '#dc2626', title: 'Rojo Registro' },
+                        { name: 'emerald', hex: '#059669', title: 'Verde Oficial' }
+                      ].map(c => (
+                        <button 
+                          key={c.name} 
+                          type="button" 
+                          onClick={() => setStrokeColor(c.hex)} 
+                          title={c.title}
+                          className={`w-6 h-6 rounded-full border border-white/20 transition-all cursor-pointer ${strokeColor === c.hex ? 'ring-2 ring-white scale-110 shadow-lg' : 'opacity-70 hover:opacity-100'}`} 
+                          style={{ backgroundColor: c.hex }} 
+                        />
                       ))}
                     </div>
                   </div>
@@ -1025,31 +1357,20 @@ export default function PdfSigner() {
                 </div>
               )}
 
-              {completedResult ? (
-                <DownloadSuccessCard
-                  downloadUrl={completedResult.downloadUrl}
-                  filename={completedResult.filename}
-                  fileSize={completedResult.fileSize}
-                  outputFormat="pdf"
-                  rawBlob={completedResult.rawBlob}
-                  onReset={() => setCompletedResult(null)}
-                />
-              ) : (
-                <button 
-                  onClick={executeSignPdf} 
-                  disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
-                  className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
-                >
-                  {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
-                  <span>
-                    {isProcessing 
-                      ? progressMsg 
-                      : (enterpriseMode 
-                          ? (isEs ? 'Firmar con PAdES →' : 'Sign with PAdES →') 
-                          : (isEs ? (pageScope === 'all' ? 'Estampar Firma en Todo el PDF →' : 'Estampar Firma Digital →') : 'Stamp Digital Signature →'))}
-                  </span>
-                </button>
-              )}
+              <button 
+                onClick={executeSignPdf} 
+                disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
+                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+              >
+                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
+                <span>
+                  {isProcessing 
+                    ? progressMsg 
+                    : (enterpriseMode 
+                        ? (isEs ? 'Firmar con PAdES →' : 'Sign with PAdES →') 
+                        : (isEs ? (pageScope === 'all' ? 'Estampar Firma en Todo el PDF →' : 'Estampar Firma Digital →') : 'Stamp Digital Signature →'))}
+                </span>
+              </button>
             </div>
           </div>
         </motion.div>

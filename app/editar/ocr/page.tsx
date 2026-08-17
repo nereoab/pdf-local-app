@@ -112,8 +112,8 @@ export default function OcrPage() {
                   textEs: 'Haz clic en "Reconocer Texto (OCR)". El motor procesa el documento en segundo plano sin congelar el navegador. Descarga el resultado directamente.',
                   textEn: 'Click "Recognize Text (OCR)". The engine processes the document in the background without freezing the browser. Download the result directly.',
                 },
-              ].map((item, i) => (
-                <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+              ].map((item) => (
+                <div key={`ocr-step-${item.step}`} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
                   <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">
                     {isEs ? `Paso ${item.step}` : `Step ${item.step}`}
                   </span>
@@ -151,7 +151,7 @@ export default function OcrPage() {
                   'Export recognized text as PDF with invisible layer, plain TXT, or structured JSON.',
                   'Add metadata (title, author, subject) to the output PDF for document management.',
                 ]).map((text, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                  <div key={`ocr-do-${i}`} className="flex items-start gap-2 text-xs text-zinc-300">
                     <span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span>
                     <span>{text}</span>
                   </div>
@@ -174,7 +174,7 @@ export default function OcrPage() {
                   'Enable "Enhance Contrast" for documents with light text or grayish background.',
                   'For financial documents or invoices, enable "Numeric Mode" for better accuracy with numbers.',
                 ]).map((text, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                  <div key={`ocr-tip-${i}`} className="flex items-start gap-2 text-xs text-zinc-300">
                     <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
                     <span>{text}</span>
                   </div>
@@ -232,8 +232,8 @@ export default function OcrPage() {
               </h2>
             </div>
             <div className="space-y-2">
-              {faqItems.map((item, i) => (
-                <details key={i} className="group bg-zinc-900/60 border border-white/5 rounded-xl overflow-hidden">
+              {faqItems.map((item) => (
+                <details key={item.q} className="group bg-zinc-900/60 border border-white/5 rounded-xl overflow-hidden">
                   <summary className="flex items-center justify-between px-5 py-3.5 cursor-pointer list-none select-none hover:bg-zinc-800/40 transition-colors">
                     <span className="text-xs font-bold text-white pr-4">{item.q}</span>
                     <ChevronDown className="w-4 h-4 text-zinc-400 flex-shrink-0 group-open:rotate-180 transition-transform duration-200" />

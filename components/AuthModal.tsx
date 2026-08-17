@@ -241,7 +241,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <motion.div key="auth-modal-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -541,7 +541,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               )}
             </motion.div>
           </div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   );

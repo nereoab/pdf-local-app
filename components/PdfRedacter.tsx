@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useFileStore } from '../store/useFileStore';
 import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import DownloadSuccessCard from './DownloadSuccessCard';
 import { getEnabledPatterns, patternToRegex, type SensitivePattern, type AuditEntry, generateAuditReport, downloadAuditReport, addCustomPattern } from '../lib/sensitive-patterns-registry';
 import { calculateSHA256, addCustodyRecord, generateCertificateOfRedaction, downloadCertificate, addAuditLogEntry, generateSessionId } from '../lib/security-audit';
 
@@ -41,6 +42,19 @@ interface SensitiveMatch {
   redactionBox: RedactionBox;
 }
 
+// Canvas de medición reutilizable para evitar miles de createElement durante escaneos regex
+let _cachedMeasureCanvas: HTMLCanvasElement | null = null;
+let _cachedMeasureCtx: CanvasRenderingContext2D | null = null;
+
+function getCachedMeasureCtx(): CanvasRenderingContext2D | null {
+  if (typeof window === 'undefined') return null;
+  if (!_cachedMeasureCanvas) {
+    _cachedMeasureCanvas = document.createElement('canvas');
+    _cachedMeasureCtx = _cachedMeasureCanvas.getContext('2d');
+  }
+  return _cachedMeasureCtx;
+}
+
 export default function PdfRedacter() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -56,13 +70,6 @@ export default function PdfRedacter() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(115);
-
-  // Sync file state with globalFile from store
-  useEffect(() => {
-    if (globalFile && !file) {
-      cargarPdf(globalFile);
-    }
-  }, [globalFile]);
 
   useEffect(() => {
     return () => {
@@ -95,7 +102,7 @@ export default function PdfRedacter() {
   // Advanced options
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [redactionStyle, setRedactionStyle] = useState<'black' | 'gray'>('black');
-  const [redactionMode, setRedactionMode] = useState<'precision' | 'raster'>('raster');
+  const [redactionMode, setRedactionMode] = useState<'precision' | 'raster'>('precision');
   const [customSuffix, setCustomSuffix] = useState('_Censurado');
   const [showCustomRegex, setShowCustomRegex] = useState(false);
   const [customRegexName, setCustomRegexName] = useState('');
@@ -118,6 +125,53 @@ export default function PdfRedacter() {
   // Result + Security
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [originalHash, setOriginalHash] = useState<string | null>(null);
+
+  // Estado de éxito para pantalla de descarga
+  const [completedResult, setCompletedResult] = useState<{
+    downloadUrl: string;
+    filename: string;
+    fileSize: string;
+    rawBlob?: Blob;
+    originalSize: number;
+    redactedSize: number;
+    pageCount: number;
+    totalRedactions: number;
+    pagesWithRedactions: number;
+  } | null>(null);
+
+  // Altura sincronizada para igualar panel de vista previa al panel de control
+  const controlPanelRef = useRef<HTMLDivElement>(null);
+  const [previewHeight, setPreviewHeight] = useState<number>(0);
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  // Sincronizar altura del panel de vista previa con la del panel de control
+  useEffect(() => {
+    if (!controlPanelRef.current) return;
+    const updateHeight = () => {
+      if (controlPanelRef.current) {
+        const h = controlPanelRef.current.getBoundingClientRect().height;
+        if (h > 0) setPreviewHeight(h);
+      }
+    };
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.target.getBoundingClientRect().height;
+        if (h > 0) {
+          setPreviewHeight(h);
+        }
+      }
+    });
+    observer.observe(controlPanelRef.current);
+    updateHeight();
+    return () => observer.disconnect();
+  }, [file, sensitiveMatches, searchQuery, selectedPreset, exactMatch, redactionStyle, redactionMode, customSuffix, isProcessing, redactions, autoRedactions]);
   const [sessionId] = useState<string>(generateSessionId());
   const [startTime, setStartTime] = useState<number>(0);
 
@@ -157,7 +211,7 @@ export default function PdfRedacter() {
         setProgressPercent(Math.round((p / count) * 100));
         try {
           const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 1.8 });
+          const viewport = page.getViewport({ scale: 1.4 });
           const textViewport = page.getViewport({ scale: 1.0 });
 
           const textContent = await page.getTextContent();
@@ -183,12 +237,12 @@ export default function PdfRedacter() {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            urls[p] = dataUrl;
-            const blob = await new Promise<Blob>((resolve, reject) => {
-              canvas.toBlob((b) => { if (b) resolve(b); else reject(new Error('Blob conversion failed')); }, 'image/jpeg', 0.85);
-            });
-            jpegs[p] = await blob.arrayBuffer();
+            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+            if (blob) {
+              const dataUrl = URL.createObjectURL(blob);
+              urls[p] = dataUrl;
+              setPageDataUrls(prev => ({ ...prev, [p]: dataUrl }));
+            }
           }
         } catch (pageErr) {
           console.warn(`Error al renderizar página ${p}:`, pageErr);
@@ -197,7 +251,6 @@ export default function PdfRedacter() {
 
       setExtractedTextItems(extracted);
       setPageDataUrls(urls);
-      setPageJpegBytes(jpegs);
       
       // Detección automática de datos sensibles al cargar
       runAutoDetection(extracted);
@@ -264,8 +317,7 @@ export default function PdfRedacter() {
 
   const measureTextWidth = (text: string, fontSize: number): number => {
     if (typeof window === 'undefined') return text.length * fontSize * 0.55;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = getCachedMeasureCtx();
     if (!ctx) return text.length * fontSize * 0.55;
     ctx.font = `${fontSize}px sans-serif, Arial, "Times New Roman"`;
     return ctx.measureText(text).width;
@@ -403,6 +455,13 @@ export default function PdfRedacter() {
     const sampleFile = new File([sampleBlob], '0002.pdf', { type: 'application/pdf' });
     await cargarPdf(sampleFile);
   };
+
+  // Sync file state with globalFile from store
+  useEffect(() => {
+    if (globalFile && (!file || Object.keys(pageDataUrls).length === 0)) {
+      cargarPdf(globalFile);
+    }
+  }, [globalFile]);
 
   const resetRedacter = () => {
     setFile(null);
@@ -643,12 +702,18 @@ export default function PdfRedacter() {
 
     const originalName = file!.name.replace(/\.[^/.]+$/, '');
     const suffix = customSuffix || '_Censurado';
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${originalName}${suffix}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    setCompletedResult({
+      downloadUrl: url,
+      filename: `${originalName}${suffix}.pdf`,
+      fileSize: formatFileSize(blob.size),
+      rawBlob: blob,
+      originalSize: file!.size,
+      redactedSize: r.redactedBytes.byteLength,
+      pageCount: r.pageCount,
+      totalRedactions: r.totalRedactions,
+      pagesWithRedactions: r.pagesWithRedactions,
+    });
 
     setIsProcessing(false);
     const durationMs = Date.now() - startTime;
@@ -801,12 +866,98 @@ export default function PdfRedacter() {
             <span>{isEs ? 'TRUE REDACTION • SANITIZACIÓN DE METADATOS • WEB WORKER' : 'TRUE REDACTION • METADATA SANITIZATION • WEB WORKER'}</span>
           </div>
         </div>
+      ) : completedResult ? (
+        /* PANTALLA DE ÉXITO Y DESCARGA */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
+                <Check className="w-7 h-7 text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">
+                  {isEs ? '¡Documento Censurado con Éxito!' : 'Document Redacted Successfully!'}
+                </h2>
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                  {isEs ? `${completedResult.totalRedactions} parches en ${completedResult.pagesWithRedactions} páginas` : `${completedResult.totalRedactions} patches on ${completedResult.pagesWithRedactions} pages`}
+                </p>
+              </div>
+            </div>
+
+            {/* MÉTRICAS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.originalSize)}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Censurado' : 'Redacted Size'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.redactedSize)}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Parches' : 'Patches'}</span>
+                <span className="text-white font-bold text-lg font-mono mt-0.5">{completedResult.totalRedactions}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Afectadas' : 'Affected Pages'}</span>
+                <span className="text-amber-400 font-bold text-lg font-mono mt-0.5">{completedResult.pagesWithRedactions}</span>
+              </div>
+            </div>
+
+            {/* TARJETA DE DESCARGA */}
+            <DownloadSuccessCard
+              downloadUrl={completedResult.downloadUrl}
+              filename={completedResult.filename}
+              fileSize={completedResult.fileSize}
+              outputFormat="pdf"
+              rawBlob={completedResult.rawBlob}
+              onReset={() => {
+                setCompletedResult(null);
+                setDownloadUrl(null);
+                setFile(null);
+                setGlobalFile(null);
+                setRedactions([]);
+                setAutoRedactions([]);
+                setPageDataUrls({});
+                setPageJpegBytes({});
+                setExtractedTextItems([]);
+                setSensitiveMatches([]);
+                setAuditEntries([]);
+              }}
+            />
+          </div>
+
+          {/* BOTÓN VOLVER */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => {
+                setCompletedResult(null);
+                setDownloadUrl(null);
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {isEs ? 'Volver al Panel de Censura' : 'Back to Redaction Panel'}
+            </button>
+          </div>
+        </motion.div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
           
           {/* LADO IZQUIERDO: VISOR DE PDF (7 COLUMNAS) */}
           <div className="lg:col-span-7 flex flex-col">
-            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono h-[92vh] min-h-[860px]">
+            <div
+              className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
+              style={{
+                height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
+                maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
+                minHeight: '400px',
+              }}
+            >
               <div className="bg-zinc-900 border-b border-white/10 p-3 flex justify-between items-center z-10 flex-shrink-0">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0"><FileText className="w-4 h-4 text-white" /></div>
@@ -851,7 +1002,7 @@ export default function PdfRedacter() {
                 </div>
               </div>
 
-              <div ref={scrollContainerRef} className={`flex-1 bg-[#121215] relative overflow-y-auto p-4 ${activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-pointer' : 'cursor-default'}`}>
+              <div ref={scrollContainerRef} className={`flex-1 min-h-0 bg-[#121215] relative overflow-y-auto p-4 ${activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-pointer' : 'cursor-default'}`}>
                 <div style={{ zoom: `${zoomLevel}%`, transformOrigin: '0 0' }} className="flex flex-col items-center gap-4">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
                   const manualBoxes = redactions.filter(r => r.page === pageNum);
@@ -904,8 +1055,11 @@ export default function PdfRedacter() {
 
           {/* LADO DERECHO: PANEL DE CONTROL (5 COLUMNAS - MÁS ANCHO) */}
           <div className="lg:col-span-5 flex flex-col">
-            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans h-[92vh] min-h-[860px]">
-              <div className="flex-1 overflow-y-auto [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex flex-col gap-3 font-sans">
+            <div
+              ref={controlPanelRef}
+              className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans"
+            >
+              <div className="flex flex-col gap-3 font-sans">
                 
                 {/* CABECERA PANEL */}
                 <div className="flex items-center justify-between mb-1 border-b border-white/10 pb-3 flex-shrink-0">
@@ -1076,7 +1230,6 @@ export default function PdfRedacter() {
 
               {/* BOTÓN DE ACCIÓN */}
               <div className="pt-3 border-t border-white/10 mt-2 flex-shrink-0">
-                {!downloadUrl ? (
                   <button onClick={executeRedact} disabled={isProcessing || (redactions.length + autoRedactions.length) === 0}
                     className="w-full bg-white text-black hover:bg-zinc-200 font-extrabold text-xs py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl group disabled:opacity-40">
                     {isProcessing ? (
@@ -1085,12 +1238,6 @@ export default function PdfRedacter() {
                       <><EyeOff className="w-4 h-4 text-black" /><span>{redactions.length > 0 ? `${isEs ? 'Censurar PDF' : 'Redact PDF'} (${redactions.length} ${isEs ? 'parches' : 'patches'})` : (isEs ? 'Censurar PDF' : 'Redact PDF')}</span></>
                     )}
                   </button>
-                ) : (
-                  <button onClick={resetRedacter}
-                    className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-3 px-6 rounded-full text-xs font-bold border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono">
-                    <RefreshCw className="w-3.5 h-3.5" /><span>{isEs ? 'Censurar otro documento' : 'Redact another document'}</span>
-                  </button>
-                )}
                 <div className="pt-2 flex items-center justify-between font-mono text-xs text-zinc-400">
                   <span className="flex items-center gap-1.5 text-[10px]">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{isEs ? 'Web Worker Activo' : 'Web Worker Active'}

@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import DownloadSuccessCard from './DownloadSuccessCard';
 
 type PageScope = 'todas' | 'rango';
 
@@ -58,6 +59,19 @@ export default function PdfUnlocker() {
   // === RESULTADOS ===
   const [results, setResults] = useState<UnlockResult[]>([]);
 
+  // Estado de éxito para pantalla de descarga
+  const [completedResult, setCompletedResult] = useState<{
+    downloadUrl: string;
+    filename: string;
+    fileSize: string;
+    rawBlob?: Blob;
+    originalSize: number;
+    unlockedSize: number;
+    pageCount: number;
+    checksumSha256: string;
+    encryptionType: string;
+  } | null>(null);
+
   // === DETECCIÓN DINÁMICA POR ARCHIVO ===
   const [detectionMap, setDetectionMap] = useState<Record<number, EncryptionDetection>>({});
 
@@ -75,6 +89,40 @@ export default function PdfUnlocker() {
   const [customSuffix, setCustomSuffix] = useState('_Desbloqueado');
 
   const activeFile = files[activeFileIdx] || null;
+
+  // Altura sincronizada para igualar panel de vista previa al panel de control
+  const controlPanelRef = useRef<HTMLDivElement>(null);
+  const [previewHeight, setPreviewHeight] = useState<number>(0);
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  // Sincronizar altura del panel de vista previa con la del panel de control
+  useEffect(() => {
+    if (!controlPanelRef.current) return;
+    const updateHeight = () => {
+      if (controlPanelRef.current) {
+        const h = controlPanelRef.current.getBoundingClientRect().height;
+        if (h > 0) setPreviewHeight(h);
+      }
+    };
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.target.getBoundingClientRect().height;
+        if (h > 0) {
+          setPreviewHeight(h);
+        }
+      }
+    });
+    observer.observe(controlPanelRef.current);
+    updateHeight();
+    return () => observer.disconnect();
+  }, [files, activeFileIdx, password, showPassword, showAdvanced, isProcessing, results]);
 
   // === EFECTOS ===
   useEffect(() => {
@@ -204,6 +252,7 @@ export default function PdfUnlocker() {
         setActiveFileIdx(0);
       }
       setResults([]);
+      setCompletedResult(null);
     }
     e.target.value = '';
   };
@@ -269,13 +318,18 @@ export default function PdfUnlocker() {
           (r as unknown as Record<string, unknown>).downloadUrl = url;
           newResults.push(r);
           setResults([...newResults]);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `${r.fileName.replace(/\.[^/.]+$/, '')}${customSuffix || '_Desbloqueado'}.pdf`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          toast.success(isEs ? `${r.fileName}: ¡${r.pageCount} páginas liberadas!` : `${r.fileName}: ${r.pageCount} pages unlocked!`);
+          // Mostrar pantalla de éxito
+          setCompletedResult({
+            downloadUrl: url,
+            filename: `${r.fileName.replace(/\.[^/.]+$/, '')}${customSuffix || '_Desbloqueado'}.pdf`,
+            fileSize: formatFileSize(blob.size),
+            rawBlob: blob,
+            originalSize: r.originalSize || 0,
+            unlockedSize: r.unlockedSize || blob.size,
+            pageCount: r.pageCount,
+            checksumSha256: r.checksumSha256 || '',
+            encryptionType: r.encryptionType || 'Desconocido',
+          });
           if (processedCount >= fileBuffers.length) {
             setIsProcessing(false);
             worker.terminate();
@@ -457,19 +511,20 @@ export default function PdfUnlocker() {
         newResults.push(r);
         setResults([...newResults]);
 
-        // Descarga automática
+        // Establecer pantalla de éxito en vez de auto-descarga
         const originalName = file.name.replace(/\.[^/.]+$/, '');
         const suffix = customSuffix || '_Desbloqueado';
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${originalName}${suffix}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        toast.success(isEs
-          ? `${file.name}: ¡${pageCount} páginas desbloqueadas con éxito!`
-          : `${file.name}: ${pageCount} pages unlocked successfully!`);
+        setCompletedResult({
+          downloadUrl: url,
+          filename: `${originalName}${suffix}.pdf`,
+          fileSize: formatFileSize(unlockedBytes.byteLength),
+          rawBlob: blob,
+          originalSize: file.size,
+          unlockedSize: unlockedBytes.byteLength,
+          pageCount,
+          checksumSha256,
+          encryptionType: hasEncryptDict ? 'AES-256 / Protected' : 'none',
+        });
       }
 
       setProgressPercent(100);
@@ -624,6 +679,77 @@ export default function PdfUnlocker() {
             <span>{isEs ? '100% PRIVACIDAD • DESCIFRADO LOCAL AES-256 • WEB WORKER' : '100% PRIVACY • LOCAL AES-256 DECRYPTION • WEB WORKER'}</span>
           </div>
         </motion.div>
+      ) : completedResult ? (
+        /* PANTALLA DE ÉXITO Y DESCARGA */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
+                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">
+                  {isEs ? '¡Documento Desbloqueado con Éxito!' : 'Document Unlocked Successfully!'}
+                </h2>
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                  {completedResult.encryptionType}
+                </p>
+              </div>
+            </div>
+
+            {/* MÉTRICAS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.originalSize)}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Desbloqueado' : 'Unlocked Size'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.unlockedSize)}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas' : 'Pages'}</span>
+                <span className="text-white font-bold text-lg font-mono mt-0.5">{completedResult.pageCount}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">SHA-256</span>
+                <span className="text-emerald-400 font-bold text-[10px] font-mono mt-0.5 truncate">{completedResult.checksumSha256?.substring(0, 16)}...</span>
+              </div>
+            </div>
+
+            {/* TARJETA DE DESCARGA */}
+            <DownloadSuccessCard
+              downloadUrl={completedResult.downloadUrl}
+              filename={completedResult.filename}
+              fileSize={completedResult.fileSize}
+              outputFormat="pdf"
+              rawBlob={completedResult.rawBlob}
+              onReset={() => {
+                setCompletedResult(null);
+                setResults([]);
+                handleRemoveAllFiles();
+              }}
+            />
+          </div>
+
+          {/* BOTÓN VOLVER */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => {
+                setCompletedResult(null);
+                setResults([]);
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {isEs ? 'Volver al Panel de Desbloqueo' : 'Back to Unlock Panel'}
+            </button>
+          </div>
+        </motion.div>
       ) : (
         /* ÁREA DE TRABAJO: VISOR 5/12 + PANEL 7/12 */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans items-stretch">
@@ -694,7 +820,14 @@ export default function PdfUnlocker() {
             )}
 
             {/* VISTA PREVIA CON GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS) */}
-            <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono flex-1 min-h-[580px]">
+            <div
+              className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
+              style={{
+                height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
+                maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
+                minHeight: '300px',
+              }}
+            >
               <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10 font-sans">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 flex-shrink-0">
@@ -722,7 +855,7 @@ export default function PdfUnlocker() {
               </div>
 
               {/* CONTENEDOR DE MINIATURAS EN GRILLA (3 COLUMNAS X 4 FILAS) */}
-              <div className="w-full flex-1 bg-[#09090b] relative p-3 sm:p-4 h-[580px] max-h-[600px] overflow-y-auto font-sans flex flex-col justify-start">
+              <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#09090b] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start">
                 {isLoadingThumbnails ? (
                   <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
@@ -780,7 +913,10 @@ export default function PdfUnlocker() {
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
           <div className="lg:col-span-7 flex flex-col">
-            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans flex-1">
+            <div
+              ref={controlPanelRef}
+              className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans"
+            >
 
               <div>
                 {/* CABECERA PANEL */}
@@ -948,7 +1084,6 @@ export default function PdfUnlocker() {
                 </AnimatePresence>
 
                 <div className="space-y-3 pt-2">
-                  {!hasResults ? (
                     <button
                       onClick={executeUnlock}
                       disabled={isProcessing || files.length === 0}
@@ -970,51 +1105,6 @@ export default function PdfUnlocker() {
                         </>
                       )}
                     </button>
-                  ) : (
-                    <div className="flex flex-col gap-2 font-sans">
-                      {/* BOTÓN PRINCIPAL DE DESCARGA DIRECTA DE ARCHIVO PDF */}
-                      {results.map((r, i) => (
-                        <a
-                          key={i}
-                          href={(r as any).downloadUrl}
-                          download={`${r.fileName.replace(/\.[^/.]+$/, '')}${customSuffix || '_Desbloqueado'}.pdf`}
-                          className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-3.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg font-sans uppercase"
-                        >
-                          <FileDown className="w-4 h-4 text-black" />
-                          <span>
-                            {isEs
-                              ? `DESCARGAR ${r.fileName.replace(/\.[^/.]+$/, '')}${customSuffix || '_Desbloqueado'}.pdf`
-                              : `DOWNLOAD ${r.fileName.replace(/\.[^/.]+$/, '')}${customSuffix || '_Unlocked'}.pdf`}
-                          </span>
-                        </a>
-                      ))}
-
-                      {/* Indicador de integridad */}
-                      {activeResult && (
-                        <div className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl px-3 py-2.5 text-[10px] font-mono text-emerald-400">
-                          <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-                          <div className="truncate">
-                            <span className="font-bold">{isEs ? 'Integridad verificada' : 'Integrity verified'}</span>
-                            <span className="text-zinc-500 ml-2">SHA-256: {activeResult.checksumSha256?.substring(0, 24)}...</span>
-                          </div>
-                        </div>
-                      )}
-                      <button
-                        onClick={downloadAuditReport}
-                        className="w-full bg-zinc-900 hover:bg-emerald-500/20 text-zinc-300 hover:text-emerald-400 py-2.5 px-4 rounded-full text-xs font-bold border border-white/10 hover:border-emerald-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono"
-                      >
-                        <FileDown className="w-3.5 h-3.5" />
-                        <span>{isEs ? 'Descargar reporte de auditoría (JSON)' : 'Download audit report (JSON)'}</span>
-                      </button>
-                      <button
-                        onClick={handleRemoveAllFiles}
-                        className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2.5 px-4 rounded-full text-xs font-bold border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>{isEs ? 'Desbloquear otros archivos' : 'Unlock other files'}</span>
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {/* INDICADOR WEB WORKER */}

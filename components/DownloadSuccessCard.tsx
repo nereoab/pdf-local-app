@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { 
   Download, CheckCircle2, ShieldCheck, Sparkles, ArrowRight, RotateCcw,
-  Zap, Lock, PenTool, ScanText, RefreshCw, FolderOpen, Trash2, FileText, FileCode, FileSearch, Layers
+  Zap, Lock, PenTool, ScanText, RefreshCw, FolderOpen, Trash2, FileText, FileCode, FileSearch, Layers, Eraser
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
@@ -72,6 +72,15 @@ export default function DownloadSuccessCard({
 
   const recommendedTools = [
     {
+      id: 'quitar-marca-agua',
+      titleEs: 'Quitar Sello de Agua',
+      titleEn: 'Remove Watermark',
+      descEs: 'Eliminar sellos o marcas',
+      descEn: 'Remove stamps or marks',
+      icon: Eraser,
+      path: '/editar/quitar-marca-agua',
+    },
+    {
       id: 'comprimir',
       titleEs: 'Comprimir PDF',
       titleEn: 'Compress PDF',
@@ -115,15 +124,6 @@ export default function DownloadSuccessCard({
       descEn: 'Export to DOCX format',
       icon: RefreshCw,
       path: '/convertir/pdf-word',
-    },
-    {
-      id: 'unir',
-      titleEs: 'Unir / Organizar',
-      titleEn: 'Merge / Organize',
-      descEs: 'Combinar con otros PDFs',
-      descEn: 'Merge with other PDFs',
-      icon: FolderOpen,
-      path: '/organizar/unir',
     },
   ];
 

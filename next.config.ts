@@ -33,11 +33,11 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.syncfusion.com",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.syncfusion.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://cdnjs.cloudflare.com https://cdn.syncfusion.com",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https: https://www.google-analytics.com https://*.google-analytics.com",
+              "connect-src 'self' https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://www.google-analytics.com https://*.google-analytics.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com",
               "frame-src 'self' blob:",
               "worker-src 'self' blob:",
               "media-src 'self'",
@@ -48,10 +48,49 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Caché agresiva para assets estáticos
+
+      // Headers para archivos comprimidos de WebViewer (Brotli y Gzip WASM/JS/MEM)
       {
-        source: '/_next/static/(.*)',
-        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+        source: '/webviewer/:path*.br.wasm',
+        headers: [
+          { key: 'Content-Type', value: 'application/wasm' },
+          { key: 'Content-Encoding', value: 'br' },
+        ],
+      },
+      {
+        source: '/webviewer/:path*.br.mem',
+        headers: [
+          { key: 'Content-Type', value: 'application/octet-stream' },
+          { key: 'Content-Encoding', value: 'br' },
+        ],
+      },
+      {
+        source: '/webviewer/:path*.br.js.mem',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript' },
+          { key: 'Content-Encoding', value: 'br' },
+        ],
+      },
+      {
+        source: '/webviewer/:path*.gz.wasm',
+        headers: [
+          { key: 'Content-Type', value: 'application/wasm' },
+          { key: 'Content-Encoding', value: 'gzip' },
+        ],
+      },
+      {
+        source: '/webviewer/:path*.gz.mem',
+        headers: [
+          { key: 'Content-Type', value: 'application/octet-stream' },
+          { key: 'Content-Encoding', value: 'gzip' },
+        ],
+      },
+      {
+        source: '/webviewer/:path*.gz.js.mem',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript' },
+          { key: 'Content-Encoding', value: 'gzip' },
+        ],
       },
       // No cachear API routes
       {

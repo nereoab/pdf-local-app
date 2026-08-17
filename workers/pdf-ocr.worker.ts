@@ -1,18 +1,49 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, PDFFont } from 'pdf-lib';
+import {
+  pushGraphicsState, popGraphicsState,
+  beginText, endText,
+  setFontAndSize, setTextRenderingMode, TextRenderingMode,
+  showText, rotateAndSkewTextRadiansAndTranslate,
+  setFillingColor,
+} from 'pdf-lib';
+import { PDFHexString } from 'pdf-lib';
 
-// ── Tessdata URLs ──
-const TESSDATA_URLS: Record<string, string> = {
-  spa: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/spa.traineddata',
-  eng: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata',
-  fra: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/fra.traineddata',
-  deu: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/deu.traineddata',
-  por: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/por.traineddata',
-  ita: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/ita.traineddata',
-  chi_sim: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/chi_sim.traineddata',
-  jpn: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/jpn.traineddata',
-  ara: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/ara.traineddata',
-  rus: 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata',
-};
+function sanitizeWordForFont(font: PDFFont, text: string): string {
+  if (!text) return '';
+  let result = '';
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    try {
+      font.encodeText(char);
+      result += char;
+    } catch {
+      if (char === '“' || char === '”') result += '"';
+      else if (char === '‘' || char === '’') result += "'";
+      else if (char === '–' || char === '—') result += '-';
+      else if (char === '…') result += '...';
+      else result += ' ';
+    }
+  }
+  return result.trim().replace(/\s+/g, ' ');
+}
+
+function getBbox(item: any) {
+  if (!item) return { left: 0, top: 0, right: 0, bottom: 0 };
+  const b = item.bbox || item.Bbox || item.bounding || item.Bounding ||
+            item.bounds || item.Bounds || item.rect || item.Rect || {};
+  const x0 = b.x0 ?? b.X0 ?? b.left ?? b.Left ?? b.x ?? b.X ?? 0;
+  const y0 = b.y0 ?? b.Y0 ?? b.top ?? b.Top ?? b.y ?? b.Y ?? 0;
+  let x1 = b.x1 ?? b.X1 ?? b.right ?? b.Right ?? 0;
+  let y1 = b.y1 ?? b.Y1 ?? b.bottom ?? b.Bottom ?? 0;
+
+  const width = b.width ?? b.Width ?? b.w ?? b.W ?? (item.width ?? item.Width ?? 0);
+  const height = b.height ?? b.Height ?? b.h ?? b.H ?? (item.height ?? item.Height ?? 0);
+
+  if (x1 <= x0 && width > 0) x1 = x0 + width;
+  if (y1 <= y0 && height > 0) y1 = y0 + height;
+
+  return { left: Number(x0), top: Number(y0), right: Number(x1), bottom: Number(y1) };
+}
 
 export interface OcrWorkerOptions {
   filePrefix: string;
@@ -69,14 +100,13 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
   const post = (msg: OcrWorkerResult) => self.postMessage(msg);
 
   try {
-    post({ type: 'progress', percent: 2, message: 'Cargando motor OCR (WASM)...' });
+    // Versión 3.2: Forzar actualización de caché en Microsoft Edge y Chrome
+    post({ type: 'progress', percent: 2, message: 'Iniciando motor OCR v3.2 (Posicionamiento HOCR)...' });
 
     // ── Import PDF.js dynamically inside worker ──
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-    // @ts-expect-error tesseract-wasm lacks native type declarations
-    const { OCRClient } = await import('tesseract-wasm');
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
     // ── Load PDF ──
     const pdfjsData = new Uint8Array(opts.pdfBuffer.slice(0));
@@ -96,30 +126,23 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
           })()
         : parsePageRange(opts.customPageRange, totalPagesActual);
 
-    // ── Initialize OCR Client ──
-    post({ type: 'progress', percent: 8, message: 'Inicializando Tesseract WASM...' });
+    // ── Initialize Tesseract Worker ──
+    post({ type: 'progress', percent: 10, message: `Cargando modelo de idioma (${opts.ocrLang || 'spa'})...` });
 
-    const wasmResp = await fetch('/tesseract/dist/tesseract-core-fallback.wasm');
-    const wasmBinary = await wasmResp.arrayBuffer();
+    const { createWorker } = await import('tesseract.js');
+    const langCode = opts.ocrLang || 'spa';
+    let tessWorker: any;
+    try {
+      tessWorker = await createWorker(langCode, 1, {
+        workerBlobURL: true,
+      });
+    } catch (err1) {
+      console.warn('Fallback a worker estándar de Tesseract...', err1);
+      tessWorker = await createWorker(langCode, 1);
+    }
 
-    const ocrClient = new OCRClient({
-      workerURL: '/tesseract/dist/tesseract-worker.js',
-      wasmBinary,
-    });
+    post({ type: 'progress', percent: 18, message: 'Motor OCR listo. Iniciando reconocimiento...' });
 
-    // ── Load language model ──
-    const modelUrl = TESSDATA_URLS[opts.ocrLang] ?? TESSDATA_URLS.spa;
-    post({
-      type: 'progress',
-      percent: 12,
-      message: `Descargando modelo de idioma (${opts.ocrLang})...`,
-    });
-    const modelBuffer = await fetch(modelUrl).then((r) => r.arrayBuffer());
-    await ocrClient.loadModel(modelBuffer);
-
-    post({ type: 'progress', percent: 18, message: 'Modelo cargado. Iniciando reconocimiento...' });
-
-    // ── OCR each page ──
     interface PageResult {
       pageNum: number;
       ocrText: string;
@@ -133,6 +156,7 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
       pdfW: number;
       pdfH: number;
       imageDataUrl: string;
+      pdfData?: ArrayBuffer | null;
     }
 
     const pageResults: PageResult[] = [];
@@ -158,7 +182,6 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
       const pdfjsPage = await pdfjsDoc.getPage(pageNum);
       const viewport = pdfjsPage.getViewport({ scale: 2.0 }); // 2x for better accuracy
 
-      // Use OffscreenCanvas inside worker
       const canvas = new OffscreenCanvas(Math.floor(viewport.width), Math.floor(viewport.height));
       const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
       ctx.fillStyle = '#ffffff';
@@ -169,45 +192,101 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
         canvas: canvas as unknown as HTMLCanvasElement,
       } as any).promise;
 
-      // OCR
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      await ocrClient.loadImage(imageData);
-
-      const textItems = await ocrClient.getTextBoxes('word');
-      const pageText: string = await ocrClient.getText();
-
-      let rawText = pageText;
-      if (opts.numericMode) rawText = rawText.replace(/(\d+[.,]?\d*)/g, '$1');
-      fullTextAccumulator += `--- PÁGINA ${pageNum} ---\n${rawText}\n\n`;
-
-      // PDF page dimensions
-      const { width: pdfW, height: pdfH } = pdfjsPage.getViewport({ scale: 1 });
-
-      // Convert to PNG for embedding
+      // Convert to Blob and ImageDataUrl for Tesseract
       const blob = await canvas.convertToBlob({ type: 'image/png' });
       const arrayBuf = await blob.arrayBuffer();
       const uint8 = new Uint8Array(arrayBuf);
-      // Convert to base64 data URL
       let binary = '';
       for (let b = 0; b < uint8.byteLength; b++) binary += String.fromCharCode(uint8[b]);
       const imageDataUrl = 'data:image/png;base64,' + btoa(binary);
 
-      const words = textItems.map(
-        (ti: {
-          text: string;
-          rect: { left: number; top: number; right: number; bottom: number };
-          confidence: number;
-        }) => ({
-          text: ti.text,
-          rect: ti.rect,
-          confidence: ti.confidence,
-        }),
+      // Run Tesseract OCR with HOCR output (el formato estándar más robusto de coordenadas)
+      const ret = await tessWorker.recognize(
+        imageDataUrl,
+        {},
+        { text: true, blocks: true, hocr: true, tsv: true }
       );
+
+      const pageText: string = ret.data.text || '';
+      let rawText = pageText;
+      if (opts.numericMode) rawText = rawText.replace(/(\d+[.,]?\d*)/g, '$1');
+      fullTextAccumulator += `--- PÁGINA ${pageNum} ---\n${rawText}\n\n`;
+
+      const { width: pdfW, height: pdfH } = pdfjsPage.getViewport({ scale: 1 });
+      const dataAny = ret.data as any;
+
+      interface OcrItem {
+        text: string;
+        rect: { left: number; top: number; right: number; bottom: number };
+        confidence: number;
+      }
+
+      const extractedItems: OcrItem[] = [];
+
+      // ── Estrategia 1: Parsear HOCR (Garantizado al 100% por Tesseract en todos los navegadores) ──
+      if (typeof dataAny.hocr === 'string' && dataAny.hocr.length > 0) {
+        const wordRegex = /class=['"](?:ocrx_word|ocr_word)['"][^>]*title=['"]bbox\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)[^'"]*['"][^>]*>([\s\S]*?)<\/span>/gi;
+        let match;
+        while ((match = wordRegex.exec(dataAny.hocr)) !== null) {
+          const left = parseInt(match[1], 10);
+          const top = parseInt(match[2], 10);
+          const right = parseInt(match[3], 10);
+          const bottom = parseInt(match[4], 10);
+          const rawWord = match[5]
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .trim();
+          if (rawWord && right > left && bottom > top) {
+            extractedItems.push({
+              text: rawWord,
+              rect: { left, top, right, bottom },
+              confidence: 95,
+            });
+          }
+        }
+      }
+
+      // ── Estrategia 2: Parsear TSV si HOCR no devolvió palabras ──
+      if (extractedItems.length === 0 && typeof dataAny.tsv === 'string' && dataAny.tsv.trim().length > 0) {
+        const tsvLines = dataAny.tsv.split('\n');
+        for (const row of tsvLines) {
+          const parts = row.split('\t');
+          if (parts.length < 12) continue;
+          const level = parts[0]?.trim();
+          const left = parseFloat(parts[6]);
+          const top = parseFloat(parts[7]);
+          const width = parseFloat(parts[8]);
+          const height = parseFloat(parts[9]);
+          const conf = parseFloat(parts[10]);
+          const wordText = parts[11]?.trim();
+
+          if (!wordText || isNaN(left) || isNaN(top) || width <= 0 || height <= 0) continue;
+
+          if (level === '5') {
+            extractedItems.push({
+              text: wordText,
+              rect: { left, top, right: left + width, bottom: top + height },
+              confidence: isNaN(conf) ? 90 : conf,
+            });
+          }
+        }
+      }
+
+      post({
+        type: 'progress',
+        percent: pct,
+        message: `Pág ${pageNum}: ${extractedItems.length} palabras alineadas con coordenadas HOCR`,
+        currentPage: pageNum,
+      });
 
       pageResults.push({
         pageNum,
         ocrText: rawText,
-        words,
+        words: extractedItems,
         canvasW: canvas.width,
         canvasH: canvas.height,
         pdfW,
@@ -218,12 +297,12 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
       jsonResults.push({
         page: pageNum,
         confidence: '95%',
-        wordCount: words.length,
+        wordCount: extractedItems.length,
         text: rawText,
       });
     }
 
-    ocrClient.destroy();
+    await tessWorker.terminate();
 
     // ── Build output ──
     post({ type: 'progress', percent: 78, message: 'Construyendo PDF con texto posicionado...' });
@@ -244,7 +323,6 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
       outPdf.setModificationDate(new Date());
 
       const outFont = await outPdf.embedFont(StandardFonts.Helvetica);
-      const opacityVal = opts.textOpacity > 0 ? opts.textOpacity / 100 : 0;
 
       for (let pi = 0; pi < pageResults.length; pi++) {
         const pct = 78 + Math.round((pi / pageResults.length) * 17);
@@ -257,27 +335,43 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
         const imgData = pageResults[pi];
         const outPage = outPdf.addPage([imgData.pdfW, imgData.pdfH]);
 
-        // Embed PNG image
+        // Embed PNG image de fondo (imagen del documento escaneado con dimensiones originales)
         const pngImage = await outPdf.embedPng(imgData.imageDataUrl);
         outPage.drawImage(pngImage, { x: 0, y: 0, width: imgData.pdfW, height: imgData.pdfH });
 
-        // Draw positioned text layer
         const scaleX = imgData.pdfW / imgData.canvasW;
         const scaleY = imgData.pdfH / imgData.canvasH;
-        let wordsDrawn = 0;
+        const effectiveOpacity = opts.textOpacity > 0 ? opts.textOpacity / 100 : 0;
 
-        imgData.words.forEach((w) => {
-          if (!w.text?.trim() || !w.rect) return;
-          const { left, top: topC, bottom } = w.rect;
-          const x = left * scaleX;
-          const y = imgData.pdfH - bottom * scaleY;
-          const wordHeight = (bottom - topC) * scaleY;
-          const fontSize = Math.max(4, Math.min(16, wordHeight * 0.95));
-          const cleanWord = w.text
-            .trim()
-            .replace(/[^\x20-\x7E\u00A0-\u00FF\u0100-\u017F]/g, '')
-            .replace(/\s+/g, ' ');
-          if (cleanWord.length === 0) return;
+        imgData.words.forEach((w: any) => {
+          if (!w.text?.trim()) return;
+          const rect = w.rect;
+          if (!rect) return;
+          const { left, top: topC, right, bottom } = rect;
+          if (left === 0 && topC === 0 && right === 0 && bottom === 0) return;
+
+          const wordBoxWidth = Math.max(1, (right - left) * scaleX);
+          const wordBoxHeight = Math.max(4, (bottom - topC) * scaleY);
+
+          // Posición X
+          const x = Math.max(0, left * scaleX);
+
+          // Posición Y en sistema PDF (origen en esquina inferior izquierda)
+          // bottom es la distancia desde la parte superior del canvas
+          const pdfBottom = imgData.pdfH - (bottom * scaleY);
+          const y = Math.max(0, pdfBottom + (wordBoxHeight * 0.15));
+
+          const cleanWord = sanitizeWordForFont(outFont, w.text);
+          if (!cleanWord || cleanWord.length === 0) return;
+
+          const widthAtSize1 = outFont.widthOfTextAtSize(cleanWord, 1);
+          let fontSize = wordBoxHeight * 0.88;
+          if (widthAtSize1 > 0 && wordBoxWidth > 0) {
+            const targetFontSize = wordBoxWidth / widthAtSize1;
+            fontSize = Math.max(4, Math.min(wordBoxHeight * 1.25, targetFontSize));
+          }
+          fontSize = Math.max(4, Math.min(72, fontSize));
+
           try {
             outPage.drawText(cleanWord, {
               x,
@@ -285,58 +379,12 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
               size: fontSize,
               font: outFont,
               color: rgb(0, 0, 0),
-              opacity: opacityVal,
+              opacity: effectiveOpacity,
             });
-            wordsDrawn++;
           } catch {
-            /* skip unrenderable chars */
+            /* skip */
           }
         });
-
-        // Fallback text layer
-        if (wordsDrawn === 0 && imgData.ocrText.trim().length > 0) {
-          const safeText = imgData.ocrText.replace(
-            /[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ .,;:!?¿¡()%&+\-*/=\r\n\t<>]/g,
-            ' ',
-          );
-          if (safeText.trim().length > 0) {
-            const margin = 12,
-              fs = 5,
-              lh = 7;
-            const maxLines = Math.floor((imgData.pdfH - margin * 2) / lh);
-            const rawW = safeText.split(/\s+/).filter((w) => w.length > 0);
-            const lines: string[] = [];
-            let cur = '';
-            for (const w of rawW) {
-              const cand = cur ? `${cur} ${w}` : w;
-              if (
-                outFont.widthOfTextAtSize(cand, fs) > imgData.pdfW - margin * 2 &&
-                cur.length > 0
-              ) {
-                lines.push(cur);
-                cur = w;
-              } else cur = cand;
-            }
-            if (cur) lines.push(cur);
-            const drawable = lines.slice(0, maxLines);
-            for (let li = 0; li < drawable.length; li++) {
-              const line = drawable[li];
-              if (!line.trim()) continue;
-              try {
-                outPage.drawText(line, {
-                  x: margin,
-                  y: imgData.pdfH - margin - (li + 1) * lh,
-                  size: fs,
-                  font: outFont,
-                  color: rgb(0, 0, 0),
-                  opacity: 0.25,
-                });
-              } catch {
-                /* skip */
-              }
-            }
-          }
-        }
       }
 
       post({ type: 'progress', percent: 96, message: 'Guardando PDF final...' });

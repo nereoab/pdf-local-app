@@ -12,6 +12,7 @@ import {
   Download, Trash2, Bot, CheckCircle2, FolderOpen, Sparkles, Lock 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 
 function EditarContent() {
   const searchParams = useSearchParams();
@@ -269,22 +270,9 @@ function EditarContent() {
                         </button>
                       </div>
                       
-                       <div className="w-full flex-1 bg-[#09090b] relative overflow-hidden rounded-b-2xl">
-                         {pdfUrl && (
-                           <div className="absolute inset-2 flex items-center justify-center">
-                             <div className="relative w-full h-full max-w-[95%] max-h-[95%]">
-                               <iframe 
-                                 src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitV`} 
-                                 className="w-full h-full border-none bg-white shadow-2xl rounded-lg" 
-                                 title="PDF Preview"
-                                 style={{ minHeight: '400px' }}
-                               />
-                               {/* Barra sutil inferior con acciones */}
-                               <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/40 to-transparent pointer-events-none rounded-b-lg" />
-                             </div>
-                           </div>
-                         )}
-                       </div>
+                       <div className="w-full flex-1 bg-[#09090b] relative overflow-hidden rounded-b-2xl flex items-center justify-center">
+                          <PdfPreviewThumbnail file={globalFile} />
+                        </div>
                     </div>
                   )}
                 </div>

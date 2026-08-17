@@ -64,6 +64,36 @@ export default function PdfWatermarkRemover() {
   const [docSubject, setDocSubject] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const controlPanelRef = useRef<HTMLDivElement>(null);
+  const topContainerRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
+  const [previewHeight, setPreviewHeight] = useState<number>(0);
+
+  // Scroll automático suave e inmediato hacia el inicio de la herramienta (debajo del Navbar global)
+  useEffect(() => {
+    if (completedResult) {
+      const timer = setTimeout(() => {
+        if (topContainerRef.current) {
+          topContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [completedResult]);
+
+  // Sincronizar dinámicamente la altura de la vista previa con el panel de control
+  useEffect(() => {
+    if (!controlPanelRef.current) return;
+    const updateHeight = () => {
+      if (controlPanelRef.current) {
+        setPreviewHeight(controlPanelRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(controlPanelRef.current);
+    return () => resizeObserver.disconnect();
+  }, [file, isEncrypted, isUnlocked, cleanMode, pageScope]);
 
   const loadThumbnails = useCallback(async (selectedFile: File, pass?: string) => {
     setIsLoadingThumbs(true);
@@ -71,7 +101,7 @@ export default function PdfWatermarkRemover() {
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
 
       const buffer = await selectedFile.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({ data: buffer, password: pass });
@@ -162,6 +192,19 @@ export default function PdfWatermarkRemover() {
     setIsUnlocked(false);
     setPasswordInput('');
     setUnlockedPassword(undefined);
+  };
+
+  const handleStartOver = () => {
+    setCompletedResult(null);
+    setFile(null);
+    setGlobalFile(null);
+    setPageThumbnails([]);
+    setTotalPages(0);
+    setIsEncrypted(false);
+    setIsUnlocked(false);
+    setPasswordInput('');
+    setUnlockedPassword(undefined);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const parseSelectedPages = (): Set<number> => {
@@ -284,7 +327,7 @@ export default function PdfWatermarkRemover() {
   const selectedPagesSet = parseSelectedPages();
 
   return (
-    <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
+    <div ref={topContainerRef} className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
       <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
 
       {/* HEADER SUPERIOR */}
@@ -305,7 +348,7 @@ export default function PdfWatermarkRemover() {
           </div>
         </div>
 
-        {file && (
+        {file && !completedResult && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
@@ -322,7 +365,73 @@ export default function PdfWatermarkRemover() {
         )}
       </div>
 
-      {!file ? (
+      {completedResult ? (
+        /* ── PANTALLA DE ÉXITO DEDICADA (ESTILO EXACTO /EDITAR/TEXTO) ── */
+        <motion.div
+          ref={successContainerRef}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE LIMPIEZA */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <Eraser className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA LIMPIEZA DE MARCAS' : 'WATERMARK CLEANING RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                    {isEs ? '¡Marcas y sellos removidos con éxito!' : 'Watermarks removed successfully!'}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Estado del proceso' : 'Process status'}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Depuradas' : 'Cleaned Pages'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {parseSelectedPages().size} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Total del Documento' : 'Document Total'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {totalPages} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Modo de Limpieza' : 'Cleaning Mode'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {cleanMode === 'smart' ? (isEs ? 'Inteligente' : 'Smart') : (isEs ? 'Por Capas' : 'Layer-based')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            onReset={handleStartOver}
+          />
+        </motion.div>
+      ) : !file ? (
         /* VISTA DROPZONE VACÍA */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -340,7 +449,7 @@ export default function PdfWatermarkRemover() {
             {isEs ? "Elimina marcas de agua, sellos de fondo y textos superpuestos de tu documento 100% de forma local." : "Remove watermarks and background stamps 100% locally."}
           </p>
           <button 
-            type="button"
+            type="button" 
             className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4 text-black" />
@@ -355,12 +464,15 @@ export default function PdfWatermarkRemover() {
       ) : (
         /* VISTA PRINCIPAL CON PANEL DE CONTROL */
         <motion.div 
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 10 }} 
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
           {/* LADO IZQUIERDO: GRILLA VISUAL DE PÁGINAS EN CUADRÍCULA 4x4 */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          <div 
+            style={previewHeight > 0 ? { height: `${previewHeight}px` } : undefined}
+            className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-0"
+          >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
@@ -404,43 +516,48 @@ export default function PdfWatermarkRemover() {
                 <p className="text-zinc-400 text-xs">{isEs ? "Generando vista previa..." : "Generating preview..."}</p>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto max-h-[650px] pr-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                {(pageThumbnails.length > 0 ? pageThumbnails : Array.from({ length: totalPages || 8 })).map((thumb, idx) => {
-                  const pageNum = idx + 1;
-                  const isSelected = selectedPagesSet.has(pageNum);
+              <div className="flex-1 overflow-y-auto pr-2 min-h-0">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-max pb-2">
+                  {(pageThumbnails.length > 0 ? pageThumbnails : Array.from({ length: totalPages || 8 })).map((thumb, idx) => {
+                    const pageNum = idx + 1;
+                    const isSelected = selectedPagesSet.has(pageNum);
 
-                  return (
-                    <div 
-                      key={idx}
-                      className={`relative group bg-zinc-950 border ${isSelected ? 'border-white/40 ring-1 ring-white/20' : 'border-white/5 opacity-30'} rounded-xl p-2.5 flex flex-col items-center justify-center transition-all aspect-[1/1.414] overflow-hidden`}
-                    >
-                      <span className="absolute top-2 left-2 z-20 bg-zinc-900/90 text-white font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-white/10 shadow-sm">
-                        {pageNum}
-                      </span>
-
-                      {typeof thumb === 'string' && thumb.length > 0 ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={thumb} alt={`Página ${pageNum}`} className="w-full h-full object-contain rounded-md bg-white shadow-inner" />
-                      ) : (
-                        <div className="w-full h-full bg-zinc-900 rounded-md flex items-center justify-center text-zinc-600 text-xs font-mono font-bold">
+                    return (
+                      <div 
+                        key={idx}
+                        className={`relative group bg-zinc-950 border ${isSelected ? 'border-white/40 ring-1 ring-white/20' : 'border-white/5 opacity-30'} rounded-xl p-2.5 flex flex-col items-center justify-center transition-all aspect-[1/1.414] overflow-hidden`}
+                      >
+                        <span className="absolute top-2 left-2 z-20 bg-zinc-900/90 text-white font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-white/10 shadow-sm">
                           {pageNum}
-                        </div>
-                      )}
+                        </span>
 
-                      {isSelected && (
-                        <div className="absolute bottom-3 right-3 z-30 bg-zinc-900 border border-white/20 p-1.5 rounded-full shadow-md">
-                          <Eraser className="w-3.5 h-3.5 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        {typeof thumb === 'string' && thumb.length > 0 ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={thumb} alt={`Página ${pageNum}`} className="w-full h-full object-contain rounded-md bg-white shadow-inner" />
+                        ) : (
+                          <div className="w-full h-full bg-zinc-900 rounded-md flex items-center justify-center text-zinc-600 text-xs font-mono font-bold">
+                            {pageNum}
+                          </div>
+                        )}
+
+                        {isSelected && (
+                          <div className="absolute bottom-3 right-3 z-30 bg-zinc-900 border border-white/20 p-1.5 rounded-full shadow-md">
+                            <Eraser className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div 
+            ref={controlPanelRef}
+            className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6"
+          >
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">
@@ -622,31 +739,20 @@ export default function PdfWatermarkRemover() {
                 </div>
               )}
 
-              {completedResult ? (
-                <DownloadSuccessCard
-                  downloadUrl={completedResult.downloadUrl}
-                  filename={completedResult.filename}
-                  fileSize={completedResult.fileSize}
-                  outputFormat="pdf"
-                  rawBlob={completedResult.rawBlob}
-                  onReset={() => setCompletedResult(null)}
-                />
-              ) : (
-                <button 
-                  onClick={executeRemoveWatermark} 
-                  disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
-                  className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
-                >
-                  {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Eraser className="w-5 h-5 text-black" />}
-                  <span>
-                    {isProcessing 
-                      ? progressMsg 
-                      : (!file 
-                          ? (isEs ? 'Selecciona un archivo PDF' : 'Select a PDF file') 
-                          : (isEs ? 'Quitar Sello de Agua →' : 'Remove Watermark →'))}
-                  </span>
-                </button>
-              )}
+              <button 
+                onClick={executeRemoveWatermark} 
+                disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
+                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+              >
+                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Eraser className="w-5 h-5 text-black" />}
+                <span>
+                  {isProcessing 
+                    ? progressMsg 
+                    : (!file 
+                        ? (isEs ? 'Selecciona un archivo PDF' : 'Select a PDF file') 
+                        : (isEs ? 'Quitar Sello de Agua →' : 'Remove Watermark →'))}
+                </span>
+              </button>
             </div>
 
           </div>

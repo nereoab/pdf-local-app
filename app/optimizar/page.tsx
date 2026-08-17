@@ -7,10 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import { 
-  ArrowRight, Zap, Sliders, Activity, EyeOff, Lock, Unlock, GitCompare,
-  FileText, UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, Sparkles 
+  ArrowRight, ShieldCheck, Zap, Lock, Unlock, EyeOff, FileText,
+  UploadCloud, FilePlus, X, HardDrive, Clock, Search, Star, Eye, 
+  Download, Trash2, CheckCircle2, FolderOpen, Sparkles, Sliders, Activity, GitCompare 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 
 function OptimizarContent() {
   const searchParams = useSearchParams();
@@ -267,17 +269,8 @@ function OptimizarContent() {
                         </button>
                       </div>
                       
-                      <div className="w-full flex-1 bg-[#09090b] relative pointer-events-none overflow-hidden">
-                        {pdfUrl && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[75%] aspect-[1/1.414]">
-                            <iframe 
-                              src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
-                              className="w-full h-full border-none bg-white shadow-2xl rounded-md" 
-                              scrolling="no"
-                              title="PDF Preview" 
-                            />
-                          </div>
-                        )}
+                      <div className="w-full flex-1 bg-[#09090b] relative overflow-hidden flex items-center justify-center">
+                        <PdfPreviewThumbnail file={globalFile} />
                       </div>
                     </div>
                   )}

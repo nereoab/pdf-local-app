@@ -5,12 +5,14 @@ import {
   GitCompare, FileText, X, ShieldCheck,
   Search, ChevronDown, ChevronUp, ZoomIn, ZoomOut,
   SplitSquareVertical, Database, UploadCloud,
-  Hash, Copy, CheckCircle, AlertTriangle, Clock,
-  Keyboard, Filter, FileDown, SlidersHorizontal,
+  Hash, Copy, CheckCircle, CheckCircle2, AlertTriangle, Clock,
+  Keyboard, Filter, FileDown, SlidersHorizontal, ArrowLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
+import { useFileStore } from '../store/useFileStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import DownloadSuccessCard from './DownloadSuccessCard';
 import type { CompareResult, CompareProgress, StructuralDiff } from '../workers/pdf-compare.worker';
 
 export default function PdfComparator() {
@@ -23,7 +25,9 @@ export default function PdfComparator() {
   const panel1Ref = useRef<HTMLDivElement>(null);
   const panel2Ref = useRef<HTMLDivElement>(null);
 
-  const [file1, setFile1] = useState<File | null>(null);
+  const { globalFile } = useFileStore();
+
+  const [file1, setFile1] = useState<File | null>(() => globalFile || null);
   const [file2, setFile2] = useState<File | null>(null);
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
@@ -34,6 +38,24 @@ export default function PdfComparator() {
   const [isRendering, setIsRendering] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
+
+  // Estado de éxito para pantalla de descarga (como las otras herramientas)
+  const [completedResult, setCompletedResult] = useState<{
+    downloadUrl: string;
+    filename: string;
+    fileSize: string;
+    rawBlob?: Blob;
+    globalSimilarityPercent: number;
+    totalRemovals: number;
+    totalAdditions: number;
+    totalUnchanged: number;
+    modifiedPages: number;
+    visualChanges: number;
+    structuralChanges: number;
+    summary: string;
+  } | null>(null);
+  // Estado para banner de descarga completada
+  const [downloadBanner, setDownloadBanner] = useState<'txt' | 'pdf' | null>(null);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [progressPhase, setProgressPhase] = useState('');
@@ -85,8 +107,8 @@ export default function PdfComparator() {
     document.getElementById(`compare-page-${allDiffWords[i].page}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const handleFile1 = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { setFile1(e.target.files[0]); setCompareResult(null); } e.target.value = ''; };
-  const handleFile2 = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { setFile2(e.target.files[0]); setCompareResult(null); } e.target.value = ''; };
+  const handleFile1 = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { setFile1(e.target.files[0]); setCompareResult(null); setCompletedResult(null); } e.target.value = ''; };
+  const handleFile2 = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files?.[0]) { setFile2(e.target.files[0]); setCompareResult(null); setCompletedResult(null); } e.target.value = ''; };
 
   const hdrOver = (e: React.DragEvent, z: 1 | 2) => { e.preventDefault(); e.stopPropagation(); z === 1 ? setDragOver1(true) : setDragOver2(true); };
   const hdrLeave = (e: React.DragEvent, z: 1 | 2) => { e.preventDefault(); e.stopPropagation(); z === 1 ? setDragOver1(false) : setDragOver2(false); };
@@ -96,7 +118,7 @@ export default function PdfComparator() {
     const f = e.dataTransfer.files[0];
     if (f && (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))) {
       z === 1 ? setFile1(f) : setFile2(f);
-      setCompareResult(null);
+      setCompareResult(null); setCompletedResult(null);
     } else { toast.error(isEs ? 'Solo PDF' : 'Only PDF'); }
   };
 
@@ -203,7 +225,7 @@ export default function PdfComparator() {
 
   const reset = () => {
     setFile1(null); setFile2(null); setCanvas1Urls({}); setCanvas2Urls({});
-    setTotalPages1(0); setTotalPages2(0); setCompareResult(null);
+    setTotalPages1(0); setTotalPages2(0); setCompareResult(null); setCompletedResult(null);
     setShowOnlyChanges(false); setActiveDiffIdx(-1); setSearchQuery('');
   };
 
@@ -234,7 +256,9 @@ export default function PdfComparator() {
     const u = URL.createObjectURL(b); const a = document.createElement('a');
     a.href = u; a.download = `Report_${file1?.name?.replace('.pdf', '') || 'PDF'}.txt`;
     a.click(); URL.revokeObjectURL(u);
-    toast.success(isEs ? 'Descargado' : 'Downloaded');
+    setDownloadBanner('txt');
+    setTimeout(() => setDownloadBanner(null), 4000);
+    toast.success(isEs ? 'Reporte TXT descargado' : 'TXT report downloaded');
   };
 
   const downloadPdfReport = async () => {
@@ -321,10 +345,26 @@ export default function PdfComparator() {
       const ab = pBytes.buffer.slice(pBytes.byteOffset, pBytes.byteOffset + pBytes.byteLength) as ArrayBuffer;
       const blob = new Blob([ab], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `Report_${file1?.name?.replace('.pdf', '') || 'PDF'}_PDF.pdf`;
+      const filename = `Reporte_Comparacion_${file1?.name?.replace('.pdf', '') || 'DocA'}_vs_${file2?.name?.replace('.pdf', '') || 'DocB'}.pdf`;
+      const a = document.createElement('a'); a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(isEs ? 'PDF descargado' : 'PDF downloaded');
+      setDownloadBanner('pdf');
+      setCompletedResult({
+        downloadUrl: url,
+        filename: filename,
+        fileSize: fmtSize(blob.size),
+        rawBlob: blob,
+        globalSimilarityPercent: compareResult.globalSimilarityPercent,
+        totalRemovals: compareResult.totalRemovals,
+        totalAdditions: compareResult.totalAdditions,
+        totalUnchanged: compareResult.totalUnchanged,
+        modifiedPages: compareResult.pageDiffs.filter(p => p.removedCount + p.addedCount > 0).length,
+        visualChanges: compareResult.pagesWithVisualChanges,
+        structuralChanges: compareResult.structuralDiffs.length,
+        summary: compareResult.summary,
+      });
+      setTimeout(() => setDownloadBanner(null), 4000);
+      toast.success(isEs ? 'Reporte PDF generado con éxito' : 'PDF Report generated successfully');
     } catch (e: any) {
       toast.error(isEs ? `Error PDF: ${e?.message || ''}` : `PDF error: ${e?.message || ''}`);
     } finally { setIsGeneratingPdfReport(false); }
@@ -374,8 +414,104 @@ export default function PdfComparator() {
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full"><ShieldCheck className="w-3.5 h-3.5" /><span>{isEs ? '100% LOCAL' : '100% LOCAL'}</span></div>
         </div>
+      ) : completedResult ? (
+        /* PANTALLA DE ÉXITO Y DESCARGA */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
+                <CheckCircle className="w-7 h-7 text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">
+                  {isEs ? '¡Reporte de Comparación Generado con Éxito!' : 'Comparison Report Generated Successfully!'}
+                </h2>
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">{completedResult.summary}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">{isEs ? 'Similitud Global' : 'Global Similarity'}</span>
+                <span className="text-white font-bold text-xl font-mono mt-0.5">{completedResult.globalSimilarityPercent}%</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">{isEs ? 'Palabras Eliminadas' : 'Words Removed'}</span>
+                <span className="text-red-400 font-bold text-xl font-mono mt-0.5">-{completedResult.totalRemovals}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">{isEs ? 'Palabras Añadidas' : 'Words Added'}</span>
+                <span className="text-emerald-400 font-bold text-xl font-mono mt-0.5">+{completedResult.totalAdditions}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">{isEs ? 'Sin Cambios' : 'Unchanged'}</span>
+                <span className="text-zinc-300 font-bold text-xl font-mono mt-0.5">{completedResult.totalUnchanged}</span>
+              </div>
+            </div>
+
+            {/* TARJETA DE DESCARGA ÉXITO (DownloadSuccessCard) */}
+            <DownloadSuccessCard
+              downloadUrl={completedResult.downloadUrl}
+              filename={completedResult.filename}
+              fileSize={completedResult.fileSize}
+              outputFormat="pdf"
+              rawBlob={completedResult.rawBlob}
+              onReset={() => {
+                setCompletedResult(null);
+                reset();
+              }}
+            />
+          </div>
+
+          {/* BOTÓN VOLVER */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => setCompletedResult(null)}
+              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {isEs ? 'Volver al Panel de Comparación' : 'Back to Comparison Panel'}
+            </button>
+          </div>
+        </motion.div>
       ) : (
         <div className="w-full flex flex-col gap-4">
+          {/* BANNER DE DESCARGA COMPLETADA */}
+          <AnimatePresence>
+            {downloadBanner && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between shadow-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-emerald-500/20 p-2 rounded-xl">
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">
+                      {downloadBanner === 'pdf'
+                        ? (isEs ? '¡Reporte PDF descargado con éxito!' : 'PDF Report downloaded successfully!')
+                        : (isEs ? '¡Reporte TXT descargado con éxito!' : 'TXT Report downloaded successfully!')}
+                    </p>
+                    <p className="text-xs text-emerald-300 font-mono mt-0.5">
+                      {isEs ? 'El archivo se guardó en tu carpeta de descargas' : 'File saved to your downloads folder'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDownloadBanner(null)}
+                  className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             <div className="lg:col-span-8 flex flex-col gap-4">
               {/* TOOLBAR */}
@@ -537,8 +673,23 @@ export default function PdfComparator() {
                     ))}
                   </div>
                   <div className="pt-4 border-t border-white/10 mt-4 flex flex-col gap-2">
-                    <button onClick={downloadReport} className="w-full bg-white hover:bg-zinc-200 text-black font-extrabold text-sm py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl"><span>{isEs ? 'Descargar TXT' : 'Download TXT'}</span><span className="text-[10px] text-zinc-500 font-mono">Ctrl+D</span></button>
-                    <button onClick={downloadPdfReport} disabled={isGeneratingPdfReport} className="w-full bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 text-white font-bold text-sm py-2.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50">{isGeneratingPdfReport ? (<><span className="w-3 h-3 rounded-full bg-white animate-pulse" /><span>Generating...</span></>) : (<><FileDown className="w-4 h-4" /><span>{isEs ? 'Descargar PDF' : 'Download PDF'}</span></>)}</button>
+                    <button onClick={downloadPdfReport} disabled={isGeneratingPdfReport} className="w-full bg-white hover:bg-zinc-200 text-black font-extrabold text-sm py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-50">
+                      {isGeneratingPdfReport ? (
+                        <>
+                          <span className="w-3.5 h-3.5 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                          <span>{isEs ? 'Generando PDF...' : 'Generating PDF...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="w-4 h-4 text-black" />
+                          <span>{isEs ? 'Descargar PDF' : 'Download PDF'}</span>
+                        </>
+                      )}
+                    </button>
+                    <button onClick={downloadReport} className="w-full bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 text-zinc-300 hover:text-white font-bold text-xs py-2.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer">
+                      <span>{isEs ? 'Descargar TXT' : 'Download TXT'}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono">Ctrl+D</span>
+                    </button>
                   </div>
                 </>) : (<div className="flex-1 flex items-center justify-center text-center"><div className="text-zinc-500 font-mono text-xs space-y-2"><GitCompare className="w-8 h-8 mx-auto text-zinc-600" /><p>{isEs ? 'Click en Comparar para iniciar.' : 'Click Compare to start.'}</p><p className="text-[10px] text-zinc-600">Ctrl+Enter</p></div></div>)}
               </div>

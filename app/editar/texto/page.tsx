@@ -59,8 +59,8 @@ export default function EditarTextoPage() {
                   es: 'Haz clic en "Terminar y Grabar →" para compilar con Web Worker y descargar tu PDF editado.',
                   en: 'Click "Finish & Save →" to compile with Web Worker and download your edited PDF.'
                 }
-              ].map((item, i) => (
-                <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+              ].map((item) => (
+                <div key={`step-${item.step}`} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
                   <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">
                     Paso {item.step}
                   </span>
@@ -89,15 +89,15 @@ export default function EditarTextoPage() {
                   ✓ {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
                 </h4>
                 {[
-                  isEs ? 'Editar texto existente en bloques nativos del PDF (texto seleccionable).' : 'Edit existing text in native PDF blocks (selectable text).',
-                  isEs ? 'Cambiar contenido de palabras, frases o párrafos completos.' : 'Change content of words, phrases, or full paragraphs.',
-                  isEs ? 'Ajustar estilo de texto: negrita, cursiva, tamaño, fuentes y color.' : 'Adjust text style: bold, italic, size, fonts, and color.',
-                  isEs ? 'Añadir cuadros de texto, anotaciones, formas y firmas.' : 'Add text boxes, annotations, shapes, and signatures.',
-                  isEs ? 'Desbloquear PDFs protegidos con contraseña antes de editar.' : 'Unlock password-protected PDFs before editing.'
-                ].map((t, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                  { id: 'cando-1', es: 'Editar texto existente en bloques nativos del PDF (texto seleccionable).', en: 'Edit existing text in native PDF blocks (selectable text).' },
+                  { id: 'cando-2', es: 'Cambiar contenido de palabras, frases o párrafos completos.', en: 'Change content of words, phrases, or full paragraphs.' },
+                  { id: 'cando-3', es: 'Ajustar estilo de texto: negrita, cursiva, tamaño, fuentes y color.', en: 'Adjust text style: bold, italic, size, fonts, and color.' },
+                  { id: 'cando-4', es: 'Añadir cuadros de texto, anotaciones, formas y firmas.', en: 'Add text boxes, annotations, shapes, and signatures.' },
+                  { id: 'cando-5', es: 'Desbloquear PDFs protegidos con contraseña antes de editar.', en: 'Unlock password-protected PDFs before editing.' }
+                ].map((item) => (
+                  <div key={item.id} className="flex items-start gap-2 text-xs text-zinc-300">
                     <span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span>
-                    <span>{t}</span>
+                    <span>{isEs ? item.es : item.en}</span>
                   </div>
                 ))}
               </div>
@@ -107,14 +107,14 @@ export default function EditarTextoPage() {
                   💡 {isEs ? 'CONSEJOS' : 'TIPS'}
                 </h4>
                 {[
-                  isEs ? 'Si el texto es una imagen escaneada, usa primero la herramienta OCR.' : 'If text is a scanned image, use the OCR tool first.',
-                  isEs ? 'Usa las Opciones Avanzadas para cambiar prefijo y metadatos.' : 'Use Advanced Options to change prefix and metadata.',
-                  isEs ? 'El archivo original nunca es sobrescrito en tu dispositivo.' : 'Original file is never overwritten on your device.',
-                  isEs ? 'Re-numera páginas automáticamente activando la casilla en Opciones.' : 'Re-number pages automatically checking the Options box.'
-                ].map((t, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                  { id: 'tip-1', es: 'Si el texto es una imagen escaneada, usa primero la herramienta OCR.', en: 'If text is a scanned image, use the OCR tool first.' },
+                  { id: 'tip-2', es: 'Usa las Opciones Avanzadas para cambiar prefijo y metadatos.', en: 'Use Advanced Options to change prefix and metadata.' },
+                  { id: 'tip-3', es: 'El archivo original nunca es sobrescrito en tu dispositivo.', en: 'Original file is never overwritten on your device.' },
+                  { id: 'tip-4', es: 'Re-numera páginas automáticamente activando la casilla en Opciones.', en: 'Re-number pages automatically checking the Options box.' }
+                ].map((item) => (
+                  <div key={item.id} className="flex items-start gap-2 text-xs text-zinc-300">
                     <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
-                    <span>{t}</span>
+                    <span>{isEs ? item.es : item.en}</span>
                   </div>
                 ))}
               </div>
@@ -170,32 +170,36 @@ export default function EditarTextoPage() {
             <div className="space-y-3 font-sans">
               {[
                 {
+                  id: 'faq-1',
                   q: isEs ? '¿Se conserva la tipografía y formato original al editar texto?' : 'Are original fonts and formatting preserved when editing text?',
                   a: isEs 
                     ? 'Sí. El motor de edición Apryse analiza las capas tipográficas embebidas en el PDF para emparejar la fuente, tamaño, color e interlineado del texto original.'
                     : 'Yes. The Apryse editing engine analyzes embedded font layers in the PDF to match original font, size, color, and line spacing.'
                 },
                 {
+                  id: 'faq-2',
                   q: isEs ? '¿Puedo modificar o agregar imágenes y firmas en el editor?' : 'Can I modify or add images and signatures in the editor?',
                   a: isEs
                     ? 'Sí. Además de editar texto, el visor te permite insertar imágenes, formas geométricas, anotaciones de resaltado y firmar documentos.'
                     : 'Yes. Besides editing text, the viewer lets you insert images, geometric shapes, highlight annotations, and sign documents.'
                 },
                 {
+                  id: 'faq-3',
                   q: isEs ? '¿Mis documentos o datos se envían a algún servidor?' : 'Are my documents or data sent to any server?',
                   a: isEs
                     ? 'No. Todo el procesamiento se realiza 100% en tu navegador usando Web Workers. Ningún byte sale de tu equipo.'
                     : 'No. All processing happens 100% inside your browser using Web Workers. No bytes leave your machine.'
                 },
                 {
+                  id: 'faq-4',
                   q: isEs ? '¿Puedo editar un PDF protegido con contraseña?' : 'Can I edit a password-protected PDF?',
                   a: isEs
                     ? 'Sí. Al cargar un PDF encriptado, aparecerá un widget inline de clave. Ingresa la contraseña de apertura una vez para desbloquear el visor y proceder.'
                     : 'Yes. Upon loading an encrypted PDF, an inline key widget will appear. Enter the open password once to unlock the viewer and proceed.'
                 }
-              ].map((faq, idx) => (
+              ].map((faq) => (
                 <details 
-                  key={idx} 
+                  key={faq.id} 
                   className="group bg-zinc-900/60 border border-white/5 rounded-xl transition-all duration-200 overflow-hidden"
                 >
                   <summary className="flex items-center justify-between p-4 cursor-pointer font-semibold text-xs sm:text-sm text-white select-none group-hover:text-zinc-200">

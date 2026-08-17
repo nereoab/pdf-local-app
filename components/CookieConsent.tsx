@@ -62,6 +62,7 @@ export default function CookieConsent() {
     <AnimatePresence>
       {isVisible && (
         <motion.div
+          key="cookie-consent-modal"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}

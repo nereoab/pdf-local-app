@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import DownloadSuccessCard from './DownloadSuccessCard';
 import type {
   RepairOptions,
   DiagnosticResult,
@@ -82,11 +83,57 @@ export default function PdfRepairer() {
   // Reporte de recuperación
   const [recoveryReport, setRecoveryReport] = useState<RecoveryReport | null>(null);
 
+  // Estado de éxito para pantalla de descarga
+  const [completedResult, setCompletedResult] = useState<{
+    downloadUrl: string;
+    filename: string;
+    fileSize: string;
+    rawBlob?: Blob;
+    originalSize: number;
+    repairedSize: number;
+    pagesRecovered: number;
+    pagesLost: number;
+    repairMethod: string;
+  } | null>(null);
+
   // Previsualización Canvas / Miniaturas PDF
   const [previewPageNum, setPreviewPageNum] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [thumbnails, setThumbnails] = useState<{ pageNum: number; dataUrl: string }[]>([]);
   const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
+
+  // Altura sincronizada para igualar panel de vista previa al panel de control
+  const controlPanelRef = useRef<HTMLDivElement>(null);
+  const [previewHeight, setPreviewHeight] = useState<number>(0);
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
+
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  useEffect(() => {
+    if (!controlPanelRef.current) return;
+    const updateHeight = () => {
+      if (controlPanelRef.current) {
+        const h = controlPanelRef.current.getBoundingClientRect().height;
+        if (h > 0) setPreviewHeight(h);
+      }
+    };
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.target.getBoundingClientRect().height;
+        if (h > 0) {
+          setPreviewHeight(h);
+        }
+      }
+    });
+    observer.observe(controlPanelRef.current);
+    updateHeight();
+    return () => observer.disconnect();
+  }, [file]);
 
   // ---------------------------------------------------------------------------
   // GENERACIÓN DE MINIATURAS
@@ -162,6 +209,7 @@ export default function PdfRepairer() {
       setDiagnostic(null);
       setShowDiagnostic(false);
       setRecoveryReport(null);
+      setCompletedResult(null);
       setProgressPercent(0);
       setProgressMsg('');
       toast.success(isEs ? 'Archivo cargado correctamente' : 'File loaded successfully');
@@ -176,6 +224,7 @@ export default function PdfRepairer() {
     setDiagnostic(null);
     setShowDiagnostic(false);
     setRecoveryReport(null);
+    setCompletedResult(null);
     setProgressPercent(0);
     setProgressMsg('');
   }, [setGlobalFile]);
@@ -381,14 +430,19 @@ export default function PdfRepairer() {
 
       const originalName = file.name.replace(/\.[^/.]+$/, '');
       const suffix = customSuffix || '_Reparado';
-      const link = document.createElement('a');
-      link.href = localUrl;
-      link.download = `${originalName}${suffix}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const report = recoveryReport || result.report;
 
-      toast.success(isEs ? '¡PDF reparado y recuperado con éxito!' : 'PDF repaired & recovered successfully!');
+      setCompletedResult({
+        downloadUrl: localUrl,
+        filename: `${originalName}${suffix}.pdf`,
+        fileSize: formatFileSize(blob.size),
+        rawBlob: blob,
+        originalSize: file.size,
+        repairedSize: blob.size,
+        pagesRecovered: report?.pagesRecovered ?? 0,
+        pagesLost: report?.pagesLost ?? 0,
+        repairMethod: report?.repairMethod ?? repairMode,
+      });
     } catch (error) {
       console.error(error);
       const errMsg = error instanceof Error ? error.message : (isEs ? 'Error desconocido' : 'Unknown error');
@@ -504,14 +558,103 @@ export default function PdfRepairer() {
             {isEs ? 'Seleccionar PDF Dañado' : 'Select Corrupted PDF'}
           </button>
         </motion.div>
+      ) : completedResult ? (
+        /* PANTALLA DE ÉXITO Y DESCARGA */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE MÉTRICAS DE REPARACIÓN */}
+          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
+                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">
+                  {isEs ? '¡Documento Reparado con Éxito!' : 'Document Repaired Successfully!'}
+                </h2>
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                  {isEs
+                    ? `Método: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Reparación'}`
+                    : `Method: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Repair'}`}
+                </p>
+              </div>
+            </div>
+
+            {/* MÉTRICAS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.originalSize)}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Reparado' : 'Repaired Size'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.repairedSize)}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Recuperadas' : 'Pages Recovered'}</span>
+                <span className="text-white font-bold text-lg font-mono mt-0.5">{completedResult.pagesRecovered}</span>
+              </div>
+              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Perdidas' : 'Pages Lost'}</span>
+                <span className={`font-bold text-lg font-mono mt-0.5 ${completedResult.pagesLost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {completedResult.pagesLost}
+                </span>
+              </div>
+            </div>
+
+            {/* TARJETA DE DESCARGA */}
+            <DownloadSuccessCard
+              downloadUrl={completedResult.downloadUrl}
+              filename={completedResult.filename}
+              fileSize={completedResult.fileSize}
+              outputFormat="pdf"
+              rawBlob={completedResult.rawBlob}
+              onReset={() => {
+                setCompletedResult(null);
+                setDownloadUrl(null);
+                setFile(null);
+                setGlobalFile(null);
+                setRecoveryReport(null);
+                setDiagnostic(null);
+                setShowDiagnostic(false);
+                setProgressPercent(0);
+                setProgressMsg('');
+              }}
+            />
+          </div>
+
+          {/* BOTÓN NUEVA REPARACIÓN */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => {
+                setCompletedResult(null);
+                setDownloadUrl(null);
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {isEs ? 'Volver al Panel de Reparación' : 'Back to Repair Panel'}
+            </button>
+          </div>
+        </motion.div>
       ) : (
         /* WORKSPACE */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans" style={{ alignItems: 'stretch' }}>
           {/* LADO IZQUIERDO: PREVIEW (MINIATURAS) + DIAGNÓSTICO + REPORTE */}
           <div className="lg:col-span-5" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* PREVIEW CON GRILLA DE MINIATURAS */}
-            <div className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex flex-col shadow-2xl" style={{ flex: 1, minHeight: '300px' }}>
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 font-mono">
+            <div
+              className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex flex-col shadow-2xl overflow-hidden"
+              style={{
+                height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
+                maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
+                minHeight: '300px',
+              }}
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 font-mono flex-shrink-0">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <FileText className="w-5 h-5 text-white flex-shrink-0" />
                   <div className="overflow-hidden">
@@ -531,7 +674,7 @@ export default function PdfRepairer() {
               </div>
 
               {/* GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS VISIBLES) */}
-              <div className="relative w-full flex-1 h-[580px] max-h-[600px] bg-[#09090b] rounded-xl overflow-y-auto p-3 border border-white/10 font-sans">
+              <div className="relative w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#09090b] rounded-xl overflow-y-auto p-3 border border-white/10 font-sans">
                 {isLoadingThumbnails ? (
                   <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
@@ -719,7 +862,10 @@ export default function PdfRepairer() {
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
           <div className="lg:col-span-7 flex flex-col">
-            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 rounded-2xl p-4 sm:p-5 transition-all duration-300 flex flex-col justify-between shadow-2xl font-sans">
+            <div
+              ref={controlPanelRef}
+              className="bg-[#09090b] border border-white ring-2 ring-white/20 rounded-2xl p-4 sm:p-5 transition-all duration-300 flex flex-col justify-between shadow-2xl font-sans"
+            >
               <div>
                 {/* CABECERA PANEL */}
                 <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
@@ -919,17 +1065,6 @@ export default function PdfRepairer() {
                     </>
                   )}
                 </button>
-
-                {downloadUrl && (
-                  <a
-                    href={downloadUrl}
-                    download={`${file.name.replace(/\.[^/.]+$/, '')}${customSuffix}.pdf`}
-                    className="mt-3 w-full bg-emerald-400 hover:bg-emerald-300 text-black font-bold py-3.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
-                  >
-                    <FileDown className="w-4 h-4 text-black" />
-                    <span>{isEs ? `Descargar PDF Reparado ${recoveryReport ? `(${recoveryReport.pagesRecovered} pág)` : ''}` : `Download Repaired PDF ${recoveryReport ? `(${recoveryReport.pagesRecovered} p)` : ''}`}</span>
-                  </a>
-                )}
 
                 <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 mt-4 border-t border-white/10 pt-3">
                   <span className="flex items-center gap-1">

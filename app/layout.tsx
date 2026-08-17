@@ -119,6 +119,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
         <link rel="dns-prefetch" href="https://cdn.syncfusion.com" />
+        {/* CSP vía meta tag — respaldo confiable para desarrollo (Turbopack a veces ignora headers()) */}
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content={
+            "default-src 'self'; " +
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com; " +
+            "script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.syncfusion.com; " +
+            "font-src 'self' data: https://fonts.gstatic.com; " +
+            "img-src 'self' data: blob: https:; " +
+            "connect-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com; " +
+            "frame-src 'self' blob:; " +
+            "worker-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; " +
+            "media-src 'self'; " +
+            "object-src 'none'; " +
+            "base-uri 'self'; " +
+            "form-action 'self'"
+          }
+        />
       </head>
       <body
         className="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen"
@@ -136,9 +155,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <LanguageProvider>
             <FirebaseAuthProvider>
               <SharedLayout>
-                <div id="main-content" tabIndex={-1}>
-                  {children}
-                </div>
+                {children}
               </SharedLayout>
             </FirebaseAuthProvider>
           </LanguageProvider>

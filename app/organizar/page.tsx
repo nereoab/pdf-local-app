@@ -11,6 +11,7 @@ import {
   UploadCloud, FilePlus, X, ShieldCheck, HardDrive, Clock, Sparkles, Lock 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 
 function OrganizarContent() {
   const searchParams = useSearchParams();
@@ -269,17 +270,8 @@ function OrganizarContent() {
                         </button>
                       </div>
                       
-                      <div className="w-full flex-1 bg-[#09090b] relative pointer-events-none overflow-hidden">
-                        {pdfUrl && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[75%] aspect-[1/1.414]">
-                            <iframe 
-                              src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`} 
-                              className="w-full h-full border-none bg-white shadow-2xl rounded-md" 
-                              scrolling="no"
-                              title="PDF Preview" 
-                            />
-                          </div>
-                        )}
+                      <div className="w-full flex-1 bg-[#09090b] relative overflow-hidden flex items-center justify-center">
+                        <PdfPreviewThumbnail file={globalFile} />
                       </div>
                     </div>
                   )}

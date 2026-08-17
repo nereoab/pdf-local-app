@@ -81,7 +81,7 @@ export default function Breadcrumbs() {
         {breadcrumbs.map((crumb, i) => {
           const isLast = i === breadcrumbs.length - 1;
           return (
-            <li key={crumb.href} className="flex items-center gap-1" itemScope itemType="https://schema.org/ListItem">
+            <li key={`${crumb.href}-${i}`} className="flex items-center gap-1" itemScope itemType="https://schema.org/ListItem">
               {i > 0 && <ChevronRight className="w-3 h-3 text-zinc-600 flex-shrink-0" aria-hidden="true" />}
               {isLast ? (
                 <span className="text-zinc-400 font-medium" aria-current="page" itemProp="name">

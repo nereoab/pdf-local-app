@@ -68,6 +68,11 @@ export default function PdfWatermark() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
+  const controlPanelRef = useRef<HTMLDivElement>(null);
+
+  // Altura sincronizada para igualar panel de vista previa al panel de control
+  const [previewHeight, setPreviewHeight] = useState<number>(0);
 
   const loadThumbnails = useCallback(async (selectedFile: File, pass?: string) => {
     setIsLoadingThumbs(true);
@@ -124,15 +129,46 @@ export default function PdfWatermark() {
     }
   }, [isEs]);
 
+  // Sincronización con el store global
+  useEffect(() => {
+    if (globalFile && file !== globalFile) {
+      setFile(globalFile);
+      setPageThumbnails([]);
+      setCompletedResult(null);
+      loadThumbnails(globalFile);
+    }
+    if (!globalFile && file) {
+      setFile(null);
+      setPageThumbnails([]);
+      setCompletedResult(null);
+    }
+  }, [globalFile, file, loadThumbnails]);
+
+  // Carga inicial de miniaturas cuando hay un archivo listo
   useEffect(() => {
     if (file && pageThumbnails.length === 0 && !isEncrypted) {
       loadThumbnails(file);
     }
   }, [file, pageThumbnails.length, isEncrypted, loadThumbnails]);
 
+  const topContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll automático hacia el inicio de la herramienta (debajo del Navbar global)
+  useEffect(() => {
+    if (completedResult) {
+      const timer = setTimeout(() => {
+        if (topContainerRef.current) {
+          topContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [completedResult]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
+      setCompletedResult(null);
       setFile(selected);
       setGlobalFile(selected);
       setIsEncrypted(false);
@@ -164,6 +200,10 @@ export default function PdfWatermark() {
   };
 
   const handleRemoveFile = () => {
+    if (completedResult?.downloadUrl) {
+      URL.revokeObjectURL(completedResult.downloadUrl);
+    }
+    setCompletedResult(null);
     setFile(null);
     setGlobalFile(null);
     setPageThumbnails([]);
@@ -359,8 +399,42 @@ export default function PdfWatermark() {
 
   const selectedPagesSet = parseSelectedPages();
 
+  // Sincronizar altura del panel de vista previa con la del panel de control
+  useEffect(() => {
+    if (!controlPanelRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.target.getBoundingClientRect().height;
+        if (h > 0) {
+          setPreviewHeight(h);
+        }
+      }
+    });
+    observer.observe(controlPanelRef.current);
+    // Medir inmediatamente también
+    setPreviewHeight(controlPanelRef.current.getBoundingClientRect().height);
+    return () => observer.disconnect();
+  }, [file]); // Re-ejecutar cuando cambia el archivo (el panel aparece/desaparece)
+
+  const handleStartOver = () => {
+    if (completedResult?.downloadUrl) {
+      URL.revokeObjectURL(completedResult.downloadUrl);
+    }
+    setCompletedResult(null);
+    setFile(null);
+    setGlobalFile(null);
+    setPageThumbnails([]);
+    setTotalPages(0);
+    setIsEncrypted(false);
+    setIsUnlocked(false);
+    setPasswordInput('');
+    setUnlockedPassword(undefined);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
   return (
-    <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
+    <div ref={topContainerRef} className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
       <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
       <input type="file" accept="image/png, image/jpeg" className="hidden" ref={imageInputRef} onChange={handleImageChange} />
 
@@ -382,7 +456,7 @@ export default function PdfWatermark() {
           </div>
         </div>
 
-        {file && (
+        {file && !completedResult && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
@@ -399,7 +473,73 @@ export default function PdfWatermark() {
         )}
       </div>
 
-      {!file ? (
+      {completedResult ? (
+        /* ── PANTALLA DE ÉXITO DEDICADA (ESTILO EXACTO A LA IMAGEN) ── */
+        <motion.div
+          ref={successContainerRef}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE MARCA DE AGUA */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA MARCA DE AGUA' : 'WATERMARK RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                    {isEs ? '¡Marca de agua insertada con éxito!' : 'Watermark added successfully!'}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Estado del proceso' : 'Process status'}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Marcadas' : 'Stamped Pages'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {selectedPagesSet.size} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Total del Documento' : 'Document Total'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {totalPages} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tipo de Marca' : 'Watermark Type'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {wmType === 'text' ? (isEs ? 'Texto Vectorial' : 'Vector Text') : (isEs ? 'Imagen / Sello' : 'Image / Stamp')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            onReset={handleStartOver}
+          />
+        </motion.div>
+      ) : !file ? (
         /* VISTA DROPZONE VACÍA */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -437,7 +577,10 @@ export default function PdfWatermark() {
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
           {/* LADO IZQUIERDO: GRILLA VISUAL DE PÁGINAS EN CUADRÍCULA 4x4 */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          <div 
+            style={previewHeight > 0 ? { height: `${previewHeight}px` } : undefined}
+            className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-0"
+          >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold font-mono">
                 <LayoutGrid className="w-4 h-4 text-white" />
@@ -481,7 +624,8 @@ export default function PdfWatermark() {
                 <p className="text-zinc-400 text-xs">{isEs ? "Generando vista previa de miniaturas..." : "Generating page preview..."}</p>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto max-h-[650px] pr-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+              <div className="flex-1 overflow-y-auto pr-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
                 {(pageThumbnails.length > 0 ? pageThumbnails : Array.from({ length: totalPages || 8 })).map((thumb, idx) => {
                   const pageNum = idx + 1;
                   const isStamped = selectedPagesSet.has(pageNum);
@@ -548,12 +692,16 @@ export default function PdfWatermark() {
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div 
+            ref={controlPanelRef}
+            className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6"
+          >
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">
@@ -788,31 +936,20 @@ export default function PdfWatermark() {
                 </div>
               )}
 
-              {completedResult ? (
-                <DownloadSuccessCard
-                  downloadUrl={completedResult.downloadUrl}
-                  filename={completedResult.filename}
-                  fileSize={completedResult.fileSize}
-                  outputFormat="pdf"
-                  rawBlob={completedResult.rawBlob}
-                  onReset={() => setCompletedResult(null)}
-                />
-              ) : (
-                <button 
-                  onClick={executeWatermark} 
-                  disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
-                  className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
-                >
-                  {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
-                  <span>
-                    {isProcessing 
-                      ? progressMsg 
-                      : (!file 
-                          ? (isEs ? 'Selecciona un archivo PDF' : 'Select a PDF file') 
-                          : (isEs ? 'Poner Sello de Agua →' : 'Add Watermark →'))}
-                  </span>
-                </button>
-              )}
+              <button 
+                onClick={executeWatermark} 
+                disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
+                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+              >
+                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
+                <span>
+                  {isProcessing 
+                    ? progressMsg 
+                    : (!file 
+                        ? (isEs ? 'Selecciona un archivo PDF' : 'Select a PDF file') 
+                        : (isEs ? 'Poner Sello de Agua →' : 'Add Watermark →'))}
+                </span>
+              </button>
             </div>
 
           </div>

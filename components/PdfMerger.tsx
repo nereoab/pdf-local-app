@@ -6,13 +6,15 @@ import {
   Merge, FileText, Trash2, Loader2, ArrowUp, ArrowDown, Plus, 
   Sliders, ChevronDown, ChevronUp, Download, UploadCloud, ShieldCheck, 
   ArrowLeft, Sparkles, LayoutGrid, CheckCircle2, Compass, Grid, Layers, Zap, Cpu, Settings2, GripVertical,
-  Eye, RotateCw, X, CheckSquare, Square, Lock, Unlock, KeyRound
+  Eye, RotateCw, X, CheckSquare, Square, Lock, Unlock, KeyRound, List, ArrowDownAZ, ArrowUpDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+
+import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 
 type PageOrientation = 'original' | 'portrait' | 'landscape';
 type PageSizeOption = 'original' | 'a4' | 'letter';
@@ -39,14 +41,58 @@ interface FileItem {
   password?: string;
 }
 
+interface CompletedMergeResult {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+  filesCount: number;
+  totalPages: number;
+  rawBlob: Blob;
+}
+
 export default function PdfMerger() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
+  const controlPanelRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
 
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [controlPanelHeight, setControlPanelHeight] = useState<number | null>(null);
+  const [completedResult, setCompletedResult] = useState<CompletedMergeResult | null>(null);
+
+  // Scroll automático suave e inmediato hacia la pantalla de éxito
+  useEffect(() => {
+    if (completedResult) {
+      const timer = setTimeout(() => {
+        if (successContainerRef.current) {
+          successContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [completedResult]);
+
+  // Sincronizar altura exacta del panel de vista previa con el panel de control
+  useEffect(() => {
+    if (!controlPanelRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect && entry.contentRect.height > 0) {
+          const fullH = controlPanelRef.current?.offsetHeight || entry.contentRect.height;
+          setControlPanelHeight(fullH);
+        }
+      }
+    });
+    ro.observe(controlPanelRef.current);
+    return () => ro.disconnect();
+  }, [files.length]);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -57,6 +103,25 @@ export default function PdfMerger() {
   const [docTitle, setDocTitle] = useState<string>('');
   const [docAuthor, setDocAuthor] = useState<string>('');
   const [docSubject, setDocSubject] = useState<string>('');
+
+  // QUICK SORT ACTIONS
+  const sortFilesAz = () => {
+    setFiles(prev => [...prev].sort((a, b) => a.file.name.localeCompare(b.file.name, undefined, { numeric: true, sensitivity: 'base' })));
+    toast.success(isEs ? 'Archivos ordenados A-Z' : 'Files sorted A-Z');
+  };
+
+  const reverseFilesOrder = () => {
+    setFiles(prev => [...prev].reverse());
+    toast.success(isEs ? 'Orden de archivos invertido' : 'Files order inverted');
+  };
+
+  // TOTAL PAGES CALCULATION
+  const totalMergedPages = files.reduce((acc, f) => {
+    if (f.pagesDetail && f.pagesDetail.length > 0) {
+      return acc + f.pagesDetail.filter(p => p.included).length;
+    }
+    return acc + (f.pageCount || 1);
+  }, 0);
 
   // DRAG AND DROP REORDERING STATE
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -476,17 +541,21 @@ export default function PdfMerger() {
 
       const blob = new Blob([mergedBuffer], { type: 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
-      setDownloadUrl(localUrl);
+      const finalName = docTitle.trim() ? `${docTitle.trim().replace(/\s+/g, '_')}.pdf` : 'Documento_Unificado.pdf';
+      const sizeFormatted = formatFileSize(blob.size);
 
-      const link = document.createElement('a');
-      link.href = localUrl;
-      link.download = 'Documento_Unificado.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      setDownloadUrl(localUrl);
+      setCompletedResult({
+        downloadUrl: localUrl,
+        filename: finalName,
+        fileSize: sizeFormatted,
+        filesCount: files.length,
+        totalPages: totalMergedPages,
+        rawBlob: blob,
+      });
 
       setProgressPercent(100);
-      toast.success(isEs ? '¡Archivos PDF unidos con éxito en segundo plano!' : 'PDF files merged successfully in background!');
+      toast.success(isEs ? '¡Archivos PDF unidos con éxito!' : 'PDF files merged successfully!');
     } catch (error: any) {
       console.error(error);
       toast.error(isEs ? `Error al unir los archivos: ${error?.message || 'Error desconocido'}` : `Error merging files: ${error?.message || 'Unknown error'}`);
@@ -494,6 +563,14 @@ export default function PdfMerger() {
       setIsProcessing(false);
       setProgressMsg('');
     }
+  };
+
+  const handleReset = () => {
+    setCompletedResult(null);
+    setDownloadUrl(null);
+    setFiles([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (addMoreInputRef.current) addMoreInputRef.current.value = '';
   };
 
   const formatFileSize = (bytes: number) => {
@@ -527,7 +604,7 @@ export default function PdfMerger() {
           </div>
         </div>
 
-        {files.length > 0 && (
+        {files.length > 0 && !completedResult && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
@@ -544,7 +621,73 @@ export default function PdfMerger() {
         )}
       </div>
 
-      {files.length === 0 ? (
+      {completedResult ? (
+        /* ── PANTALLA DE ÉXITO DEDICADA (ESTILO EXACTO /EDITAR/TEXTO) ── */
+        <motion.div
+          ref={successContainerRef}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE FUSIÓN */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <Merge className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA FUSIÓN DE DOCUMENTOS' : 'DOCUMENT MERGE RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                    {isEs ? '¡Documentos combinados con éxito!' : 'Documents merged successfully!'}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Estado del proceso' : 'Process status'}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Documentos Unidos' : 'Merged Documents'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {completedResult.filesCount} {isEs ? 'Archivos PDF' : 'PDF Files'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Totales' : 'Total Pages'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.totalPages} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Modo de Procesamiento' : 'Processing Mode'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {isEs ? 'Fusión Local Nativa' : 'Native Local Merge'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            onReset={handleReset}
+          />
+        </motion.div>
+      ) : files.length === 0 ? (
         /* VISTA DROPZONE VACÍA */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -581,177 +724,341 @@ export default function PdfMerger() {
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: REJILLA DE ARCHIVOS Y MINIATURAS DE UNIÓN */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+          {/* LADO IZQUIERDO: REJILLA DE ARCHIVOS Y MINIATURAS DE UNIÓN (ALTURA SINCRONIZADA) */}
+          <div 
+            style={{ height: controlPanelHeight ? `${controlPanelHeight}px` : undefined }} 
+            className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col min-h-[620px]"
+          >
+            {/* BARRA SUPERIOR DE HERRAMIENTAS Y ORDENAMIENTO */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400">
+              <div className="flex items-center gap-2 text-zinc-300 font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / ARCHIVOS A UNIR (${files.length} DOCUMENTOS)` : `001 / FILES TO MERGE (${files.length} DOCS)`}</span>
+                <span>{isEs ? `001 / ARCHIVOS A UNIR` : `001 / FILES TO MERGE`}</span>
+                <span className="bg-white/10 text-white text-[11px] px-2 py-0.5 rounded-full border border-white/10 font-mono">
+                  {files.length} {isEs ? 'Archivos' : 'Files'} • ~{totalMergedPages} {isEs ? 'Páginas' : 'Pages'}
+                </span>
               </div>
-              <div className="flex items-center gap-3">
+
+              <div className="flex items-center gap-2">
+                {/* BOTONES DE ORDENAMIENTO RÁPIDO */}
+                <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-white/10">
+                  <button
+                    type="button"
+                    onClick={sortFilesAz}
+                    className="flex items-center gap-1 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white rounded-lg text-[10px] font-mono transition-colors cursor-pointer"
+                    title={isEs ? "Ordenar alfabéticamente A-Z" : "Sort files A-Z"}
+                  >
+                    <ArrowDownAZ className="w-3 h-3 text-zinc-400" />
+                    <span>A-Z</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={reverseFilesOrder}
+                    className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                    title={isEs ? "Invertir orden de los archivos" : "Invert files order"}
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* SELECTOR DE VISTA (CUADRÍCULA / LISTA) */}
+                <div className="flex items-center bg-zinc-900 p-1 rounded-xl border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-white/20 text-white' : 'text-zinc-400 hover:text-white'}`}
+                    title={isEs ? "Vista en Cuadrícula" : "Grid View"}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${viewMode === 'list' ? 'bg-white/20 text-white' : 'text-zinc-400 hover:text-white'}`}
+                    title={isEs ? "Vista en Lista Compacta" : "Compact List View"}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => addMoreInputRef.current?.click()}
-                  className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 text-white" />
                   {isEs ? 'Añadir más' : 'Add more'}
                 </button>
-                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
-                </div>
               </div>
             </div>
 
-            <div className="mb-3 px-3 py-1.5 bg-zinc-900/60 border border-white/5 rounded-xl flex items-center gap-2 text-[11px] font-mono text-zinc-400">
-              <GripVertical className="w-3.5 h-3.5 text-zinc-300" />
-              <span>{isEs ? 'Arrastra y suelta las tarjetas para reordenar la secuencia de unión' : 'Drag and drop cards to reorder the merge sequence'}</span>
+            <div className="mb-3 px-3 py-1.5 bg-zinc-900/60 border border-white/5 rounded-xl flex items-center justify-between text-[11px] font-mono text-zinc-400">
+              <div className="flex items-center gap-2">
+                <GripVertical className="w-3.5 h-3.5 text-zinc-300" />
+                <span>{isEs ? 'Arrastra y suelta los documentos para cambiar el orden de unión' : 'Drag and drop documents to change merge order'}</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 text-emerald-400 text-[10px]">
+                <ShieldCheck className="w-3 h-3" /> 100% Local
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[650px] pr-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-              <AnimatePresence>
-                {files.map((item, index) => {
-                  const isDraggingThis = draggedIndex === index;
-                  const isDragOverThis = dragOverIndex === index && draggedIndex !== index;
+            {/* CONTENEDOR CON SCROLL INTERNO DINÁMICO */}
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-3 custom-scrollbar">
+              {viewMode === 'grid' ? (
+                /* ── MODO 1: CUADRÍCULA DE TARJETAS ── */
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                  <AnimatePresence>
+                    {files.map((item, index) => {
+                      const isDraggingThis = draggedIndex === index;
+                      const isDragOverThis = dragOverIndex === index && draggedIndex !== index;
 
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ 
-                        opacity: isDraggingThis ? 0.4 : 1, 
-                        scale: isDragOverThis ? 1.03 : 1,
-                        borderColor: isDragOverThis ? '#3b82f6' : undefined
-                      }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      draggable={!isProcessing}
-                      onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent<HTMLDivElement>, index)}
-                      onDragOver={(e) => handleDragOver(e as unknown as React.DragEvent<HTMLDivElement>, index)}
-                      onDragEnd={handleDragEnd}
-                      onDrop={(e) => handleDrop(e as unknown as React.DragEvent<HTMLDivElement>, index)}
-                      className={`relative group bg-zinc-950 border ${isDragOverThis ? 'border-blue-500 shadow-blue-500/20 ring-2 ring-blue-500/30' : 'border-white/10 hover:border-white/30'} rounded-2xl p-4 flex flex-col justify-between transition-all shadow-xl font-mono cursor-grab active:cursor-grabbing`}
-                    >
-                      {/* ORDEN DE UNIÓN Y ARRASTRE HEADER */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="cursor-grab active:cursor-grabbing text-zinc-500 group-hover:text-zinc-300 p-0.5 rounded hover:bg-white/10 transition-colors" title={isEs ? "Arrastra para reordenar" : "Drag to reorder"}>
-                            <GripVertical className="w-4 h-4" />
-                          </span>
-                          <span className="bg-white/10 text-white font-mono font-bold text-xs px-2.5 py-1 rounded-lg border border-white/10">
-                            #{index + 1}
-                          </span>
-                          {item.password && (
-                            <span className="bg-emerald-500/20 text-emerald-400 font-mono text-[9px] px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1" title={isEs ? "PDF desbloqueado" : "PDF unlocked"}>
-                              <Unlock className="w-2.5 h-2.5" /> {isEs ? "Desbloqueado" : "Unlocked"}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button" onClick={() => moveFile(index, 'up')} disabled={index === 0}
-                            className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                            title={isEs ? "Mover arriba" : "Move up"}
-                          >
-                            <ArrowUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button" onClick={() => moveFile(index, 'down')} disabled={index === files.length - 1}
-                            className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                            title={isEs ? "Mover abajo" : "Move down"}
-                          >
-                            <ArrowDown className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button" onClick={() => removeFile(item.id)}
-                            className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                            title={isEs ? "Eliminar" : "Remove"}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* VISTA PREVIA O WIDGET DE CONTRASEÑA */}
-                      <div className="w-full aspect-[4/3] bg-zinc-900/80 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-white/5 relative">
-                        {item.needsPassword ? (
-                          <div className="flex flex-col items-center justify-center p-3 text-center gap-1.5 bg-amber-950/20 rounded-xl border border-amber-500/30 w-full h-full">
-                            <Lock className="w-6 h-6 text-amber-400 animate-pulse" />
-                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">{isEs ? "PDF Protegido" : "Password Protected"}</span>
-                            <div className="flex items-center gap-1 w-full mt-1">
-                              <input
-                                type="password"
-                                placeholder={isEs ? "Contraseña..." : "Password..."}
-                                value={passwordsMap[item.id] || ''}
-                                onChange={(e) => setPasswordsMap(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') unlockFileWithPassword(item.id, passwordsMap[item.id] || '');
-                                }}
-                                className="w-full bg-zinc-900 border border-amber-500/30 rounded-lg px-2 py-1 text-white text-[10px] outline-none focus:border-amber-400 font-mono"
-                              />
+                      return (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ 
+                            opacity: isDraggingThis ? 0.4 : 1, 
+                            scale: isDragOverThis ? 1.03 : 1,
+                            borderColor: isDragOverThis ? '#3b82f6' : undefined
+                          }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          draggable={!isProcessing}
+                          onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                          onDragOver={(e) => handleDragOver(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                          onDragEnd={handleDragEnd}
+                          onDrop={(e) => handleDrop(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                          className={`relative group bg-zinc-950 border ${isDragOverThis ? 'border-blue-500 shadow-blue-500/20 ring-2 ring-blue-500/30' : 'border-white/10 hover:border-white/30'} rounded-2xl p-3.5 flex flex-col justify-between transition-all shadow-xl font-mono cursor-grab active:cursor-grabbing`}
+                        >
+                          {/* ORDEN DE UNIÓN Y ARRASTRE HEADER */}
+                          <div className="flex items-center justify-between mb-2.5">
+                            <div className="flex items-center gap-1">
+                              <span className="cursor-grab active:cursor-grabbing text-zinc-500 group-hover:text-zinc-300 p-0.5 rounded hover:bg-white/10 transition-colors" title={isEs ? "Arrastra para reordenar" : "Drag to reorder"}>
+                                <GripVertical className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="bg-white/10 text-white font-mono font-bold text-xs px-2 py-0.5 rounded-lg border border-white/10">
+                                #{index + 1}
+                              </span>
+                              {item.password && (
+                                <span className="bg-emerald-500/20 text-emerald-400 font-mono text-[9px] px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1" title={isEs ? "PDF desbloqueado" : "PDF unlocked"}>
+                                  <Unlock className="w-2.5 h-2.5" /> {isEs ? "Desbloqueado" : "Unlocked"}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
                               <button
-                                type="button"
-                                onClick={() => unlockFileWithPassword(item.id, passwordsMap[item.id] || '')}
-                                className="bg-amber-500 hover:bg-amber-400 text-black px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex-shrink-0 flex items-center gap-1"
+                                type="button" onClick={() => moveFile(index, 'up')} disabled={index === 0}
+                                className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                title={isEs ? "Mover arriba" : "Move up"}
                               >
-                                <Unlock className="w-3 h-3" />
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button" onClick={() => moveFile(index, 'down')} disabled={index === files.length - 1}
+                                className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                title={isEs ? "Mover abajo" : "Move down"}
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button" onClick={() => removeFile(item.id)}
+                                className="p-1 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                title={isEs ? "Eliminar" : "Remove"}
+                              >
+                                <Trash2 className="w-3 h-3" />
                               </button>
                             </div>
                           </div>
-                        ) : item.thumbnailUrl ? (
-                          <img src={item.thumbnailUrl} alt={item.file.name} className="w-full h-full object-contain p-2 rounded-xl bg-white select-none pointer-events-none" />
-                        ) : (
-                          <div className="flex flex-col items-center gap-2 text-zinc-500 font-mono select-none">
-                            <FileText className="w-10 h-10 text-zinc-400" />
-                            <span className="text-[10px] font-bold uppercase">{item.pageCount} {isEs ? 'Páginas' : 'Pages'}</span>
-                          </div>
-                        )}
-                      </div>
 
-                      {/* NOMBRE Y DETALLES */}
-                      <div className="space-y-2">
-                        <h4 className="text-white font-bold text-xs truncate max-w-full font-sans" title={item.file.name}>{item.file.name}</h4>
-                        <div className="flex items-center justify-between text-[10px] text-zinc-400">
-                          <span>{formatFileSize(item.file.size)}</span>
-                          <span>{item.pageCount} {isEs ? 'páginas' : 'pages'}</span>
-                        </div>
-
-                        <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[10px]">
-                          <button
-                            type="button"
-                            onClick={() => openPageInspector(item)}
-                            className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-2 py-1 rounded-lg border border-white/10 text-[10px] font-mono transition-colors cursor-pointer"
-                            title={isEs ? "Inspeccionar y organizar páginas individuales" : "Inspect and organize individual pages"}
-                          >
-                            <Eye className="w-3 h-3 text-zinc-400" />
-                            <span>{isEs ? "Páginas" : "Pages"}</span>
-                            {item.pagesDetail && (
-                              <span className="ml-1 px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 rounded-full text-[9px] font-bold">
-                                {item.pagesDetail.filter(p => p.included).length}/{item.pagesDetail.length}
-                              </span>
+                          {/* VISTA PREVIA O WIDGET DE CONTRASEÑA */}
+                          <div className="w-full aspect-[4/3] bg-zinc-900/80 rounded-xl mb-2.5 flex items-center justify-center overflow-hidden border border-white/5 relative">
+                            {item.needsPassword ? (
+                              <div className="flex flex-col items-center justify-center p-2 text-center gap-1 bg-amber-950/20 rounded-xl border border-amber-500/30 w-full h-full">
+                                <Lock className="w-5 h-5 text-amber-400 animate-pulse" />
+                                <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">{isEs ? "PDF Protegido" : "Protected"}</span>
+                                <div className="flex items-center gap-1 w-full mt-0.5">
+                                  <input
+                                    type="password"
+                                    placeholder={isEs ? "Clave..." : "Password..."}
+                                    value={passwordsMap[item.id] || ''}
+                                    onChange={(e) => setPasswordsMap(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') unlockFileWithPassword(item.id, passwordsMap[item.id] || '');
+                                    }}
+                                    className="w-full bg-zinc-900 border border-amber-500/30 rounded px-1.5 py-0.5 text-white text-[9px] outline-none focus:border-amber-400 font-mono"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => unlockFileWithPassword(item.id, passwordsMap[item.id] || '')}
+                                    className="bg-amber-500 hover:bg-amber-400 text-black px-2 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer flex-shrink-0 flex items-center"
+                                  >
+                                    <Unlock className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : item.thumbnailUrl ? (
+                              <img src={item.thumbnailUrl} alt={item.file.name} className="w-full h-full object-contain p-1.5 rounded-xl bg-white select-none pointer-events-none" />
+                            ) : (
+                              <div className="flex flex-col items-center gap-1.5 text-zinc-500 font-mono select-none">
+                                <FileText className="w-8 h-8 text-zinc-400" />
+                                <span className="text-[9px] font-bold uppercase">{item.pageCount} {isEs ? 'Págs' : 'Pages'}</span>
+                              </div>
                             )}
-                          </button>
-
-                          <div className="flex items-center gap-1">
-                            <span className="text-zinc-400 flex-shrink-0">{isEs ? 'Rango:' : 'Range:'}</span>
-                            <input
-                              type="text"
-                              placeholder="all"
-                              value={item.pageRange}
-                              onChange={(e) => updatePageRange(item.id, e.target.value)}
-                              className="w-16 bg-zinc-900 border border-white/10 rounded-lg py-1 px-1.5 text-white text-[10px] font-mono outline-none focus:border-white/30"
-                            />
                           </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+
+                          {/* NOMBRE Y DETALLES */}
+                          <div className="space-y-1.5">
+                            <h4 className="text-white font-bold text-xs truncate max-w-full font-sans" title={item.file.name}>{item.file.name}</h4>
+                            <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                              <span>{formatFileSize(item.file.size)}</span>
+                              <span>{item.pageCount} {isEs ? 'páginas' : 'pages'}</span>
+                            </div>
+
+                            <div className="pt-1.5 border-t border-white/5 flex items-center justify-between gap-1.5 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => openPageInspector(item)}
+                                className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-2 py-1 rounded-lg border border-white/10 text-[9px] font-mono transition-colors cursor-pointer"
+                                title={isEs ? "Inspeccionar y organizar páginas individuales" : "Inspect and organize individual pages"}
+                              >
+                                <Eye className="w-3 h-3 text-zinc-400" />
+                                <span>{isEs ? "Páginas" : "Pages"}</span>
+                                {item.pagesDetail && (
+                                  <span className="ml-1 px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 rounded-full text-[9px] font-bold">
+                                    {item.pagesDetail.filter(p => p.included).length}/{item.pagesDetail.length}
+                                  </span>
+                                )}
+                              </button>
+
+                              <div className="flex items-center gap-1">
+                                <span className="text-zinc-500 text-[9px]">{isEs ? 'Rango:' : 'Range:'}</span>
+                                <input
+                                  type="text"
+                                  placeholder="all"
+                                  value={item.pageRange}
+                                  onChange={(e) => updatePageRange(item.id, e.target.value)}
+                                  className="w-14 bg-zinc-900 border border-white/10 rounded-lg py-0.5 px-1.5 text-white text-[9px] font-mono outline-none focus:border-white/30"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                /* ── MODO 2: LISTA COMPACTA CON FILAS REORDENABLES ── */
+                <div className="space-y-2">
+                  <AnimatePresence>
+                    {files.map((item, index) => {
+                      const isDraggingThis = draggedIndex === index;
+                      const isDragOverThis = dragOverIndex === index && draggedIndex !== index;
+
+                      return (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ 
+                            opacity: isDraggingThis ? 0.4 : 1, 
+                            scale: isDragOverThis ? 1.01 : 1,
+                            borderColor: isDragOverThis ? '#3b82f6' : undefined
+                          }}
+                          exit={{ opacity: 0, y: -5 }}
+                          draggable={!isProcessing}
+                          onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                          onDragOver={(e) => handleDragOver(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                          onDragEnd={handleDragEnd}
+                          onDrop={(e) => handleDrop(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                          className={`relative group bg-zinc-950 border ${isDragOverThis ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-white/10 hover:border-white/30'} rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-3 transition-all shadow-lg font-mono cursor-grab active:cursor-grabbing`}
+                        >
+                          {/* GRIP + ÍNDICE + MINIATURA + NOMBRE */}
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <span className="text-zinc-600 group-hover:text-zinc-300 cursor-grab" title={isEs ? "Arrastrar para reordenar" : "Drag to reorder"}>
+                              <GripVertical className="w-4 h-4" />
+                            </span>
+                            <span className="bg-white/10 text-white font-mono font-bold text-xs px-2 py-1 rounded-lg border border-white/10 flex-shrink-0">
+                              #{index + 1}
+                            </span>
+                            <div className="w-10 h-10 bg-zinc-900 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center flex-shrink-0">
+                              {item.thumbnailUrl ? (
+                                <img src={item.thumbnailUrl} alt={item.file.name} className="w-full h-full object-contain bg-white" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-zinc-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-white font-bold text-xs truncate max-w-full font-sans" title={item.file.name}>{item.file.name}</h4>
+                              <div className="flex items-center gap-3 text-[10px] text-zinc-400 mt-0.5">
+                                <span>{formatFileSize(item.file.size)}</span>
+                                <span>•</span>
+                                <span>{item.pageCount} {isEs ? 'páginas' : 'pages'}</span>
+                                {item.password && (
+                                  <span className="bg-emerald-500/20 text-emerald-400 font-mono text-[9px] px-1 rounded border border-emerald-500/30 flex items-center gap-1">
+                                    <Unlock className="w-2.5 h-2.5" /> {isEs ? "Desbloqueado" : "Unlocked"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ACCIONES Y BOTONES DE FILA */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => openPageInspector(item)}
+                              className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-2 py-1 rounded-lg border border-white/10 text-[10px] font-mono transition-colors cursor-pointer"
+                              title={isEs ? "Inspeccionar páginas" : "Inspect pages"}
+                            >
+                              <Eye className="w-3 h-3 text-zinc-400" />
+                              <span className="hidden sm:inline">{isEs ? "Páginas" : "Pages"}</span>
+                            </button>
+
+                            <div className="hidden sm:flex items-center gap-1">
+                              <span className="text-zinc-500 text-[9px]">{isEs ? 'Rango:' : 'Range:'}</span>
+                              <input
+                                type="text"
+                                placeholder="all"
+                                value={item.pageRange}
+                                onChange={(e) => updatePageRange(item.id, e.target.value)}
+                                className="w-14 bg-zinc-900 border border-white/10 rounded-lg py-1 px-1.5 text-white text-[10px] font-mono outline-none focus:border-white/30"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button" onClick={() => moveFile(index, 'up')} disabled={index === 0}
+                                className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                title={isEs ? "Mover arriba" : "Move up"}
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button" onClick={() => moveFile(index, 'down')} disabled={index === files.length - 1}
+                                className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-30 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                title={isEs ? "Mover abajo" : "Move down"}
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button" onClick={() => removeFile(item.id)}
+                                className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                                title={isEs ? "Eliminar" : "Remove"}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL DE UNIÓN */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          {/* LADO DERECHO: PANEL DE CONTROL DE UNIÓN (100% INTACTO) */}
+          <div ref={controlPanelRef} className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
             <div>
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
               <div className="mb-5 pb-3 border-b border-white/10">

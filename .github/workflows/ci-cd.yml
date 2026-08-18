@@ -15,7 +15,7 @@ on:
     types: [published]
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   NEXT_TELEMETRY_DISABLED: 1
 
 # Concurrency: cancela runs anteriores del mismo PR/branch
@@ -143,3 +143,32 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
           working-directory: ./
+
+  # ────────────────────────────────────────────────
+  # Job 6: Deploy to Firebase & Google Cloud
+  # ────────────────────────────────────────────────
+  deploy-firebase:
+    name: Deploy to Firebase
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/main'
+    needs: [lint-and-types, test, build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to Firebase Hosting & Cloud Run
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PDFBLACK_PROY }}
+          channelId: live
+          projectId: pdfblack-proy

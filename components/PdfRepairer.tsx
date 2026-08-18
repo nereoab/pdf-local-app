@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { ArrowLeft, Activity, FileDown, Loader2, X, FilePlus, FileText, UploadCloud, ChevronDown, ChevronUp, SlidersHorizontal, Shield, Zap, Target, Archive, RotateCcw, FileCheck2, AlertTriangle, CheckCircle2, Info, Clock, Binary, FileWarning, Database, FileCode2, Lock, Eye, ZoomIn, ZoomOut, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Activity, FileDown, Loader2, X, FilePlus, FileText, UploadCloud, ChevronDown, ChevronUp, SlidersHorizontal, Shield, Zap, Target, Archive, RotateCcw, FileCheck2, AlertTriangle, CheckCircle2, Info, Clock, Binary, FileWarning, Database, FileCode2, Lock, Eye, ZoomIn, ZoomOut, HelpCircle, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
+import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 import type {
@@ -53,7 +54,10 @@ export default function PdfRepairer() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   const [file, setFile] = useState<File | null>(() => globalFile || null);
 
@@ -79,6 +83,7 @@ export default function PdfRepairer() {
   // Diagnóstico previo
   const [diagnostic, setDiagnostic] = useState<DiagnosticDisplay | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
+  const [previewTab, setPreviewTab] = useState<'thumbnails' | 'diagnostic'>('thumbnails');
 
   // Reporte de recuperación
   const [recoveryReport, setRecoveryReport] = useState<RecoveryReport | null>(null);
@@ -134,6 +139,41 @@ export default function PdfRepairer() {
     updateHeight();
     return () => observer.disconnect();
   }, [file]);
+
+  // Ocultar barra superior global y posicionar la vista en el tope de la página
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+
+      // Posicionar en el tope absoluto (y = 0) para mantener el margen y vista completa del título
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
+      const raf = requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+      });
+
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, 50);
+
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Restaurar barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   // ---------------------------------------------------------------------------
   // GENERACIÓN DE MINIATURAS
@@ -339,6 +379,8 @@ export default function PdfRepairer() {
     }
 
     setDiagnostic({ severity, summary, issues, fileSize: file.size });
+    setPreviewTab('diagnostic');
+    toast.success(isEs ? '¡Diagnóstico previo completado!' : 'Preliminary diagnosis completed!');
   };
 
   // ---------------------------------------------------------------------------
@@ -492,7 +534,7 @@ export default function PdfRepairer() {
       <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
 
       {/* CABECERA */}
-      <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+      <div ref={topHeaderRef} className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
             href="/#herramientas"
@@ -561,30 +603,40 @@ export default function PdfRepairer() {
       ) : completedResult ? (
         /* PANTALLA DE ÉXITO Y DESCARGA */
         <motion.div
+          ref={successContainerRef}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
           {/* BANNER DE MÉTRICAS DE REPARACIÓN */}
-          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
+                  <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                    {isEs ? '¡Documento Reparado con Éxito!' : 'Document Repaired Successfully!'}
+                  </h2>
+                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                    {isEs
+                      ? `Método: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Reparación'}`
+                      : `Method: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Repair'}`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¡Documento Reparado con Éxito!' : 'Document Repaired Successfully!'}
-                </h2>
-                <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                  {isEs
-                    ? `Método: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Reparación'}`
-                    : `Method: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Repair'}`}
-                </p>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{isEs ? 'Estructura Reconstruida' : 'Structure Rebuilt'}</span>
               </div>
             </div>
 
             {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.originalSize)}</span>
@@ -604,41 +656,28 @@ export default function PdfRepairer() {
                 </span>
               </div>
             </div>
-
-            {/* TARJETA DE DESCARGA */}
-            <DownloadSuccessCard
-              downloadUrl={completedResult.downloadUrl}
-              filename={completedResult.filename}
-              fileSize={completedResult.fileSize}
-              outputFormat="pdf"
-              rawBlob={completedResult.rawBlob}
-              onReset={() => {
-                setCompletedResult(null);
-                setDownloadUrl(null);
-                setFile(null);
-                setGlobalFile(null);
-                setRecoveryReport(null);
-                setDiagnostic(null);
-                setShowDiagnostic(false);
-                setProgressPercent(0);
-                setProgressMsg('');
-              }}
-            />
           </div>
 
-          {/* BOTÓN NUEVA REPARACIÓN */}
-          <div className="flex justify-center">
-            <button
-              onClick={() => {
-                setCompletedResult(null);
-                setDownloadUrl(null);
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {isEs ? 'Volver al Panel de Reparación' : 'Back to Repair Panel'}
-            </button>
-          </div>
+          {/* TARJETA DE DESCARGA */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            currentToolId="reparar"
+            onReset={() => {
+              setCompletedResult(null);
+              setDownloadUrl(null);
+              setFile(null);
+              setGlobalFile(null);
+              setRecoveryReport(null);
+              setDiagnostic(null);
+              setShowDiagnostic(false);
+              setProgressPercent(0);
+              setProgressMsg('');
+            }}
+          />
         </motion.div>
       ) : (
         /* WORKSPACE */
@@ -656,26 +695,100 @@ export default function PdfRepairer() {
             >
               <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 font-mono flex-shrink-0">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <FileText className="w-5 h-5 text-white flex-shrink-0" />
+                  <div className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 flex-shrink-0">
+                    <Activity className="w-4 h-4 text-emerald-400" />
+                  </div>
                   <div className="overflow-hidden">
                     <span className="text-white font-bold text-xs truncate block max-w-[180px] sm:max-w-[240px]">{file.name}</span>
-                    <span className="text-[10px] text-zinc-400 font-mono">{formatFileSize(file.size)}</span>
+                    <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5">
+                      <span>{formatFileSize(file.size)}</span>
+                      <span className="text-zinc-600">•</span>
+                      <span className={diagnostic?.severity === 'critical' ? 'text-red-400 font-bold' : diagnostic?.severity === 'warning' ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                        {diagnostic ? (isEs ? 'Diagnóstico listo' : 'Diagnosis ready') : (isEs ? 'Listo para reparar' : 'Ready to repair')}
+                      </span>
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="bg-zinc-950 border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 font-mono">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}</span>
-                  </span>
+                  <div className="bg-zinc-950 border border-white/10 p-0.5 rounded-full flex items-center gap-1">
+                    <button
+                      onClick={() => setPreviewTab('thumbnails')}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+                        previewTab === 'thumbnails'
+                          ? 'bg-zinc-800 text-white shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span>{isEs ? `Miniaturas (${totalPages})` : `Thumbnails (${totalPages})`}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!diagnostic) runPreliminaryDiagnosis();
+                        else setPreviewTab('diagnostic');
+                      }}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+                        previewTab === 'diagnostic'
+                          ? 'bg-zinc-800 text-white shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <Activity className="w-3 h-3 text-emerald-400" />
+                      <span>{isEs ? 'Diagnóstico' : 'Diagnosis'}</span>
+                      {diagnostic && (
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          diagnostic.severity === 'critical' ? 'bg-red-400' : diagnostic.severity === 'warning' ? 'bg-amber-400' : 'bg-emerald-400'
+                        }`} />
+                      )}
+                    </button>
+                  </div>
                   <button onClick={removeFile} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer" title={isEs ? 'Remover archivo' : 'Remove file'}>
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {/* GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS VISIBLES) */}
+              {/* CONTENEDOR PRINCIPAL DEL VISOR (MINIATURAS O DIAGNÓSTICO) */}
               <div className="relative w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#09090b] rounded-xl overflow-y-auto p-3 border border-white/10 font-sans">
-                {isLoadingThumbnails ? (
+                {previewTab === 'diagnostic' ? (
+                  diagnostic ? (
+                    <div className="space-y-3 font-mono">
+                      <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                          {diagnostic.severity === 'critical' ? <AlertTriangle className="w-5 h-5 text-red-400" /> : diagnostic.severity === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-400" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+                          <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                            {isEs ? 'Informe de Diagnóstico Estructural' : 'Structural Diagnosis Report'}
+                          </h3>
+                        </div>
+                        <span className="text-[10px] text-zinc-500">{formatFileSize(diagnostic.fileSize)}</span>
+                      </div>
+
+                      <div className={`p-3 rounded-xl border ${severityColor(diagnostic.severity)}`}>
+                        <p className="text-xs font-bold">{diagnostic.summary}</p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                          {isEs ? 'Análisis de Componentes' : 'Component Breakdown'} ({diagnostic.issues.length})
+                        </span>
+                        {diagnostic.issues.map((issue, i) => (
+                          <div key={i} className={`flex items-start gap-2 text-[11px] px-2.5 py-2 rounded-xl border ${severityColor(issue.severity)}`}>
+                            <span className="flex-shrink-0 mt-0.5">{categoryIcon(issue.category)}</span>
+                            <div>
+                              <span className="font-bold text-zinc-200">{issue.message}</span>
+                              {issue.details && <p className="text-[10px] text-zinc-400 mt-0.5">{issue.details}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
+                      <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                      <span className="text-xs font-mono">{isEs ? 'Ejecutando diagnóstico estructural...' : 'Running structural diagnosis...'}</span>
+                    </div>
+                  )
+                ) : isLoadingThumbnails ? (
                   <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
                     <span className="text-xs font-mono">{isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}</span>
@@ -724,40 +837,6 @@ export default function PdfRepairer() {
                 )}
               </div>
             </div>
-
-            {/* DIAGNÓSTICO PREVIO */}
-            <AnimatePresence>
-              {diagnostic && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="bg-[#09090b] border border-white/10 rounded-2xl p-5 overflow-hidden shadow-2xl"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    {diagnostic.severity === 'critical' ? <AlertTriangle className="w-5 h-5 text-red-400" /> : diagnostic.severity === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-400" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                    <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">
-                      {isEs ? 'Diagnóstico Binario' : 'Binary Diagnosis'}
-                    </h3>
-                    <span className="text-[10px] text-zinc-500 ml-auto font-mono">{formatFileSize(diagnostic.fileSize)}</span>
-                  </div>
-                  <p className={`text-xs font-bold mb-3 px-3 py-2 rounded-lg border ${severityColor(diagnostic.severity)}`}>
-                    {diagnostic.summary}
-                  </p>
-                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {diagnostic.issues.map((issue, i) => (
-                      <div key={i} className={`flex items-start gap-2 text-[11px] px-2.5 py-1.5 rounded-lg border ${severityColor(issue.severity)}`}>
-                        <span className="flex-shrink-0 mt-0.5">{categoryIcon(issue.category)}</span>
-                        <div>
-                          <span className="font-bold text-zinc-200">{issue.message}</span>
-                          {issue.details && <p className="text-[10px] text-zinc-500 mt-0.5">{issue.details}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* REPORTE DE RECUPERACIÓN */}
             <AnimatePresence>
@@ -882,11 +961,30 @@ export default function PdfRepairer() {
                 <button
                   onClick={runPreliminaryDiagnosis}
                   disabled={isProcessing}
-                  className="w-full mb-4 flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/20 text-zinc-300 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer disabled:opacity-40 font-mono"
+                  className="w-full mb-3 flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/20 text-zinc-300 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer disabled:opacity-40 font-mono shadow-sm"
                 >
-                  <FileWarning className="w-3.5 h-3.5" />
+                  <FileWarning className="w-3.5 h-3.5 text-amber-400" />
                   {isEs ? 'EJECUTAR DIAGNÓSTICO PREVIO' : 'RUN PRELIMINARY DIAGNOSIS'}
                 </button>
+
+                {/* RESUMEN DEL DIAGNÓSTICO (INMEDIATO EN PANEL DERECHO) */}
+                {diagnostic && (
+                  <div className={`p-3 rounded-xl border mb-4 font-mono text-xs ${severityColor(diagnostic.severity)} flex flex-col gap-1.5 animate-fadeIn`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">{diagnostic.summary}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTab('diagnostic')}
+                        className="text-[10px] text-zinc-300 hover:text-white underline cursor-pointer"
+                      >
+                        {isEs ? 'Ver en visor →' : 'View in canvas →'}
+                      </button>
+                    </div>
+                    <p className="text-[10px] opacity-80">
+                      {diagnostic.issues.length} {isEs ? 'componentes analizados. Resultados visibles en el visor izquierdo.' : 'scans run. Details displayed in left viewport.'}
+                    </p>
+                  </div>
+                )}
 
                 {/* MODOS DE REPARACIÓN */}
                 <div className="mb-4">

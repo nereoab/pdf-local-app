@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFileStore } from '../store/useFileStore';
+import { useUIStore } from '../store/useUIStore';
 import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
@@ -60,8 +61,11 @@ export default function PdfRedacter() {
   const isEs = lang === 'es';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const { globalFile, setGlobalFile } = useFileStore();
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   const [file, setFile] = useState<File | null>(globalFile);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -138,6 +142,41 @@ export default function PdfRedacter() {
     totalRedactions: number;
     pagesWithRedactions: number;
   } | null>(null);
+
+  // Ocultar barra superior global y posicionar la vista en el tope de la página
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+
+      // Posicionar en el tope absoluto (y = 0) para mantener el margen y vista completa del título
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
+      const raf = requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+      });
+
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, 50);
+
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Restaurar barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   // Altura sincronizada para igualar panel de vista previa al panel de control
   const controlPanelRef = useRef<HTMLDivElement>(null);
@@ -823,7 +862,7 @@ export default function PdfRedacter() {
       <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
 
       {/* CABECERA */}
-      <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-2 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+      <div ref={topHeaderRef} className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-2 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link href="/#herramientas" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -869,27 +908,38 @@ export default function PdfRedacter() {
       ) : completedResult ? (
         /* PANTALLA DE ÉXITO Y DESCARGA */
         <motion.div
+          ref={successContainerRef}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <Check className="w-7 h-7 text-emerald-400" />
+          {/* BANNER DE MÉTRICAS */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
+                  <Check className="w-7 h-7 text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                    {isEs ? '¡Documento Censurado con Éxito!' : 'Document Redacted Successfully!'}
+                  </h2>
+                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                    {isEs ? `${completedResult.totalRedactions} parches aplicados en ${completedResult.pagesWithRedactions} páginas` : `${completedResult.totalRedactions} patches applied across ${completedResult.pagesWithRedactions} pages`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¡Documento Censurado con Éxito!' : 'Document Redacted Successfully!'}
-                </h2>
-                <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                  {isEs ? `${completedResult.totalRedactions} parches en ${completedResult.pagesWithRedactions} páginas` : `${completedResult.totalRedactions} patches on ${completedResult.pagesWithRedactions} pages`}
-                </p>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{isEs ? 'True Redaction Aplicado' : 'True Redaction Applied'}</span>
               </div>
             </div>
 
             {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.originalSize)}</span>
@@ -907,43 +957,30 @@ export default function PdfRedacter() {
                 <span className="text-amber-400 font-bold text-lg font-mono mt-0.5">{completedResult.pagesWithRedactions}</span>
               </div>
             </div>
-
-            {/* TARJETA DE DESCARGA */}
-            <DownloadSuccessCard
-              downloadUrl={completedResult.downloadUrl}
-              filename={completedResult.filename}
-              fileSize={completedResult.fileSize}
-              outputFormat="pdf"
-              rawBlob={completedResult.rawBlob}
-              onReset={() => {
-                setCompletedResult(null);
-                setDownloadUrl(null);
-                setFile(null);
-                setGlobalFile(null);
-                setRedactions([]);
-                setAutoRedactions([]);
-                setPageDataUrls({});
-                setPageJpegBytes({});
-                setExtractedTextItems([]);
-                setSensitiveMatches([]);
-                setAuditEntries([]);
-              }}
-            />
           </div>
 
-          {/* BOTÓN VOLVER */}
-          <div className="flex justify-center">
-            <button
-              onClick={() => {
-                setCompletedResult(null);
-                setDownloadUrl(null);
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {isEs ? 'Volver al Panel de Censura' : 'Back to Redaction Panel'}
-            </button>
-          </div>
+          {/* TARJETA DE DESCARGA */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            currentToolId="censurar"
+            onReset={() => {
+              setCompletedResult(null);
+              setDownloadUrl(null);
+              setFile(null);
+              setGlobalFile(null);
+              setRedactions([]);
+              setAutoRedactions([]);
+              setPageDataUrls({});
+              setPageJpegBytes({});
+              setExtractedTextItems([]);
+              setSensitiveMatches([]);
+              setAuditEntries([]);
+            }}
+          />
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
@@ -958,15 +995,23 @@ export default function PdfRedacter() {
                 minHeight: '400px',
               }}
             >
-              <div className="bg-zinc-900 border-b border-white/10 p-3 flex justify-between items-center z-10 flex-shrink-0">
+              <div className="bg-zinc-900 border-b border-white/10 p-3 flex justify-between items-center z-10 flex-shrink-0 font-mono">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0"><FileText className="w-4 h-4 text-white" /></div>
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-white font-bold text-xs truncate w-32 sm:w-48">{file.name}</span>
-                    <span className="text-zinc-400 text-[10px]">{formatFileSize(file.size)}</span>
+                    <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
+                      <span>{formatFileSize(file.size)}</span>
+                      <span className="text-zinc-600">•</span>
+                      <span className={redactions.length > 0 ? 'text-amber-400 font-bold' : 'text-zinc-500'}>
+                        {redactions.length > 0 ? `${redactions.length} ${isEs ? 'parche(s) activos' : 'patch(es) active'}` : (isEs ? 'Sin censura' : 'No redactions')}
+                      </span>
+                    </span>
                   </div>
                 </div>
-                <button onClick={resetRedacter} disabled={isProcessing} className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-white/10 rounded-xl transition-all cursor-pointer"><X className="w-4 h-4" /></button>
+                <div className="flex items-center gap-2">
+                  <button onClick={resetRedacter} disabled={isProcessing} className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-white/10 rounded-xl transition-all cursor-pointer"><X className="w-4 h-4" /></button>
+                </div>
               </div>
 
               {/* Toolbar */}
@@ -994,7 +1039,9 @@ export default function PdfRedacter() {
                     <button onClick={() => setZoomLevel(z => Math.max(40, z - 15))} className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-white/10 text-zinc-400 transition-all cursor-pointer flex-shrink-0" title={isEs ? 'Alejar' : 'Zoom Out'}>
                       <ZoomOut className="w-3 h-3" />
                     </button>
-                    <span className="text-[10px] text-zinc-400 w-10 text-center tabular-nums select-none">{zoomLevel}%</span>
+                    <button onClick={() => setZoomLevel(100)} className="text-[10px] text-zinc-300 hover:text-white px-1.5 py-0.5 hover:bg-zinc-800 rounded tabular-nums select-none transition-colors" title={isEs ? 'Restablecer a 100%' : 'Reset to 100%'}>
+                      {zoomLevel}%
+                    </button>
                     <button onClick={() => setZoomLevel(z => Math.min(250, z + 15))} className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-white/10 text-zinc-400 transition-all cursor-pointer flex-shrink-0" title={isEs ? 'Acercar' : 'Zoom In'}>
                       <ZoomIn className="w-3 h-3" />
                     </button>

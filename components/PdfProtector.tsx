@@ -5,11 +5,12 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   ArrowLeft, ShieldCheck, Lock, Loader2, FileText, X, Eye, EyeOff,
   Settings, UploadCloud, Shield, KeyRound, Check, AlertTriangle,
-  ChevronDown, ChevronUp, SlidersHorizontal, Database, Package, FilePlus, RefreshCw
+  ChevronDown, ChevronUp, SlidersHorizontal, Database, Package, FilePlus, RefreshCw, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
+import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 
@@ -23,8 +24,11 @@ export default function PdfProtector() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const { globalFile, setGlobalFile } = useFileStore();
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   // === BATCH DE ARCHIVOS ===
   const [files, setFiles] = useState<File[]>(globalFile ? [globalFile] : []);
@@ -71,12 +75,26 @@ export default function PdfProtector() {
   const applyReadOnly = () => {
     setAllowPrinting(true);
     setAllowHighQualityPrint(true);
-    setAllowCopying(true);
-    setAllowExtraction(true);
+    setAllowCopying(false);
+    setAllowExtraction(false);
     setAllowModifying(false);
     setAllowAnnotating(false);
     setAllowFillingForms(false);
     setAllowAssembly(false);
+    toast.info(isEs ? 'Perfil aplicado: Solo Lectura + Impresión' : 'Profile applied: Read Only + Print');
+  };
+
+  const generateStrongPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+    let pwd = '';
+    for (let i = 0; i < 14; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setUserPassword(pwd);
+    setConfirmUserPassword(pwd);
+    setShowUserPassword(true);
+    navigator.clipboard.writeText(pwd);
+    toast.success(isEs ? '¡Contraseña generada y copiada al portapapeles!' : 'Password generated and copied to clipboard!');
   };
 
   // === OPCIONES ===
@@ -144,6 +162,41 @@ export default function PdfProtector() {
   }, [files, activeFileIdx, userPassword, ownerPassword, showAdvanced, isProcessing, results]);
 
   // === EFECTOS ===
+  // Ocultar barra superior global y posicionar la vista en el tope de la página
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+
+      // Posicionar en el tope absoluto (y = 0) para mantener el margen y vista completa del título
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
+      const raf = requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+      });
+
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, 50);
+
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Restaurar barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
+
   useEffect(() => {
     if (globalFile && files.length === 0) {
       setFiles([globalFile]);
@@ -416,7 +469,7 @@ export default function PdfProtector() {
       <input type="file" accept=".pdf" multiple className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
 
       {/* CABECERA */}
-      <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+      <div ref={topHeaderRef} className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
             href="/#herramientas"
@@ -494,27 +547,38 @@ export default function PdfProtector() {
       ) : completedResult ? (
         /* PANTALLA DE ÉXITO Y DESCARGA */
         <motion.div
+          ref={successContainerRef}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <Check className="w-7 h-7 text-emerald-400" />
+          {/* BANNER DE MÉTRICAS */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
+                  <Check className="w-7 h-7 text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                    {isEs ? '¡PDF Protegido con Éxito!' : 'PDF Protected Successfully!'}
+                  </h2>
+                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                    {isEs ? `Cifrado AES-256 · ${completedResult.restrictions.length} restricciones` : `AES-256 Encryption · ${completedResult.restrictions.length} restrictions`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¡PDF Protegido con Éxito!' : 'PDF Protected Successfully!'}
-                </h2>
-                <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                  {isEs ? `Cifrado AES-256 · ${completedResult.restrictions.length} restricciones` : `AES-256 Encryption · ${completedResult.restrictions.length} restrictions`}
-                </p>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{isEs ? 'Cifrado AES-256 Activo' : 'AES-256 Encrypted'}</span>
               </div>
             </div>
 
             {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.originalSize)}</span>
@@ -529,38 +593,25 @@ export default function PdfProtector() {
               </div>
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Restricciones' : 'Restrictions'}</span>
-                <span className="text-amber-400 font-bold text-sm font-mono mt-0.5">{completedResult.restrictions.length}</span>
+                <span className="text-amber-400 font-bold text-lg font-mono mt-0.5">{completedResult.restrictions.length}</span>
               </div>
             </div>
-
-            {/* TARJETA DE DESCARGA */}
-            <DownloadSuccessCard
-              downloadUrl={completedResult.downloadUrl}
-              filename={completedResult.filename}
-              fileSize={completedResult.fileSize}
-              outputFormat="pdf"
-              rawBlob={completedResult.rawBlob}
-              onReset={() => {
-                setCompletedResult(null);
-                setResults([]);
-                handleRemoveAllFiles();
-              }}
-            />
           </div>
 
-          {/* BOTÓN VOLVER */}
-          <div className="flex justify-center">
-            <button
-              onClick={() => {
-                setCompletedResult(null);
-                setResults([]);
-              }}
-              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {isEs ? 'Volver al Panel de Protección' : 'Back to Protection Panel'}
-            </button>
-          </div>
+          {/* TARJETA DE DESCARGA */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            currentToolId="proteger"
+            onReset={() => {
+              setCompletedResult(null);
+              setResults([]);
+              handleRemoveAllFiles();
+            }}
+          />
         </motion.div>
       ) : (
         /* ÁREA DE TRABAJO: VISOR 5/12 + PANEL 7/12 */
@@ -613,18 +664,28 @@ export default function PdfProtector() {
             >
               <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10 font-sans">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 flex-shrink-0">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <div className={`p-2 rounded-xl border flex-shrink-0 transition-colors ${
+                    userPassword || ownerPassword
+                      ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                      : 'bg-zinc-800 border-white/10 text-zinc-400'
+                  }`}>
+                    <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className="flex flex-col overflow-hidden font-mono">
                     <span className="text-white font-bold text-xs truncate w-28 sm:w-44">{activeFile?.name || ''}</span>
-                    <span className="text-zinc-400 text-[10px]">{activeFile ? formatFileSize(activeFile.size) : ''}</span>
+                    <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
+                      <span>{activeFile ? formatFileSize(activeFile.size) : ''}</span>
+                      <span className="text-zinc-600">•</span>
+                      <span className={userPassword || ownerPassword ? 'text-emerald-400 font-bold' : 'text-zinc-500'}>
+                        {userPassword || ownerPassword ? (isEs ? 'AES-256 Configurado' : 'AES-256 Set') : (isEs ? 'Sin Cifrado' : 'Unencrypted')}
+                      </span>
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 font-mono">
                   <span className="bg-zinc-950 border border-white/10 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className={`w-2 h-2 rounded-full ${userPassword || ownerPassword ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
                     <span>{isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}</span>
                   </span>
                 </div>
@@ -706,11 +767,22 @@ export default function PdfProtector() {
 
                 {/* === CONTRASEÑA DE APERTURA (User Password) === */}
                 <div className="mb-5 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <KeyRound className="w-4 h-4 text-white" />
-                    <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
-                      {isEs ? 'Contraseña de Apertura' : 'User Password (Open)'}
-                    </span>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-white" />
+                      <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
+                        {isEs ? 'Contraseña de Apertura' : 'User Password (Open)'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={generateStrongPassword}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-mono transition-all cursor-pointer"
+                      title={isEs ? 'Generar y copiar contraseña segura aleatoria' : 'Generate and copy random strong password'}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>{isEs ? 'Generar Clave' : 'Generate'}</span>
+                    </button>
                   </div>
                   <p className="text-[11px] text-zinc-400 mb-3 font-sans leading-relaxed">
                     {isEs ? 'Restringe quién puede abrir y leer el documento. Déjalo en blanco si solo deseas restricciones de permisos.' : 'Restricts who can open and read the document. Leave blank for permission-only restrictions.'}

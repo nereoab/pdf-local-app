@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { useUIStore } from '@/store/useUIStore';
 
 type PageOrientation = 'original' | 'portrait' | 'landscape';
 type PageSizeOption = 'original' | 'a4' | 'letter';
@@ -53,10 +54,12 @@ interface CompletedMergeResult {
 export default function PdfMerger() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
   const controlPanelRef = useRef<HTMLDivElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
   const successContainerRef = useRef<HTMLDivElement>(null);
 
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -64,19 +67,29 @@ export default function PdfMerger() {
   const [controlPanelHeight, setControlPanelHeight] = useState<number | null>(null);
   const [completedResult, setCompletedResult] = useState<CompletedMergeResult | null>(null);
 
-  // Scroll automático suave e inmediato hacia la pantalla de éxito
+  // Ocultar barra superior global y scroll automático suave hacia la cabecera de la herramienta
   useEffect(() => {
     if (completedResult) {
+      setHeaderHidden(true);
       const timer = setTimeout(() => {
-        if (successContainerRef.current) {
-          successContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (topHeaderRef.current) {
+          topHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }, 80);
       return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
     }
-  }, [completedResult]);
+  }, [completedResult, setHeaderHidden]);
+
+  // Asegurar restauración de barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   // Sincronizar altura exacta del panel de vista previa con el panel de control
   useEffect(() => {
@@ -587,7 +600,7 @@ export default function PdfMerger() {
       <input type="file" accept=".pdf" multiple className="hidden" ref={addMoreInputRef} onChange={handleFilesSelected} disabled={isProcessing} />
 
       {/* HEADER SUPERIOR UNIFICADO */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
+      <div ref={topHeaderRef} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
           <Link href="/organizar" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
             <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
@@ -603,6 +616,13 @@ export default function PdfMerger() {
             </h1>
           </div>
         </div>
+
+        {completedResult && (
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">{completedResult.filename}</span>
+          </div>
+        )}
 
         {files.length > 0 && !completedResult && (
           <div className="flex items-center gap-3">
@@ -722,12 +742,11 @@ export default function PdfMerger() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
-          {/* LADO IZQUIERDO: REJILLA DE ARCHIVOS Y MINIATURAS DE UNIÓN (ALTURA SINCRONIZADA) */}
+          {/* LADO IZQUIERDO: REJILLA DE ARCHIVOS Y MINIATURAS DE UNIÓN (ALTURA SIMÉTRICA) */}
           <div 
-            style={{ height: controlPanelHeight ? `${controlPanelHeight}px` : undefined }} 
-            className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col min-h-[620px]"
+            className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]"
           >
             {/* BARRA SUPERIOR DE HERRAMIENTAS Y ORDENAMIENTO */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400">
@@ -1057,11 +1076,11 @@ export default function PdfMerger() {
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL DE UNIÓN (100% INTACTO) */}
-          <div ref={controlPanelRef} className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
-            <div>
+          {/* LADO DERECHO: PANEL DE CONTROL DE UNIÓN */}
+          <div ref={controlPanelRef} className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
+              <div className="mb-4 pb-3 border-b border-white/10">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>

@@ -13,6 +13,8 @@ import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SplitWorkerMessageIn, SplitWorkerMessageOut } from '@/workers/pdf-split.worker';
+import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { useUIStore } from '@/store/useUIStore';
 
 type MainTab = 'rango' | 'paginas' | 'tamano';
 type RangeSubMode = 'personalizado' | 'fijo' | 'inteligente';
@@ -29,10 +31,25 @@ interface PageThumbnail {
   included: boolean;
 }
 
+interface CompletedSplitResult {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+  createdCount: number;
+  isZip: boolean;
+  rawBlob: Blob;
+  originalSize: string;
+  totalPages: number;
+}
+
 export default function PdfSplitter() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [file, setFile] = useState<File | null>(() => {
@@ -44,6 +61,31 @@ export default function PdfSplitter() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
+  const [completedResult, setCompletedResult] = useState<CompletedSplitResult | null>(null);
+
+  // Ocultar barra superior global y scroll automático suave hacia la cabecera de la herramienta
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      const timer = setTimeout(() => {
+        if (topHeaderRef.current) {
+          topHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Asegurar restauración de barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   // ENCRYPTION / PASSWORD STATE
   const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
@@ -99,7 +141,7 @@ export default function PdfSplitter() {
       const renderLimit = Math.min(count, 32);
       for (let i = 1; i <= renderLimit; i++) {
         const page = await pdfjsDoc.getPage(i);
-        const viewport = page.getViewport({ scale: 0.25 });
+        const viewport = page.getViewport({ scale: 0.5 });
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
@@ -206,9 +248,11 @@ export default function PdfSplitter() {
   };
 
   const removeFile = useCallback(() => {
+    setHeaderHidden(false);
     setFile(null);
     setTotalPages(0);
     setDownloadUrl(null);
+    setCompletedResult(null);
     setGlobalFile(null);
     setCreatedCount(0);
     setIsEncrypted(false);
@@ -217,7 +261,8 @@ export default function PdfSplitter() {
     setPasswordInput('');
     setPageThumbnails([]);
     setRanges([{ id: '1', from: 1, to: 1 }]);
-  }, [setGlobalFile]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [setGlobalFile, setHeaderHidden]);
 
   // TOGGLE INCLUSION DE PAGINA AL HACER CLICK EN MINIATURA
   const togglePageIncluded = (index: number) => {
@@ -400,19 +445,24 @@ export default function PdfSplitter() {
 
       const blob = new Blob([result.buffer], { type: result.isZip ? 'application/zip' : 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
+      const sizeFormatted = formatFileSize(blob.size);
+      const origSizeFormatted = file ? formatFileSize(file.size) : '—';
 
       setDownloadUrl(localUrl);
       setDownloadFilename(result.filename);
       setCreatedCount(result.createdCount);
+      setCompletedResult({
+        downloadUrl: localUrl,
+        filename: result.filename,
+        fileSize: sizeFormatted,
+        createdCount: result.createdCount,
+        isZip: result.isZip,
+        rawBlob: blob,
+        originalSize: origSizeFormatted,
+        totalPages,
+      });
 
-      // Trigger instant download
-      const link = document.createElement('a');
-      link.href = localUrl;
-      link.download = result.filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
+      setProgressPercent(100);
       toast.success(isEs ? '¡Documento dividido con éxito!' : 'Document split successfully!');
     } catch (err: any) {
       console.error(err);
@@ -436,7 +486,7 @@ export default function PdfSplitter() {
       <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} disabled={isProcessing} />
 
       {/* HEADER SUPERIOR UNIFICADO */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
+      <div ref={topHeaderRef} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
           <Link href="/organizar" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
             <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
@@ -453,7 +503,12 @@ export default function PdfSplitter() {
           </div>
         </div>
 
-        {file && (
+        {completedResult ? (
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">{completedResult.filename}</span>
+          </div>
+        ) : file ? (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
@@ -467,10 +522,76 @@ export default function PdfSplitter() {
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {!file ? (
+      {completedResult ? (
+        /* ── PANTALLA DE ÉXITO DEDICADA ── */
+        <motion.div
+          ref={successContainerRef}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE DIVISIÓN */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <Scissors className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA DIVISIÓN DE PDF' : 'PDF SPLIT RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                    {isEs ? '¡Documento dividido con éxito!' : 'Document split successfully!'}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Estado del proceso' : 'Process status'}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {completedResult.originalSize}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Archivos Generados' : 'Generated Files'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.createdCount} {completedResult.isZip ? (isEs ? 'PDFs en .ZIP' : 'PDFs in .ZIP') : (isEs ? 'PDF extraído' : 'PDF extracted')}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Modo de Procesamiento' : 'Processing Mode'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {isEs ? 'Corte Web Worker Nativo' : 'Native Web Worker Split'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat={completedResult.isZip ? 'zip' : 'pdf'}
+            rawBlob={completedResult.rawBlob}
+            onReset={removeFile}
+          />
+        </motion.div>
+      ) : !file ? (
         /* VISTA DROPZONE VACÍA */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -505,10 +626,10 @@ export default function PdfSplitter() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
           {/* LADO IZQUIERDO: REJILLA DE MINIATURAS REALES Y RANGOS DE HOJAS */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
@@ -570,22 +691,22 @@ export default function PdfSplitter() {
               )}
             </div>
 
-            {/* VISUALIZADOR GRAFICO DE MINIATURAS REALES EN GRILLA 4x4 */}
-            <div className="flex-1 overflow-y-auto max-h-[580px] pr-2 font-mono">
+            {/* VISUALIZADOR GRAFICO DE MINIATURAS REALES EN GRILLA ESPACIOSA Y PROPORCIONAL */}
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2 font-mono custom-scrollbar">
               {isLoadingThumbnails ? (
                 <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-400">
                   <Loader2 className="w-8 h-8 animate-spin text-white" />
-                  <span className="text-xs font-bold">{isEs ? 'Generando vistas previas de páginas en 4x4...' : 'Generating 4x4 page previews...'}</span>
+                  <span className="text-xs font-bold">{isEs ? 'Generando vistas previas de páginas...' : 'Generating page previews...'}</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 p-1">
                   {pageThumbnails.map((p) => (
                     <div
                       key={p.pageIndex}
                       onClick={() => togglePageIncluded(p.pageIndex)}
-                      className={`relative bg-zinc-950 border ${p.included ? 'border-white/20 hover:border-white/40' : 'border-red-500/30 opacity-40'} rounded-2xl p-3 flex flex-col justify-between transition-all cursor-pointer group shadow-lg`}
+                      className={`relative w-full h-[280px] min-h-[280px] bg-zinc-950 border ${p.included ? 'border-white/20 hover:border-white/40' : 'border-red-500/30 opacity-40'} rounded-2xl p-3 flex flex-col justify-between transition-all cursor-pointer group shadow-lg`}
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-2 shrink-0">
                         <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-md">
                           #{p.pageIndex + 1}
                         </span>
@@ -594,9 +715,9 @@ export default function PdfSplitter() {
                         </div>
                       </div>
 
-                      <div className="w-full h-40 bg-zinc-900 rounded-xl overflow-hidden flex items-center justify-center border border-white/5 relative">
+                      <div className="w-full flex-1 min-h-0 bg-zinc-900/90 rounded-xl overflow-hidden flex items-center justify-center border border-white/5 relative p-2 shadow-inner">
                         {p.dataUrl ? (
-                          <img src={p.dataUrl} alt={`Página ${p.pageIndex + 1}`} className="w-full h-full object-contain" />
+                          <img src={p.dataUrl} alt={`Página ${p.pageIndex + 1}`} className="max-w-full max-h-full object-contain rounded drop-shadow-md" />
                         ) : (
                           <div className="flex flex-col items-center gap-1.5 text-zinc-600">
                             <FileText className="w-6 h-6" />
@@ -612,10 +733,10 @@ export default function PdfSplitter() {
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
-            <div>
+          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
+              <div className="mb-4 pb-3 border-b border-white/10">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>

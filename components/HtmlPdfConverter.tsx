@@ -13,6 +13,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { useUIStore } from '@/store/useUIStore';
 
 type ConversionDirection = 'html-to-pdf' | 'pdf-to-html';
 type PageSize = 'a4' | 'letter' | 'legal';
@@ -22,13 +24,27 @@ interface HtmlPdfConverterProps {
   defaultMode?: ConversionDirection;
 }
 
+interface CompletedResult {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+  rawBlob: Blob;
+  outputFormat: string;
+  originalSize?: string;
+  itemCount?: number;
+}
+
 export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
+  const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
   const [file, setFile] = useState<File | null>(() => {
     if (!globalFile) return null;
     const name = globalFile.name.toLowerCase();
@@ -163,19 +179,32 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         toast.error(isEs ? 'Por favor selecciona un archivo PDF (.pdf)' : 'Please select a PDF file (.pdf)');
       }
     }
+  };  const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
   const handleSwitchMode = (newMode: ConversionDirection) => {
     setMode(newMode);
     setFile(null);
+    setGlobalFile(null);
     setDownloadUrl(null);
     setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
   };
 
   const handleRemoveFile = () => {
     setFile(null);
+    setGlobalFile(null);
     setDownloadUrl(null);
     setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const executeConversion = async () => {
@@ -184,6 +213,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     setIsProcessing(true);
     setProgressPercent(15);
     let localUrl: string | null = null;
+    let resultBlob: Blob | null = null;
 
     try {
       if (mode === 'html-to-pdf') {
@@ -195,22 +225,27 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           try {
             const formData = new FormData();
             formData.append('File', file);
-            formData.append('StoreFile', 'false');
+            formData.append('StoreFile', 'true');
 
             const response = await fetch(`https://v2.convertapi.com/convert/html/to/pdf?Secret=${API_SECRET}`, {
               method: 'POST',
               body: formData,
             });
 
-            const data = await response.json();
-            if (data.Files && data.Files.length > 0) {
-              const base64Data = data.Files[0].FileData;
-              const byteCharacters = atob(base64Data);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: 'application/pdf' });
-              localUrl = URL.createObjectURL(blob);
+            if (response.ok) {
+              const data = await response.json();
+              const fileData = data.Files?.[0];
+              if (fileData?.FileData) {
+                const byteCharacters = atob(fileData.FileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                resultBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+                localUrl = URL.createObjectURL(resultBlob);
+              } else if (fileData?.Url) {
+                const fileResponse = await fetch(fileData.Url);
+                resultBlob = await fileResponse.blob();
+                localUrl = URL.createObjectURL(resultBlob);
+              }
             }
           } catch (err) { console.warn("Fallback HTML to PDF local", err); }
         }
@@ -232,7 +267,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           const page = pdfDoc.addPage([w, h]);
           
           page.drawText(file.name.replace(/\.[^/.]+$/, ""), { x: 50, y: h - 60, size: 18, font, color: rgb(0.9, 0.3, 0.1) });
-          page.drawText(isEs ? "Renderizado HTML5 a PDF" : "HTML5 to PDF Render", { x: 50, y: h - 85, size: 10, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
+          page.drawText(isEs ? "Renderizado HTML5 a PDF • PDFBLACK" : "HTML5 to PDF Render • PDFBLACK", { x: 50, y: h - 85, size: 10, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
           page.drawLine({ start: { x: 50, y: h - 100 }, end: { x: w - 50, y: h - 100 }, thickness: 1, color: rgb(0.85, 0.85, 0.85) });
 
           if (addHeaderFooter) {
@@ -240,14 +275,28 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           }
 
           const pdfBytes = await pdfDoc.save();
-          const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-          localUrl = URL.createObjectURL(blob);
+          resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+          localUrl = URL.createObjectURL(resultBlob);
         }
 
         const outName = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
-        triggerDownload(localUrl, outName);
+        if (resultBlob) {
+          setCompletedResult({
+            downloadUrl: localUrl,
+            filename: outName,
+            fileSize: formatFileSize(resultBlob.size),
+            rawBlob: resultBlob,
+            outputFormat: 'pdf',
+            originalSize: formatFileSize(file.size),
+            itemCount: htmlTagCount,
+          });
+          setHeaderHidden(true);
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
         toast.success(isEs ? '¡HTML renderizado a PDF con éxito!' : 'HTML rendered to PDF successfully!');
 
       } else {
@@ -259,22 +308,27 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           try {
             const formData = new FormData();
             formData.append('File', file);
-            formData.append('StoreFile', 'false');
+            formData.append('StoreFile', 'true');
 
             const response = await fetch(`https://v2.convertapi.com/convert/pdf/to/html?Secret=${API_SECRET}`, {
               method: 'POST',
               body: formData,
             });
 
-            const data = await response.json();
-            if (data.Files && data.Files.length > 0) {
-              const base64Data = data.Files[0].FileData;
-              const byteCharacters = atob(base64Data);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: 'text/html' });
-              localUrl = URL.createObjectURL(blob);
+            if (response.ok) {
+              const data = await response.json();
+              const fileData = data.Files?.[0];
+              if (fileData?.FileData) {
+                const byteCharacters = atob(fileData.FileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                resultBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'text/html' });
+                localUrl = URL.createObjectURL(resultBlob);
+              } else if (fileData?.Url) {
+                const fileResponse = await fetch(fileData.Url);
+                resultBlob = await fileResponse.blob();
+                localUrl = URL.createObjectURL(resultBlob);
+              }
             }
           } catch (err) { console.warn("Fallback PDF to HTML local", err); }
         }
@@ -288,14 +342,28 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
               <p>Documento PDF convertido a código HTML5 responsive (${singleHtmlFile ? 'Autónomo con CSS incrustado' : 'Marcado limpio'}).</p>
             </body>
             </html>`;
-          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-          localUrl = URL.createObjectURL(blob);
+          resultBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+          localUrl = URL.createObjectURL(resultBlob);
         }
 
         const outName = `${file.name.replace(/\.[^/.]+$/, "")}.html`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
-        triggerDownload(localUrl, outName);
+        if (resultBlob) {
+          setCompletedResult({
+            downloadUrl: localUrl,
+            filename: outName,
+            fileSize: formatFileSize(resultBlob.size),
+            rawBlob: resultBlob,
+            outputFormat: 'html',
+            originalSize: formatFileSize(file.size),
+            itemCount: totalPages,
+          });
+          setHeaderHidden(true);
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
         toast.success(isEs ? '¡PDF exportado a código HTML5 con éxito!' : 'PDF exported to HTML5 code successfully!');
       }
 
@@ -309,17 +377,8 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     }
   };
 
-  const triggerDownload = (url: string, name: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
-    <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
+    <div ref={topHeaderRef} className="w-full flex flex-col font-mono text-white selection:bg-white selection:text-black">
       <input 
         type="file" 
         accept={mode === 'html-to-pdf' ? ".html,.htm,.zip" : ".pdf"} 
@@ -332,7 +391,11 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
       {/* HEADER SUPERIOR UNIFICADO */}
       <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
-          <Link href="/convertir" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
+          <Link 
+            href="/convertir" 
+            onClick={() => setHeaderHidden(false)}
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+          >
             <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
           </Link>
           <div className="hidden sm:block h-5 w-px bg-white/10" />
@@ -349,11 +412,11 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           </div>
         </div>
 
-        {file && (
+        {(file || completedResult) && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{completedResult ? completedResult.filename : file?.name}</span>
             </div>
             <button 
               onClick={handleRemoveFile} 
@@ -366,200 +429,251 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         )}
       </div>
 
-      {/* SELECTOR DUAL DE MODO 2 EN 1 */}
-      <div className="flex items-center justify-center mb-6 font-mono">
-        <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
-          <button
-            type="button" onClick={() => handleSwitchMode('html-to-pdf')}
-            className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              mode === 'html-to-pdf' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <HtmlIcon className="w-4 h-4 rounded-sm" />
-            <span>{isEs ? 'HTML a PDF (.html → .pdf)' : 'HTML to PDF (.html → .pdf)'}</span>
-          </button>
-
-          <button
-            type="button" onClick={() => handleSwitchMode('pdf-to-html')}
-            className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              mode === 'pdf-to-html' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Repeat className="w-4 h-4" />
-            <span>{isEs ? 'PDF a HTML (.pdf → .html)' : 'PDF to HTML (.pdf → .html)'}</span>
-          </button>
-        </div>
-      </div>
-
-      {!file ? (
-        /* VISTA DROPZONE VACÍA */
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+      {completedResult ? (
+        /* VISTA DE ÉXITO ESTILO PDFBLACK CON ENCADENAMIENTO DE HERRAMIENTAS */
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
-            <UploadCloud className="w-12 h-12 text-white" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
-            {mode === 'html-to-pdf'
-              ? (isEs ? "CONVERTIR PÁGINA HTML A PDF" : "CONVERT HTML PAGE TO PDF")
-              : (isEs ? "CONVERTIR PDF A HTML (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO HTML (2-IN-1 DUAL CONVERTER)")}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
-            {mode === 'html-to-pdf'
-              ? (isEs ? "Renderiza archivos HTML5 y CSS en documentos PDF vectoriales." : "Render HTML5 and CSS files into vector PDF documents.")
-              : (isEs ? "Exporta código HTML5 con CSS autónomo incrustado en Base64 de forma 100% confidencial y local." : "Export HTML5 code with standalone Base64 CSS 100% locally.")}
-          </p>
-          <button 
-            type="button"
-            className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-black" />
-            <span>
-              {mode === 'html-to-pdf'
-                ? (isEs ? "Seleccionar Documento HTML" : "Select HTML Document")
-                : (isEs ? "Seleccionar Archivo PDF" : "Select PDF File")}
-            </span>
-          </button>
+          {/* BANNER DE ÉXITO */}
+          <div className="bg-[#09090b] border border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden font-mono">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-amber-600 text-white rounded-2xl shadow-lg border border-amber-400/30">
+                  <Code className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight font-sans">
+                    {isEs ? '¡Conversión Completada con Éxito!' : 'Conversion Completed Successfully!'}
+                  </h3>
+                  <p className="text-zinc-400 text-xs font-mono mt-0.5">
+                    {mode === 'html-to-pdf'
+                      ? (isEs ? 'Documento HTML renderizado a PDF listo para descargar.' : 'HTML document rendered to PDF ready for download.')
+                      : (isEs ? 'PDF exportado a código HTML5 responsive con éxito.' : 'PDF exported to responsive HTML5 code successfully.')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-amber-400">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{mode === 'html-to-pdf' ? (isEs ? 'PDF Renderizado Listo' : 'Rendered PDF Ready') : (isEs ? 'HTML5 Responsive Listo' : 'Responsive HTML5 Ready')}</span>
+              </div>
+            </div>
+
+            {/* MÉTRICAS DE LA CONVERSIÓN */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Formato de Salida' : 'Output Format'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5 uppercase">
+                  {completedResult.outputFormat}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Resultante' : 'Result Size'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.fileSize}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-zinc-300 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.originalSize || '-'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Procesamiento' : 'Processing'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {isEs ? '100% Local' : '100% Local'}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat={completedResult.outputFormat}
+            rawBlob={completedResult.rawBlob}
+            currentToolId="html-pdf"
+            onReset={handleRemoveFile}
+          />
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL */
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
-        >
-          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
-                <Code className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
-              </div>
-            </div>
+        <>
+          {/* SELECTOR DUAL DE MODO 2 EN 1 */}
+          <div className="flex items-center justify-center mb-6 font-mono">
+            <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
+              <button
+                type="button" onClick={() => handleSwitchMode('html-to-pdf')}
+                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  mode === 'html-to-pdf' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Code className="w-4 h-4" />
+                <span>{isEs ? 'HTML a PDF (.html → .pdf)' : 'HTML to PDF (.html → .pdf)'}</span>
+              </button>
 
-            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
-            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
-              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
-              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
-                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
-                </span>
-                {isRendering ? (
-                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                    <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    <span>...</span>
-                  </div>
-                ) : totalPages > 0 ? (
-                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      onClick={() => setActivePage(pageNum)}
-                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
-                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
-                      }`}
-                    >
-                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                        {pageDataUrls[pageNum] ? (
-                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
-                        ) : (
-                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
-                        )}
-                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
-                          #{pageNum}
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
-                )}
-              </div>
-
-              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
-              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
-                {pdfUrl ? (
-                  <iframe
-                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
-                    title="Visor PDF Tamaño Normal"
-                  />
-                ) : pageDataUrls[activePage] ? (
-                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
-                    <img
-                      src={pageDataUrls[activePage]}
-                      alt={`Página ${activePage}`}
-                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
-                    <HtmlIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
-                    <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
-                      ✓ {htmlTagCount} {isEs ? 'etiquetas HTML detectadas' : 'HTML tags detected'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* PIE DE ARCHIVO */}
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between font-mono text-xs text-zinc-400">
-              <span className="truncate max-w-[240px] font-bold text-white">{file.name}</span>
-              <button type="button" onClick={handleRemoveFile} className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors">
-                <X className="w-4 h-4" />
+              <button
+                type="button" onClick={() => handleSwitchMode('pdf-to-html')}
+                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  mode === 'pdf-to-html' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Repeat className="w-4 h-4" />
+                <span>{isEs ? 'PDF a HTML (.pdf → .html)' : 'PDF to HTML (.pdf → .html)'}</span>
               </button>
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
-            <div>
-              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
-                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
-                </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
-                  <Sliders className="w-5 h-5 text-white" />
-                </h2>
+          {!file ? (
+            /* VISTA DROPZONE VACÍA */
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+            >
+              <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
+                <UploadCloud className="w-12 h-12 text-white" />
               </div>
-
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+                {mode === 'html-to-pdf'
+                  ? (isEs ? "CONVERTIR PÁGINA HTML A PDF" : "CONVERT HTML PAGE TO PDF")
+                  : (isEs ? "CONVERTIR PDF A HTML (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO HTML (2-IN-1 DUAL CONVERTER)")}
+              </h2>
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+                {mode === 'html-to-pdf'
+                  ? (isEs ? "Renderiza archivos HTML5 y CSS en documentos PDF vectoriales." : "Render HTML5 and CSS files into vector PDF documents.")
+                  : (isEs ? "Exporta código HTML5 con CSS autónomo incrustado en Base64 de forma 100% confidencial y local." : "Export HTML5 code with standalone Base64 CSS 100% locally.")}
+              </p>
               <button 
-                type="button" 
-                onClick={() => setShowAdvanced(!showAdvanced)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer mb-5 shadow-sm"
+                type="button"
+                className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
               >
-                <div className="flex items-center gap-2 font-bold">
-                  <Sliders className="w-4 h-4 text-white" />
-                  <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
-                </div>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                <Plus className="w-4 h-4 text-black" />
+                <span>
+                  {mode === 'html-to-pdf'
+                    ? (isEs ? "Seleccionar Documento HTML" : "Select HTML Document")
+                    : (isEs ? "Seleccionar Archivo PDF" : "Select PDF File")}
+                </span>
               </button>
 
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 font-mono text-xs mb-5 overflow-hidden"
-                  >
-                    {mode === 'html-to-pdf' ? (
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+              </div>
+            </motion.div>
+          ) : (
+            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL (ALTURA SIMÉTRICA) */
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+            >
+              {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
+                  <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+                    <Code className="w-4 h-4 text-white" />
+                    <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                  </div>
+                </div>
+
+                {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+                <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-0 flex">
+                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+                  <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                    <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                      {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                    </span>
+                    {isRendering ? (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                        <span>...</span>
+                      </div>
+                    ) : totalPages > 0 ? (
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setActivePage(pageNum)}
+                          className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                            activePage === pageNum ? 'border-white ring-2 ring-white/40 bg-zinc-800' : 'border-white/10 hover:border-white/30'
+                          }`}
+                        >
+                          <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                            {pageDataUrls[pageNum] ? (
+                              <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                            ) : (
+                              <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                            )}
+                            <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                              #{pageNum}
+                            </span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
+                        <Code className="w-5 h-5" />
+                        <span>{isEs ? 'Modo HTML' : 'HTML Mode'}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL O REPORTE HTML */}
+                  <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                    {pdfUrl ? (
+                      <iframe
+                        src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                        className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                        title="Visor PDF Tamaño Normal"
+                      />
+                    ) : pageDataUrls[activePage] ? (
+                      <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2 custom-scrollbar">
+                        <img
+                          src={pageDataUrls[activePage]}
+                          alt={`Página ${activePage}`}
+                          className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
+                        <HtmlIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
+                        <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
+                          ✓ {htmlTagCount} {isEs ? 'etiquetas HTML detectadas' : 'HTML tags detected'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* LADO DERECHO: PANEL DE CONTROL */}
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
+                  {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
+                  <div className="mb-4 pb-3 border-b border-white/10">
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
+                      {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                    </span>
+                    <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                      <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
+                      <Sliders className="w-5 h-5 text-white" />
+                    </h2>
+                  </div>
+
+                  {/* OPCIONES SEGÚN EL MODO */}
+                  {mode === 'html-to-pdf' ? (
+                    <div className="space-y-4 font-mono text-xs">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
                           <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
@@ -605,85 +719,74 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
                           <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
                             <input
                               type="checkbox" checked={includeBackgrounds} onChange={(e) => setIncludeBackgrounds(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded"
+                              className="accent-white w-4 h-4 rounded cursor-pointer"
                             />
                             <span>{isEs ? 'Renderizar colores e imágenes de fondo CSS' : 'Render CSS background colors & images'}</span>
                           </label>
                           <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
                             <input
                               type="checkbox" checked={addHeaderFooter} onChange={(e) => setAddHeaderFooter(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded"
+                              className="accent-white w-4 h-4 rounded cursor-pointer"
                             />
                             <span>{isEs ? 'Incluir fecha y numeración de página en encabezado' : 'Include date & page numbering in header'}</span>
                           </label>
                         </div>
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300 font-mono">
-                            <input
-                              type="checkbox" checked={singleHtmlFile} onChange={(e) => setSingleHtmlFile(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded"
-                            />
-                            <span className="flex items-center gap-1.5 font-bold">
-                              <Sparkles className="w-4 h-4 text-white" />
-                              {isEs ? 'Generar 1 solo archivo HTML autónomo (CSS e imágenes embebidas en Base64)' : 'Generate 1 standalone HTML file (Embedded CSS & Base64 images)'}
-                            </span>
-                          </label>
-                        </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 font-mono text-xs">
+                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300 font-mono">
+                          <input
+                            type="checkbox" checked={singleHtmlFile} onChange={(e) => setSingleHtmlFile(e.target.checked)}
+                            className="accent-white w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span className="flex items-center gap-1.5 font-bold">
+                            <Sparkles className="w-4 h-4 text-white" />
+                            {isEs ? 'Generar 1 solo archivo HTML autónomo (CSS e imágenes embebidas en Base64)' : 'Generate 1 standalone HTML file (Embedded CSS & Base64 images)'}
+                          </span>
+                        </label>
                       </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-4 border-t border-white/10 font-sans">
-              {isProcessing && (
-                <div className="mb-3 space-y-1.5 font-mono">
-                  <div className="flex justify-between text-[10px] font-bold text-zinc-300">
-                    <span className="truncate max-w-[200px]">{progressMsg}</span>
-                    <span>{progressPercent}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                    <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
-                  </div>
+                    </div>
+                  )}
                 </div>
-              )}
 
-              <button 
-                onClick={executeConversion} 
-                disabled={isProcessing || !file} 
-                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
-              >
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <RefreshCw className="w-5 h-5 text-black" />}
-                <span>
-                  {isProcessing 
-                    ? progressMsg 
-                    : (!file 
-                        ? (isEs ? 'Selecciona un archivo' : 'Select a file') 
-                        : (mode === 'html-to-pdf' 
-                            ? (isEs ? 'Convertir a PDF con Opciones →' : 'Convert to PDF with Options →') 
-                            : (isEs ? 'Convertir a HTML con Opciones →' : 'Convert to HTML with Options →')))}
-                </span>
-              </button>
+                {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
+                <div className="pt-4 border-t border-white/10 font-sans">
+                  {isProcessing && (
+                    <div className="mb-3 space-y-1.5 font-mono">
+                      <div className="flex justify-between text-[10px] font-bold text-zinc-300">
+                        <span className="truncate max-w-[200px]">{progressMsg}</span>
+                        <span>{progressPercent}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                        <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
+                      </div>
+                    </div>
+                  )}
 
-              {downloadUrl && (
-                <a
-                  href={downloadUrl}
-                  download={downloadFilename || 'Documento_Web'}
-                  className="mt-3 w-full bg-emerald-400 hover:bg-emerald-300 text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
-                >
-                  <FileDown className="w-4 h-4 text-black" />
-                  <span>{isEs ? 'Descargar Archivo Convertido' : 'Download Converted File'}</span>
-                </a>
-              )}
-            </div>
+                  <button 
+                    onClick={executeConversion} 
+                    disabled={isProcessing || !file} 
+                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <RefreshCw className="w-5 h-5 text-black" />}
+                    <span>
+                      {isProcessing 
+                        ? progressMsg 
+                        : (!file 
+                            ? (isEs ? 'Selecciona un archivo' : 'Select a file') 
+                            : (mode === 'html-to-pdf' 
+                                ? (isEs ? 'Convertir a PDF con Opciones →' : 'Convert to PDF with Options →') 
+                                : (isEs ? 'Convertir a HTML con Opciones →' : 'Convert to HTML with Options →')))}
+                    </span>
+                  </button>
+                </div>
 
-          </div>
-        </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
     </div>
   );

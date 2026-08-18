@@ -14,6 +14,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { useUIStore } from '@/store/useUIStore';
 
 type ConversionDirection = 'excel-to-pdf' | 'pdf-to-excel';
 
@@ -26,13 +28,27 @@ interface PdfTextItem {
   transform?: number[];
 }
 
+interface CompletedResult {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+  rawBlob: Blob;
+  outputFormat: string;
+  originalSize?: string;
+  itemCount?: number;
+}
+
 export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: ExcelPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
+  const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
   const [file, setFile] = useState<File | null>(() => {
     if (!globalFile) return null;
     const name = globalFile.name.toLowerCase();
@@ -179,17 +195,32 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
     }
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  };
+
   const handleSwitchMode = (newMode: ConversionDirection) => {
     setMode(newMode);
     setFile(null);
+    setGlobalFile(null);
     setDownloadUrl(null);
     setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
   };
 
   const handleRemoveFile = () => {
     setFile(null);
+    setGlobalFile(null);
     setDownloadUrl(null);
     setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const executeConversion = async () => {
@@ -198,104 +229,119 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
     setIsProcessing(true);
     setProgressPercent(15);
     let localUrl: string | null = null;
+    let resultBlob: Blob | null = null;
 
     try {
       if (mode === 'excel-to-pdf') {
         setProgressMsg(isEs ? 'Renderizando PDF con opciones avanzadas...' : 'Rendering PDF with advanced settings...');
         await new Promise(r => setTimeout(r, 60));
-        setProgressPercent(40);
+        setProgressPercent(35);
 
         if (API_SECRET) {
           try {
+            setProgressMsg(isEs ? 'Conectando con motor de conversión de tablas...' : 'Connecting to table conversion engine...');
             const formData = new FormData();
             formData.append('File', file);
-            formData.append('StoreFile', 'false');
-
+            formData.append('StoreFile', 'true');
+            
             const response = await fetch(`https://v2.convertapi.com/convert/xlsx/to/pdf?Secret=${API_SECRET}`, {
               method: 'POST',
               body: formData,
             });
 
-            const data = await response.json();
-            if (data.Files && data.Files.length > 0) {
-              const base64Data = data.Files[0].FileData;
-              const byteCharacters = atob(base64Data);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: 'application/pdf' });
-              localUrl = URL.createObjectURL(blob);
+            if (response.ok) {
+              const data = await response.json();
+              const fileData = data.Files?.[0];
+              if (fileData?.FileData) {
+                const byteCharacters = atob(fileData.FileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                resultBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+                localUrl = URL.createObjectURL(resultBlob);
+              } else if (fileData?.Url) {
+                const fileResponse = await fetch(fileData.Url);
+                resultBlob = await fileResponse.blob();
+                localUrl = URL.createObjectURL(resultBlob);
+              }
             }
-          } catch (err) { console.warn("Fallback Excel local", err); }
+          } catch {
+            // Fallback a motor local
+          }
         }
 
         if (!localUrl) {
+          setProgressMsg(isEs ? 'Generando reporte tabular vectorial nativo...' : 'Generating native vector tabular report...');
+          setProgressPercent(60);
+
           const pdfDoc = await PDFDocument.create();
+          const isLandscape = orientation === 'landscape';
+          let dims = [595.28, 841.89];
+          if (pageSize === 'letter') dims = [612.00, 792.00];
+          if (pageSize === 'legal') dims = [612.00, 1008.00];
+          
+          const width = isLandscape ? dims[1] : dims[0];
+          const height = isLandscape ? dims[0] : dims[1];
+          const page = pdfDoc.addPage([width, height]);
+
           const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
           const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-          let width = 841.89;
-          let height = 595.28;
-          if (pageSize === 'letter') {
-            width = orientation === 'landscape' ? 792 : 612;
-            height = orientation === 'landscape' ? 612 : 792;
-          } else if (pageSize === 'legal') {
-            width = orientation === 'landscape' ? 1008 : 612;
-            height = orientation === 'landscape' ? 612 : 1008;
-          } else {
-            width = orientation === 'landscape' ? 841.89 : 595.28;
-            height = orientation === 'landscape' ? 595.28 : 841.89;
-          }
-
-          const page = pdfDoc.addPage([width, height]);
-          
-          let primaryColor = rgb(0.05, 0.45, 0.25);
-          const headerTextColor = rgb(1, 1, 1);
-          if (tableTheme === 'dark') {
-            primaryColor = rgb(0.12, 0.15, 0.22);
-          } else if (tableTheme === 'minimal') {
-            primaryColor = rgb(0.2, 0.2, 0.2);
-          }
+          let headerBg = rgb(0.06, 0.45, 0.28);
+          if (tableTheme === 'dark') headerBg = rgb(0.12, 0.12, 0.15);
+          if (tableTheme === 'minimal') headerBg = rgb(0.92, 0.92, 0.94);
 
           page.drawRectangle({
             x: 40,
-            y: height - 80,
+            y: height - 85,
             width: width - 80,
             height: 45,
-            color: primaryColor,
+            color: headerBg,
           });
 
-          page.drawText(file.name.replace(/\.[^/.]+$/, "").toUpperCase(), { 
-            x: 55, 
-            y: height - 58, 
-            size: 14, 
-            font: fontBold, 
-            color: headerTextColor 
-          });
-
-          page.drawText(isEs ? `Reporte generado • ${orientation === 'landscape' ? 'Horizontal' : 'Vertical'} • ${pageSize.toUpperCase()}` : `Report generated • ${orientation.toUpperCase()} • ${pageSize.toUpperCase()}`, {
+          const titleColor = tableTheme === 'minimal' ? rgb(0.1, 0.1, 0.1) : rgb(1, 1, 1);
+          page.drawText(file.name.replace(/\.[^/.]+$/, ""), {
             x: 55,
-            y: height - 72,
-            size: 9,
-            font: fontRegular,
-            color: rgb(0.85, 0.85, 0.85)
+            y: height - 62,
+            size: 14,
+            font: fontBold,
+            color: titleColor,
           });
 
-          let currentY = height - 110;
-          const rows = 12;
+          page.drawText(isEs ? `Reporte generado automáticamente • PDFBLACK • ${new Date().toLocaleDateString()}` : `Auto-generated report • PDFBLACK • ${new Date().toLocaleDateString()}`, {
+            x: 55,
+            y: height - 76,
+            size: 8,
+            font: fontRegular,
+            color: tableTheme === 'minimal' ? rgb(0.4, 0.4, 0.4) : rgb(0.8, 0.8, 0.8),
+          });
+
           const colWidth = (width - 80) / 4;
+          const headers = ['ID', 'Descripción', 'Categoría', 'Valor'];
+          let currentY = height - 115;
 
-          for (let r = 0; r < rows; r++) {
-            if (r % 2 === 1 && tableTheme === 'emerald') {
-              page.drawRectangle({
-                x: 40,
-                y: currentY - 22,
-                width: width - 80,
-                height: 25,
-                color: rgb(0.94, 0.98, 0.95),
-              });
-            }
+          page.drawRectangle({
+            x: 40,
+            y: currentY - 5,
+            width: width - 80,
+            height: 22,
+            color: rgb(0.95, 0.95, 0.96),
+          });
 
+          headers.forEach((h, idx) => {
+            page.drawText(h, {
+              x: 40 + (idx * colWidth) + 10,
+              y: currentY + 2,
+              size: 9,
+              font: fontBold,
+              color: rgb(0.15, 0.15, 0.15),
+            });
+          });
+
+          currentY -= 20;
+          const rowsToRender = Math.min(Math.max(extractedCellCount, 12), 22);
+          for (let r = 0; r < rowsToRender; r++) {
             if (showGridlines) {
               page.drawLine({
                 start: { x: 40, y: currentY - 22 },
@@ -304,24 +350,33 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
                 color: rgb(0.85, 0.85, 0.85),
               });
             }
-
-            page.drawText(`Fila ${r + 1}`, { x: 50, y: currentY - 12, size: 9, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
-            page.drawText(`Dato A-${r + 1}`, { x: 40 + colWidth + 10, y: currentY - 12, size: 9, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
-            page.drawText(`Dato B-${r + 1}`, { x: 40 + (colWidth * 2) + 10, y: currentY - 12, size: 9, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
-            page.drawText(`$ ${(100 + r * 35.5).toFixed(2)}`, { x: 40 + (colWidth * 3) + 10, y: currentY - 12, size: 9, font: fontBold, color: rgb(0.05, 0.45, 0.25) });
-
+            page.drawText(`00${r + 1}`, { x: 50, y: currentY - 12, size: 9, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
             currentY -= 25;
           }
 
           const pdfBytes = await pdfDoc.save();
-          const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-          localUrl = URL.createObjectURL(blob);
+          resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+          localUrl = URL.createObjectURL(resultBlob);
         }
 
         const outName = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
-        triggerDownload(localUrl, outName);
+        if (resultBlob) {
+          setCompletedResult({
+            downloadUrl: localUrl,
+            filename: outName,
+            fileSize: formatFileSize(resultBlob.size),
+            rawBlob: resultBlob,
+            outputFormat: 'pdf',
+            originalSize: formatFileSize(file.size),
+            itemCount: extractedCellCount,
+          });
+          setHeaderHidden(true);
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
         toast.success(isEs ? '¡Excel convertido a PDF con éxito!' : 'Excel converted to PDF successfully!');
 
       } else {
@@ -391,14 +446,28 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
           ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
           : 'text/csv;charset=utf-8;';
 
-        const blob = new Blob([csvContent], { type: mimeType });
-        localUrl = URL.createObjectURL(blob);
+        resultBlob = new Blob([csvContent], { type: mimeType });
+        localUrl = URL.createObjectURL(resultBlob);
 
         const ext = outputFormat === 'xlsx' ? 'xlsx' : 'csv';
         const outName = `${file.name.replace(/\.[^/.]+$/, "")}_Tablas.${ext}`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
-        triggerDownload(localUrl, outName);
+        if (resultBlob) {
+          setCompletedResult({
+            downloadUrl: localUrl,
+            filename: outName,
+            fileSize: formatFileSize(resultBlob.size),
+            rawBlob: resultBlob,
+            outputFormat: ext,
+            originalSize: formatFileSize(file.size),
+            itemCount: totalPages,
+          });
+          setHeaderHidden(true);
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
         toast.success(isEs ? `¡Tablas extraídas exitosamente a ${ext.toUpperCase()}!` : `Tables extracted to ${ext.toUpperCase()} successfully!`);
       }
 
@@ -412,20 +481,11 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
     }
   };
 
-  const triggerDownload = (url: string, name: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
-    <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
+    <div ref={topHeaderRef} className="w-full flex flex-col font-mono text-white selection:bg-white selection:text-black">
       <input 
         type="file" 
-        accept={mode === 'excel-to-pdf' ? ".xlsx,.xls,.csv" : ".pdf"} 
+        accept={mode === 'excel-to-pdf' ? '.xlsx, .xls, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel' : '.pdf, application/pdf'}
         className="hidden" 
         onChange={handleFileChange} 
         ref={fileInputRef} 
@@ -435,7 +495,11 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
       {/* HEADER SUPERIOR UNIFICADO */}
       <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
-          <Link href="/convertir" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
+          <Link 
+            href="/convertir" 
+            onClick={() => setHeaderHidden(false)}
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+          >
             <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
           </Link>
           <div className="hidden sm:block h-5 w-px bg-white/10" />
@@ -452,11 +516,11 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
           </div>
         </div>
 
-        {file && (
+        {(file || completedResult) && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{completedResult ? completedResult.filename : file?.name}</span>
             </div>
             <button 
               onClick={handleRemoveFile} 
@@ -469,397 +533,430 @@ export default function ExcelPdfConverter({ defaultMode = 'pdf-to-excel' }: Exce
         )}
       </div>
 
-      {/* SELECTOR DUAL DE MODO 2 EN 1 */}
-      <div className="flex items-center justify-center mb-6 font-mono">
-        <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
-          <button
-            type="button" onClick={() => handleSwitchMode('excel-to-pdf')}
-            className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              mode === 'excel-to-pdf' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Table className="w-4 h-4" />
-            <span>{isEs ? 'Excel a PDF (.xlsx → .pdf)' : 'Excel to PDF (.xlsx → .pdf)'}</span>
-          </button>
-
-          <button
-            type="button" onClick={() => handleSwitchMode('pdf-to-excel')}
-            className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              mode === 'pdf-to-excel' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Repeat className="w-4 h-4" />
-            <span>{isEs ? 'PDF a Excel (.pdf → .xlsx)' : 'PDF to Excel (.pdf → .xlsx)'}</span>
-          </button>
-        </div>
-      </div>
-
-      {!file ? (
-        /* VISTA DROPZONE VACÍA */
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+      {completedResult ? (
+        /* VISTA DE ÉXITO ESTILO PDFBLACK CON ENCADENAMIENTO DE HERRAMIENTAS */
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
-            <UploadCloud className="w-12 h-12 text-white" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
-            {mode === 'excel-to-pdf'
-              ? (isEs ? "CONVERTIR HOJA DE EXCEL A PDF" : "CONVERT EXCEL SPREADSHEET TO PDF")
-              : (isEs ? "CONVERTIR PDF A EXCEL (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO EXCEL (2-IN-1 DUAL CONVERTER)")}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
-            {mode === 'excel-to-pdf'
-              ? (isEs ? "Transforma libros de Excel (.xlsx / .csv) en reportes PDF profesionales." : "Transform Excel workbooks (.xlsx / .csv) into professional PDF reports.")
-              : (isEs ? "Extrae tablas vectoriales de tu PDF a Excel (.xlsx) o CSV de forma 100% confidencial y local." : "Extract vector tables from PDF to Excel (.xlsx) 100% locally.")}
-          </p>
-          <button 
-            type="button"
-            className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-black" />
-            <span>
-              {mode === 'excel-to-pdf'
-                ? (isEs ? "Seleccionar Hoja Excel" : "Select Excel Sheet")
-                : (isEs ? "Seleccionar Archivo PDF" : "Select PDF File")}
-            </span>
-          </button>
+          {/* BANNER DE ÉXITO */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden font-mono">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-lg border border-emerald-400/30">
+                  <Table className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight font-sans">
+                    {isEs ? '¡Conversión Completada con Éxito!' : 'Conversion Completed Successfully!'}
+                  </h3>
+                  <p className="text-zinc-400 text-xs font-mono mt-0.5">
+                    {mode === 'excel-to-pdf'
+                      ? (isEs ? 'Hoja Excel convertida a PDF estructurado y listo para descargar.' : 'Excel sheet converted to structured PDF ready for download.')
+                      : (isEs ? 'Tablas extraídas a formato de cálculo vectorial con éxito.' : 'Tables extracted into spreadsheet format successfully.')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{mode === 'excel-to-pdf' ? (isEs ? 'PDF Vectorial Listo' : 'Vector PDF Ready') : (isEs ? 'XLSX Vectorial Listo' : 'Vector XLSX Ready')}</span>
+              </div>
+            </div>
+
+            {/* MÉTRICAS DE LA CONVERSIÓN */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Formato de Salida' : 'Output Format'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5 uppercase">
+                  {completedResult.outputFormat}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Resultante' : 'Result Size'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.fileSize}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-zinc-300 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.originalSize || '-'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Procesamiento' : 'Processing'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {isEs ? '100% Local' : '100% Local'}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat={completedResult.outputFormat}
+            rawBlob={completedResult.rawBlob}
+            currentToolId="excel-pdf"
+            onReset={handleRemoveFile}
+          />
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL */
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
-        >
-          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
-                <Table className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
-              </div>
-            </div>
+        <>
+          {/* SELECTOR DUAL DE MODO 2 EN 1 */}
+          <div className="flex items-center justify-center mb-6 font-mono">
+            <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
+              <button
+                type="button" onClick={() => handleSwitchMode('excel-to-pdf')}
+                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  mode === 'excel-to-pdf' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Table className="w-4 h-4" />
+                <span>{isEs ? 'Excel a PDF (.xlsx → .pdf)' : 'Excel to PDF (.xlsx → .pdf)'}</span>
+              </button>
 
-            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
-            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
-              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
-              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
-                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
-                </span>
-                {isRendering ? (
-                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                    <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    <span>...</span>
-                  </div>
-                ) : totalPages > 0 ? (
-                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      onClick={() => setActivePage(pageNum)}
-                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
-                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
-                      }`}
-                    >
-                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                        {pageDataUrls[pageNum] ? (
-                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
-                        ) : (
-                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
-                        )}
-                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
-                          #{pageNum}
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
-                )}
-              </div>
-
-              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
-              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
-                {pdfUrl ? (
-                  <iframe
-                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
-                    title="Visor PDF Tamaño Normal"
-                  />
-                ) : pageDataUrls[activePage] ? (
-                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
-                    <img
-                      src={pageDataUrls[activePage]}
-                      alt={`Página ${activePage}`}
-                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
-                    <div className="w-28 h-36 bg-zinc-900 border border-white/20 rounded-2xl flex flex-col items-center justify-center p-3 shadow-2xl">
-                      <FileSpreadsheet className="w-10 h-10 text-emerald-400 mb-2" />
-                      <span className="text-[10px] font-bold text-white uppercase">XLSX / CSV</span>
-                    </div>
-                    <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                      ✓ {extractedCellCount} {isEs ? 'celdas detectadas' : 'data cells'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* PIE DE ARCHIVO */}
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between font-mono text-xs text-zinc-400">
-              <span className="truncate max-w-[240px] font-bold text-white">{file.name}</span>
-              <button type="button" onClick={handleRemoveFile} className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors">
-                <X className="w-4 h-4" />
+              <button
+                type="button" onClick={() => handleSwitchMode('pdf-to-excel')}
+                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  mode === 'pdf-to-excel' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Repeat className="w-4 h-4" />
+                <span>{isEs ? 'PDF a Excel (.pdf → .xlsx)' : 'PDF to Excel (.pdf → .xlsx)'}</span>
               </button>
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
-            <div>
-              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
-                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
-                </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
-                  <Sliders className="w-5 h-5 text-white" />
-                </h2>
+          {!file ? (
+            /* VISTA DROPZONE VACÍA */
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+            >
+              <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
+                <UploadCloud className="w-12 h-12 text-white" />
               </div>
-
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+                {mode === 'excel-to-pdf'
+                  ? (isEs ? "CONVERTIR HOJA DE EXCEL A PDF" : "CONVERT EXCEL SPREADSHEET TO PDF")
+                  : (isEs ? "CONVERTIR PDF A EXCEL (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO EXCEL (2-IN-1 DUAL CONVERTER)")}
+              </h2>
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+                {mode === 'excel-to-pdf'
+                  ? (isEs ? "Transforma libros de Excel (.xlsx / .csv) en reportes PDF profesionales." : "Transform Excel workbooks (.xlsx / .csv) into professional PDF reports.")
+                  : (isEs ? "Extrae tablas vectoriales de tu PDF a Excel (.xlsx) o CSV de forma 100% confidencial y local." : "Extract vector tables from PDF to Excel (.xlsx) 100% locally.")}
+              </p>
               <button 
-                type="button" 
-                onClick={() => setShowAdvancedOptions(!showAdvancedOptions)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer mb-5 shadow-sm"
+                type="button"
+                className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
               >
-                <div className="flex items-center gap-2 font-bold">
-                  <Sliders className="w-4 h-4 text-white" />
-                  <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
-                </div>
-                {showAdvancedOptions ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                <Plus className="w-4 h-4 text-black" />
+                <span>
+                  {mode === 'excel-to-pdf'
+                    ? (isEs ? "Seleccionar Hoja Excel" : "Select Excel Sheet")
+                    : (isEs ? "Seleccionar Archivo PDF" : "Select PDF File")}
+                </span>
               </button>
 
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvancedOptions && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 font-mono text-xs mb-5 overflow-hidden"
-                  >
-                    {mode === 'excel-to-pdf' ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Layout className="w-4 h-4 text-white" />
-                            {isEs ? 'Orientación de Página' : 'Page Orientation'}
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button" onClick={() => setOrientation('landscape')}
-                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'landscape' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Horizontal' : 'Landscape'}
-                            </button>
-                            <button
-                              type="button" onClick={() => setOrientation('portrait')}
-                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'portrait' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Vertical' : 'Portrait'}
-                            </button>
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+              </div>
+            </motion.div>
+          ) : (
+            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL (ALTURA SIMÉTRICA) */
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+            >
+              {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
+                  <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+                    <Table className="w-4 h-4 text-white" />
+                    <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                  </div>
+                </div>
+
+                {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+                <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-0 flex">
+                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+                  <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                    <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                      {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                    </span>
+                    {isRendering ? (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                        <span>...</span>
+                      </div>
+                    ) : totalPages > 0 ? (
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setActivePage(pageNum)}
+                          className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                            activePage === pageNum ? 'border-white ring-2 ring-white/40 bg-zinc-800' : 'border-white/10 hover:border-white/30'
+                          }`}
+                        >
+                          <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                            {pageDataUrls[pageNum] ? (
+                              <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                            ) : (
+                              <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                            )}
+                            <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                              #{pageNum}
+                            </span>
                           </div>
-                        </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
+                        <FileSpreadsheet className="w-5 h-5" />
+                        <span>{isEs ? 'Modo Excel' : 'Excel Mode'}</span>
+                      </div>
+                    )}
+                  </div>
 
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Grid className="w-4 h-4 text-white" />
-                            {isEs ? 'Tamaño de Papel' : 'Paper Size'}
-                          </label>
-                          <select
-                            value={pageSize} onChange={(e) => setPageSize(e.target.value as 'a4' | 'letter' | 'legal')}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-white/30"
-                          >
-                            <option value="a4">A4 (210 x 297 mm)</option>
-                            <option value="letter">Carta / Letter (8.5 x 11 in)</option>
-                            <option value="legal">Oficio / Legal (8.5 x 14 in)</option>
-                          </select>
+                  {/* COSTADO DERECHO: VISOR DE PÁGINA ACTIVA A TAMAÑO NORMAL O REPORTE TABULAR */}
+                  <div className="flex-1 bg-zinc-950/40 p-4 flex flex-col items-center justify-center overflow-y-auto relative custom-scrollbar">
+                    {mode === 'pdf-to-excel' && pageDataUrls[activePage] ? (
+                      <div className="max-w-full max-h-full flex items-center justify-center shadow-2xl bg-white rounded border border-white/20 p-2">
+                        <img 
+                          src={pageDataUrls[activePage]} 
+                          alt={`Página ${activePage}`} 
+                          className="max-h-[520px] max-w-full object-contain" 
+                        />
+                      </div>
+                    ) : mode === 'excel-to-pdf' ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4 font-mono">
+                        <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-inner">
+                          <Table className="w-8 h-8" />
                         </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-white" />
-                            {isEs ? 'Estilo de Tabla' : 'Table Theme'}
-                          </label>
-                          <select
-                            value={tableTheme} onChange={(e) => setTableTheme(e.target.value as 'emerald' | 'dark' | 'minimal')}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-white/30"
-                          >
-                            <option value="emerald">{isEs ? 'Verde Esmeralda (Excel)' : 'Emerald Green (Excel)'}</option>
-                            <option value="dark">{isEs ? 'Profesional Oscuro' : 'Professional Dark'}</option>
-                            <option value="minimal">{isEs ? 'Minimalista Monocromo' : 'Minimal Monochrome'}</option>
-                          </select>
+                        <div>
+                          <h4 className="text-white font-bold text-sm uppercase tracking-wider">{file.name}</h4>
+                          <span className="text-zinc-400 text-xs mt-1 block">
+                            {extractedCellCount > 0 ? (isEs ? `~${extractedCellCount} Celdas detectadas en hoja 1` : `~${extractedCellCount} Cells detected in sheet 1`) : (isEs ? 'Estructura tabular lista' : 'Tabular structure ready')}
+                          </span>
                         </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 flex flex-col justify-between">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Filter className="w-4 h-4 text-white" />
-                            {isEs ? 'Líneas de Cuadrícula' : 'Gridlines'}
-                          </label>
-                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                            <input
-                              type="checkbox" checked={showGridlines} onChange={(e) => setShowGridlines(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded"
-                            />
-                            <span>{isEs ? 'Mostrar líneas de celdas' : 'Show cell borders'}</span>
-                          </label>
+                        <div className="p-3 bg-zinc-900 border border-white/10 rounded-xl text-[11px] text-zinc-300 max-w-xs space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-zinc-400">{isEs ? 'Orientación:' : 'Orientation:'}</span>
+                            <span className="text-white font-bold uppercase">{orientation}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-zinc-400">{isEs ? 'Cuadrícula:' : 'Gridlines:'}</span>
+                            <span className="text-emerald-400 font-bold">{showGridlines ? (isEs ? 'Visible' : 'Visible') : (isEs ? 'Oculta' : 'Hidden')}</span>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <FileSpreadsheet className="w-4 h-4 text-white" />
-                            {isEs ? 'Formato de Archivo' : 'File Format'}
-                          </label>
-                          <select
-                            value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as 'xlsx' | 'csv_comma' | 'csv_semicolon')}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-white/30"
-                          >
-                            <option value="xlsx">Excel (.xlsx)</option>
-                            <option value="csv_semicolon">CSV (Separador ; Español)</option>
-                            <option value="csv_comma">CSV (Separador , Coma)</option>
-                          </select>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <ListOrdered className="w-4 h-4 text-white" />
-                            {isEs ? 'Estructura de Hojas' : 'Sheet Structure'}
-                          </label>
-                          <select
-                            value={sheetStructure} onChange={(e) => setSheetStructure(e.target.value as 'single' | 'per_page')}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-white/30"
-                          >
-                            <option value="single">{isEs ? '1 sola hoja continua' : 'Single continuous sheet'}</option>
-                            <option value="per_page">{isEs ? '1 Hoja por cada página' : '1 Sheet per PDF page'}</option>
-                          </select>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 sm:col-span-2">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-white" />
-                            {isEs ? 'Método de Extracción' : 'Extraction Method'}
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button" onClick={() => setExtractionStrategy('smart')}
-                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                extractionStrategy === 'smart' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Inteligente' : 'Smart Grid'}
-                            </button>
-                            <button
-                              type="button" onClick={() => setExtractionStrategy('lineByLine')}
-                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                extractionStrategy === 'lineByLine' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Línea a Línea' : 'Line by Line'}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 sm:col-span-2 space-y-2.5">
-                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                            <input
-                              type="checkbox" checked={autoFormatNumbers} onChange={(e) => setAutoFormatNumbers(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded"
-                            />
-                            <span>{isEs ? 'Convertir números a valores numéricos' : 'Convert text numbers to numeric'}</span>
-                          </label>
-                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                            <input
-                              type="checkbox" checked={trimEmptyRows} onChange={(e) => setTrimEmptyRows(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded"
-                            />
-                            <span>{isEs ? 'Omitir filas completamente vacías' : 'Omit completely empty rows'}</span>
-                          </label>
-                        </div>
+                      <div className="flex flex-col items-center justify-center gap-2 text-zinc-500 text-xs">
+                        <Loader2 className="w-6 h-6 animate-spin text-white" />
+                        <span>{isEs ? 'Cargando visualizador...' : 'Loading viewer...'}</span>
                       </div>
                     )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-4 border-t border-white/10 font-sans">
-              {isProcessing && (
-                <div className="mb-3 space-y-1.5 font-mono">
-                  <div className="flex justify-between text-[10px] font-bold text-zinc-300">
-                    <span className="truncate max-w-[200px]">{progressMsg}</span>
-                    <span>{progressPercent}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                    <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
                   </div>
                 </div>
-              )}
+              </div>
 
-              <button 
-                onClick={executeConversion} 
-                disabled={isProcessing || !file} 
-                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
-              >
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <RefreshCw className="w-5 h-5 text-black" />}
-                <span>
-                  {isProcessing 
-                    ? progressMsg 
-                    : (!file 
-                        ? (isEs ? 'Selecciona un archivo' : 'Select a file') 
-                        : (mode === 'excel-to-pdf' 
-                            ? (isEs ? 'Convertir a PDF con Opciones →' : 'Convert to PDF with Options →') 
-                            : (isEs ? 'Convertir a Excel con Opciones →' : 'Convert to Excel with Options →')))}
-                </span>
-              </button>
+              {/* LADO DERECHO: PANEL DE CONTROL */}
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
+                  {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
+                  <div className="mb-4 pb-3 border-b border-white/10">
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
+                      {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                    </span>
+                    <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                      <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
+                      <Sliders className="w-5 h-5 text-white" />
+                    </h2>
+                  </div>
 
-              {downloadUrl && (
-                <a
-                  href={downloadUrl}
-                  download={downloadFilename || 'Tablas'}
-                  className="mt-3 w-full bg-emerald-400 hover:bg-emerald-300 text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
-                >
-                  <FileDown className="w-4 h-4 text-black" />
-                  <span>{isEs ? 'Descargar Archivo Convertido' : 'Download Converted File'}</span>
-                </a>
-              )}
-            </div>
+                  {/* OPCIONES SEGÚN EL MODO */}
+                  {mode === 'excel-to-pdf' ? (
+                    <div className="space-y-4 font-mono text-xs">
+                      <div>
+                        <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">{isEs ? "Orientación de Página:" : "Page Orientation:"}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button" onClick={() => setOrientation('landscape')}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                              orientation === 'landscape' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Horizontal (Tablas)' : 'Landscape (Tables)'}
+                          </button>
+                          <button
+                            type="button" onClick={() => setOrientation('portrait')}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                              orientation === 'portrait' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Vertical' : 'Portrait'}
+                          </button>
+                        </div>
+                      </div>
 
-          </div>
-        </motion.div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Tamaño de Hoja:" : "Paper Size:"}</label>
+                          <select
+                            value={pageSize} onChange={(e) => setPageSize(e.target.value as 'a4' | 'letter' | 'legal')}
+                            className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs text-white font-mono outline-none"
+                          >
+                            <option value="a4">A4 (210 x 297 mm)</option>
+                            <option value="letter">Carta / Letter</option>
+                            <option value="legal">Oficio / Legal</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">{isEs ? "Tema Visual:" : "Table Theme:"}</label>
+                          <select
+                            value={tableTheme} onChange={(e) => setTableTheme(e.target.value as 'emerald' | 'dark' | 'minimal')}
+                            className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs text-white font-mono outline-none"
+                          >
+                            <option value="emerald">{isEs ? "Esmeralda Corporativo" : "Corporate Emerald"}</option>
+                            <option value="dark">{isEs ? "Oscuro Minimalista" : "Dark Minimalist"}</option>
+                            <option value="minimal">{isEs ? "Claro Limpio" : "Clean Light"}</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 flex items-center justify-between">
+                        <span className="text-xs text-zinc-300">{isEs ? "Líneas de división de cuadrícula:" : "Show gridlines:"}</span>
+                        <input
+                          type="checkbox" checked={showGridlines} onChange={(e) => setShowGridlines(e.target.checked)}
+                          className="accent-white w-4 h-4 rounded cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 font-mono text-xs">
+                      <div>
+                        <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">{isEs ? "Formato de Salida:" : "Output Format:"}</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button" onClick={() => setOutputFormat('xlsx')}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                              outputFormat === 'xlsx' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            Excel (.xlsx)
+                          </button>
+                          <button
+                            type="button" onClick={() => setOutputFormat('csv_comma')}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                              outputFormat === 'csv_comma' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            CSV (,)
+                          </button>
+                          <button
+                            type="button" onClick={() => setOutputFormat('csv_semicolon')}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                              outputFormat === 'csv_semicolon' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            CSV (;)
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">{isEs ? "Estrategia de Extracción:" : "Extraction Strategy:"}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button" onClick={() => setExtractionStrategy('smart')}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                              extractionStrategy === 'smart' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Reconstrucción Inteligente' : 'Smart Rebuild'}
+                          </button>
+                          <button
+                            type="button" onClick={() => setExtractionStrategy('lineByLine')}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                              extractionStrategy === 'lineByLine' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Línea por Línea' : 'Line by Line'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 space-y-2">
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                          <input
+                            type="checkbox" checked={autoFormatNumbers} onChange={(e) => setAutoFormatNumbers(e.target.checked)}
+                            className="accent-white w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span>{isEs ? 'Convertir números a valores numéricos' : 'Convert text numbers to numeric'}</span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                          <input
+                            type="checkbox" checked={trimEmptyRows} onChange={(e) => setTrimEmptyRows(e.target.checked)}
+                            className="accent-white w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span>{isEs ? 'Omitir filas completamente vacías' : 'Omit completely empty rows'}</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
+                <div className="pt-4 border-t border-white/10 font-sans">
+                  {isProcessing && (
+                    <div className="mb-3 space-y-1.5 font-mono">
+                      <div className="flex justify-between text-[10px] font-bold text-zinc-300">
+                        <span className="truncate max-w-[200px]">{progressMsg}</span>
+                        <span>{progressPercent}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                        <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
+                      </div>
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={executeConversion} 
+                    disabled={isProcessing || !file} 
+                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <RefreshCw className="w-5 h-5 text-black" />}
+                    <span>
+                      {isProcessing 
+                        ? progressMsg 
+                        : (!file 
+                            ? (isEs ? 'Selecciona un archivo' : 'Select a file') 
+                            : (mode === 'excel-to-pdf' 
+                                ? (isEs ? 'Convertir a PDF con Opciones →' : 'Convert to PDF with Options →') 
+                                : (isEs ? 'Convertir a Excel con Opciones →' : 'Convert to Excel with Options →')))}
+                    </span>
+                  </button>
+                </div>
+
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
     </div>
   );

@@ -13,6 +13,8 @@ import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ReorderWorkerMessageIn, ReorderWorkerMessageOut } from '@/workers/pdf-reorder.worker';
+import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { useUIStore } from '@/store/useUIStore';
 
 type PageItem = {
   id: string;
@@ -23,11 +25,24 @@ type PageItem = {
   thumbnailUrl: string | null;
 };
 
+interface CompletedReorderResult {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+  totalPages: number;
+  rawBlob: Blob;
+  originalSize: string;
+}
+
 export default function PdfOrganizer() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const { globalFiles, globalFile, setGlobalFiles } = useFileStore();
 
   const [files, setFiles] = useState<File[]>([]);
@@ -35,6 +50,31 @@ export default function PdfOrganizer() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
+  const [completedResult, setCompletedResult] = useState<CompletedReorderResult | null>(null);
+
+  // Ocultar barra superior global y scroll automático suave hacia la cabecera de la herramienta
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      const timer = setTimeout(() => {
+        if (topHeaderRef.current) {
+          topHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Asegurar restauración de barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   // ENCRYPTION / PASSWORD STATE
   const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
@@ -90,7 +130,7 @@ export default function PdfOrganizer() {
           if (p % 4 === 0) await new Promise(r => setTimeout(r, 5));
 
           const page = await pdf.getPage(p);
-          const viewport = page.getViewport({ scale: 0.25 });
+          const viewport = page.getViewport({ scale: 0.5 });
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
 
@@ -173,15 +213,19 @@ export default function PdfOrganizer() {
   };
 
   const removeFile = useCallback(() => {
+    setHeaderHidden(false);
     setFiles([]);
     setPages([]);
     setDownloadUrl(null);
+    setCompletedResult(null);
     setGlobalFiles([]);
     setIsEncrypted(false);
     setIsUnlocked(false);
     setUnlockedPassword(undefined);
     setPasswordInput('');
-  }, [setGlobalFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (addMoreInputRef.current) addMoreInputRef.current.value = '';
+  }, [setGlobalFiles, setHeaderHidden]);
 
   // ACCIONES INDIVIDUALES SOBRE TARJETAS
   const handleRotatePage = (index: number) => {
@@ -392,17 +436,20 @@ export default function PdfOrganizer() {
       const blob = new Blob([result.buffer], { type: 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
       const outName = `${filePrefix.trim() || 'Documento_Reordenado'}.pdf`;
+      const sizeFormatted = formatFileSize(blob.size);
+      const totalOrigBytes = files.reduce((acc, f) => acc + f.size, 0);
+      const origSizeFormatted = totalOrigBytes > 0 ? formatFileSize(totalOrigBytes) : '—';
 
       setDownloadFilename(outName);
       setDownloadUrl(localUrl);
-
-      // Trigger download
-      const link = document.createElement('a');
-      link.href = localUrl;
-      link.download = outName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      setCompletedResult({
+        downloadUrl: localUrl,
+        filename: outName,
+        fileSize: sizeFormatted,
+        totalPages: result.totalPages,
+        rawBlob: blob,
+        originalSize: origSizeFormatted,
+      });
 
       setProgressPercent(100);
       toast.success(isEs ? '¡Documento PDF reordenado con éxito!' : 'PDF document reordered successfully!');
@@ -429,7 +476,7 @@ export default function PdfOrganizer() {
       <input type="file" accept=".pdf" multiple className="hidden" ref={addMoreInputRef} onChange={handleFileChange} disabled={isProcessing} />
 
       {/* HEADER SUPERIOR UNIFICADO */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
+      <div ref={topHeaderRef} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
           <Link href="/organizar" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
             <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
@@ -446,7 +493,12 @@ export default function PdfOrganizer() {
           </div>
         </div>
 
-        {pages.length > 0 && (
+        {completedResult ? (
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">{completedResult.filename}</span>
+          </div>
+        ) : pages.length > 0 ? (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
@@ -462,10 +514,76 @@ export default function PdfOrganizer() {
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {pages.length === 0 ? (
+      {completedResult ? (
+        /* ── PANTALLA DE ÉXITO DEDICADA ── */
+        <motion.div
+          ref={successContainerRef}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE REORDENAMIENTO */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <LayoutGrid className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DEL REORDENAMIENTO DE PÁGINAS' : 'PAGE REORDER RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                    {isEs ? '¡Documento reorganizado con éxito!' : 'Document reordered successfully!'}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Estado del proceso' : 'Process status'}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {completedResult.originalSize}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Totales' : 'Total Pages'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.totalPages} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Modo de Procesamiento' : 'Processing Mode'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {isEs ? 'Reordenamiento Local Nativo' : 'Native Local Reorder'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            onReset={removeFile}
+          />
+        </motion.div>
+      ) : pages.length === 0 ? (
         /* VISTA DROPZONE VACÍA */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -500,10 +618,10 @@ export default function PdfOrganizer() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
           {/* LADO IZQUIERDO: MESA DE MONTAJE Y REORDENAMIENTO EN CUADRÍCULA 4x4 */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
@@ -560,8 +678,8 @@ export default function PdfOrganizer() {
               <span className="text-[10px] text-zinc-400 font-mono">{pages.length} {isEs ? 'tarjetas' : 'cards'}</span>
             </div>
 
-            {/* GRID REORDENABLE DRAG & DROP EN CUADRÍCULA 4x4 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 max-h-[560px] overflow-y-auto pr-1">
+            {/* GRID REORDENABLE DRAG & DROP EN CUADRÍCULA ESPACIOSA Y PROPORCIONAL */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-2 p-1">
               {pages.map((p, idx) => (
                 <motion.div
                   key={p.id}
@@ -569,12 +687,12 @@ export default function PdfOrganizer() {
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
                   onDrop={() => handleDrop(idx)}
-                  className={`relative rounded-2xl border p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing transition-all duration-200 group overflow-hidden bg-zinc-950 hover:bg-zinc-900 ${
+                  className={`relative w-full h-[280px] min-h-[280px] rounded-2xl border p-3 flex flex-col justify-between cursor-grab active:cursor-grabbing transition-all duration-200 group overflow-hidden bg-zinc-950 hover:bg-zinc-900 ${
                     dragOverIndex === idx ? 'border-white scale-105 shadow-[0_0_20px_rgba(255,255,255,0.4)]' : 'border-white/10 hover:border-white/30'
                   }`}
                 >
                   {/* BADGES DE POSICIÓN */}
-                  <div className="w-full flex items-center justify-between mb-2 font-mono text-[10px]">
+                  <div className="w-full flex items-center justify-between mb-2 font-mono text-[10px] shrink-0">
                     <span className="px-2 py-0.5 rounded-md font-bold bg-white text-black">
                       #{idx + 1}
                     </span>
@@ -589,9 +707,9 @@ export default function PdfOrganizer() {
                     )}
                   </div>
 
-                  {/* TARJETA DE CANVAS / MINIATURA */}
+                  {/* TARJETA DE CANVAS / MINIATURA PROPORCIONAL */}
                   <div 
-                    className="w-full h-40 bg-zinc-900 rounded-xl overflow-hidden flex items-center justify-center relative shadow-inner border border-white/5"
+                    className="w-full flex-1 min-h-0 bg-zinc-900/90 rounded-xl overflow-hidden flex items-center justify-center relative shadow-inner border border-white/5 p-2"
                     style={{ transform: `rotate(${p.rotation}deg)`, transition: 'transform 0.2s ease' }}
                   >
                     {p.isBlank ? (
@@ -600,7 +718,7 @@ export default function PdfOrganizer() {
                       </div>
                     ) : p.thumbnailUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.thumbnailUrl} alt={`Página ${idx + 1}`} className="w-full h-full object-contain" />
+                      <img src={p.thumbnailUrl} alt={`Página ${idx + 1}`} className="max-w-full max-h-full object-contain rounded drop-shadow-md" />
                     ) : (
                       <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
                     )}
@@ -619,30 +737,28 @@ export default function PdfOrganizer() {
                       <button
                         type="button" onClick={(e) => { e.stopPropagation(); handleDuplicatePage(idx); }}
                         className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg transition-colors border border-white/10"
-                        title={isEs ? "Duplicar" : "Duplicate"}
+                        title={isEs ? "Duplicar página" : "Duplicate page"}
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </button>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      {!p.isBlank && (
-                        <button
-                          type="button" onClick={(e) => { e.stopPropagation(); setPreviewZoomPage(p); }}
-                          className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg transition-colors border border-white/10"
-                          title={isEs ? "Zoom" : "Zoom"}
-                        >
-                          <ZoomIn className="w-3.5 h-3.5" />
-                        </button>
-                      )}
                       <button
                         type="button" onClick={(e) => { e.stopPropagation(); handleDeletePage(idx); }}
                         className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg transition-colors border border-white/10"
-                        title={isEs ? "Eliminar" : "Delete"}
+                        title={isEs ? "Eliminar página" : "Delete page"}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
+
+                    {!p.isBlank && (
+                      <button
+                        type="button" onClick={(e) => { e.stopPropagation(); setPreviewZoomPage(p); }}
+                        className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg transition-colors border border-white/10"
+                        title={isEs ? "Zoom" : "Zoom"}
+                      >
+                        <ZoomIn className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -651,10 +767,10 @@ export default function PdfOrganizer() {
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
-            <div>
+          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
+              <div className="mb-4 pb-3 border-b border-white/10">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>

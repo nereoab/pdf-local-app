@@ -13,11 +13,26 @@ import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CropWorkerMessageIn, CropWorkerMessageOut, CropScope } from '@/workers/pdf-crop.worker';
+import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { useUIStore } from '@/store/useUIStore';
+
+interface CompletedCropResult {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+  totalPages: number;
+  rawBlob: Blob;
+  originalSize: string;
+}
 
 export default function PdfCropper() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [file, setFile] = useState<File | null>(() => {
@@ -33,6 +48,26 @@ export default function PdfCropper() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
+  const [completedResult, setCompletedResult] = useState<CompletedCropResult | null>(null);
+
+  // Ocultar barra superior global y scroll automático hacia el tope de la pantalla
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Asegurar restauración de barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   // ENCRYPTION / PASSWORD STATE
   const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
@@ -72,13 +107,18 @@ export default function PdfCropper() {
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
       const arrayBuffer = await selectedFile.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, password: pass });
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        password: pass,
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      });
       const pdf = await loadingTask.promise;
       setTotalPages(pdf.numPages);
 
       const targetPageNum = Math.max(1, Math.min(pdf.numPages, pageNum));
       const page = await pdf.getPage(targetPageNum);
-      const viewport = page.getViewport({ scale: 0.8 });
+      const viewport = page.getViewport({ scale: 1.6 });
 
       setPageSize({ width: Math.round(viewport.width), height: Math.round(viewport.height) });
 
@@ -88,8 +128,8 @@ export default function PdfCropper() {
       if (context) {
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        await page.render({ canvasContext: context, viewport, canvas } as any).promise;
-        setPageDataUrl(canvas.toDataURL('image/jpeg', 0.8));
+        await page.render({ canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+        setPageDataUrl(canvas.toDataURL('image/jpeg', 0.88));
       }
 
       setIsEncrypted(false);
@@ -149,16 +189,19 @@ export default function PdfCropper() {
   };
 
   const removeFile = useCallback(() => {
+    setHeaderHidden(false);
     setFile(null);
     setTotalPages(0);
     setPageDataUrl(null);
     setDownloadUrl(null);
+    setCompletedResult(null);
     setGlobalFile(null);
     setIsEncrypted(false);
     setIsUnlocked(false);
     setUnlockedPassword(undefined);
     setPasswordInput('');
-  }, [setGlobalFile]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [setGlobalFile, setHeaderHidden]);
 
   const applyPreset = (mm: number) => {
     setMarginTop(mm);
@@ -246,17 +289,19 @@ export default function PdfCropper() {
       const blob = new Blob([result.buffer], { type: 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
       const outName = `${filePrefix.trim() || 'Documento_Recortado'}.pdf`;
+      const sizeFormatted = formatFileSize(blob.size);
+      const origSizeFormatted = file ? formatFileSize(file.size) : '—';
 
       setDownloadFilename(outName);
       setDownloadUrl(localUrl);
-
-      // Trigger download
-      const link = document.createElement('a');
-      link.href = localUrl;
-      link.download = outName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      setCompletedResult({
+        downloadUrl: localUrl,
+        filename: outName,
+        fileSize: sizeFormatted,
+        totalPages: result.totalPages,
+        rawBlob: blob,
+        originalSize: origSizeFormatted,
+      });
 
       setProgressPercent(100);
       toast.success(isEs ? '¡Márgenes del PDF recortados con éxito!' : 'PDF margins cropped successfully!');
@@ -282,7 +327,7 @@ export default function PdfCropper() {
       <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} disabled={isProcessing} />
 
       {/* HEADER SUPERIOR UNIFICADO */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
+      <div ref={topHeaderRef} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
           <Link href="/organizar" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
             <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
@@ -299,7 +344,12 @@ export default function PdfCropper() {
           </div>
         </div>
 
-        {file && (
+        {completedResult ? (
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">{completedResult.filename}</span>
+          </div>
+        ) : file ? (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
@@ -313,10 +363,77 @@ export default function PdfCropper() {
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {!file ? (
+      {completedResult ? (
+        /* ── PANTALLA DE ÉXITO DEDICADA ── */
+        <motion.div
+          ref={successContainerRef}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+        >
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE RECORTE */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                  <Crop className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DEL RECORTE DE PDF' : 'PDF CROP RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                    {isEs ? '¡Documento recortado con éxito!' : 'Document cropped successfully!'}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Estado del proceso' : 'Process status'}</div>
+                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {completedResult.originalSize}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Procesadas' : 'Processed Pages'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.totalPages} {isEs ? 'Páginas' : 'Pages'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Modo de Procesamiento' : 'Processing Mode'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {isEs ? 'Recorte Box Nativo' : 'Native Box Crop'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            currentToolId="recortar"
+            onReset={removeFile}
+          />
+        </motion.div>
+      ) : !file ? (
         /* VISTA DROPZONE VACÍA */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -351,10 +468,10 @@ export default function PdfCropper() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
           {/* LADO IZQUIERDO: VISOR INTERACTIVO CROP BOX */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
@@ -430,15 +547,19 @@ export default function PdfCropper() {
             </div>
 
             {/* CONTENEDOR CANVAS DE PÁGINA CON OVERLAY DE MÁRGENES DE RECORTE (CROP BOX) */}
-            <div className="relative w-full flex-1 min-h-[460px] bg-zinc-950 rounded-xl overflow-hidden flex items-center justify-center p-4 shadow-inner border border-white/5 font-mono">
+            <div className="relative w-full flex-1 min-h-0 bg-zinc-950 rounded-xl overflow-hidden flex items-center justify-center p-3 sm:p-4 shadow-inner border border-white/5 font-mono">
               {pageDataUrl ? (
-                <div className="relative inline-block max-h-full max-w-full shadow-2xl rounded">
+                <div className="relative inline-block max-h-full max-w-full shadow-2xl rounded overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={pageDataUrl} alt={`Página ${currentPage}`} className="max-h-[440px] max-w-full object-contain block rounded" />
+                  <img
+                    src={pageDataUrl}
+                    alt={`Página ${currentPage}`}
+                    className="max-h-[580px] w-auto max-w-full object-contain block rounded shadow-2xl bg-white"
+                  />
 
-                  {/* OVERLAY VISUAL DE MÁRGENES DE RECORTE (CROP BOX DESTELLANTE) */}
+                  {/* OVERLAY VISUAL DE MÁRGENES DE RECORTE (CROP BOX DE ALTO CONTRASTE) */}
                   <div 
-                    className="absolute border-2 border-dashed border-white bg-white/10 pointer-events-none transition-all duration-200 rounded shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                    className="absolute border-2 border-dashed border-cyan-400 bg-cyan-400/10 pointer-events-none transition-all duration-150 rounded shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_12px_rgba(6,182,212,0.8)]"
                     style={{
                       top: `${(marginTop / 297) * 100}%`,
                       bottom: `${(marginBottom / 297) * 100}%`,
@@ -446,31 +567,35 @@ export default function PdfCropper() {
                       right: `${(marginRight / 210) * 100}%`,
                     }}
                   >
-                    <span className="absolute top-1 left-2 text-[9px] font-mono font-bold bg-white text-black px-1.5 py-0.5 rounded shadow uppercase">
-                      Área Conservada
-                    </span>
+                    <div className="absolute top-1.5 left-2 bg-cyan-400 text-black text-[9px] font-mono font-extrabold px-2 py-0.5 rounded shadow-lg flex items-center gap-1 uppercase tracking-wider">
+                      <Crop className="w-3 h-3 text-black" />
+                      <span>{isEs ? 'Área Conservada' : 'Conserved Area'}</span>
+                    </div>
                   </div>
 
                   <button
                     type="button" onClick={() => setPreviewZoom(true)}
-                    className="absolute bottom-2 right-2 p-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-white rounded-lg border border-white/20"
+                    className="absolute bottom-2 right-2 p-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-white rounded-lg border border-white/20 shadow-md cursor-pointer transition-transform hover:scale-105"
                     title={isEs ? "Zoom" : "Zoom"}
                   >
                     <ZoomIn className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
-                <Loader2 className="w-8 h-8 animate-spin text-white" />
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+                  <span className="text-xs text-zinc-400">{isEs ? 'Renderizando vista previa HD...' : 'Rendering HD preview...'}</span>
+                </div>
               )}
             </div>
 
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
-            <div>
+          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
+              <div className="mb-4 pb-3 border-b border-white/10">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>
@@ -709,18 +834,25 @@ export default function PdfCropper() {
             <h4 className="text-white font-bold text-sm">
               {isEs ? `Previsualización Recorte - Página ${currentPage}` : `Crop Preview - Page ${currentPage}`}
             </h4>
-            <div className="w-full max-h-[70vh] bg-white rounded-xl overflow-hidden p-2 flex items-center justify-center shadow-inner relative">
+            <div className="w-full max-h-[70vh] bg-zinc-950 rounded-xl overflow-hidden p-2 flex items-center justify-center shadow-inner relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={pageDataUrl} alt="Preview Zoom" className="max-h-[65vh] object-contain block rounded" />
-              <div 
-                className="absolute border-2 border-dashed border-white bg-white/10 pointer-events-none rounded"
-                style={{
-                  top: `${(marginTop / 297) * 100}%`,
-                  bottom: `${(marginBottom / 297) * 100}%`,
-                  left: `${(marginLeft / 210) * 100}%`,
-                  right: `${(marginRight / 210) * 100}%`,
-                }}
-              />
+              <div className="relative inline-block max-h-[65vh] max-w-full overflow-hidden rounded">
+                <img src={pageDataUrl} alt="Preview Zoom" className="max-h-[65vh] object-contain block rounded bg-white" />
+                <div 
+                  className="absolute border-2 border-dashed border-cyan-400 bg-cyan-400/10 pointer-events-none rounded shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_12px_rgba(6,182,212,0.8)]"
+                  style={{
+                    top: `${(marginTop / 297) * 100}%`,
+                    bottom: `${(marginBottom / 297) * 100}%`,
+                    left: `${(marginLeft / 210) * 100}%`,
+                    right: `${(marginRight / 210) * 100}%`,
+                  }}
+                >
+                  <div className="absolute top-1.5 left-2 bg-cyan-400 text-black text-[9px] font-mono font-extrabold px-2 py-0.5 rounded shadow-lg flex items-center gap-1 uppercase tracking-wider">
+                    <Crop className="w-3 h-3 text-black" />
+                    <span>{isEs ? 'Área Conservada' : 'Conserved Area'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

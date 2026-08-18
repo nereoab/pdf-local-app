@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { 
   Download, CheckCircle2, ShieldCheck, Sparkles, ArrowRight, RotateCcw,
-  Zap, Lock, PenTool, ScanText, RefreshCw, FolderOpen, Trash2, FileText, FileCode, FileSearch, Layers, Eraser
+  Zap, Lock, PenTool, ScanText, RefreshCw, FolderOpen, Trash2, FileText, FileCode, FileSearch, Layers, Eraser, Copy, EyeOff
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
@@ -15,9 +15,10 @@ export interface DownloadSuccessCardProps {
   downloadUrl: string | null;
   filename: string;
   fileSize?: string;
-  outputFormat?: 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'jpg' | 'txt' | 'json' | 'zip';
+  outputFormat?: 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'jpg' | 'txt' | 'json' | 'zip' | string;
   onReset?: () => void;
   rawBlob?: Blob;
+  currentToolId?: string;
 }
 
 export default function DownloadSuccessCard({
@@ -27,6 +28,7 @@ export default function DownloadSuccessCard({
   outputFormat = 'pdf',
   onReset,
   rawBlob,
+  currentToolId,
 }: DownloadSuccessCardProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -70,7 +72,7 @@ export default function DownloadSuccessCard({
     }
   };
 
-  const recommendedTools = [
+  const allTools = [
     {
       id: 'quitar-marca-agua',
       titleEs: 'Quitar Sello de Agua',
@@ -108,6 +110,15 @@ export default function DownloadSuccessCard({
       path: '/editar/firma',
     },
     {
+      id: 'censurar',
+      titleEs: 'Censurar PDF',
+      titleEn: 'Redact PDF',
+      descEs: 'Ocultar datos sensibles',
+      descEn: 'Hide sensitive data',
+      icon: EyeOff,
+      path: '/optimizar/censurar',
+    },
+    {
       id: 'ocr',
       titleEs: 'Reconocimiento OCR',
       titleEn: 'OCR Text Recognition',
@@ -125,7 +136,20 @@ export default function DownloadSuccessCard({
       icon: RefreshCw,
       path: '/convertir/pdf-word',
     },
+    {
+      id: 'unir',
+      titleEs: 'Unir PDF',
+      titleEn: 'Merge PDF',
+      descEs: 'Combinar varios archivos',
+      descEn: 'Combine multiple files',
+      icon: Layers,
+      path: '/organizar/unir',
+    },
   ];
+
+  const recommendedTools = allTools
+    .filter(tool => !currentToolId || tool.id !== currentToolId)
+    .slice(0, 6);
 
   return (
     <motion.div 
@@ -178,9 +202,21 @@ export default function DownloadSuccessCard({
             {outputFormat !== 'pdf' && outputFormat !== 'txt' && outputFormat !== 'json' && <Layers className="w-6 h-6 text-white" />}
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-white font-bold text-sm truncate max-w-[280px] sm:max-w-[400px] font-mono">
-              {filename}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-white font-bold text-sm truncate max-w-[260px] sm:max-w-[380px] font-mono">
+                {filename}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(filename);
+                  toast.success(isEs ? 'Nombre copiado' : 'Filename copied');
+                }}
+                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                title={isEs ? 'Copiar nombre' : 'Copy filename'}
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="flex items-center gap-3 text-xs text-zinc-400 font-mono mt-1">
               <span>{outputFormat.toUpperCase()}</span>
               {fileSize && <span>• {fileSize}</span>}
@@ -193,65 +229,72 @@ export default function DownloadSuccessCard({
         </div>
 
         {/* PRIMARY DOWNLOAD BUTTON */}
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleManualDownload}
-          className={`flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl font-sans font-bold text-sm transition-all shadow-lg cursor-pointer flex-shrink-0 ${
+          className={`relative overflow-hidden flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl font-sans font-bold text-sm transition-all shadow-xl cursor-pointer flex-shrink-0 group ${
             downloaded
-              ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-              : 'bg-white text-black hover:bg-zinc-200 hover:scale-[1.02] active:scale-98'
+              ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20'
+              : 'bg-white text-black hover:bg-zinc-100 shadow-white/10 ring-2 ring-emerald-500/30'
           }`}
         >
-          <Download className="w-5 h-5" />
+          {!downloaded && (
+            <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+          )}
+          {downloaded ? (
+            <CheckCircle2 className="w-5 h-5 text-white animate-bounce" />
+          ) : (
+            <Download className="w-5 h-5 text-black group-hover:translate-y-0.5 transition-transform" />
+          )}
           <span>
             {downloaded
               ? (isEs ? '¡Descargado! Descargar de nuevo' : 'Downloaded! Download again')
               : (isEs ? 'Descargar Archivo Listo ↓' : 'Download Ready File ↓')}
           </span>
-        </button>
+        </motion.button>
       </div>
 
       {/* RECOMMENDED NEXT TOOLS SECTION */}
-      {outputFormat === 'pdf' && (
-        <div className="pt-2 border-t border-white/10 space-y-3 font-mono">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-zinc-300" />
-              {isEs ? '¿DESEAS CONTINUAR EDITANDO ESTE DOCUMENTO?' : 'WANT TO KEEP EDITING THIS DOCUMENT?'}
-            </span>
-            <span className="text-[10px] text-zinc-400 hidden sm:inline-block">
-              {isEs ? 'Selecciona una herramienta para encadenar acciones:' : 'Select a tool to chain actions:'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-            {recommendedTools.map(tool => {
-              const IconComp = tool.icon;
-              return (
-                <button
-                  key={tool.id}
-                  onClick={() => handleNavigateToTool(tool.path)}
-                  className="bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/30 rounded-xl p-3 flex flex-col items-start justify-between gap-2.5 transition-all group text-left cursor-pointer hover:scale-[1.02]"
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="p-1.5 bg-zinc-950 rounded-lg border border-white/10 group-hover:border-white/30 transition-colors">
-                      <IconComp className="w-4 h-4 text-white" />
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block group-hover:text-white transition-colors">
-                      {isEs ? tool.titleEs : tool.titleEn}
-                    </span>
-                    <span className="text-[9px] text-zinc-400 font-sans block leading-tight mt-0.5">
-                      {isEs ? tool.descEs : tool.descEn}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+      <div className="pt-2 border-t border-white/10 space-y-3 font-mono">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-zinc-300" />
+            {isEs ? '¿DESEAS CONTINUAR EDITANDO ESTE DOCUMENTO?' : 'WANT TO KEEP EDITING THIS DOCUMENT?'}
+          </span>
+          <span className="text-[10px] text-zinc-400 hidden sm:inline-block">
+            {isEs ? 'Selecciona una herramienta para encadenar acciones:' : 'Select a tool to chain actions:'}
+          </span>
         </div>
-      )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {recommendedTools.map(tool => {
+            const IconComp = tool.icon;
+            return (
+              <button
+                key={tool.id}
+                onClick={() => handleNavigateToTool(tool.path)}
+                className="bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/30 rounded-xl p-3 flex flex-col items-start justify-between gap-2.5 transition-all group text-left cursor-pointer hover:scale-[1.02]"
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="p-1.5 bg-zinc-950 rounded-lg border border-white/10 group-hover:border-white/30 transition-colors">
+                    <IconComp className="w-4 h-4 text-white" />
+                  </div>
+                  <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-white block group-hover:text-white transition-colors">
+                    {isEs ? tool.titleEs : tool.titleEn}
+                  </span>
+                  <span className="text-[9px] text-zinc-400 font-sans block leading-tight mt-0.5">
+                    {isEs ? tool.descEs : tool.descEn}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </motion.div>
   );
 }

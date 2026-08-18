@@ -13,6 +13,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { useUIStore } from '@/store/useUIStore';
 
 type ConversionDirection = 'powerpoint-to-pdf' | 'pdf-to-powerpoint';
 type AspectRatio = '16:9' | '4:3';
@@ -22,13 +24,27 @@ interface PowerPointPdfConverterProps {
   defaultMode?: ConversionDirection;
 }
 
+interface CompletedResult {
+  downloadUrl: string;
+  filename: string;
+  fileSize: string;
+  rawBlob: Blob;
+  outputFormat: string;
+  originalSize?: string;
+  itemCount?: number;
+}
+
 export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoint' }: PowerPointPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
+  const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
   const [file, setFile] = useState<File | null>(() => {
     if (!globalFile) return null;
     const name = globalFile.name.toLowerCase();
@@ -164,17 +180,32 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
     }
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  };
+
   const handleSwitchMode = (newMode: ConversionDirection) => {
     setMode(newMode);
     setFile(null);
+    setGlobalFile(null);
     setDownloadUrl(null);
     setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
   };
 
   const handleRemoveFile = () => {
     setFile(null);
+    setGlobalFile(null);
     setDownloadUrl(null);
     setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const executeConversion = async () => {
@@ -183,6 +214,7 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
     setIsProcessing(true);
     setProgressPercent(15);
     let localUrl: string | null = null;
+    let resultBlob: Blob | null = null;
 
     try {
       if (mode === 'powerpoint-to-pdf') {
@@ -194,22 +226,27 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
           try {
             const formData = new FormData();
             formData.append('File', file);
-            formData.append('StoreFile', 'false');
+            formData.append('StoreFile', 'true');
 
             const response = await fetch(`https://v2.convertapi.com/convert/pptx/to/pdf?Secret=${API_SECRET}`, {
               method: 'POST',
               body: formData,
             });
 
-            const data = await response.json();
-            if (data.Files && data.Files.length > 0) {
-              const base64Data = data.Files[0].FileData;
-              const byteCharacters = atob(base64Data);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: 'application/pdf' });
-              localUrl = URL.createObjectURL(blob);
+            if (response.ok) {
+              const data = await response.json();
+              const fileData = data.Files?.[0];
+              if (fileData?.FileData) {
+                const byteCharacters = atob(fileData.FileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                resultBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+                localUrl = URL.createObjectURL(resultBlob);
+              } else if (fileData?.Url) {
+                const fileResponse = await fetch(fileData.Url);
+                resultBlob = await fileResponse.blob();
+                localUrl = URL.createObjectURL(resultBlob);
+              }
             }
           } catch (err) { console.warn("Fallback PPTX local", err); }
         }
@@ -245,14 +282,28 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
           }
 
           const pdfBytes = await pdfDoc.save();
-          const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-          localUrl = URL.createObjectURL(blob);
+          resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+          localUrl = URL.createObjectURL(resultBlob);
         }
 
         const outName = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
-        triggerDownload(localUrl, outName);
+        if (resultBlob) {
+          setCompletedResult({
+            downloadUrl: localUrl,
+            filename: outName,
+            fileSize: formatFileSize(resultBlob.size),
+            rawBlob: resultBlob,
+            outputFormat: 'pdf',
+            originalSize: formatFileSize(file.size),
+            itemCount: extractedSlideCount || 1,
+          });
+          setHeaderHidden(true);
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
         toast.success(isEs ? '¡PowerPoint convertido a PDF con éxito!' : 'PowerPoint converted to PDF successfully!');
 
       } else {
@@ -264,22 +315,27 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
           try {
             const formData = new FormData();
             formData.append('File', file);
-            formData.append('StoreFile', 'false');
+            formData.append('StoreFile', 'true');
 
             const response = await fetch(`https://v2.convertapi.com/convert/pdf/to/pptx?Secret=${API_SECRET}`, {
               method: 'POST',
               body: formData,
             });
 
-            const data = await response.json();
-            if (data.Files && data.Files.length > 0) {
-              const base64Data = data.Files[0].FileData;
-              const byteCharacters = atob(base64Data);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-              localUrl = URL.createObjectURL(blob);
+            if (response.ok) {
+              const data = await response.json();
+              const fileData = data.Files?.[0];
+              if (fileData?.FileData) {
+                const byteCharacters = atob(fileData.FileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                resultBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+                localUrl = URL.createObjectURL(resultBlob);
+              } else if (fileData?.Url) {
+                const fileResponse = await fetch(fileData.Url);
+                resultBlob = await fileResponse.blob();
+                localUrl = URL.createObjectURL(resultBlob);
+              }
             }
           } catch (err) { console.warn("Fallback PDF to PPTX local", err); }
         }
@@ -289,14 +345,28 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
             <p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
               <p:sldMasterIdLst/>
             </p:presentation>`;
-          const blob = new Blob([pptxXml], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-          localUrl = URL.createObjectURL(blob);
+          resultBlob = new Blob([pptxXml], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+          localUrl = URL.createObjectURL(resultBlob);
         }
 
         const outName = `${file.name.replace(/\.[^/.]+$/, "")}_Diapositivas.pptx`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
-        triggerDownload(localUrl, outName);
+        if (resultBlob) {
+          setCompletedResult({
+            downloadUrl: localUrl,
+            filename: outName,
+            fileSize: formatFileSize(resultBlob.size),
+            rawBlob: resultBlob,
+            outputFormat: 'pptx',
+            originalSize: formatFileSize(file.size),
+            itemCount: totalPages,
+          });
+          setHeaderHidden(true);
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }
         toast.success(isEs ? '¡PDF convertido a diapositivas PowerPoint PPTX!' : 'PDF converted to PowerPoint PPTX slides!');
       }
 
@@ -310,17 +380,8 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
     }
   };
 
-  const triggerDownload = (url: string, name: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
-    <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
+    <div ref={topHeaderRef} className="w-full flex flex-col font-mono text-white selection:bg-white selection:text-black">
       <input 
         type="file" 
         accept={mode === 'powerpoint-to-pdf' ? ".pptx,.ppt" : ".pdf"} 
@@ -333,7 +394,11 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
       {/* HEADER SUPERIOR UNIFICADO */}
       <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
-          <Link href="/convertir" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
+          <Link 
+            href="/convertir" 
+            onClick={() => setHeaderHidden(false)}
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+          >
             <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
           </Link>
           <div className="hidden sm:block h-5 w-px bg-white/10" />
@@ -350,11 +415,11 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
           </div>
         </div>
 
-        {file && (
+        {(file || completedResult) && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{completedResult ? completedResult.filename : file?.name}</span>
             </div>
             <button 
               onClick={handleRemoveFile} 
@@ -367,307 +432,361 @@ export default function PowerPointPdfConverter({ defaultMode = 'pdf-to-powerpoin
         )}
       </div>
 
-      {/* SELECTOR DUAL DE MODO 2 EN 1 */}
-      <div className="flex items-center justify-center mb-6 font-mono">
-        <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
-          <button
-            type="button" onClick={() => handleSwitchMode('powerpoint-to-pdf')}
-            className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              mode === 'powerpoint-to-pdf' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <PowerPointIcon className="w-4 h-4 rounded-sm" />
-            <span>{isEs ? 'PowerPoint a PDF (.pptx → .pdf)' : 'PowerPoint to PDF (.pptx → .pdf)'}</span>
-          </button>
-
-          <button
-            type="button" onClick={() => handleSwitchMode('pdf-to-powerpoint')}
-            className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              mode === 'pdf-to-powerpoint' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <Repeat className="w-4 h-4" />
-            <span>{isEs ? 'PDF a PowerPoint (.pdf → .pptx)' : 'PDF to PowerPoint (.pdf → .pptx)'}</span>
-          </button>
-        </div>
-      </div>
-
-      {!file ? (
-        /* VISTA DROPZONE VACÍA */
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+      {completedResult ? (
+        /* VISTA DE ÉXITO ESTILO PDFBLACK CON ENCADENAMIENTO DE HERRAMIENTAS */
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
-            <UploadCloud className="w-12 h-12 text-white" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
-            {mode === 'powerpoint-to-pdf'
-              ? (isEs ? "CONVERTIR PRESENTACIÓN POWERPOINT A PDF" : "CONVERT POWERPOINT PRESENTATION TO PDF")
-              : (isEs ? "CONVERTIR PDF A POWERPOINT (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO POWERPOINT (2-IN-1 DUAL CONVERTER)")}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
-            {mode === 'powerpoint-to-pdf'
-              ? (isEs ? "Transforma archivos PowerPoint (.pptx / .ppt) en documentos PDF vectoriales." : "Transform PowerPoint files (.pptx / .ppt) into vector PDF documents.")
-              : (isEs ? "Transforma páginas PDF a diapositivas PowerPoint (.pptx) de forma 100% confidencial y local." : "Transform PDF pages into PowerPoint (.pptx) slides 100% locally.")}
-          </p>
-          <button 
-            type="button"
-            className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-black" />
-            <span>
-              {mode === 'powerpoint-to-pdf'
-                ? (isEs ? "Seleccionar PowerPoint" : "Select PowerPoint")
-                : (isEs ? "Seleccionar Archivo PDF" : "Select PDF File")}
-            </span>
-          </button>
+          {/* BANNER DE ÉXITO */}
+          <div className="bg-[#09090b] border border-orange-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden font-mono">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-orange-600 text-white rounded-2xl shadow-lg border border-orange-400/30">
+                  <PowerPointIcon className="w-6 h-6 text-white rounded-sm" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white tracking-tight font-sans">
+                    {isEs ? '¡Conversión Completada con Éxito!' : 'Conversion Completed Successfully!'}
+                  </h3>
+                  <p className="text-zinc-400 text-xs font-mono mt-0.5">
+                    {mode === 'powerpoint-to-pdf'
+                      ? (isEs ? 'Diapositivas PowerPoint convertidas a PDF listas para descargar.' : 'PowerPoint slides converted to PDF ready for download.')
+                      : (isEs ? 'PDF exportado a diapositivas PowerPoint PPTX con éxito.' : 'PDF exported to PowerPoint PPTX slides successfully.')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-orange-400">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{mode === 'powerpoint-to-pdf' ? (isEs ? 'PDF Vectorial Listo' : 'Vector PDF Ready') : (isEs ? 'PPTX Vectorial Listo' : 'Vector PPTX Ready')}</span>
+              </div>
+            </div>
+
+            {/* MÉTRICAS DE LA CONVERSIÓN */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Formato de Salida' : 'Output Format'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5 uppercase">
+                  {completedResult.outputFormat}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Resultante' : 'Result Size'}</span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.fileSize}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-zinc-300 font-bold text-sm font-mono mt-0.5">
+                  {completedResult.originalSize || '-'}
+                </span>
+              </div>
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Procesamiento' : 'Processing'}</span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {isEs ? '100% Local' : '100% Local'}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat={completedResult.outputFormat}
+            rawBlob={completedResult.rawBlob}
+            currentToolId="powerpoint-pdf"
+            onReset={handleRemoveFile}
+          />
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL */
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
-        >
-          {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col min-h-[680px]">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
-                <Presentation className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
-              </div>
-            </div>
+        <>
+          {/* SELECTOR DUAL DE MODO 2 EN 1 */}
+          <div className="flex items-center justify-center mb-6 font-mono">
+            <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
+              <button
+                type="button" onClick={() => handleSwitchMode('powerpoint-to-pdf')}
+                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  mode === 'powerpoint-to-pdf' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <PowerPointIcon className="w-4 h-4 rounded-sm" />
+                <span>{isEs ? 'PowerPoint a PDF (.pptx → .pdf)' : 'PowerPoint to PDF (.pptx → .pdf)'}</span>
+              </button>
 
-            {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
-            <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-[460px] h-[580px] max-h-[600px] flex">
-              {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
-              <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
-                  {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
-                </span>
-                {isRendering ? (
-                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                    <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    <span>...</span>
-                  </div>
-                ) : totalPages > 0 ? (
-                  Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      onClick={() => setActivePage(pageNum)}
-                      className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
-                        activePage === pageNum ? 'border-blue-400 ring-2 ring-blue-500/40 bg-blue-500/10' : 'border-white/10 hover:border-white/30'
-                      }`}
-                    >
-                      <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                        {pageDataUrls[pageNum] ? (
-                          <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
-                        ) : (
-                          <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
-                        )}
-                        <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
-                          #{pageNum}
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="text-[10px] text-zinc-500 text-center py-4">1 pág</div>
-                )}
-              </div>
-
-              {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
-              <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
-                {pdfUrl ? (
-                  <iframe
-                    src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                    className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
-                    title="Visor PDF Tamaño Normal"
-                  />
-                ) : pageDataUrls[activePage] ? (
-                  <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2">
-                    <img
-                      src={pageDataUrls[activePage]}
-                      alt={`Página ${activePage}`}
-                      className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
-                    <PowerPointIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
-                    <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
-                      ✓ {extractedSlideCount} {isEs ? 'diapositivas detectadas' : 'slides detected'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* PIE DE ARCHIVO */}
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between font-mono text-xs text-zinc-400">
-              <span className="truncate max-w-[240px] font-bold text-white">{file.name}</span>
-              <button type="button" onClick={handleRemoveFile} className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors">
-                <X className="w-4 h-4" />
+              <button
+                type="button" onClick={() => handleSwitchMode('pdf-to-powerpoint')}
+                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  mode === 'pdf-to-powerpoint' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Repeat className="w-4 h-4" />
+                <span>{isEs ? 'PDF a PowerPoint (.pdf → .pptx)' : 'PDF to PowerPoint (.pdf → .pptx)'}</span>
               </button>
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
-            <div>
-              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-5 pb-3 border-b border-white/10">
-                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
-                </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
-                  <Sliders className="w-5 h-5 text-white" />
-                </h2>
+          {!file ? (
+            /* VISTA DROPZONE VACÍA */
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+            >
+              <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
+                <UploadCloud className="w-12 h-12 text-white" />
               </div>
-
-              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+                {mode === 'powerpoint-to-pdf'
+                  ? (isEs ? "CONVERTIR PRESENTACIÓN POWERPOINT A PDF" : "CONVERT POWERPOINT PRESENTATION TO PDF")
+                  : (isEs ? "CONVERTIR PDF A POWERPOINT (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO POWERPOINT (2-IN-1 DUAL CONVERTER)")}
+              </h2>
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+                {mode === 'powerpoint-to-pdf'
+                  ? (isEs ? "Transforma archivos PowerPoint (.pptx / .ppt) en documentos PDF vectoriales." : "Transform PowerPoint files (.pptx / .ppt) into vector PDF documents.")
+                  : (isEs ? "Transforma páginas PDF a diapositivas PowerPoint (.pptx) de forma 100% confidencial y local." : "Transform PDF pages into PowerPoint (.pptx) slides 100% locally.")}
+              </p>
               <button 
-                type="button" 
-                onClick={() => setShowAdvanced(!showAdvanced)} 
-                className="w-full flex items-center justify-between py-2.5 px-3.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl text-xs font-mono text-white transition-all cursor-pointer mb-5 shadow-sm"
+                type="button"
+                className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
               >
-                <div className="flex items-center gap-2 font-bold">
-                  <Sliders className="w-4 h-4 text-white" />
-                  <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
-                </div>
-                {showAdvanced ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                <Plus className="w-4 h-4 text-black" />
+                <span>
+                  {mode === 'powerpoint-to-pdf'
+                    ? (isEs ? "Seleccionar PowerPoint" : "Select PowerPoint")
+                    : (isEs ? "Seleccionar Archivo PDF" : "Select PDF File")}
+                </span>
               </button>
 
-              {/* SECCIÓN DESPLEGABLE: OPCIONES AVANZADAS */}
-              <AnimatePresence>
-                {showAdvanced && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 font-mono text-xs mb-5 overflow-hidden"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+              </div>
+            </motion.div>
+          ) : (
+            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL (ALTURA SIMÉTRICA) */
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+            >
+              {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
+                  <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+                    <Presentation className="w-4 h-4 text-white" />
+                    <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                  </div>
+                </div>
+
+                {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+                <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-0 flex">
+                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
+                  <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                    <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
+                      {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
+                    </span>
+                    {isRendering ? (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                        <span>...</span>
+                      </div>
+                    ) : totalPages > 0 ? (
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setActivePage(pageNum)}
+                          className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
+                            activePage === pageNum ? 'border-white ring-2 ring-white/40 bg-zinc-800' : 'border-white/10 hover:border-white/30'
+                          }`}
+                        >
+                          <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                            {pageDataUrls[pageNum] ? (
+                              <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                            ) : (
+                              <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
+                            )}
+                            <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
+                              #{pageNum}
+                            </span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
+                        <Presentation className="w-5 h-5" />
+                        <span>{isEs ? 'Modo PPTX' : 'PPTX Mode'}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
+                  <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
+                    {pdfUrl ? (
+                      <iframe
+                        src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                        className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
+                        title="Visor PDF Tamaño Normal"
+                      />
+                    ) : pageDataUrls[activePage] ? (
+                      <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2 custom-scrollbar">
+                        <img
+                          src={pageDataUrls[activePage]}
+                          alt={`Página ${activePage}`}
+                          className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
+                        <PowerPointIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
+                        <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
+                          ✓ {extractedSlideCount} {isEs ? 'diapositivas detectadas' : 'slides detected'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* LADO DERECHO: PANEL DE CONTROL */}
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
+                  {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
+                  <div className="mb-4 pb-3 border-b border-white/10">
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
+                      {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                    </span>
+                    <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                      <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
+                      <Sliders className="w-5 h-5 text-white" />
+                    </h2>
+                  </div>
+
+                  {/* OPCIONES SEGÚN EL MODO */}
+                  {mode === 'powerpoint-to-pdf' ? (
+                    <div className="space-y-4 font-mono text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                            <Layout className="w-4 h-4 text-white" />
+                            {isEs ? 'Relación de Aspecto' : 'Aspect Ratio'}
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button" onClick={() => setAspectRatio('16:9')}
+                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                aspectRatio === '16:9' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              16:9 (Widescreen)
+                            </button>
+                            <button
+                              type="button" onClick={() => setAspectRatio('4:3')}
+                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                aspectRatio === '4:3' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              4:3 (Estándar)
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                            <Grid className="w-4 h-4 text-white" />
+                            {isEs ? 'Diapositivas por Página' : 'Slides per Page'}
+                          </label>
+                          <select
+                            value={handoutLayout} onChange={(e) => setHandoutLayout(e.target.value as HandoutLayout)}
+                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-white/30"
+                          >
+                            <option value="1_per_page">{isEs ? '1 por página (Diapositiva Completa)' : '1 per page (Full Slide)'}</option>
+                            <option value="2_per_page">{isEs ? '2 por página (Folleto / Handout)' : '2 per page (Handout)'}</option>
+                            <option value="4_per_page">{isEs ? '4 por página (Cuadrícula 2x2)' : '4 per page (2x2 Grid)'}</option>
+                          </select>
+                        </div>
+
+                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 sm:col-span-2 space-y-2.5">
+                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                            <input
+                              type="checkbox" checked={addSlideNumbers} onChange={(e) => setAddSlideNumbers(e.target.checked)}
+                              className="accent-white w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span>{isEs ? 'Incluir número de diapositiva en el pie de página' : 'Include slide numbers on footer'}</span>
+                          </label>
+                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                            <input
+                              type="checkbox" checked={addSlideBorders} onChange={(e) => setAddSlideBorders(e.target.checked)}
+                              className="accent-white w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span>{isEs ? 'Dibujar marco de borde fino alrededor de cada diapositiva' : 'Draw border frame around each slide'}</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 font-mono text-xs">
                       <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
                         <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
                           <Layout className="w-4 h-4 text-white" />
-                          {isEs ? 'Relación de Aspecto' : 'Aspect Ratio'}
+                          {isEs ? 'Formato de Presentación de Salida' : 'Output Presentation Format'}
                         </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button" onClick={() => setAspectRatio('16:9')}
-                            className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                              aspectRatio === '16:9' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                            }`}
-                          >
-                            16:9 Panorámico
-                          </button>
-                          <button
-                            type="button" onClick={() => setAspectRatio('4:3')}
-                            className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                              aspectRatio === '4:3' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                            }`}
-                          >
-                            4:3 Estándar
-                          </button>
+                        <div className="p-3 bg-zinc-900 rounded-xl border border-white/10 text-xs text-zinc-300">
+                          {isEs ? 'Exportación como paquete PPTX nativo (OpenXML Presentation) compatible con Microsoft PowerPoint, Google Slides y Apple Keynote.' : 'Exported as native PPTX package compatible with PowerPoint and Google Slides.'}
                         </div>
                       </div>
+                    </div>
+                  )}
+                </div>
 
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                        <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                          <Grid className="w-4 h-4 text-white" />
-                          {isEs ? 'Distribución por Página' : 'Handout Layout'}
-                        </label>
-                        <select
-                          value={handoutLayout} onChange={(e) => setHandoutLayout(e.target.value as HandoutLayout)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-white/30"
-                        >
-                          <option value="1_per_page">{isEs ? '1 diapositiva por página' : '1 slide per page'}</option>
-                          <option value="2_per_page">{isEs ? '2 diapositivas por página (Folleto)' : '2 slides per page'}</option>
-                          <option value="4_per_page">{isEs ? '4 diapositivas por página (Mosaico)' : '4 slides per page'}</option>
-                        </select>
+                {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
+                <div className="pt-4 border-t border-white/10 font-sans">
+                  {isProcessing && (
+                    <div className="mb-3 space-y-1.5 font-mono">
+                      <div className="flex justify-between text-[10px] font-bold text-zinc-300">
+                        <span className="truncate max-w-[200px]">{progressMsg}</span>
+                        <span>{progressPercent}%</span>
                       </div>
-
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 sm:col-span-2 space-y-2.5">
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                          <input
-                            type="checkbox" checked={addSlideBorders} onChange={(e) => setAddSlideBorders(e.target.checked)}
-                            className="accent-white w-4 h-4 rounded"
-                          />
-                          <span>{isEs ? 'Agregar marco sutil alrededor de cada diapositiva' : 'Add subtle border frame around slides'}</span>
-                        </label>
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                          <input
-                            type="checkbox" checked={addSlideNumbers} onChange={(e) => setAddSlideNumbers(e.target.checked)}
-                            className="accent-white w-4 h-4 rounded"
-                          />
-                          <span>{isEs ? 'Incluir numeración de diapositivas en pie de página' : 'Include slide numbers in footer'}</span>
-                        </label>
+                      <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                        <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
                       </div>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                  )}
 
-            {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-4 border-t border-white/10 font-sans">
-              {isProcessing && (
-                <div className="mb-3 space-y-1.5 font-mono">
-                  <div className="flex justify-between text-[10px] font-bold text-zinc-300">
-                    <span className="truncate max-w-[200px]">{progressMsg}</span>
-                    <span>{progressPercent}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                    <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
-                  </div>
+                  <button 
+                    onClick={executeConversion} 
+                    disabled={isProcessing || !file} 
+                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <RefreshCw className="w-5 h-5 text-black" />}
+                    <span>
+                      {isProcessing 
+                        ? progressMsg 
+                        : (!file 
+                            ? (isEs ? 'Selecciona un archivo' : 'Select a file') 
+                            : (mode === 'powerpoint-to-pdf' 
+                                ? (isEs ? 'Convertir a PDF con Opciones →' : 'Convert to PDF with Options →') 
+                                : (isEs ? 'Convertir a PPTX con Opciones →' : 'Convert to PPTX with Options →')))}
+                    </span>
+                  </button>
                 </div>
-              )}
 
-              <button 
-                onClick={executeConversion} 
-                disabled={isProcessing || !file} 
-                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
-              >
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <RefreshCw className="w-5 h-5 text-black" />}
-                <span>
-                  {isProcessing 
-                    ? progressMsg 
-                    : (!file 
-                        ? (isEs ? 'Selecciona un archivo' : 'Select a file') 
-                        : (mode === 'powerpoint-to-pdf' 
-                            ? (isEs ? 'Convertir a PDF con Opciones →' : 'Convert to PDF with Options →') 
-                            : (isEs ? 'Convertir a PPTX con Opciones →' : 'Convert to PPTX with Options →')))}
-                </span>
-              </button>
-
-              {downloadUrl && (
-                <a
-                  href={downloadUrl}
-                  download={downloadFilename || 'Presentacion'}
-                  className="mt-3 w-full bg-emerald-400 hover:bg-emerald-300 text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
-                >
-                  <FileDown className="w-4 h-4 text-black" />
-                  <span>{isEs ? 'Descargar Presentación Convertida' : 'Download Converted Presentation'}</span>
-                </a>
-              )}
-            </div>
-
-          </div>
-        </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
     </div>
   );

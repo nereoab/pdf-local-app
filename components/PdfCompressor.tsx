@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
+import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 
@@ -46,9 +47,11 @@ export default function PdfCompressor() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
   const successContainerRef = useRef<HTMLDivElement>(null);
   const controlPanelRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   // === ESTADO MULTI-ARCHIVO (BATCH) ===
   const [files, setFiles] = useState<File[]>(globalFile ? [globalFile] : []);
@@ -100,6 +103,41 @@ export default function PdfCompressor() {
   // ============================================================
   // EFECTOS Y GENERACIÓN DE MINIATURAS DEL DOCUMENTO
   // ============================================================
+
+  // Ocultar barra superior global y posicionar la vista en el tope de la página
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+
+      // Posicionar en el tope absoluto (y = 0) para mantener el margen y vista completa del título
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
+      const raf = requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+      });
+
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, 50);
+
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Restaurar barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   useEffect(() => {
     if (globalFile && files.length === 0) {
@@ -195,20 +233,6 @@ export default function PdfCompressor() {
       setTotalPages(1);
     }
   }, [activeFile, loadFileThumbnails]);
-
-  // Scroll automático hacia la pantalla de éxito cuando el proceso termina
-  useEffect(() => {
-    if (completedResult) {
-      const timer = setTimeout(() => {
-        if (successContainerRef.current) {
-          successContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [completedResult]);
 
   // ============================================================
   // MANEJO DE ARCHIVOS (BATCH)
@@ -428,7 +452,7 @@ export default function PdfCompressor() {
       <input type="file" accept=".pdf" multiple className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
 
       {/* CABECERA */}
-      <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+      <div ref={topHeaderRef} className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
             href="/#herramientas"
@@ -513,9 +537,12 @@ export default function PdfCompressor() {
         >
           {/* BANNER DE METRICAS DE COMPRESIÓN */}
           <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400">
                   <Zap className="w-6 h-6" />
                 </div>
                 <div>
@@ -527,11 +554,17 @@ export default function PdfCompressor() {
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
-                <div className="text-right">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl min-w-[140px]">
+                <div className="w-full text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Ahorro de espacio' : 'Space saved'}</div>
-                  <div className="text-emerald-400 font-extrabold text-base">
-                    ↓ {completedResult.overallReduction}%
+                  <div className="text-emerald-400 font-extrabold text-base flex items-center justify-end gap-1">
+                    <span>↓ {completedResult.overallReduction}%</span>
+                  </div>
+                  <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                    <div
+                      className="bg-emerald-400 h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(Math.max(completedResult.overallReduction, 6), 100)}%` }}
+                    />
                   </div>
                 </div>
               </div>
@@ -543,7 +576,12 @@ export default function PdfCompressor() {
                 <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.totalOriginalSize)}</span>
               </div>
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Comprimido' : 'Compressed Size'}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Comprimido' : 'Compressed Size'}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded font-mono font-bold">
+                    -{completedResult.overallReduction}%
+                  </span>
+                </div>
                 <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.totalCompressedSize)}</span>
               </div>
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
@@ -593,6 +631,7 @@ export default function PdfCompressor() {
             fileSize={completedResult.fileSize}
             outputFormat="pdf"
             rawBlob={completedResult.rawBlob}
+            currentToolId="comprimir"
             onReset={handleRemoveAllFiles}
           />
         </motion.div>
@@ -675,13 +714,12 @@ export default function PdfCompressor() {
                   </div>
                   <div className="flex flex-col overflow-hidden font-mono">
                     <span className="text-white font-bold text-xs truncate w-28 sm:w-44">{activeFile?.name || ''}</span>
-                    <span className="text-zinc-400 text-[10px]">
-                      {activeFile ? formatFileSize(activeFile.size) : ''}
-                      {activeResult && (
-                        <span className="text-emerald-400 ml-2 font-bold">
-                          → {formatFileSize(activeResult.compressedSize)} (↓{activeResult.reductionPercent}%)
-                        </span>
-                      )}
+                    <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
+                      <span>{activeFile ? formatFileSize(activeFile.size) : ''}</span>
+                      <span className="text-zinc-600">•</span>
+                      <span className="text-emerald-400 font-bold">
+                        {isEs ? `Est. ~↓${getEstimatedReduction(compressionLevel).label}` : `Est. ~↓${getEstimatedReduction(compressionLevel).label}`}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -820,12 +858,19 @@ export default function PdfCompressor() {
                         <div
                           key={lvl}
                           onClick={() => !isProcessing && setCompressionLevel(lvl)}
-                          className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          className={`relative p-2.5 rounded-xl border cursor-pointer transition-all ${
                             compressionLevel === lvl
                               ? 'border-white bg-zinc-800 text-white shadow-md'
+                              : lvl === 'medium'
+                              ? 'border-emerald-500/40 bg-zinc-900/90 text-zinc-300 hover:border-emerald-500/70 hover:text-white'
                               : 'border-white/10 bg-zinc-900/80 text-zinc-400 hover:text-white'
                           }`}
                         >
+                          {lvl === 'medium' && (
+                            <span className="absolute -top-2 right-2 bg-emerald-500 text-black text-[8px] font-black font-mono px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-sm">
+                              {isEs ? 'Recomendado' : 'Best Choice'}
+                            </span>
+                          )}
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[11px] font-bold leading-tight">{isEs ? cfg.labelEs : cfg.labelEn}</span>
                             <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${compressionLevel === lvl ? 'border-white bg-white' : 'border-zinc-500'}`}>
@@ -835,7 +880,9 @@ export default function PdfCompressor() {
                           <p className="text-[10px] text-zinc-400 leading-tight">{isEs ? cfg.descEs : cfg.descEn}</p>
                           <div className="flex items-center gap-1.5 mt-1.5">
                             <Icon className="w-3 h-3 text-zinc-400" />
-                            <span className="text-[10px] font-mono font-bold bg-zinc-700/60 text-zinc-200 px-1.5 py-0.5 rounded">
+                            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                              lvl === 'medium' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-zinc-700/60 text-zinc-200'
+                            }`}>
                               ↓ {est.label}
                             </span>
                           </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   GitCompare, FileText, X, ShieldCheck,
@@ -11,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
+import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 import type { CompareResult, CompareProgress, StructuralDiff } from '../workers/pdf-compare.worker';
@@ -21,11 +23,14 @@ export default function PdfComparator() {
 
   const file1InputRef = useRef<HTMLInputElement>(null);
   const file2InputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const panel1Ref = useRef<HTMLDivElement>(null);
   const panel2Ref = useRef<HTMLDivElement>(null);
 
   const { globalFile } = useFileStore();
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   const [file1, setFile1] = useState<File | null>(() => globalFile || null);
   const [file2, setFile2] = useState<File | null>(null);
@@ -121,6 +126,41 @@ export default function PdfComparator() {
       setCompareResult(null); setCompletedResult(null);
     } else { toast.error(isEs ? 'Solo PDF' : 'Only PDF'); }
   };
+
+  // Ocultar barra superior global y posicionar la vista en el tope de la página
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+
+      // Posicionar en el tope absoluto (y = 0) para mantener el margen y vista completa del título
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
+      const raf = requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+      });
+
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, 50);
+
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  // Restaurar barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
 
   useEffect(() => { if (!file1 || !file2) return; loadDocs(); }, [file1, file2]);
 
@@ -346,9 +386,6 @@ export default function PdfComparator() {
       const blob = new Blob([ab], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const filename = `Reporte_Comparacion_${file1?.name?.replace('.pdf', '') || 'DocA'}_vs_${file2?.name?.replace('.pdf', '') || 'DocB'}.pdf`;
-      const a = document.createElement('a'); a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setDownloadBanner('pdf');
       setCompletedResult({
         downloadUrl: url,
         filename: filename,
@@ -363,8 +400,7 @@ export default function PdfComparator() {
         structuralChanges: compareResult.structuralDiffs.length,
         summary: compareResult.summary,
       });
-      setTimeout(() => setDownloadBanner(null), 4000);
-      toast.success(isEs ? 'Reporte PDF generado con éxito' : 'PDF Report generated successfully');
+      toast.success(isEs ? '¡Reporte PDF listo para descargar!' : 'PDF Report ready for download!');
     } catch (e: any) {
       toast.error(isEs ? `Error PDF: ${e?.message || ''}` : `PDF error: ${e?.message || ''}`);
     } finally { setIsGeneratingPdfReport(false); }
@@ -390,9 +426,48 @@ export default function PdfComparator() {
   };
 
   return (
-    <div className="w-full font-sans">
+    <div className="w-full max-w-7xl mx-auto font-sans">
       <input type="file" accept=".pdf" className="hidden" ref={file1InputRef} onChange={handleFile1} />
       <input type="file" accept=".pdf" className="hidden" ref={file2InputRef} onChange={handleFile2} />
+
+      {/* CABECERA */}
+      <div ref={topHeaderRef} className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl font-mono">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <Link
+            href="/#herramientas"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{isEs ? 'Volver' : 'Back'}</span>
+          </Link>
+          <div className="hidden sm:block h-5 w-px bg-white/10" />
+          <div>
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+              004 / COMPARACIÓN Y CONTROL DE DIFERENCIAS EN PDF
+            </span>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+              <GitCompare className="w-6 h-6 text-white flex-shrink-0" />
+              <span>{isEs ? 'COMPARAR Y DETECTAR DIFERENCIAS EN PDF' : 'COMPARE AND DETECT DIFFERENCES IN PDF'}</span>
+            </h1>
+          </div>
+        </div>
+        {(file1 || file2) && (
+          <div className="flex items-center gap-2 font-mono">
+            <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-xl text-xs text-white">
+              <FileText className="w-3.5 h-3.5 inline mr-1.5 text-zinc-400" />
+              <span className="font-bold">{file1 && file2 ? '2 docs' : '1 doc'}</span>
+            </div>
+            <button
+              onClick={reset}
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all cursor-pointer"
+              title={isEs ? 'Reiniciar' : 'Reset'}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
       {(!file1 || !file2) ? (
         <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
           <div className="text-center flex flex-col items-center gap-3">
@@ -417,23 +492,35 @@ export default function PdfComparator() {
       ) : completedResult ? (
         /* PANTALLA DE ÉXITO Y DESCARGA */
         <motion.div
+          ref={successContainerRef}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          <div className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/30">
-                <CheckCircle className="w-7 h-7 text-emerald-400" />
+          {/* BANNER DE MÉTRICAS DE COMPARACIÓN */}
+          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            {/* Glow background accent */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
+                  <CheckCircle className="w-7 h-7 text-emerald-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                    {isEs ? '¡Reporte de Comparación Generado con Éxito!' : 'Comparison Report Generated Successfully!'}
+                  </h2>
+                  <p className="text-xs text-zinc-400 font-mono mt-0.5">{completedResult.summary}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">
-                  {isEs ? '¡Reporte de Comparación Generado con Éxito!' : 'Comparison Report Generated Successfully!'}
-                </h2>
-                <p className="text-xs text-zinc-400 font-mono mt-0.5">{completedResult.summary}</p>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{isEs ? 'Reporte Listo' : 'Report Ready'}</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
                 <span className="text-zinc-400 text-[9px] uppercase font-bold">{isEs ? 'Similitud Global' : 'Global Similarity'}</span>
                 <span className="text-white font-bold text-xl font-mono mt-0.5">{completedResult.globalSimilarityPercent}%</span>
@@ -451,31 +538,21 @@ export default function PdfComparator() {
                 <span className="text-zinc-300 font-bold text-xl font-mono mt-0.5">{completedResult.totalUnchanged}</span>
               </div>
             </div>
-
-            {/* TARJETA DE DESCARGA ÉXITO (DownloadSuccessCard) */}
-            <DownloadSuccessCard
-              downloadUrl={completedResult.downloadUrl}
-              filename={completedResult.filename}
-              fileSize={completedResult.fileSize}
-              outputFormat="pdf"
-              rawBlob={completedResult.rawBlob}
-              onReset={() => {
-                setCompletedResult(null);
-                reset();
-              }}
-            />
           </div>
 
-          {/* BOTÓN VOLVER */}
-          <div className="flex justify-center">
-            <button
-              onClick={() => setCompletedResult(null)}
-              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 rounded-xl text-sm font-mono transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {isEs ? 'Volver al Panel de Comparación' : 'Back to Comparison Panel'}
-            </button>
-          </div>
+          {/* TARJETA DE DESCARGA ÉXITO (DownloadSuccessCard) */}
+          <DownloadSuccessCard
+            downloadUrl={completedResult.downloadUrl}
+            filename={completedResult.filename}
+            fileSize={completedResult.fileSize}
+            outputFormat="pdf"
+            rawBlob={completedResult.rawBlob}
+            currentToolId="comparar"
+            onReset={() => {
+              setCompletedResult(null);
+              reset();
+            }}
+          />
         </motion.div>
       ) : (
         <div className="w-full flex flex-col gap-4">
@@ -544,12 +621,30 @@ export default function PdfComparator() {
               </div>
               {isComparing && (<div className="flex items-center gap-2 text-xs font-mono text-zinc-400"><span className="w-2 h-2 rounded-full bg-white animate-pulse" /><span>{phaseLabels[progressPhase] || progressMsg}</span></div>)}
               {compareResult && allDiffWords.length > 0 && (
-                <div className="flex items-center gap-3 bg-zinc-900/60 border border-white/10 rounded-xl px-4 py-2 font-mono text-xs">
-                  <button onClick={gotoPrevDiff} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 hover:text-white transition-all cursor-pointer" title="Prev (Ctrl+Left)"><ChevronUp className="w-4 h-4" /></button>
-                  <span className="text-white font-bold">{activeDiffIdx >= 0 ? `Change ${activeDiffIdx + 1}/${allDiffWords.length}` : `${allDiffWords.length} changes`}</span>
-                  <button onClick={gotoNextDiff} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 hover:text-white transition-all cursor-pointer" title="Next (Ctrl+Right)"><ChevronDown className="w-4 h-4" /></button>
-                  {activeWord && (<span className={`px-2 py-0.5 rounded font-bold ${activeWord.type === 'removed' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>{activeWord.type === 'removed' ? '-' : '+'} {activeWord.text.slice(0, 30)}</span>)}
-                  <span className="text-zinc-500 text-[10px] ml-auto">Page {activeWord?.page || '-'}</span>
+                <div className="flex items-center gap-3 bg-zinc-900 border border-white/15 rounded-xl px-4 py-2.5 font-mono text-xs shadow-lg">
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={gotoPrevDiff} className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 hover:text-white transition-all cursor-pointer" title="Prev (Ctrl+Left)">
+                      <ChevronUp className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold">{isEs ? 'Anterior' : 'Prev'}</span>
+                    </button>
+                    <button onClick={gotoNextDiff} className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 hover:text-white transition-all cursor-pointer" title="Next (Ctrl+Right)">
+                      <span className="text-[10px] font-bold">{isEs ? 'Siguiente' : 'Next'}</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <span className="text-white font-bold bg-zinc-950 px-2.5 py-1 rounded-md border border-white/10">
+                    {activeDiffIdx >= 0 ? `${isEs ? 'Diferencia' : 'Diff'} ${activeDiffIdx + 1} / ${allDiffWords.length}` : `${allDiffWords.length} ${isEs ? 'diferencias' : 'differences'}`}
+                  </span>
+                  {activeWord && (
+                    <span className={`px-2.5 py-1 rounded-md font-bold truncate max-w-[200px] sm:max-w-[300px] ${
+                      activeWord.type === 'removed' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    }`}>
+                      {activeWord.type === 'removed' ? '- ' : '+ '}{activeWord.text}
+                    </span>
+                  )}
+                  <span className="text-zinc-500 text-[11px] ml-auto flex-shrink-0">
+                    {isEs ? 'Pág.' : 'Pg.'} {activeWord?.page || '1'}
+                  </span>
                 </div>
               )}
               {compareResult && (<span className="text-xs text-zinc-400 font-mono">{compareResult.summary}</span>)}

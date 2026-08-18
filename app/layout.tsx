@@ -75,10 +75,11 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/og-image.png',
+        url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
         alt: `${SITE_NAME} — Herramientas PDF 100% Locales y Privadas`,
+        type: 'image/png',
       },
     ],
   },
@@ -86,11 +87,11 @@ export const metadata: Metadata = {
   // ── Twitter Cards ──
   twitter: {
     card: 'summary_large_image',
-    title: `${SITE_NAME} ♠️ | PDF Tools 100% Local & Private`,
+    title: `${SITE_NAME} ♠️ | Herramientas PDF 100% Locales y Privadas`,
     description:
-      '24 free PDF tools running entirely in your browser. Zero servers. Absolute privacy. Edit, compress, merge, sign, OCR, and more.',
+      'Edita, organiza, convierte y optimiza PDFs sin servidores. Privacidad total, procesamiento local en tu navegador. 24 herramientas gratis.',
     creator: '@pdfblack',
-    images: ['/og-image.png'],
+    images: [`${SITE_URL}/og-image.png`],
   },
 
   // ── Icons ──

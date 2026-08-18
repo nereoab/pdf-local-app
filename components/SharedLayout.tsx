@@ -57,12 +57,9 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 <div className="bg-zinc-800 dark:bg-white text-white dark:text-black p-2 rounded-xl flex items-center justify-center shadow-md border border-white/20" aria-hidden="true">
                   <Spade className="w-5 h-5 text-white dark:text-black fill-current" />
                 </div>
-                <div className="flex items-baseline gap-2 font-mono">
-                  <span className="text-base tracking-tight text-zinc-900 dark:text-white font-bold">
-                    PDF<span className="text-zinc-500 dark:text-zinc-400 font-light">BLACK</span>
-                  </span>
-                  <span className="text-[10px] text-zinc-500 font-medium hidden sm:inline-block" aria-label="Versión 2.0">
-                    v2.0
+                <div className="flex items-center font-mono">
+                  <span className="text-base tracking-tight text-white font-bold">
+                    PDF<span className="text-zinc-400 font-light">BLACK</span>
                   </span>
                 </div>
               </motion.div>

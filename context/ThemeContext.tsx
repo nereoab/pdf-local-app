@@ -15,39 +15,19 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    setMounted(true);
     if (typeof document !== 'undefined') {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(isDark ? 'dark' : 'light');
+      const root = document.documentElement;
+      root.classList.add('dark');
+      root.style.colorScheme = 'dark';
+      try {
+        localStorage.setItem('pdfblack-theme', 'dark');
+      } catch (e) {}
     }
   }, []);
 
-  const toggle = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      if (typeof document !== 'undefined') {
-        const root = document.documentElement;
-        if (next === 'dark') {
-          root.classList.add('dark');
-          root.style.colorScheme = 'dark';
-        } else {
-          root.classList.remove('dark');
-          root.style.colorScheme = 'light';
-        }
-        try {
-          localStorage.setItem('pdfblack-theme', next);
-        } catch (e) {}
-      }
-      return next;
-    });
-  }, []);
-
   return (
-    <ThemeContext.Provider value={{ theme: mounted ? theme : 'dark', toggle }}>
+    <ThemeContext.Provider value={{ theme: 'dark', toggle: () => {} }}>
       {children}
     </ThemeContext.Provider>
   );

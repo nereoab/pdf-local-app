@@ -9,18 +9,19 @@
    ============================================================ */
 
 :root {
-  /* Light mode (base / default) */
-  --background: #fafafa;
-  --foreground: #1a1a2e;
+  /* Obsidian Dark (Exclusive & Default) */
+  --background: #09090b;
+  --foreground: #ffffff;
   --font-inter: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --color-surface: #ffffff;
-  --color-muted: #6b7280;
-  --color-border: #e5e7eb;
+  --color-surface: #121215;
+  --color-muted: #9ca3af;
+  --color-border: #27272a;
+  color-scheme: dark;
 }
 
 .dark {
-  /* Dark mode overrides */
+  /* Dark mode */
   --background: #09090b;
   --foreground: #ffffff;
   --color-surface: #121215;

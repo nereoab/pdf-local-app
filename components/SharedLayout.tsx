@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
-import { useTheme } from '../context/ThemeContext';
-import { Globe, ArrowLeft, ShieldCheck, Spade, ChevronDown, User, LogOut, Sun, Moon } from 'lucide-react';
+import { Globe, ArrowLeft, ShieldCheck, Spade, ChevronDown, User, LogOut } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUIStore } from '../store/useUIStore';
@@ -16,7 +15,6 @@ import Breadcrumbs from './Breadcrumbs';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
   const { lang, toggleLanguage } = useLanguage();
-  const { theme, toggle: toggleTheme } = useTheme();
   const pathname = usePathname();
   const isEs = lang === 'es';
   const isZh = lang === 'zh';
@@ -45,8 +43,8 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   };
 
   return (
-    <div className="flex min-h-screen flex-col transition-colors duration-500 selection:bg-foreground/20 selection:text-foreground relative overflow-x-hidden font-sans text-foreground bg-background">
-      <Toaster position="bottom-right" richColors closeButton theme={theme === 'dark' ? 'dark' : 'light'} />
+    <div className="flex min-h-screen flex-col selection:bg-white/20 selection:text-white relative overflow-x-hidden font-sans text-white bg-[#09090b]">
+      <Toaster position="bottom-right" richColors closeButton theme="dark" />
 
       {/* ENCABEZADO CONTENT ARCHITECTURE STYLING */}
       {!isHeaderHidden && (
@@ -149,17 +147,6 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               >
                 <Globe className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
                 {lang === 'es' ? 'ES' : lang === 'en' ? 'EN' : '中文'}
-              </motion.button>
-
-              {/* TEMA — Toggle oscuro/claro */}
-              <motion.button
-                onClick={toggleTheme}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center w-10 h-10 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full text-lg transition-all border border-zinc-200 dark:border-white/10 flex-shrink-0"
-                aria-label={isEs ? 'Cambiar tema' : 'Toggle theme'}
-                title={isEs ? (theme === 'dark' ? 'Modo claro' : 'Modo oscuro') : (theme === 'dark' ? 'Light mode' : 'Dark mode')}
-              >
-                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </motion.button>
 
               {/* BOTÓN DE REGISTRO / CUENTA */}

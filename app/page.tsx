@@ -607,17 +607,22 @@ export default function DashboardPage() {
             >
               {/* HERO CONTENT ARCHITECTURE STYLING */}
               <div className="mb-6 text-center md:text-left flex flex-col items-center md:items-start">
-                {/* INSIGNIA DE PRIVACIDAD TOTAL CON CANDADO/ESCUDO ESMERALDA */}
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-mono mb-4 shadow-[0_0_25px_rgba(16,185,129,0.12)] backdrop-blur-md">
-                  <span className="relative flex h-2 w-2">
+                {/* INSIGNIA DE CONFIANZA Y PRIVACIDAD TOTAL */}
+                <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-xs font-mono mb-4 shadow-[0_0_30px_rgba(16,185,129,0.2)] backdrop-blur-md">
+                  <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
                   </span>
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
+                  <ShieldCheck
+                    className="w-4 h-4 text-emerald-400 flex-shrink-0"
+                    aria-hidden="true"
+                  />
                   <span className="font-bold tracking-wide">
-                    {isEs ? '100% LOCAL Y PRIVADO' : '100% LOCAL & PRIVATE'}
+                    {isEs
+                      ? 'INSIGNIA DE CONFIANZA: 100% LOCAL Y PRIVADO'
+                      : 'TRUST BADGE: 100% LOCAL & PRIVATE'}
                   </span>
-                  <span className="text-zinc-400 text-[11px] hidden sm:inline-block">
+                  <span className="text-zinc-300 text-xs hidden sm:inline-block">
                     •{' '}
                     {isEs
                       ? 'Tus archivos nunca salen de tu navegador'
@@ -632,12 +637,25 @@ export default function DashboardPage() {
                   </span>
                 </h1>
 
-                {/* SUBTÍTULO RESUMIDO EN UNA SOLA LÍNEA */}
-                <p className="text-zinc-400 text-xs sm:text-sm font-mono mt-3 leading-normal">
-                  {isEs
-                    ? '100% Gratis • Sin tarjeta de crédito • Sin registro • 24 herramientas de alto rendimiento'
-                    : '100% Free • No credit card needed • No sign-up • 24 high-performance tools'}
-                </p>
+                {/* SUBTÍTULO Y GARANTÍAS DE CONFIANZA */}
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 mt-4 font-mono text-xs text-zinc-400">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    {isEs ? 'Cero Servidores' : 'Zero Servers'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    {isEs ? '100% Gratis' : '100% Free'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
+                    <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                    {isEs ? 'Sin Registro' : 'No Sign-up'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                    {isEs ? '24 Herramientas' : '24 Tools'}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6">

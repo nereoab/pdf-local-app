@@ -261,11 +261,18 @@ function OrganizarContent() {
                     <FolderOpen className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                      {isEs
-                        ? '002 / HERRAMIENTAS DE ORGANIZAR PDF'
-                        : '002 / PDF ORGANIZATION TOOLS'}
-                    </h1>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                        {isEs
+                          ? '002 / HERRAMIENTAS DE ORGANIZAR PDF'
+                          : '002 / PDF ORGANIZATION TOOLS'}
+                      </h1>
+                      {/* INSIGNIA DE CONFIANZA */}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-950/50 border border-emerald-500/40 text-emerald-400 text-[10px] font-mono shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        {isEs ? '100% Local • Cero Servidores' : '100% Local • Zero Servers'}
+                      </span>
+                    </div>
                     <p className="text-zinc-400 text-xs sm:text-sm font-mono mt-1">
                       {isEs
                         ? 'Administra las páginas y la estructura de tu documento PDF:'

@@ -54,29 +54,53 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
             {/* LOGO TECHNICAL - AS DE ESPADAS */}
-            <Link
-              href="/"
-              className="flex-shrink-0"
-              aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
-            >
-              <motion.div
-                whileHover={{ opacity: 0.8 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-3 cursor-pointer group"
+            <div className="flex items-center gap-4 flex-shrink-0">
+              <Link
+                href="/"
+                className="flex-shrink-0"
+                aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
               >
-                <div
-                  className="bg-zinc-800 dark:bg-white text-white dark:text-black p-2 rounded-xl flex items-center justify-center shadow-md border border-white/20"
-                  aria-hidden="true"
+                <motion.div
+                  whileHover={{ opacity: 0.8 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-3 cursor-pointer group"
                 >
-                  <Spade className="w-5 h-5 text-white dark:text-black fill-current" />
-                </div>
-                <div className="flex items-center font-mono">
-                  <span className="text-base tracking-tight text-white font-bold">
-                    PDF<span className="text-zinc-400 font-light">BLACK</span>
-                  </span>
-                </div>
-              </motion.div>
-            </Link>
+                  <div
+                    className="bg-zinc-800 dark:bg-white text-white dark:text-black p-2 rounded-xl flex items-center justify-center shadow-md border border-white/20"
+                    aria-hidden="true"
+                  >
+                    <Spade className="w-5 h-5 text-white dark:text-black fill-current" />
+                  </div>
+                  <div className="flex items-center font-mono">
+                    <span className="text-base tracking-tight text-white font-bold">
+                      PDF<span className="text-zinc-400 font-light">BLACK</span>
+                    </span>
+                  </div>
+                </motion.div>
+              </Link>
+
+              {/* INSIGNIA DE CONFIANZA / PRIVACIDAD EN EL HEADER */}
+              <div
+                className="hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 text-xs font-mono shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                title={
+                  isEs
+                    ? 'Insignia de Seguridad: Procesamiento 100% Local sin servidores'
+                    : 'Trust Badge: 100% Local Processing with Zero Servers'
+                }
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                </span>
+                <ShieldCheck
+                  className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="font-semibold tracking-wide text-[11px]">
+                  {isEs ? '100% Local • Cero Servidores' : '100% Local • Zero Servers'}
+                </span>
+              </div>
+            </div>
 
             {/* MENÚ DE NAVEGACIÓN */}
             <nav

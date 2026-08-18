@@ -26,6 +26,7 @@ import {
   Eye,
   Download,
   Trash2,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActivityStore } from '../store/useActivityStore';

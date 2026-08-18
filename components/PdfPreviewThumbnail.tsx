@@ -46,7 +46,7 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
             const page = await pdfDoc.getPage(1);
             if (isCancelled) return;
 
-            const viewport = page.getViewport({ scale: 1.5 });
+            const viewport = page.getViewport({ scale: 2.0 });
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
 
@@ -61,7 +61,7 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
               } as any).promise;
 
               if (!isCancelled) {
-                setThumbnailUrl(canvas.toDataURL('image/webp', 0.9));
+                setThumbnailUrl(canvas.toDataURL('image/webp', 0.95));
                 setIsLoading(false);
               }
             }
@@ -92,7 +92,7 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
   if (!file) return null;
 
   return (
-    <div className={`w-full h-full flex items-center justify-center p-3 sm:p-5 relative ${className}`}>
+    <div className={`w-full h-full flex items-center justify-center p-2 sm:p-3 relative ${className}`}>
       {isLoading ? (
         <div className="flex flex-col items-center justify-center gap-2.5 text-zinc-500 font-mono text-xs">
           <Loader2 className="w-7 h-7 animate-spin text-zinc-400" />
@@ -113,11 +113,11 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
           </div>
         </div>
       ) : thumbnailUrl ? (
-        <div className="relative flex items-center justify-center max-h-full max-w-full">
+        <div className="relative w-full h-full flex items-center justify-center p-1">
           <img
             src={thumbnailUrl}
             alt={file.name}
-            className="max-h-[340px] sm:max-h-[380px] w-auto max-w-full object-contain rounded-lg shadow-2xl border border-white/10 select-none pointer-events-none"
+            className="max-h-[420px] sm:max-h-[450px] w-auto max-w-full object-contain rounded-xl shadow-2xl border border-white/10 select-none pointer-events-none transition-all duration-300"
           />
         </div>
       ) : (

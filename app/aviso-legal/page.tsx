@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Globe, ShieldCheck, FileText } from 'lucide-react';
+import SpotlightCard from '@/components/SpotlightCard';
 
 export default function AvisoLegalPage() {
   const { lang } = useLanguage();
@@ -50,7 +51,7 @@ export default function AvisoLegalPage() {
         </motion.div>
 
         {/* CONTENIDO LEGAL */}
-        <div
+        <SpotlightCard
           className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8 font-sans"
           role="article"
           aria-label={isEs ? 'Aviso legal completo' : 'Full legal notice'}
@@ -183,7 +184,7 @@ export default function AvisoLegalPage() {
                 : 'In accordance with the General Data Protection Regulation (GDPR) and applicable data protection laws, all information relating to the processing of personal data is detailed in our Privacy Policy, accessible from the footer of this website.'}
             </p>
           </section>
-        </div>
+        </SpotlightCard>
 
         {/* ENLACES RELACIONADOS */}
         <div className="mt-10 text-center font-mono">

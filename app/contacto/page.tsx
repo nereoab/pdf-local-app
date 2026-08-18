@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Mail, ArrowLeft, Send, CheckCircle2, MessageSquare, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import SpotlightCard from '@/components/SpotlightCard';
 
 export default function ContactoPage() {
   const { lang } = useLanguage();
@@ -90,7 +91,7 @@ export default function ContactoPage() {
         </motion.div>
 
         {/* FORMULARIO DE CONTACTO */}
-        <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl">
+        <SpotlightCard className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl">
           {submitted ? (
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -188,7 +189,7 @@ export default function ContactoPage() {
               </div>
             </form>
           )}
-        </div>
+        </SpotlightCard>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ShieldCheck, FileText, ClipboardCheck, Download } from 'lucide-react';
+import SpotlightCard from '@/components/SpotlightCard';
 
 export default function DPAPage() {
   const { lang } = useLanguage();
@@ -51,7 +52,7 @@ export default function DPAPage() {
           </p>
         </motion.div>
 
-        <div
+        <SpotlightCard
           className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8 font-sans"
           role="article"
           aria-label={
@@ -272,7 +273,7 @@ export default function DPAPage() {
                 : 'This DPA enters into force at the moment the user uploads a PDF file to PDFBlack and remains in effect for the duration of the processing session. Acceptance of this DPA occurs by the mere use of the platform, without the need for additional signature. To obtain a signed copy, contact contacto@pdf-black.com.'}
             </p>
           </section>
-        </div>
+        </SpotlightCard>
 
         {/* ENLACES RELACIONADOS */}
         <div className="mt-10 text-center font-mono">

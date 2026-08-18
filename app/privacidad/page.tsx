@@ -13,6 +13,7 @@ import {
   Globe,
   Fingerprint,
 } from 'lucide-react';
+import SpotlightCard from '@/components/SpotlightCard';
 
 export default function PrivacidadPage() {
   const { lang } = useLanguage();
@@ -64,7 +65,7 @@ export default function PrivacidadPage() {
 
         {/* PILARES DE SEGURIDAD */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 font-mono">
-          <article
+          <SpotlightCard
             className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 shadow-xl flex flex-col items-center text-center transition-all"
             aria-labelledby="pillar-1-title"
           >
@@ -82,9 +83,9 @@ export default function PrivacidadPage() {
                 ? 'Los PDF se procesan exclusivamente en memoria RAM del navegador con bibliotecas locales (PDF.js, WebAssembly). Ningún dato se persiste en disco ni se transmite.'
                 : 'PDFs are processed exclusively in browser RAM using local libraries (PDF.js, WebAssembly). No data persists on disk or is transmitted.'}
             </p>
-          </article>
+          </SpotlightCard>
 
-          <article
+          <SpotlightCard
             className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 shadow-xl flex flex-col items-center text-center transition-all"
             aria-labelledby="pillar-2-title"
           >
@@ -102,9 +103,9 @@ export default function PrivacidadPage() {
                 ? 'No operamos servidores de almacenamiento. Los archivos PDF se destruyen de la RAM al cerrar la pestaña del navegador. No mantenemos copias.'
                 : 'We operate no storage servers. PDF files are destroyed from RAM upon closing the browser tab. We keep no copies.'}
             </p>
-          </article>
+          </SpotlightCard>
 
-          <article
+          <SpotlightCard
             className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 shadow-xl flex flex-col items-center text-center transition-all"
             aria-labelledby="pillar-3-title"
           >
@@ -122,11 +123,11 @@ export default function PrivacidadPage() {
                 ? 'El responsable del tratamiento es PDFBlack. Para ejercer tus derechos ARCO (acceso, rectificación, cancelación, oposición), contacta a contacto@pdf-black.com.'
                 : 'The data controller is PDFBlack. To exercise your GDPR rights (access, rectification, erasure, restriction, portability, objection), contact contacto@pdf-black.com.'}
             </p>
-          </article>
+          </SpotlightCard>
         </div>
 
         {/* CONTENIDO LEGAL DETALLADO */}
-        <div
+        <SpotlightCard
           className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8 font-sans"
           role="article"
           aria-label={
@@ -326,7 +327,7 @@ export default function PrivacidadPage() {
                 : 'We reserve the right to modify this privacy policy at any time. Changes will be effective immediately upon posting on this page. The last updated date is reflected at the beginning of this document. We recommend reviewing this page periodically.'}
             </p>
           </section>
-        </div>
+        </SpotlightCard>
 
         {/* ENLACES A DOCUMENTOS RELACIONADOS */}
         <div className="mt-10 text-center font-mono">

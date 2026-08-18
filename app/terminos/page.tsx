@@ -12,6 +12,7 @@ import {
   Scale,
   Info,
 } from 'lucide-react';
+import SpotlightCard from '@/components/SpotlightCard';
 
 export default function TerminosPage() {
   const { lang } = useLanguage();
@@ -57,7 +58,7 @@ export default function TerminosPage() {
           </p>
         </motion.div>
 
-        <div
+        <SpotlightCard
           className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8 font-sans"
           role="article"
           aria-label={isEs ? 'Términos y condiciones completos' : 'Full terms and conditions'}
@@ -288,7 +289,7 @@ export default function TerminosPage() {
                 : 'For any questions, claims, or inquiries related to these Terms and Conditions, you can contact us via email at contacto@pdf-black.com or through the contact form available on the /contacto page of the Site.'}
             </p>
           </section>
-        </div>
+        </SpotlightCard>
 
         {/* ENLACES RELACIONADOS */}
         <div className="mt-10 text-center font-mono">

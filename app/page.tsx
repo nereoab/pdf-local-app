@@ -30,7 +30,8 @@ import {
 import { toast } from 'sonner';
 import { useActivityStore } from '../store/useActivityStore';
 import { SkeletonTableRow } from '../components/Skeleton';
-import PdfPreviewThumbnail from '../components/PdfPreviewThumbnail';
+import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
+import SpotlightCard from '@/components/SpotlightCard';
 
 // ─── JSON-LD Structured Data (Rich Snippets) ───
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdfblack-proy.web.app';
@@ -848,11 +849,13 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
                     {/* PASO 1 */}
-                    <article
+                    <SpotlightCard
                       className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
                       aria-labelledby="step-1-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3">001 / CARGAR</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                        001 / CARGAR
+                      </span>
                       <h3
                         id="step-1-title"
                         className="text-sm font-bold text-white mb-1.5 font-sans"
@@ -864,14 +867,16 @@ export default function DashboardPage() {
                           ? 'Arrastra tu documento a la zona de carga o selecciónalo de tu equipo. Sin registro ni tarjeta de crédito.'
                           : 'Drag your document into the dropzone or select it from your device. No sign-up or credit card needed.'}
                       </p>
-                    </article>
+                    </SpotlightCard>
 
                     {/* PASO 2 */}
-                    <article
+                    <SpotlightCard
                       className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
                       aria-labelledby="step-2-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3">002 / CATEGORÍA</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                        002 / CATEGORÍA
+                      </span>
                       <h3
                         id="step-2-title"
                         className="text-sm font-bold text-white mb-1.5 font-sans"
@@ -883,14 +888,16 @@ export default function DashboardPage() {
                           ? 'Elige uno de los 4 botones principales (Editar, Organizar, Convertir u Optimizar) según la herramienta que necesites.'
                           : 'Select one of the 4 main buttons (Edit, Organize, Convert, or Optimize) depending on the tool group you need.'}
                       </p>
-                    </article>
+                    </SpotlightCard>
 
                     {/* PASO 3 */}
-                    <article
+                    <SpotlightCard
                       className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
                       aria-labelledby="step-3-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3">003 / EDICIÓN</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                        003 / EDICIÓN
+                      </span>
                       <h3
                         id="step-3-title"
                         className="text-sm font-bold text-white mb-1.5 font-sans"
@@ -902,14 +909,16 @@ export default function DashboardPage() {
                           ? 'Serás llevado a la página específica de la herramienta para personalizar, modificar y procesar tu PDF en vivo.'
                           : 'You will be taken to your selected tool sub-page to customize, modify, and process your PDF live.'}
                       </p>
-                    </article>
+                    </SpotlightCard>
 
                     {/* PASO 4 */}
-                    <article
+                    <SpotlightCard
                       className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
                       aria-labelledby="step-4-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3">004 / DESCARGAR</span>
+                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                        004 / DESCARGAR
+                      </span>
                       <h3
                         id="step-4-title"
                         className="text-sm font-bold text-white mb-1.5 font-sans"
@@ -921,7 +930,7 @@ export default function DashboardPage() {
                           ? 'Obtén tu documento modificado inmediatamente con un solo clic, 100% privado y listo para usar.'
                           : 'Get your modified document immediately with a single click, 100% private and ready to use.'}
                       </p>
-                    </article>
+                    </SpotlightCard>
                   </div>
 
                   {/* SECCIÓN DETALLADA DE GRUPOS DE HERRAMIENTAS: EDITAR, ORGANIZAR, CONVERTIR, OPTIMIZAR */}
@@ -950,7 +959,7 @@ export default function DashboardPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
                       {/* GRUPO 1: EDITAR */}
-                      <article
+                      <SpotlightCard
                         className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-edit-title"
                       >
@@ -1073,10 +1082,10 @@ export default function DashboardPage() {
                             aria-hidden="true"
                           />
                         </Link>
-                      </article>
+                      </SpotlightCard>
 
                       {/* GRUPO 2: ORGANIZAR */}
-                      <article
+                      <SpotlightCard
                         className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-organize-title"
                       >
@@ -1203,10 +1212,10 @@ export default function DashboardPage() {
                             aria-hidden="true"
                           />
                         </Link>
-                      </article>
+                      </SpotlightCard>
 
                       {/* GRUPO 3: CONVERTIR */}
-                      <article
+                      <SpotlightCard
                         className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-convert-title"
                       >
@@ -1331,10 +1340,10 @@ export default function DashboardPage() {
                             aria-hidden="true"
                           />
                         </Link>
-                      </article>
+                      </SpotlightCard>
 
                       {/* GRUPO 4: OPTIMIZAR */}
-                      <article
+                      <SpotlightCard
                         className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-optimize-title"
                       >
@@ -1461,7 +1470,7 @@ export default function DashboardPage() {
                             aria-hidden="true"
                           />
                         </Link>
-                      </article>
+                      </SpotlightCard>
                     </div>
                   </section>
                 </section>
@@ -1530,7 +1539,7 @@ export default function DashboardPage() {
           className="relative z-10 mt-12 sm:mt-16 font-sans"
           aria-label={isEs ? 'Archivos recientes' : 'Recent files'}
         >
-          <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl mb-12">
+          <SpotlightCard className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl mb-12">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-white/10 pb-5">
               <div className="flex items-center gap-3">
                 <div
@@ -1650,7 +1659,7 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </SpotlightCard>
         </section>
       </div>
     </section>

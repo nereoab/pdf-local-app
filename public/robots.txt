@@ -1,6 +1,17 @@
+# *
 User-agent: *
 Allow: /
+
+# *
+User-agent: *
 Disallow: /api/
+
+# *
+User-agent: *
 Disallow: /admin/
 
-Sitemap: https://pdfblack.com/sitemap.xml
+# Host
+Host: https://pdf-black.com
+
+# Sitemaps
+Sitemap: https://pdf-black.com/sitemap.xml

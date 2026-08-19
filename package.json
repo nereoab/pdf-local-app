@@ -16,7 +16,7 @@
     "analyze": "cross-env ANALYZE=true npm run build",
     "sitemap": "next-sitemap --config next-sitemap.config.js",
     "deploy": "firebase deploy",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@next/bundle-analyzer": "^15.4.8",
@@ -46,7 +46,7 @@
     "@tailwindcss/postcss": "^4"
   },
   "engines": {
-    "node": "22",
+    "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
   "devDependencies": {

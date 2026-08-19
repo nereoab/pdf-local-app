@@ -20,6 +20,7 @@ COPY . .
 
 # Deshabilitar Next.js telemetry en builds
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV BUILD_STANDALONE=true
 
 # Build de producción
 RUN npm run build

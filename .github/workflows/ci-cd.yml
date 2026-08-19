@@ -130,7 +130,7 @@ jobs:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published')
+    if: (github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published')) && secrets.VERCEL_TOKEN != ''
     needs: [lint-and-types, test, build]
     steps:
       - uses: actions/checkout@v4
@@ -172,3 +172,5 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PDFBLACK_PROY }}
           channelId: live
           projectId: pdfblack-proy
+        env:
+          FIREBASE_CLI_EXPERIMENTS: webframeworks

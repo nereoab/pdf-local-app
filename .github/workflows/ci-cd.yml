@@ -123,26 +123,6 @@ jobs:
       - name: Verify image exists
         run: docker images pdfblack:${{ github.sha }}
 
-  # ────────────────────────────────────────────────
-  # Job 5: Deploy to Vercel (push a main + releases)
-  # ────────────────────────────────────────────────
-  deploy-vercel:
-    name: Deploy to Vercel
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: (github.event_name == 'push' || (github.event_name == 'release' && github.event.action == 'published')) && secrets.VERCEL_TOKEN != ''
-    needs: [lint-and-types, test, build]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./
 
   # ────────────────────────────────────────────────
   # Job 6: Deploy to Firebase & Google Cloud

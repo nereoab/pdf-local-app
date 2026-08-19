@@ -4,7 +4,14 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/.git/**",
+      "**/.firebase/**",
+      "**/.next/**",
+      "**/node_modules/**",
+      "**/graphify-out/**",
+      "**/scratch/**",
+      "**/*.traineddata",
+      "**/*.pdf"
     ],
     "frameworksBackend": {
       "memory": "1GiB",

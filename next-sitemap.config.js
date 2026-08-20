@@ -8,7 +8,6 @@ module.exports = {
       { userAgent: '*', disallow: '/api/' },
       { userAgent: '*', disallow: '/admin/' },
     ],
-    additionalSitemaps: ['https://pdf-black.com/sitemap.xml'],
   },
   exclude: ['/api/*', '/admin/*'],
   generateIndexSitemap: false,
@@ -44,10 +43,6 @@ module.exports = {
       changefreq,
       priority,
       lastmod: new Date().toISOString(),
-      alternateRefs: [
-        { href: `${config.siteUrl}/es${path}`, hreflang: 'es' },
-        { href: `${config.siteUrl}/en${path}`, hreflang: 'en' },
-      ],
     };
   },
 };

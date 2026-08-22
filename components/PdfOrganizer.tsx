@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   Lock,
   Unlock,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -849,7 +850,7 @@ export default function PdfOrganizer() {
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
           {/* LADO IZQUIERDO: MESA DE MONTAJE Y REORDENAMIENTO EN CUADRÍCULA 4x4 */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
+          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col min-h-[580px] lg:h-[680px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
@@ -1033,234 +1034,220 @@ export default function PdfOrganizer() {
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
+          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between min-h-[580px] lg:h-[680px]">
+            <div className="space-y-3 font-mono">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-4 pb-3 border-b border-white/10">
-                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
-                </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
-                  <Sliders className="w-5 h-5 text-white" />
-                </h2>
+              <div className="pb-2 border-b border-white/10 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+                    {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                  </span>
+                  <h2 className="text-base sm:text-lg font-black text-white font-sans uppercase tracking-tight">
+                    {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
+                  </h2>
+                </div>
+                <Sliders className="w-4 h-4 text-zinc-400" />
               </div>
 
               {/* PATRONES DE ORDEN AUTOMÁTICO EN 1-CLIC */}
-              <div className="space-y-3 font-mono text-xs mb-5">
-                <span className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-1">
-                  {isEs ? 'Patrones de Orden Automático:' : 'Automated Patterns:'}
+              <div className="space-y-1.5 font-mono text-xs">
+                <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold block">
+                  {isEs ? 'Patrones Rápidos:' : 'Quick Patterns:'}
                 </span>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     onClick={handleInvertOrder}
                     disabled={pages.length === 0}
-                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                   >
                     <ArrowLeftRight className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Invertir Orden' : 'Reverse Order'}</span>
+                    <span>{isEs ? 'Invertir' : 'Reverse'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleGroupEvensOdds(true)}
                     disabled={pages.length === 0}
-                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                   >
                     <ListOrdered className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Impares Primero' : 'Odds First'}</span>
+                    <span>{isEs ? 'Impares 1º' : 'Odds 1st'}</span>
                   </button>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => handleRotateAll(90)}
                     disabled={pages.length === 0}
-                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Girar Todo 90°' : 'Rotate All 90°'}</span>
+                    <span>{isEs ? 'Girar 90°' : 'Rotate 90°'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleResetRotations}
                     disabled={pages.length === 0}
-                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Reset Rotación' : 'Reset Rotation'}</span>
+                    <span>{isEs ? 'Reset' : 'Reset'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* CONTROLES DE PRECISIÓN E INSERCIÓN */}
+              <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-white/10 space-y-2 font-mono text-xs">
+                {/* Mover página */}
+                <div className="flex items-center justify-between gap-1.5 text-xs">
+                  <span className="text-zinc-400 text-[10px] whitespace-nowrap">
+                    {isEs ? 'Mover pág' : 'Move p.'}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={pages.length || 1}
+                    value={moveFromPage}
+                    onChange={(e) =>
+                      setMoveFromPage(Math.max(1, parseInt(e.target.value, 10) || 1))
+                    }
+                    className="w-10 bg-zinc-900 border border-white/20 rounded-md py-0.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                  />
+                  <span className="text-zinc-400 text-[10px] whitespace-nowrap">
+                    {isEs ? 'a pos #' : 'to #'}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={pages.length || 1}
+                    value={moveToPos}
+                    onChange={(e) => setMoveToPos(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-10 bg-zinc-900 border border-white/20 rounded-md py-0.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleMovePageCommand}
+                    disabled={pages.length === 0}
+                    className="px-2 py-1 bg-white text-black font-bold rounded-md text-[11px] transition-colors cursor-pointer disabled:opacity-40"
+                  >
+                    {isEs ? 'Mover' : 'Move'}
                   </button>
                 </div>
 
-                {/* CONTROLES DE PRECISIÓN DE POSICIÓN */}
-                <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 space-y-2 mt-3">
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'MOVER PÁGINA DE PRECISIÓN' : 'PRECISION MOVE PAGE'}
+                {/* Insertar hoja en blanco */}
+                <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/5 text-xs">
+                  <span className="text-zinc-400 text-[10px] whitespace-nowrap">
+                    {isEs ? 'Insertar blanca en pos #' : 'Insert blank at #'}
                   </span>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-400 text-[10px]">
-                      {isEs ? 'Mover pág' : 'Move p.'}
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={pages.length || 1}
-                      value={moveFromPage}
-                      onChange={(e) =>
-                        setMoveFromPage(Math.max(1, parseInt(e.target.value, 10) || 1))
-                      }
-                      className="w-12 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
-                    />
-                    <span className="text-zinc-400 text-[10px]">
-                      {isEs ? 'a pos #' : 'to pos #'}
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={pages.length || 1}
-                      value={moveToPos}
-                      onChange={(e) => setMoveToPos(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="w-12 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleMovePageCommand}
-                      disabled={pages.length === 0}
-                      className="px-2.5 py-1 bg-white text-black font-bold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40"
-                    >
-                      {isEs ? 'Mover' : 'Move'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* INSERTAR HOJA EN BLANCO */}
-                <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-400 text-[10px]">
-                      {isEs ? 'Insertar blanca en pos #' : 'Insert blank at pos #'}
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={pages.length + 1 || 1}
-                      value={insertBlankPosition}
-                      onChange={(e) =>
-                        setInsertBlankPosition(Math.max(1, parseInt(e.target.value, 10) || 1))
-                      }
-                      className="w-12 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    max={pages.length + 1 || 1}
+                    value={insertBlankPosition}
+                    onChange={(e) =>
+                      setInsertBlankPosition(Math.max(1, parseInt(e.target.value, 10) || 1))
+                    }
+                    className="w-10 bg-zinc-900 border border-white/20 rounded-md py-0.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                  />
                   <button
                     type="button"
                     onClick={handleInsertBlankPage}
                     disabled={pages.length === 0}
-                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40"
+                    className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-md text-[11px] transition-colors cursor-pointer disabled:opacity-40"
                   >
                     {isEs ? '+ Insertar' : '+ Insert'}
                   </button>
                 </div>
               </div>
 
-              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
-              <div className="pt-4 border-t border-white/10 my-4 space-y-3 font-mono">
-                <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
-                  <Sliders className="w-4 h-4 text-white" />
-                  <span>{isEs ? 'Opciones Avanzadas PDFBLACK' : 'PDFBLACK Advanced Options'}</span>
-                </div>
-
+              {/* OPCIONES DE SALIDA Y NUMERACIÓN */}
+              <div className="space-y-2 font-mono text-xs">
                 <div>
                   <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                    {isEs ? 'Nomenclatura / Prefijo Resultante:' : 'Output File Prefix:'}
+                    {isEs ? 'Prefijo Resultante:' : 'Output Prefix:'}
                   </label>
                   <input
                     type="text"
                     value={filePrefix}
                     onChange={(e) => setFilePrefix(e.target.value)}
                     placeholder="Documento_Reordenado"
-                    className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                    className="w-full py-1.5 px-2.5 bg-zinc-900 border border-white/10 rounded-lg text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
                   />
                 </div>
 
-                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'AJUSTES DE NUMERACIÓN' : 'NUMBERING SETTINGS'}
-                  </label>
+                <label className="flex items-center gap-2 text-[11px] font-bold text-zinc-300 cursor-pointer bg-zinc-950/80 p-2 rounded-lg border border-white/10">
+                  <input
+                    type="checkbox"
+                    checked={renumberPages}
+                    onChange={(e) => setRenumberPages(e.target.checked)}
+                    className="accent-white w-3.5 h-3.5 rounded"
+                  />
+                  <span>
+                    {isEs ? 'Re-numerar pie ("Página N / M")' : 'Re-number footer ("Page N / M")'}
+                  </span>
+                </label>
+              </div>
 
-                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={renumberPages}
-                      onChange={(e) => setRenumberPages(e.target.checked)}
-                      className="accent-white w-4 h-4 rounded"
-                    />
-                    <span>
-                      {isEs
-                        ? 'Re-numerar páginas en pie de página (Página N / M)'
-                        : 'Re-number footer pages (Page N / M)'}
-                    </span>
-                  </label>
-                </div>
-
-                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
-                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">
-                    {isEs ? 'METADATOS DEL PDF REORDENADO' : 'REORDERED PDF METADATA'}
-                  </label>
+              {/* METADATOS OPCIONALES */}
+              <details className="group bg-zinc-950/80 border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
+                <summary className="flex items-center justify-between p-2 cursor-pointer font-bold text-[10px] uppercase text-zinc-400 hover:text-white select-none">
+                  <span>{isEs ? 'Metadatos del PDF (Opcional)' : 'PDF Metadata (Optional)'}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="p-2 space-y-1.5 border-t border-white/5 text-[11px]">
                   <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
+                    <label className="text-[9px] text-zinc-400 block mb-0.5">
                       {isEs ? 'Título:' : 'Title:'}
                     </label>
                     <input
                       type="text"
-                      placeholder={
-                        isEs ? 'Ej: Documento_Ordenado_2026' : 'Ex: Reordered_Document_2026'
-                      }
+                      placeholder={isEs ? 'Ej: Documento_2026' : 'Ex: Document_2026'}
                       value={docTitle}
                       onChange={(e) => setDocTitle(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                      className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
-                      value={docAuthor}
-                      onChange={(e) => setDocAuthor(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Reordenamiento de páginas' : 'Ex: Page reordering'}
-                      value={docSubject}
-                      onChange={(e) => setDocSubject(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <label className="text-[9px] text-zinc-400 block mb-0.5">
+                        {isEs ? 'Autor:' : 'Author:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isEs ? 'Ej: Mi Empresa' : 'Ex: Company'}
+                        value={docAuthor}
+                        onChange={(e) => setDocAuthor(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-zinc-400 block mb-0.5">
+                        {isEs ? 'Asunto:' : 'Subject:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isEs ? 'Ej: Reordenado' : 'Ex: Reordered'}
+                        value={docSubject}
+                        onChange={(e) => setDocSubject(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </details>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-4 border-t border-white/10 font-sans">
+            <div className="pt-3 border-t border-white/10 font-sans">
               {isProcessing && (
-                <div className="mb-3 space-y-1.5 font-mono">
+                <div className="mb-2 space-y-1 font-mono">
                   <div className="flex justify-between text-[10px] font-bold text-zinc-300">
-                    <span className="truncate max-w-[200px]">{progressMsg}</span>
+                    <span className="truncate max-w-[180px]">{progressMsg}</span>
                     <span>{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
                     <div
                       style={{ width: `${progressPercent}%` }}
                       className="h-full bg-white transition-all duration-300"
@@ -1272,12 +1259,12 @@ export default function PdfOrganizer() {
               <button
                 onClick={executeReorder}
                 disabled={isProcessing || pages.length === 0 || (isEncrypted && !isUnlocked)}
-                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 py-3 sm:py-3.5 rounded-xl font-sans font-bold text-sm sm:text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-black" />
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
                 ) : (
-                  <Sparkles className="w-5 h-5 text-black" />
+                  <Sparkles className="w-4 h-4 text-black" />
                 )}
                 <span>
                   {isProcessing

@@ -131,59 +131,52 @@ export default function PdfOrganizer() {
       setProgressMsg(isEs ? 'Iniciando mesa de montaje...' : 'Starting workspace...');
 
       try {
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
-
         const newFilesList = [...files, ...selectedFiles];
         const newPages: PageItem[] = [...pages];
 
+        // PASO 1: Análisis instantáneo de páginas con PDFDocument
         for (let i = 0; i < selectedFiles.length; i++) {
           const currentFile = selectedFiles[i];
           const fileIndex = files.length + i;
-
           const arrayBuffer = await currentFile.arrayBuffer();
-          const uint8 = new Uint8Array(arrayBuffer.slice(0));
-          const loadingTask = pdfjsLib.getDocument({ data: uint8, password: pass });
-          const pdf = await loadingTask.promise;
-          const pageCount = pdf.numPages;
+
+          let pageCount = 1;
+          try {
+            const pdfDoc = await PDFDocument.load(arrayBuffer.slice(0), {
+              ignoreEncryption: true,
+              password: pass,
+            } as any);
+            pageCount = pdfDoc.getPageCount();
+          } catch (pdfDocErr: any) {
+            if (
+              pdfDocErr?.message?.includes('password') ||
+              pdfDocErr?.name === 'PasswordException'
+            ) {
+              setIsEncrypted(true);
+              setIsUnlocked(false);
+              toast.warning(
+                isEs
+                  ? 'El archivo requiere contraseña para abrirse'
+                  : 'File requires password to open',
+              );
+              setIsProcessing(false);
+              return;
+            }
+          }
 
           for (let p = 1; p <= pageCount; p++) {
-            setProgressMsg(
-              isEs
-                ? `Renderizando ${currentFile.name} (pág ${p}/${pageCount})...`
-                : `Rendering ${currentFile.name} (page ${p}/${pageCount})...`,
-            );
-            setProgressPercent(10 + Math.floor((p / pageCount) * 80));
-            if (p % 4 === 0) await new Promise((r) => setTimeout(r, 5));
-
-            let thumbUrl: string | null = null;
-            try {
-              const page = await pdf.getPage(p);
-              const viewport = page.getViewport({ scale: 0.5 });
-              const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
-
-              if (context) {
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                await page.render({ canvasContext: context, viewport, canvas } as any).promise;
-                thumbUrl = canvas.toDataURL('image/jpeg', 0.6);
-              }
-            } catch (renderErr) {
-              console.warn(`Could not render thumbnail for page ${p}:`, renderErr);
-            }
-
             newPages.push({
               id: `${fileIndex}-${p}-${Date.now()}-${Math.random()}`,
               fileIndex,
               originalPageNum: p,
               rotation: 0,
               isBlank: false,
-              thumbnailUrl: thumbUrl,
+              thumbnailUrl: null,
             });
           }
         }
 
+        // Mostrar de inmediato la mesa de montaje con las tarjetas
         setFiles(newFilesList);
         setPages(newPages);
         setGlobalFiles(newFilesList);
@@ -193,6 +186,65 @@ export default function PdfOrganizer() {
         if (selectedFiles[0]) {
           setFilePrefix(selectedFiles[0].name.replace(/\.[^/.]+$/, '') + '_Reordenado');
         }
+        setProgressPercent(40);
+        setProgressMsg(isEs ? 'Renderizando miniaturas...' : 'Rendering thumbnails...');
+
+        // PASO 2: Renderizar miniaturas progresivamente con PDF.js
+        try {
+          const pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
+
+          for (let i = 0; i < selectedFiles.length; i++) {
+            const currentFile = selectedFiles[i];
+            const fileIndex = files.length + i;
+            const arrayBuffer = await currentFile.arrayBuffer();
+            const uint8 = new Uint8Array(arrayBuffer.slice(0));
+
+            try {
+              const pdf = await pdfjsLib.getDocument({ data: uint8, password: pass }).promise;
+              const count = pdf.numPages;
+
+              for (let p = 1; p <= count; p++) {
+                setProgressMsg(
+                  isEs
+                    ? `Renderizando miniatura (pág ${p}/${count})...`
+                    : `Rendering thumbnail (page ${p}/${count})...`,
+                );
+                setProgressPercent(40 + Math.floor((p / count) * 60));
+                if (p % 4 === 0) await new Promise((r) => setTimeout(r, 5));
+
+                try {
+                  const page = await pdf.getPage(p);
+                  const viewport = page.getViewport({ scale: 0.5 });
+                  const canvas = document.createElement('canvas');
+                  const context = canvas.getContext('2d');
+
+                  if (context) {
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    await page.render({ canvasContext: context, viewport, canvas } as any).promise;
+                    const thumbUrl = canvas.toDataURL('image/jpeg', 0.6);
+
+                    setPages((prev) =>
+                      prev.map((item) =>
+                        item.fileIndex === fileIndex && item.originalPageNum === p
+                          ? { ...item, thumbnailUrl: thumbUrl }
+                          : item,
+                      ),
+                    );
+                  }
+                } catch (pageErr) {
+                  console.warn(`Could not render thumbnail for page ${p}:`, pageErr);
+                }
+              }
+            } catch (docErr: any) {
+              console.warn('PDF.js thumbnail generation error:', docErr);
+            }
+          }
+        } catch (libErr) {
+          console.warn('Could not load PDF.js library for thumbnails:', libErr);
+        }
+
         setProgressPercent(100);
         toast.success(
           isEs ? 'Páginas cargadas en la mesa de montaje' : 'Pages loaded into workspace',
@@ -740,14 +792,24 @@ export default function PdfOrganizer() {
               }
             }
           }}
-          className={`w-full border rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer ${
+          className={`w-full border rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer relative overflow-hidden ${
             isDragging
               ? 'border-white bg-zinc-900/60 scale-[1.01]'
               : 'border-white/10 hover:border-white/30'
           }`}
         >
+          {/* INPUT TRANSPARENTE DE COBERTURA TOTAL NATIVA */}
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            multiple
+            aria-label="Seleccionar Archivos PDF"
+            onChange={handleFileChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
+          />
+
           <div
-            className={`p-6 rounded-2xl border transition-colors mb-6 ${
+            className={`p-6 rounded-2xl border transition-colors mb-6 relative z-10 pointer-events-none ${
               isDragging
                 ? 'bg-white/10 border-white'
                 : 'bg-zinc-900 border-white/10 group-hover:border-white/30'
@@ -757,23 +819,20 @@ export default function PdfOrganizer() {
               className={`w-12 h-12 ${isDragging ? 'text-emerald-400 animate-bounce' : 'text-white'}`}
             />
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase relative z-10 pointer-events-none">
             {isEs ? 'ORDENAR Y REORGANIZAR PÁGINAS PDF' : 'REORDER PDF PAGES'}
           </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md relative z-10 pointer-events-none">
             {isEs
               ? 'Cambia el orden, rota, duplica e intercala hojas de tu PDF de forma 100% confidencial y local.'
               : 'Reorder, rotate, duplicate, and interleave pages from your PDF 100% locally.'}
           </p>
-          <button
-            type="button"
-            className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
-          >
+          <div className="bg-white text-black group-hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer relative z-20 pointer-events-none">
             <Plus className="w-4 h-4 text-black" />
             <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
-          </button>
+          </div>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8 relative z-10 pointer-events-none">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>
               {isEs

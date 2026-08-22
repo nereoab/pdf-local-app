@@ -10,6 +10,8 @@ export interface ReorderPageItemPayload {
 export interface ReorderWorkerOptions {
   filePrefix: string;
   renumberPages: boolean;
+  numberingFormat?: 'page_x_of_y' | 'x_slash_y' | 'dash_x_dash' | 'num_only';
+  numberingPosition?: 'bottom_center' | 'bottom_right' | 'bottom_left';
   metadata?: {
     title?: string;
     author?: string;
@@ -41,7 +43,11 @@ self.onmessage = async (e: MessageEvent<ReorderWorkerMessageIn>) => {
 
   try {
     const postProgress = (percent: number, message: string) => {
-      (self as unknown as Worker).postMessage({ type: 'progress', percent, message } as ReorderWorkerMessageOut);
+      (self as unknown as Worker).postMessage({
+        type: 'progress',
+        percent,
+        message,
+      } as ReorderWorkerMessageOut);
     };
 
     postProgress(10, 'Cargando documentos PDF fuente...');
@@ -92,12 +98,31 @@ self.onmessage = async (e: MessageEvent<ReorderWorkerMessageIn>) => {
 
         if (options.renumberPages) {
           const { width } = copiedPage.getSize();
-          copiedPage.drawText(`Página ${i + 1} de ${totalSeq}`, {
-            x: width / 2 - 30,
-            y: 15,
-            size: 9,
+          const pNum = i + 1;
+          let label = `Página ${pNum} de ${totalSeq}`;
+          if (options.numberingFormat === 'x_slash_y') {
+            label = `${pNum} / ${totalSeq}`;
+          } else if (options.numberingFormat === 'dash_x_dash') {
+            label = `— ${pNum} —`;
+          } else if (options.numberingFormat === 'num_only') {
+            label = `${pNum}`;
+          }
+
+          const fontSize = 9;
+          const textWidth = font.widthOfTextAtSize(label, fontSize);
+          let posX = (width - textWidth) / 2; // bottom_center default
+          if (options.numberingPosition === 'bottom_right') {
+            posX = width - textWidth - 30;
+          } else if (options.numberingPosition === 'bottom_left') {
+            posX = 30;
+          }
+
+          copiedPage.drawText(label, {
+            x: posX,
+            y: 16,
+            size: fontSize,
             font,
-            color: rgb(0.4, 0.4, 0.4),
+            color: rgb(0.35, 0.35, 0.35),
           });
         }
 
@@ -109,7 +134,7 @@ self.onmessage = async (e: MessageEvent<ReorderWorkerMessageIn>) => {
     const resultBytes = await mergedPdf.save();
     const resultBuffer = resultBytes.buffer.slice(
       resultBytes.byteOffset,
-      resultBytes.byteOffset + resultBytes.byteLength
+      resultBytes.byteOffset + resultBytes.byteLength,
     ) as ArrayBuffer;
 
     postProgress(100, '¡Documento PDF reordenado con éxito!');
@@ -119,7 +144,7 @@ self.onmessage = async (e: MessageEvent<ReorderWorkerMessageIn>) => {
         buffer: resultBuffer,
         totalPages: mergedPdf.getPageCount(),
       } as ReorderWorkerMessageOut,
-      [resultBuffer]
+      [resultBuffer],
     );
   } catch (error: any) {
     (self as unknown as Worker).postMessage({

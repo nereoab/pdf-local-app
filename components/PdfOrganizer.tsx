@@ -1162,11 +1162,17 @@ export default function PdfOrganizer() {
                 </div>
               </div>
 
-              {/* OPCIONES DE SALIDA Y NUMERACIÓN */}
-              <div className="space-y-2 font-mono text-xs">
+              {/* SECCIÓN DE OPCIONES AVANZADAS PDFBLACK */}
+              <div className="pt-2.5 border-t border-white/10 space-y-2 font-mono">
+                <div className="flex items-center gap-2 text-xs font-bold text-white">
+                  <Sliders className="w-3.5 h-3.5 text-white" />
+                  <span>{isEs ? 'Opciones Avanzadas PDFBLACK' : 'PDFBLACK Advanced Options'}</span>
+                </div>
+
+                {/* Prefijo / Nombre del archivo */}
                 <div>
                   <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                    {isEs ? 'Prefijo Resultante:' : 'Output Prefix:'}
+                    {isEs ? 'Nomenclatura / Prefijo Resultante:' : 'Output File Prefix:'}
                   </label>
                   <input
                     type="text"
@@ -1177,6 +1183,7 @@ export default function PdfOrganizer() {
                   />
                 </div>
 
+                {/* Ajustes de numeración */}
                 <label className="flex items-center gap-2 text-[11px] font-bold text-zinc-300 cursor-pointer bg-zinc-950/80 p-2 rounded-lg border border-white/10">
                   <input
                     type="checkbox"
@@ -1185,58 +1192,66 @@ export default function PdfOrganizer() {
                     className="accent-white w-3.5 h-3.5 rounded"
                   />
                   <span>
-                    {isEs ? 'Re-numerar pie ("Página N / M")' : 'Re-number footer ("Page N / M")'}
+                    {isEs
+                      ? 'Re-numerar páginas en pie de página (Página N / M)'
+                      : 'Re-number footer pages (Page N / M)'}
                   </span>
                 </label>
-              </div>
 
-              {/* METADATOS OPCIONALES */}
-              <details className="group bg-zinc-950/80 border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
-                <summary className="flex items-center justify-between p-2 cursor-pointer font-bold text-[10px] uppercase text-zinc-400 hover:text-white select-none">
-                  <span>{isEs ? 'Metadatos del PDF (Opcional)' : 'PDF Metadata (Optional)'}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-open:rotate-180 transition-transform" />
-                </summary>
-                <div className="p-2 space-y-1.5 border-t border-white/5 text-[11px]">
-                  <div>
-                    <label className="text-[9px] text-zinc-400 block mb-0.5">
-                      {isEs ? 'Título:' : 'Title:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Documento_2026' : 'Ex: Document_2026'}
-                      value={docTitle}
-                      onChange={(e) => setDocTitle(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
+                {/* Metadatos del documento */}
+                <details className="group bg-zinc-950/80 border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
+                  <summary className="flex items-center justify-between p-2 cursor-pointer font-bold text-[10px] uppercase text-zinc-400 hover:text-white select-none">
+                    <span>
+                      {isEs
+                        ? 'Metadatos del PDF (Título, Autor, Asunto)'
+                        : 'PDF Metadata (Title, Author, Subject)'}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="p-2 space-y-1.5 border-t border-white/5 text-[11px]">
                     <div>
                       <label className="text-[9px] text-zinc-400 block mb-0.5">
-                        {isEs ? 'Autor:' : 'Author:'}
+                        {isEs ? 'Título del Documento:' : 'Document Title:'}
                       </label>
                       <input
                         type="text"
-                        placeholder={isEs ? 'Ej: Mi Empresa' : 'Ex: Company'}
-                        value={docAuthor}
-                        onChange={(e) => setDocAuthor(e.target.value)}
+                        placeholder={
+                          isEs ? 'Ej: Documento_Ordenado_2026' : 'Ex: Reordered_Document_2026'
+                        }
+                        value={docTitle}
+                        onChange={(e) => setDocTitle(e.target.value)}
                         className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
                       />
                     </div>
-                    <div>
-                      <label className="text-[9px] text-zinc-400 block mb-0.5">
-                        {isEs ? 'Asunto:' : 'Subject:'}
-                      </label>
-                      <input
-                        type="text"
-                        placeholder={isEs ? 'Ej: Reordenado' : 'Ex: Reordered'}
-                        value={docSubject}
-                        onChange={(e) => setDocSubject(e.target.value)}
-                        className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
-                      />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <label className="text-[9px] text-zinc-400 block mb-0.5">
+                          {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
+                          value={docAuthor}
+                          onChange={(e) => setDocAuthor(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-zinc-400 block mb-0.5">
+                          {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={isEs ? 'Ej: Reordenamiento' : 'Ex: Reordering'}
+                          value={docSubject}
+                          onChange={(e) => setDocSubject(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </details>
+                </details>
+              </div>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}

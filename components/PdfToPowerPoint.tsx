@@ -1,8 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  FileDown, Loader2, X, Sliders, ChevronDown, ChevronUp, Layout
+import {
+  FileDown,
+  Loader2,
+  X,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Layout,
+  Sparkles,
 } from 'lucide-react';
 import { PowerPointIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -17,14 +24,13 @@ export default function PdfToPowerPoint() {
 
   const [file, setFile] = useState<File | null>(() => globalFile || null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progressText, setProgressText] = useState('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   // Opciones avanzadas
   const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '4:3'>('16:9');
   const [addSlideNumbers, setAddSlideNumbers] = useState<boolean>(true);
-
-  const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -35,7 +41,9 @@ export default function PdfToPowerPoint() {
         setDownloadUrl(null);
         toast.success(isEs ? 'Archivo cargado correctamente' : 'File successfully loaded');
       } else {
-        toast.error(isEs ? 'Por favor, selecciona un archivo PDF válido' : 'Please select a valid PDF file');
+        toast.error(
+          isEs ? 'Por favor, selecciona un archivo PDF válido' : 'Please select a valid PDF file',
+        );
       }
     }
     e.target.value = '';
@@ -45,65 +53,113 @@ export default function PdfToPowerPoint() {
     if (!file) return;
 
     setIsProcessing(true);
-    toast.info(isEs ? 'Convirtiendo PDF a diapositivas PowerPoint...' : 'Converting PDF to PowerPoint slides...');
+    setProgressText(
+      isEs ? 'Iniciando conversión a PowerPoint...' : 'Starting PowerPoint conversion...',
+    );
+    toast.info(
+      isEs
+        ? 'Convirtiendo PDF a diapositivas PowerPoint...'
+        : 'Converting PDF to PowerPoint slides...',
+    );
 
     try {
-      if (API_SECRET) {
-        try {
-          const formData = new FormData();
-          formData.append('File', file);
-          formData.append('StoreFile', 'false');
+      const pptxgenModule = await import('pptxgenjs');
+      const PptxGenJS = pptxgenModule.default || pptxgenModule;
+      const pres = new PptxGenJS();
 
-          const response = await fetch(`https://v2.convertapi.com/convert/pdf/to/pptx?Secret=${API_SECRET}`, {
-            method: 'POST',
-            body: formData,
-          });
-
-          const data = await response.json();
-          if (data.Files && data.Files.length > 0) {
-            const base64Data = data.Files[0].FileData;
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-            const localUrl = URL.createObjectURL(blob);
-            setDownloadUrl(localUrl);
-
-            const link = document.createElement('a');
-            link.href = localUrl;
-            link.download = `${file.name.replace(/\.[^/.]+$/, "")}_Diapositivas.pptx`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            toast.success(isEs ? '¡Conversión a PowerPoint exitosa!' : 'PowerPoint conversion successful!');
-            return;
-          }
-        } catch (err) { console.warn("ConvertAPI fallback local", err); }
+      if (aspectRatio === '16:9') {
+        pres.layout = 'LAYOUT_16x9';
+      } else {
+        pres.layout = 'LAYOUT_4x3';
       }
 
-      const pptxXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-        <p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
-          <p:sldMasterIdLst/>
-        </p:presentation>`;
-      const blob = new Blob([pptxXml], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
-      const localUrl = URL.createObjectURL(blob);
+      pres.author = 'PDFBlack';
+      pres.title = file.name.replace(/\.[^/.]+$/, '');
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        setProgressText(
+          isEs
+            ? `Procesando diapositiva ${i} de ${pdfDoc.numPages}...`
+            : `Processing slide ${i} of ${pdfDoc.numPages}...`,
+        );
+        const page = await pdfDoc.getPage(i);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          await page.render({
+            canvasContext: ctx,
+            viewport,
+          } as unknown as Parameters<typeof page.render>[0]).promise;
+
+          const imgDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+          const slide = pres.addSlide();
+          slide.addImage({
+            data: imgDataUrl,
+            x: 0,
+            y: 0,
+            w: '100%',
+            h: '100%',
+            sizing: {
+              type: 'contain',
+              w: aspectRatio === '16:9' ? 10 : 10,
+              h: aspectRatio === '16:9' ? 5.625 : 7.5,
+            },
+          });
+
+          if (addSlideNumbers) {
+            slide.slideNumber = {
+              x: '90%',
+              y: '92%',
+              fontSize: 9,
+              color: '666666',
+            };
+          }
+        }
+      }
+
+      setProgressText(isEs ? 'Empaquetando diapositivas PPTX...' : 'Packaging PPTX slides...');
+      const pptxBlob = (await pres.write({ outputType: 'blob' })) as Blob;
+      const localUrl = URL.createObjectURL(pptxBlob);
       setDownloadUrl(localUrl);
 
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${file.name.replace(/\.[^/.]+$/, "")}_Diapositivas.pptx`;
+      link.download = `${file.name.replace(/\.[^/.]+$/, '')}_Diapositivas.pptx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? '¡Diapositivas generadas exitosamente!' : 'Slides generated successfully!');
+      toast.success(
+        isEs ? '¡Diapositivas generadas exitosamente!' : 'Slides generated successfully!',
+      );
     } catch (error) {
       console.error(error);
-      toast.error(isEs ? 'Ocurrió un error al convertir la presentación.' : 'An error occurred converting presentation.');
+      toast.error(
+        isEs
+          ? 'Ocurrió un error al convertir la presentación.'
+          : 'An error occurred converting presentation.',
+      );
     } finally {
       setIsProcessing(false);
+      setProgressText('');
     }
   };
 
@@ -113,14 +169,26 @@ export default function PdfToPowerPoint() {
         <div className="p-4 rounded-2xl mb-4">
           <PowerPointIcon className="w-16 h-16 rounded-2xl shadow-xl" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">{isEs ? 'PDF a PowerPoint (Con Opciones Avanzadas)' : 'PDF to PowerPoint (With Advanced Options)'}</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {isEs
+            ? 'PDF a PowerPoint (Con Opciones Avanzadas)'
+            : 'PDF to PowerPoint (With Advanced Options)'}
+        </h2>
         <p className="text-slate-400 text-xs mb-6 max-w-md">
-          {isEs ? 'Convierte tu PDF en una presentación PowerPoint (.pptx) con relación de aspecto configurable.' : 'Convert PDF to a PowerPoint (.pptx) presentation with customizable aspect ratio.'}
+          {isEs
+            ? 'Convierte tu PDF en una presentación PowerPoint (.pptx) con relación de aspecto configurable.'
+            : 'Convert PDF to a PowerPoint (.pptx) presentation with customizable aspect ratio.'}
         </p>
-        
+
         <label className="bg-white text-black hover:bg-slate-200 px-8 py-3.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-lg hover:scale-105 active:scale-95">
           {isEs ? 'Seleccionar archivo PDF' : 'Select PDF file'}
-          <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} disabled={isProcessing} />
+          <input
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={isProcessing}
+          />
         </label>
       </div>
     );
@@ -134,7 +202,14 @@ export default function PdfToPowerPoint() {
             <PowerPointIcon className="w-5 h-5 rounded-sm" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
+          <button
+            onClick={() => {
+              setFile(null);
+              setDownloadUrl(null);
+            }}
+            disabled={isProcessing}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -148,13 +223,19 @@ export default function PdfToPowerPoint() {
       <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Convertir a PowerPoint' : 'Convert to PowerPoint'}</h3>
+            <h3 className="text-xl font-bold text-white">
+              {isEs ? 'Convertir a PowerPoint' : 'Convert to PowerPoint'}
+            </h3>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
@@ -226,10 +307,14 @@ export default function PdfToPowerPoint() {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm">{isEs ? 'Generando diapositivas...' : 'Generating slides...'}</span>
+                  <span className="text-sm">
+                    {progressText || (isEs ? 'Generando diapositivas...' : 'Generating slides...')}
+                  </span>
                 </>
+              ) : isEs ? (
+                'Convertir a PowerPoint'
               ) : (
-                isEs ? 'Convertir a PowerPoint' : 'Convert to PowerPoint'
+                'Convert to PowerPoint'
               )}
             </button>
           ) : (

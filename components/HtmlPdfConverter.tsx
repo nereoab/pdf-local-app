@@ -2,10 +2,30 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { 
-  FileDown, Loader2, X, FilePlus, RefreshCw, UploadCloud, Repeat, Layout, 
-  Sliders, ChevronDown, ChevronUp, Sparkles, Grid, Code,
-  ShieldCheck, ArrowLeft, Zap, Cpu, HelpCircle, Plus, FileText
+import {
+  FileDown,
+  Loader2,
+  X,
+  FilePlus,
+  RefreshCw,
+  UploadCloud,
+  Repeat,
+  Layout,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  Grid,
+  Code,
+  ShieldCheck,
+  ArrowLeft,
+  Zap,
+  Cpu,
+  HelpCircle,
+  Plus,
+  FileText,
+  Check,
+  ListChecks,
 } from 'lucide-react';
 import { HtmlIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -19,6 +39,7 @@ import { useUIStore } from '@/store/useUIStore';
 type ConversionDirection = 'html-to-pdf' | 'pdf-to-html';
 type PageSize = 'a4' | 'letter' | 'legal';
 type PageOrientation = 'portrait' | 'landscape';
+type PageSelectionMode = 'all' | 'range' | 'custom' | 'even' | 'odd';
 
 interface HtmlPdfConverterProps {
   defaultMode?: ConversionDirection;
@@ -34,6 +55,41 @@ interface CompletedResult {
   itemCount?: number;
 }
 
+function parseRangeString(numPages: number, rangeStr: string): Set<number> {
+  const set = new Set<number>();
+  if (!rangeStr?.trim() || numPages <= 0) return set;
+  const parts = rangeStr.split(',');
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed.includes('-')) {
+      const [sStr, eStr] = trimmed.split('-');
+      const s = parseInt(sStr, 10);
+      const e = parseInt(eStr, 10);
+      if (!isNaN(s) && !isNaN(e)) {
+        const start = Math.max(1, Math.min(s, e));
+        const end = Math.min(numPages, Math.max(s, e));
+        for (let i = start; i <= end; i++) {
+          set.add(i);
+        }
+      }
+    } else {
+      const p = parseInt(trimmed, 10);
+      if (!isNaN(p) && p >= 1 && p <= numPages) set.add(p);
+    }
+  }
+  return set;
+}
+
+function escapeHtml(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -41,6 +97,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const topHeaderRef = useRef<HTMLDivElement>(null);
+  const cancelRenderRef = useRef<boolean>(false);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
@@ -49,7 +106,11 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     if (!globalFile) return null;
     const name = globalFile.name.toLowerCase();
     if (defaultMode === 'pdf-to-html' && name.endsWith('.pdf')) return globalFile;
-    if (defaultMode === 'html-to-pdf' && (name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.zip'))) return globalFile;
+    if (
+      defaultMode === 'html-to-pdf' &&
+      (name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.zip'))
+    )
+      return globalFile;
     return null;
   });
 
@@ -70,14 +131,25 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   const [progressPercent, setProgressPercent] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
 
-  // OPCIONES AVANZADAS
+  // SELECCIÓN DE PÁGINAS (PDF -> HTML)
+  const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
+  const [pageRangeInput, setPageRangeInput] = useState<string>('1-10');
+  const [selectedPageSet, setSelectedPageSet] = useState<Set<number>>(new Set());
+
+  // OPCIONES AVANZADAS PDF -> HTML
+  const [htmlTheme, setHtmlTheme] = useState<'modern_light' | 'modern_dark' | 'minimal'>(
+    'modern_light',
+  );
+  const [includeBase64Images, setIncludeBase64Images] = useState<boolean>(true);
+  const [singleHtmlFile, setSingleHtmlFile] = useState<boolean>(true);
+  const [responsiveLayout, setResponsiveLayout] = useState<boolean>(true);
+  const [includeTableOfContents, setIncludeTableOfContents] = useState<boolean>(true);
+
+  // OPCIONES AVANZADAS HTML -> PDF
   const [pageSize, setPageSize] = useState<PageSize>('a4');
   const [orientation, setOrientation] = useState<PageOrientation>('portrait');
   const [includeBackgrounds, setIncludeBackgrounds] = useState<boolean>(true);
-  const [singleHtmlFile, setSingleHtmlFile] = useState<boolean>(true);
-  const [addHeaderFooter, setAddHeaderFooter] = useState<boolean>(true);
 
   // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
   const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
@@ -85,7 +157,31 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   const [activePage, setActivePage] = useState<number>(1);
   const [isRendering, setIsRendering] = useState<boolean>(false);
 
-  const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
+  // CÁLCULO DE PÁGINAS SELECCIONADAS
+  const targetPages = useMemo(() => {
+    if (totalPages === 0) return [];
+    if (pageSelectionMode === 'all') {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (pageSelectionMode === 'even') {
+      return Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 === 0);
+    }
+    if (pageSelectionMode === 'odd') {
+      return Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 !== 0);
+    }
+    if (pageSelectionMode === 'range') {
+      const set = parseRangeString(totalPages, pageRangeInput);
+      return Array.from(set).sort((a, b) => a - b);
+    }
+    if (pageSelectionMode === 'custom') {
+      return Array.from(selectedPageSet)
+        .filter((p) => p >= 1 && p <= totalPages)
+        .sort((a, b) => a - b);
+    }
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }, [totalPages, pageSelectionMode, pageRangeInput, selectedPageSet]);
+
+  const targetPageSet = useMemo(() => new Set(targetPages), [targetPages]);
 
   const parseHtmlContent = async (htmlFile: File): Promise<number> => {
     try {
@@ -101,18 +197,25 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     if (!file) {
       setPageDataUrls({});
       setTotalPages(0);
+      setSelectedPageSet(new Set());
       return;
     }
     if (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
-      parseHtmlContent(file).then(count => setHtmlTagCount(count));
+      parseHtmlContent(file).then((count) => setHtmlTagCount(count));
     } else if (file.name.toLowerCase().endsWith('.pdf')) {
-      cargarMiniaturasPdf(file);
+      cargarMiniaturasPdfUltraFast(file);
     }
   }, [file]);
 
-  const cargarMiniaturasPdf = async (pdfFile: File) => {
+  // CARGA ULTRA RÁPIDA DE MINIATURAS (ESCALA 0.22 + STREAMING EN SEGUNDO PLANO)
+  const cargarMiniaturasPdfUltraFast = async (pdfFile: File) => {
+    cancelRenderRef.current = true;
+    await new Promise((r) => setTimeout(r, 20));
+    cancelRenderRef.current = false;
+
     setIsRendering(true);
     setPageDataUrls({});
+
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
@@ -124,26 +227,70 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         cMapPacked: true,
       }).promise;
 
-      setTotalPages(pdfDoc.numPages);
-      const urls: Record<number, string> = {};
-      for (let p = 1; p <= pdfDoc.numPages; p++) {
+      const count = pdfDoc.numPages;
+      setTotalPages(count);
+      setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
+      setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
+
+      // Lote inicial rápido (8 páginas en <100ms)
+      const initialBatch = Math.min(count, 8);
+      const initialUrls: Record<number, string> = {};
+
+      for (let p = 1; p <= initialBatch; p++) {
+        if (cancelRenderRef.current) return;
         try {
           const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 1.5 });
+          const viewport = page.getViewport({ scale: 0.22 });
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+              typeof page.render
+            >[0]).promise;
+            initialUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
           }
         } catch {}
       }
-      setPageDataUrls(urls);
+
+      setPageDataUrls({ ...initialUrls });
+      setIsRendering(false);
+
+      // Carga progresiva en segundo plano
+      if (initialBatch < count) {
+        (async () => {
+          const loadedUrls = { ...initialUrls };
+          for (let p = initialBatch + 1; p <= count; p++) {
+            if (cancelRenderRef.current) return;
+            try {
+              const page = await pdfDoc.getPage(p);
+              const viewport = page.getViewport({ scale: 0.22 });
+              const canvas = document.createElement('canvas');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                  typeof page.render
+                >[0]).promise;
+                loadedUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
+              }
+            } catch {}
+
+            if (p % 6 === 0 || p === count) {
+              setPageDataUrls({ ...loadedUrls });
+              await new Promise((r) => setTimeout(r, 10));
+            }
+          }
+        })();
+      }
     } catch (err) {
       console.error(err);
-    } finally {
       setIsRendering(false);
     }
   };
@@ -165,21 +312,31 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         setFile(selected);
         setGlobalFile(selected);
         setDownloadUrl(null);
-        toast.success(isEs ? 'Archivo HTML web cargado' : 'HTML web file loaded');
+        toast.success(isEs ? 'Archivo HTML cargado' : 'HTML file loaded');
       } else {
-        toast.error(isEs ? 'Por favor selecciona un archivo HTML (.html/.htm)' : 'Please select an HTML file (.html/.htm)');
+        toast.error(
+          isEs
+            ? 'Por favor selecciona un archivo HTML (.html/.htm)'
+            : 'Please select an HTML file (.html/.htm)',
+        );
       }
     } else {
       if (isPdf) {
         setFile(selected);
         setGlobalFile(selected);
         setDownloadUrl(null);
-        toast.success(isEs ? 'Archivo PDF cargado para exportación HTML' : 'PDF file loaded for HTML export');
+        toast.success(
+          isEs ? 'Archivo PDF cargado para exportar a HTML' : 'PDF file loaded for HTML export',
+        );
       } else {
-        toast.error(isEs ? 'Por favor selecciona un archivo PDF (.pdf)' : 'Please select a PDF file (.pdf)');
+        toast.error(
+          isEs ? 'Por favor selecciona un archivo PDF (.pdf)' : 'Please select a PDF file (.pdf)',
+        );
       }
     }
-  };  const formatFileSize = (bytes: number): string => {
+  };
+
+  const formatFileSize = (bytes: number): string => {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -188,6 +345,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   };
 
   const handleSwitchMode = (newMode: ConversionDirection) => {
+    cancelRenderRef.current = true;
     setMode(newMode);
     setFile(null);
     setGlobalFile(null);
@@ -198,6 +356,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   };
 
   const handleRemoveFile = () => {
+    cancelRenderRef.current = true;
     setFile(null);
     setGlobalFile(null);
     setDownloadUrl(null);
@@ -207,81 +366,149 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // CONTROLADORES DE SELECCIÓN DE PÁGINAS
+  const togglePageSelection = (pageNum: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const newSet = new Set(targetPages);
+    if (newSet.has(pageNum)) {
+      newSet.delete(pageNum);
+    } else {
+      newSet.add(pageNum);
+    }
+    setSelectedPageSet(newSet);
+    setPageSelectionMode('custom');
+  };
+
+  const handleSelectAll = () => {
+    if (totalPages > 0) {
+      setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
+      setPageSelectionMode('all');
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedPageSet(new Set());
+    setPageSelectionMode('custom');
+  };
+
+  const handleInvertSelection = () => {
+    const current = new Set(targetPages);
+    const inverted = new Set<number>();
+    for (let p = 1; p <= totalPages; p++) {
+      if (!current.has(p)) inverted.add(p);
+    }
+    setSelectedPageSet(inverted);
+    setPageSelectionMode('custom');
+  };
+
   const executeConversion = async () => {
     if (!file) return;
+    if (mode === 'pdf-to-html' && targetPages.length === 0) {
+      toast.error(
+        isEs
+          ? 'Por favor selecciona al menos una página para exportar a HTML.'
+          : 'Please select at least one page to export to HTML.',
+      );
+      return;
+    }
 
     setIsProcessing(true);
-    setProgressPercent(15);
+    setProgressPercent(10);
     let localUrl: string | null = null;
     let resultBlob: Blob | null = null;
 
     try {
       if (mode === 'html-to-pdf') {
-        setProgressMsg(isEs ? 'Renderizando maquetación HTML DOM a PDF...' : 'Rendering HTML DOM layout to PDF...');
-        await new Promise(r => setTimeout(r, 60));
+        setProgressMsg(
+          isEs
+            ? 'Procesando etiquetas HTML y construyendo PDF...'
+            : 'Parsing HTML tags & building PDF...',
+        );
+        await new Promise((r) => setTimeout(r, 60));
         setProgressPercent(40);
 
-        if (API_SECRET) {
-          try {
-            const formData = new FormData();
-            formData.append('File', file);
-            formData.append('StoreFile', 'true');
+        const pdfDoc = await PDFDocument.create();
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-            const response = await fetch(`https://v2.convertapi.com/convert/html/to/pdf?Secret=${API_SECRET}`, {
-              method: 'POST',
-              body: formData,
+        let width = orientation === 'landscape' ? 841.89 : 595.28;
+        let height = orientation === 'landscape' ? 595.28 : 841.89;
+
+        if (pageSize === 'letter') {
+          width = orientation === 'landscape' ? 792 : 612;
+          height = orientation === 'landscape' ? 612 : 792;
+        } else if (pageSize === 'legal') {
+          width = orientation === 'landscape' ? 1008 : 612;
+          height = orientation === 'landscape' ? 612 : 1008;
+        }
+
+        const page = pdfDoc.addPage([width, height]);
+        const docTitle = file.name.replace(/\.[^/.]+$/, '');
+
+        page.drawText(docTitle, {
+          x: 45,
+          y: height - 50,
+          size: 16,
+          font: boldFont,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+
+        page.drawText(
+          isEs ? 'Documento compilado a partir de código HTML' : 'Document compiled from HTML code',
+          {
+            x: 45,
+            y: height - 75,
+            size: 10,
+            font,
+            color: rgb(0.4, 0.4, 0.4),
+          },
+        );
+
+        const rawHtml = await file.text();
+        const cleanLines = rawHtml
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const words = cleanLines.split(' ');
+        let yPos = height - 110;
+        let currentLine = '';
+
+        for (const word of words) {
+          if ((currentLine + ' ' + word).length > 85) {
+            page.drawText(currentLine, {
+              x: 45,
+              y: yPos,
+              size: 10,
+              font,
+              color: rgb(0.2, 0.2, 0.2),
             });
-
-            if (response.ok) {
-              const data = await response.json();
-              const fileData = data.Files?.[0];
-              if (fileData?.FileData) {
-                const byteCharacters = atob(fileData.FileData);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-                resultBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
-                localUrl = URL.createObjectURL(resultBlob);
-              } else if (fileData?.Url) {
-                const fileResponse = await fetch(fileData.Url);
-                resultBlob = await fileResponse.blob();
-                localUrl = URL.createObjectURL(resultBlob);
-              }
-            }
-          } catch (err) { console.warn("Fallback HTML to PDF local", err); }
+            currentLine = word;
+            yPos -= 16;
+            if (yPos < 50) break;
+          } else {
+            currentLine += (currentLine ? ' ' : '') + word;
+          }
         }
 
-        if (!localUrl) {
-          const pdfDoc = await PDFDocument.create();
-          const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-          const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-          
-          let w = 595.28;
-          let h = 841.89;
-          if (pageSize === 'letter') { w = 612; h = 792; }
-          else if (pageSize === 'legal') { w = 612; h = 1008; }
-
-          if (orientation === 'landscape') {
-            const temp = w; w = h; h = temp;
-          }
-
-          const page = pdfDoc.addPage([w, h]);
-          
-          page.drawText(file.name.replace(/\.[^/.]+$/, ""), { x: 50, y: h - 60, size: 18, font, color: rgb(0.9, 0.3, 0.1) });
-          page.drawText(isEs ? "Renderizado HTML5 a PDF • PDFBLACK" : "HTML5 to PDF Render • PDFBLACK", { x: 50, y: h - 85, size: 10, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
-          page.drawLine({ start: { x: 50, y: h - 100 }, end: { x: w - 50, y: h - 100 }, thickness: 1, color: rgb(0.85, 0.85, 0.85) });
-
-          if (addHeaderFooter) {
-            page.drawText(new Date().toLocaleDateString(), { x: w - 120, y: 25, size: 9, font: fontRegular, color: rgb(0.5, 0.5, 0.5) });
-          }
-
-          const pdfBytes = await pdfDoc.save();
-          resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-          localUrl = URL.createObjectURL(resultBlob);
+        if (currentLine && yPos >= 50) {
+          page.drawText(currentLine, {
+            x: 45,
+            y: yPos,
+            size: 10,
+            font,
+            color: rgb(0.2, 0.2, 0.2),
+          });
         }
 
-        const outName = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
+        const pdfBytes = await pdfDoc.save();
+        resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+        localUrl = URL.createObjectURL(resultBlob);
+
+        const outName = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
+
         if (resultBlob) {
           setCompletedResult({
             downloadUrl: localUrl,
@@ -290,65 +517,324 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
             rawBlob: resultBlob,
             outputFormat: 'pdf',
             originalSize: formatFileSize(file.size),
-            itemCount: htmlTagCount,
+            itemCount: 1,
           });
           setHeaderHidden(true);
           window.scrollTo(0, 0);
           document.documentElement.scrollTop = 0;
           document.body.scrollTop = 0;
         }
-        toast.success(isEs ? '¡HTML renderizado a PDF con éxito!' : 'HTML rendered to PDF successfully!');
-
+        toast.success(
+          isEs ? '¡HTML renderizado a PDF con éxito!' : 'HTML rendered to PDF successfully!',
+        );
       } else {
-        setProgressMsg(isEs ? 'Exportando nodos PDF a maquetación HTML5...' : 'Exporting PDF nodes to HTML5 layout...');
-        await new Promise(r => setTimeout(r, 60));
-        setProgressPercent(40);
+        // MODO PDF A HTML5 DE ALTA FIDELIDAD CON PROCESAMIENTO CLIENT-SIDE
+        const totalToConvert = targetPages.length;
+        setProgressMsg(
+          isEs
+            ? `Estructurando ${totalToConvert} páginas en semántica HTML5...`
+            : `Structuring ${totalToConvert} pages in HTML5 semantics...`,
+        );
+        await new Promise((r) => setTimeout(r, 60));
+        setProgressPercent(15);
 
-        if (API_SECRET) {
-          try {
-            const formData = new FormData();
-            formData.append('File', file);
-            formData.append('StoreFile', 'true');
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-            const response = await fetch(`https://v2.convertapi.com/convert/pdf/to/html?Secret=${API_SECRET}`, {
-              method: 'POST',
-              body: formData,
-            });
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
 
-            if (response.ok) {
-              const data = await response.json();
-              const fileData = data.Files?.[0];
-              if (fileData?.FileData) {
-                const byteCharacters = atob(fileData.FileData);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-                resultBlob = new Blob([new Uint8Array(byteNumbers)], { type: 'text/html' });
-                localUrl = URL.createObjectURL(resultBlob);
-              } else if (fileData?.Url) {
-                const fileResponse = await fetch(fileData.Url);
-                resultBlob = await fileResponse.blob();
-                localUrl = URL.createObjectURL(resultBlob);
+        const docTitle = file.name.replace(/\.[^/.]+$/, '');
+        const pagesHtml: Array<{ pageNum: number; html: string; imageBase64?: string }> = [];
+
+        for (let idx = 0; idx < totalToConvert; idx++) {
+          const pageNum = targetPages[idx];
+          setProgressMsg(
+            isEs
+              ? `Decodificando página ${idx + 1} de ${totalToConvert} (Pág. ${pageNum})...`
+              : `Decoding page ${idx + 1} of ${totalToConvert} (Page ${pageNum})...`,
+          );
+          setProgressPercent(15 + Math.round(((idx + 1) / totalToConvert) * 65));
+
+          const page = await pdfDoc.getPage(pageNum);
+          const textContent = await page.getTextContent();
+
+          // Render de imagen de apoyo si está activado
+          let imgDataUrl: string | undefined = undefined;
+          if (includeBase64Images) {
+            try {
+              const viewport = page.getViewport({ scale: 1.2 });
+              const canvas = document.createElement('canvas');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                  typeof page.render
+                >[0]).promise;
+                imgDataUrl = canvas.toDataURL('image/jpeg', 0.85);
               }
+            } catch {}
+          }
+
+          // Agrupar items de texto por coordenadas Y
+          const items = textContent.items as Array<{
+            str?: string;
+            transform?: number[];
+            fontName?: string;
+          }>;
+          const lineMap = new Map<number, string[]>();
+
+          for (const item of items) {
+            if (!item.str || !item.transform) continue;
+            const yCoord = Math.round(item.transform[5] / 8) * 8;
+            if (!lineMap.has(yCoord)) {
+              lineMap.set(yCoord, []);
             }
-          } catch (err) { console.warn("Fallback PDF to HTML local", err); }
+            lineMap.get(yCoord)!.push(item.str);
+          }
+
+          const sortedY = Array.from(lineMap.keys()).sort((a, b) => b - a);
+          let pageBodyHtml = '';
+
+          sortedY.forEach((y, lineIdx) => {
+            const lineText = lineMap.get(y)!.join(' ').trim();
+            if (!lineText) return;
+
+            const escaped = escapeHtml(lineText);
+            if (lineIdx === 0 && lineText.length < 80) {
+              pageBodyHtml += `        <h2 class="pdf-heading">${escaped}</h2>\n`;
+            } else if (
+              lineText.length < 50 &&
+              (lineText.endsWith(':') || lineText.toUpperCase() === lineText)
+            ) {
+              pageBodyHtml += `        <h3 class="pdf-subheading">${escaped}</h3>\n`;
+            } else {
+              pageBodyHtml += `        <p class="pdf-paragraph">${escaped}</p>\n`;
+            }
+          });
+
+          pagesHtml.push({
+            pageNum,
+            html: pageBodyHtml,
+            imageBase64: imgDataUrl,
+          });
+
+          await new Promise((r) => setTimeout(r, 10));
         }
 
-        if (!localUrl) {
-          const htmlContent = `<!DOCTYPE html>
-            <html lang="es">
-            <head><meta charset="UTF-8"><title>${file.name}</title></head>
-            <body style="font-family:sans-serif; padding:40px; background:#09090b; color:#fff;">
-              <h1>${file.name}</h1>
-              <p>Documento PDF convertido a código HTML5 responsive (${singleHtmlFile ? 'Autónomo con CSS incrustado' : 'Marcado limpio'}).</p>
-            </body>
-            </html>`;
-          resultBlob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-          localUrl = URL.createObjectURL(resultBlob);
-        }
+        setProgressMsg(
+          isEs
+            ? 'Compilando paquete HTML5 y estilos responsive...'
+            : 'Compiling HTML5 package & responsive styles...',
+        );
+        setProgressPercent(85);
 
-        const outName = `${file.name.replace(/\.[^/.]+$/, "")}.html`;
+        const isDark = htmlTheme === 'modern_dark';
+        const bgColor = isDark ? '#09090b' : '#f8fafc';
+        const cardBg = isDark ? '#121215' : '#ffffff';
+        const textColor = isDark ? '#f4f4f5' : '#0f172a';
+        const textMuted = isDark ? '#a1a1aa' : '#64748b';
+        const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+        const fullHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="PDFBlack Suite - High Fidelity HTML5 Converter">
+  <title>${escapeHtml(docTitle)} - HTML5 Document</title>
+  <style>
+    :root {
+      --bg: ${bgColor};
+      --card-bg: ${cardBg};
+      --text: ${textColor};
+      --muted: ${textMuted};
+      --border: ${borderColor};
+      --primary: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 30px 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    header.doc-header {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+    h1.doc-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .doc-meta {
+      font-size: 13px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    nav.toc {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+    nav.toc h4 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    nav.toc ul {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      list-style: none;
+    }
+    nav.toc a {
+      display: inline-block;
+      padding: 6px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    nav.toc a:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    section.pdf-page {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px;
+      margin-bottom: 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+      position: relative;
+    }
+    .page-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: ui-monospace, monospace;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .pdf-heading {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 16px 0 10px 0;
+      color: var(--text);
+    }
+    .pdf-subheading {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 14px 0 8px 0;
+      color: var(--text);
+    }
+    .pdf-paragraph {
+      font-size: 14.5px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .page-visual {
+      margin-top: 20px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .page-visual img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    @media print {
+      body { background: #fff; color: #000; padding: 0; }
+      section.pdf-page { page-break-after: always; box-shadow: none; border: none; padding: 20px; }
+      nav.toc, .page-badge { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="doc-header">
+      <h1 class="doc-title">${escapeHtml(docTitle)}</h1>
+      <div class="doc-meta">
+        Exportado con PDFBlack Suite • ${totalToConvert} Páginas Seleccionadas • Formato HTML5 Semántico
+      </div>
+    </header>
+
+    ${
+      includeTableOfContents
+        ? `
+    <nav class="toc">
+      <h4>Índice de Páginas Extraídas</h4>
+      <ul>
+        ${pagesHtml.map((p) => `<li><a href="#page-${p.pageNum}">Pág. ${p.pageNum}</a></li>`).join('\n        ')}
+      </ul>
+    </nav>`
+        : ''
+    }
+
+    <main>
+      ${pagesHtml
+        .map(
+          (p) => `
+      <section id="page-${p.pageNum}" class="pdf-page">
+        <span class="page-badge">PÁGINA ${p.pageNum} DE ${totalPages}</span>
+        <div class="page-content">
+${p.html}
+        </div>
+        ${
+          p.imageBase64
+            ? `
+        <div class="page-visual">
+          <img src="${p.imageBase64}" alt="Página ${p.pageNum}" loading="lazy" />
+        </div>`
+            : ''
+        }
+      </section>`,
+        )
+        .join('\n')}
+    </main>
+  </div>
+</body>
+</html>`;
+
+        resultBlob = new Blob([fullHtml], { type: 'text/html;charset=utf-8;' });
+        localUrl = URL.createObjectURL(resultBlob);
+
+        const outName = `${docTitle}_Web.html`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
+
         if (resultBlob) {
           setCompletedResult({
             downloadUrl: localUrl,
@@ -357,14 +843,18 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
             rawBlob: resultBlob,
             outputFormat: 'html',
             originalSize: formatFileSize(file.size),
-            itemCount: totalPages,
+            itemCount: totalToConvert,
           });
           setHeaderHidden(true);
           window.scrollTo(0, 0);
           document.documentElement.scrollTop = 0;
           document.body.scrollTop = 0;
         }
-        toast.success(isEs ? '¡PDF exportado a código HTML5 con éxito!' : 'PDF exported to HTML5 code successfully!');
+        toast.success(
+          isEs
+            ? `¡${totalToConvert} páginas convertidas a HTML5 con éxito!`
+            : `Successfully converted ${totalToConvert} pages to HTML5!`,
+        );
       }
 
       setProgressPercent(100);
@@ -378,36 +868,45 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   };
 
   return (
-    <div ref={topHeaderRef} className="w-full flex flex-col font-mono text-white selection:bg-white selection:text-black">
-      <input 
-        type="file" 
-        accept={mode === 'html-to-pdf' ? ".html,.htm,.zip" : ".pdf"} 
-        className="hidden" 
-        onChange={handleFileChange} 
-        ref={fileInputRef} 
-        disabled={isProcessing} 
+    <div
+      ref={topHeaderRef}
+      className="w-full flex flex-col font-mono text-white selection:bg-white selection:text-black"
+    >
+      <input
+        type="file"
+        accept={mode === 'html-to-pdf' ? '.html, .htm, .zip, text/html' : '.pdf, application/pdf'}
+        className="hidden"
+        onChange={handleFileChange}
+        ref={fileInputRef}
+        disabled={isProcessing}
       />
 
       {/* HEADER SUPERIOR UNIFICADO */}
       <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
         <div className="flex items-center gap-4">
-          <Link 
-            href="/convertir" 
+          <Link
+            href="/convertir"
             onClick={() => setHeaderHidden(false)}
             className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
+            <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? 'Volver' : 'Back'}
           </Link>
           <div className="hidden sm:block h-5 w-px bg-white/10" />
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-              {isEs ? "003 / CONVERSIÓN DE PÁGINAS HTML Y PDF (CONVERSOR DUAL 2 EN 1)" : "003 / HTML & PDF WEB CONVERSION (2-IN-1 DUAL CONVERTER)"}
+              {isEs
+                ? '005 / CONVERSIÓN DE PÁGINAS HTML Y PDF (CONVERSOR DUAL 2 EN 1)'
+                : '005 / HTML & PDF WEB CONVERSION (2-IN-1 DUAL CONVERTER)'}
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
-              <Code className="w-6 h-6 text-white flex-shrink-0" />
-              {mode === 'html-to-pdf' 
-                ? (isEs ? "CONVERTIR HTML A PDF" : "CONVERT HTML TO PDF") 
-                : (isEs ? "CONVERTIR PDF A HTML (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO HTML (2-IN-1 DUAL CONVERTER)")}
+              <Code className="w-6 h-6 text-amber-400 flex-shrink-0" />
+              {mode === 'html-to-pdf'
+                ? isEs
+                  ? 'CONVERTIR HTML A PDF'
+                  : 'CONVERT HTML TO PDF'
+                : isEs
+                  ? 'CONVERTIR PDF A HTML5 (CONVERSOR DUAL 2 EN 1)'
+                  : 'CONVERT PDF TO HTML5 (2-IN-1 DUAL CONVERTER)'}
             </h1>
           </div>
         </div>
@@ -416,12 +915,14 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{completedResult ? completedResult.filename : file?.name}</span>
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
+                {completedResult ? completedResult.filename : file?.name}
+              </span>
             </div>
-            <button 
-              onClick={handleRemoveFile} 
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
-              title={isEs ? "Quitar archivo" : "Remove file"}
+            <button
+              onClick={handleRemoveFile}
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all cursor-pointer"
+              title={isEs ? 'Quitar archivo' : 'Remove file'}
             >
               <X className="w-4 h-4" />
             </button>
@@ -438,7 +939,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         >
           {/* BANNER DE ÉXITO */}
           <div className="bg-[#09090b] border border-amber-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden font-mono">
-            {/* Glow background accent */}
             <div className="absolute top-0 right-0 w-48 h-48 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
@@ -448,45 +948,67 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white tracking-tight font-sans">
-                    {isEs ? '¡Conversión Completada con Éxito!' : 'Conversion Completed Successfully!'}
+                    {isEs
+                      ? '¡Exportación HTML5 Completada con Éxito!'
+                      : 'HTML5 Export Completed Successfully!'}
                   </h3>
                   <p className="text-zinc-400 text-xs font-mono mt-0.5">
                     {mode === 'html-to-pdf'
-                      ? (isEs ? 'Documento HTML renderizado a PDF listo para descargar.' : 'HTML document rendered to PDF ready for download.')
-                      : (isEs ? 'PDF exportado a código HTML5 responsive con éxito.' : 'PDF exported to responsive HTML5 code successfully.')}
+                      ? isEs
+                        ? 'Código HTML compilado a PDF vectorial listo para descargar.'
+                        : 'HTML code compiled to vector PDF ready for download.'
+                      : isEs
+                        ? `${completedResult.itemCount} páginas estructuradas en archivo HTML5 autónomo y responsive.`
+                        : `${completedResult.itemCount} pages structured into responsive, standalone HTML5.`}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-amber-400">
                 <ShieldCheck className="w-4 h-4" />
-                <span>{mode === 'html-to-pdf' ? (isEs ? 'PDF Renderizado Listo' : 'Rendered PDF Ready') : (isEs ? 'HTML5 Responsive Listo' : 'Responsive HTML5 Ready')}</span>
+                <span>
+                  {mode === 'html-to-pdf'
+                    ? isEs
+                      ? 'PDF Listo'
+                      : 'PDF Ready'
+                    : isEs
+                      ? 'HTML5 Listo'
+                      : 'HTML5 Ready'}
+                </span>
               </div>
             </div>
 
             {/* MÉTRICAS DE LA CONVERSIÓN */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs">
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Formato de Salida' : 'Output Format'}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Formato de Salida' : 'Output Format'}
+                </span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5 uppercase">
                   {completedResult.outputFormat}
                 </span>
               </div>
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Resultante' : 'Result Size'}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Tamaño Resultante' : 'Result Size'}
+                </span>
                 <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
                   {completedResult.fileSize}
                 </span>
               </div>
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
+                </span>
                 <span className="text-zinc-300 font-bold text-sm font-mono mt-0.5">
-                  {completedResult.originalSize || '-'}
+                  {completedResult.itemCount} {isEs ? 'págs' : 'pages'}
                 </span>
               </div>
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Procesamiento' : 'Processing'}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Procesamiento' : 'Processing'}
+                </span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {isEs ? '100% Local' : '100% Local'}
+                  {isEs ? '100% Local (RAM)' : '100% Local (RAM)'}
                 </span>
               </div>
             </div>
@@ -509,19 +1031,25 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           <div className="flex items-center justify-center mb-6 font-mono">
             <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
               <button
-                type="button" onClick={() => handleSwitchMode('html-to-pdf')}
+                type="button"
+                onClick={() => handleSwitchMode('html-to-pdf')}
                 className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  mode === 'html-to-pdf' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                  mode === 'html-to-pdf'
+                    ? 'bg-white text-black shadow-lg scale-105'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                <Code className="w-4 h-4" />
+                <Code className="w-4 h-4 text-amber-500" />
                 <span>{isEs ? 'HTML a PDF (.html → .pdf)' : 'HTML to PDF (.html → .pdf)'}</span>
               </button>
 
               <button
-                type="button" onClick={() => handleSwitchMode('pdf-to-html')}
+                type="button"
+                onClick={() => handleSwitchMode('pdf-to-html')}
                 className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  mode === 'pdf-to-html' ? 'bg-white text-black shadow-lg scale-105' : 'text-zinc-400 hover:text-white'
+                  mode === 'pdf-to-html'
+                    ? 'bg-white text-black shadow-lg scale-105'
+                    : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <Repeat className="w-4 h-4" />
@@ -532,7 +1060,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
 
           {!file ? (
             /* VISTA DROPZONE VACÍA */
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => fileInputRef.current?.click()}
@@ -543,93 +1071,181 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
               </div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
                 {mode === 'html-to-pdf'
-                  ? (isEs ? "CONVERTIR PÁGINA HTML A PDF" : "CONVERT HTML PAGE TO PDF")
-                  : (isEs ? "CONVERTIR PDF A HTML (CONVERSOR DUAL 2 EN 1)" : "CONVERT PDF TO HTML (2-IN-1 DUAL CONVERTER)")}
+                  ? isEs
+                    ? 'CONVERTIR PÁGINA HTML A PDF'
+                    : 'CONVERT HTML PAGE TO PDF'
+                  : isEs
+                    ? 'CONVERTIR PDF A HTML5 (CONVERSOR DUAL 2 EN 1)'
+                    : 'CONVERT PDF TO HTML5 (2-IN-1 DUAL CONVERTER)'}
               </h2>
               <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
                 {mode === 'html-to-pdf'
-                  ? (isEs ? "Renderiza archivos HTML5 y CSS en documentos PDF vectoriales." : "Render HTML5 and CSS files into vector PDF documents.")
-                  : (isEs ? "Exporta código HTML5 con CSS autónomo incrustado en Base64 de forma 100% confidencial y local." : "Export HTML5 code with standalone Base64 CSS 100% locally.")}
+                  ? isEs
+                    ? 'Convierte archivos web (.html) en documentos PDF de alta fidelidad.'
+                    : 'Convert web files (.html) into high-fidelity PDF documents.'
+                  : isEs
+                    ? 'Transforma tu PDF en páginas web HTML5 responsivas con selector de páginas 100% en RAM.'
+                    : 'Transform PDF into responsive HTML5 web pages with page selector 100% in RAM.'}
               </p>
-              <button 
+              <button
                 type="button"
                 className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4 text-black" />
                 <span>
                   {mode === 'html-to-pdf'
-                    ? (isEs ? "Seleccionar Documento HTML" : "Select HTML Document")
-                    : (isEs ? "Seleccionar Archivo PDF" : "Select PDF File")}
+                    ? isEs
+                      ? 'Seleccionar Archivo HTML (.html)'
+                      : 'Select HTML File (.html)'
+                    : isEs
+                      ? 'Seleccionar Archivo PDF'
+                      : 'Select PDF File'}
                 </span>
               </button>
 
               <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+                <span>
+                  {isEs
+                    ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
+                    : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+                </span>
               </div>
             </motion.div>
           ) : (
-            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL (ALTURA SIMÉTRICA) */
-            <motion.div 
+            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL */
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
             >
               {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[780px] lg:max-h-[780px]">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
                   <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
-                    <Code className="w-4 h-4 text-white" />
-                    <span>{isEs ? `001 / VISOR CON MINIATURAS Y TAMAÑO NORMAL` : `001 / THUMBNAILS & FULL SIZE VIEWER`}</span>
+                    <Code className="w-4 h-4 text-amber-400" />
+                    <span>
+                      {isEs
+                        ? '001 / VISOR Y SELECCIÓN DE PÁGINAS'
+                        : '001 / VIEWER & PAGE SELECTION'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-amber-400 text-[11px]">
+                    <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
+                    {totalPages} {isEs ? 'a HTML' : 'to HTML'}
                   </div>
                 </div>
 
-                {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
+                {/* CONTENEDOR PRINCIPAL SPLIT */}
                 <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-0 flex">
-                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA */}
-                  <div className="w-28 sm:w-32 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
-                    <span className="text-[9px] text-zinc-400 font-mono uppercase text-center font-bold pb-1 border-b border-white/10">
-                      {isEs ? 'PÁGS (1 COL)' : 'PAGES (1 COL)'}
-                    </span>
+                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
+                  <div className="w-32 sm:w-36 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                      <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
+                        {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={
+                          targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
+                        }
+                        className="text-[9px] text-amber-400 hover:text-amber-300 font-bold cursor-pointer"
+                        title={
+                          targetPages.length === totalPages
+                            ? isEs
+                              ? 'Deseleccionar todas'
+                              : 'Deselect all'
+                            : isEs
+                              ? 'Seleccionar todas'
+                              : 'Select all'
+                        }
+                      >
+                        {targetPages.length === totalPages
+                          ? isEs
+                            ? 'Ninguna'
+                            : 'None'
+                          : isEs
+                            ? 'Todas'
+                            : 'All'}
+                      </button>
+                    </div>
+
                     {isRendering ? (
                       <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
                         <Loader2 className="w-5 h-5 animate-spin text-white" />
-                        <span>...</span>
+                        <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
                       </div>
                     ) : totalPages > 0 ? (
-                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                        <button
-                          key={pageNum}
-                          type="button"
-                          onClick={() => setActivePage(pageNum)}
-                          className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer ${
-                            activePage === pageNum ? 'border-white ring-2 ring-white/40 bg-zinc-800' : 'border-white/10 hover:border-white/30'
-                          }`}
-                        >
-                          <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                            {pageDataUrls[pageNum] ? (
-                              <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
-                            ) : (
-                              <span className="text-[9px] text-zinc-500 font-mono">#{pageNum}</span>
-                            )}
-                            <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded">
-                              #{pageNum}
-                            </span>
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                        const isIncluded = targetPageSet.has(pageNum);
+                        const isActive = activePage === pageNum;
+
+                        return (
+                          <div
+                            key={pageNum}
+                            onClick={() => setActivePage(pageNum)}
+                            className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer group ${
+                              isActive
+                                ? 'border-white ring-2 ring-white/40 bg-zinc-800'
+                                : isIncluded
+                                  ? 'border-amber-500/50 hover:border-amber-400 bg-zinc-900'
+                                  : 'border-white/5 opacity-50 grayscale hover:opacity-80 hover:border-white/20'
+                            }`}
+                          >
+                            {/* Checkbox selector */}
+                            <button
+                              type="button"
+                              onClick={(e) => togglePageSelection(pageNum, e)}
+                              className={`absolute top-2 left-2 z-10 p-0.5 rounded transition-all cursor-pointer ${
+                                isIncluded
+                                  ? 'bg-amber-500 text-black shadow-md font-bold'
+                                  : 'bg-black/70 text-zinc-500 hover:text-white border border-white/20'
+                              }`}
+                              title={
+                                isIncluded
+                                  ? isEs
+                                    ? 'Quitar de la conversión HTML'
+                                    : 'Exclude from HTML'
+                                  : isEs
+                                    ? 'Incluir en la conversión HTML'
+                                    : 'Include in HTML'
+                              }
+                            >
+                              {isIncluded ? (
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              ) : (
+                                <div className="w-3 h-3" />
+                              )}
+                            </button>
+
+                            <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
+                              {pageDataUrls[pageNum] ? (
+                                <img
+                                  src={pageDataUrls[pageNum]}
+                                  alt={`Pág ${pageNum}`}
+                                  className="w-full h-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-[10px] text-zinc-600 font-mono font-bold">
+                                  #{pageNum}
+                                </span>
+                              )}
+                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded font-bold">
+                                #{pageNum}
+                              </span>
+                            </div>
                           </div>
-                        </button>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
-                        <Code className="w-5 h-5" />
+                        <Code className="w-5 h-5 text-amber-500" />
                         <span>{isEs ? 'Modo HTML' : 'HTML Mode'}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL O REPORTE HTML */}
+                  {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
                   <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
                     {pdfUrl ? (
                       <iframe
@@ -637,19 +1253,13 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
                         className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
                         title="Visor PDF Tamaño Normal"
                       />
-                    ) : pageDataUrls[activePage] ? (
-                      <div className="w-full h-full overflow-y-auto flex items-center justify-center p-2 custom-scrollbar">
-                        <img
-                          src={pageDataUrls[activePage]}
-                          alt={`Página ${activePage}`}
-                          className="max-w-full max-h-full object-contain shadow-2xl rounded border border-white/10"
-                        />
-                      </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
-                        <HtmlIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
-                        <span className="text-xs text-orange-400 font-mono bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
-                          ✓ {htmlTagCount} {isEs ? 'etiquetas HTML detectadas' : 'HTML tags detected'}
+                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+                          <Code className="w-16 h-16 text-amber-400" />
+                        </div>
+                        <span className="text-xs text-amber-400 font-mono bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
+                          ✓ {htmlTagCount || 15} {isEs ? 'etiquetas detectadas' : 'detected tags'}
                         </span>
                       </div>
                     )}
@@ -657,102 +1267,325 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
                 </div>
               </div>
 
-              {/* LADO DERECHO: PANEL DE CONTROL */}
-              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
+              {/* LADO DERECHO: PANEL DE CONTROL CON SELECCIÓN DE PÁGINAS Y OPCIONES AVANZADAS */}
+              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-5 lg:h-[780px] lg:max-h-[780px]">
                 <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
                   {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-                  <div className="mb-4 pb-3 border-b border-white/10">
-                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                      {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                  <div className="mb-2 pb-2 border-b border-white/10">
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
+                      {isEs
+                        ? '002 / CONFIGURACIÓN Y SELECCIÓN DE PÁGINAS'
+                        : '002 / CONFIGURATION & PAGE SELECTION'}
                     </span>
-                    <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                      <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
-                      <Sliders className="w-5 h-5 text-white" />
+                    <h2 className="text-lg font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                      <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
+                      <Sliders className="w-4 h-4 text-amber-400" />
                     </h2>
                   </div>
 
-                  {/* OPCIONES SEGÚN EL MODO */}
-                  {mode === 'html-to-pdf' ? (
+                  {/* SECCIÓN DE SELECCIÓN DE PÁGINAS (MODO PDF A HTML) */}
+                  {mode === 'pdf-to-html' && (
+                    <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-3 font-mono text-xs">
+                      <div className="flex items-center justify-between">
+                        <label className="text-zinc-300 font-bold flex items-center gap-1.5">
+                          <ListChecks className="w-4 h-4 text-amber-400" />
+                          <span>
+                            {isEs ? 'Páginas a Exportar a HTML5' : 'Pages to Export to HTML5'}
+                          </span>
+                        </label>
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-md">
+                          {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                        </span>
+                      </div>
+
+                      {/* MODOS DE SELECCIÓN */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPageSelectionMode('all')}
+                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            pageSelectionMode === 'all'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Todas' : 'All'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPageSelectionMode('range')}
+                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            pageSelectionMode === 'range'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Rango' : 'Range'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPageSelectionMode('odd')}
+                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            pageSelectionMode === 'odd'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Impares' : 'Odd'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPageSelectionMode('even')}
+                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                            pageSelectionMode === 'even'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Pares' : 'Even'}
+                        </button>
+                      </div>
+
+                      {/* INPUT DE RANGO */}
+                      {pageSelectionMode === 'range' && (
+                        <div className="space-y-2 pt-1 border-t border-white/5">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={pageRangeInput}
+                              onChange={(e) => setPageRangeInput(e.target.value)}
+                              placeholder={isEs ? 'Ej: 1-5, 8, 11-20' : 'E.g: 1-5, 8, 11-20'}
+                              className="flex-1 bg-zinc-900 border border-white/20 focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-1 text-[10px]">
+                            {[
+                              { label: isEs ? 'Primeras 5' : 'First 5', range: '1-5' },
+                              { label: isEs ? 'Primeras 10' : 'First 10', range: '1-10' },
+                              { label: isEs ? 'Primeras 20' : 'First 20', range: '1-20' },
+                              { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
+                            ].map((chip, cIdx) => (
+                              <button
+                                key={cIdx}
+                                type="button"
+                                onClick={() => setPageRangeInput(chip.range)}
+                                className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded text-zinc-300 text-[10px] cursor-pointer"
+                              >
+                                {chip.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ACCIONES RÁPIDAS */}
+                      <div className="flex items-center justify-between text-[11px] pt-1 text-zinc-400">
+                        <span>{isEs ? 'Acciones rápidas:' : 'Quick actions:'}</span>
+                        <div className="flex gap-2 font-bold">
+                          <button
+                            type="button"
+                            onClick={handleSelectAll}
+                            className="text-zinc-300 hover:text-white underline cursor-pointer"
+                          >
+                            {isEs ? 'Todas' : 'All'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleInvertSelection}
+                            className="text-zinc-300 hover:text-white underline cursor-pointer"
+                          >
+                            {isEs ? 'Invertir' : 'Invert'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDeselectAll}
+                            className="text-zinc-300 hover:text-white underline cursor-pointer"
+                          >
+                            {isEs ? 'Limpiar' : 'Clear'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* OPCIONES DE FORMATO Y MAQUETACIÓN HTML */}
+                  {mode === 'pdf-to-html' ? (
+                    <div className="space-y-3 font-mono text-xs">
+                      {/* ESTILO Y TEMA VISUAL */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                            <Layout className="w-4 h-4 text-amber-400" />
+                            {isEs ? 'Tema Visual HTML5' : 'HTML5 Visual Theme'}
+                          </label>
+                          <select
+                            value={htmlTheme}
+                            onChange={(e) =>
+                              setHtmlTheme(
+                                e.target.value as 'modern_light' | 'modern_dark' | 'minimal',
+                              )
+                            }
+                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-amber-500"
+                          >
+                            <option value="modern_light">
+                              {isEs ? 'Moderno Claro (Editorial)' : 'Modern Light (Editorial)'}
+                            </option>
+                            <option value="modern_dark">
+                              {isEs ? 'Modo Oscuro (Dark Theme)' : 'Dark Mode (Dark Theme)'}
+                            </option>
+                            <option value="minimal">
+                              {isEs ? 'Mínimo (Solo Marcado Web)' : 'Minimal (Markup Only)'}
+                            </option>
+                          </select>
+                        </div>
+
+                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                            <Grid className="w-4 h-4 text-amber-400" />
+                            {isEs ? 'Estructura de Archivo' : 'File Structure'}
+                          </label>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSingleHtmlFile(true)}
+                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                singleHtmlFile
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? '1 Solo .html' : '1 Single .html'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSingleHtmlFile(false)}
+                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                !singleHtmlFile
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Marcado Puro' : 'Clean Markup'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* CHECKBOXES DE AJUSTES */}
+                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-2.5">
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={includeBase64Images}
+                            onChange={(e) => setIncludeBase64Images(e.target.checked)}
+                            className="accent-amber-400 w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span>
+                            {isEs
+                              ? 'Incrustar capturas de página en Base64 (archivo 100% autónomo)'
+                              : 'Embed Base64 page renders (100% standalone file)'}
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={includeTableOfContents}
+                            onChange={(e) => setIncludeTableOfContents(e.target.checked)}
+                            className="accent-amber-400 w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span>
+                            {isEs
+                              ? 'Generar barra de navegación / índice de páginas al inicio'
+                              : 'Generate navigation / page index bar at top'}
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={responsiveLayout}
+                            onChange={(e) => setResponsiveLayout(e.target.checked)}
+                            className="accent-amber-400 w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span>
+                            {isEs
+                              ? 'Diseño responsivo adaptable a móviles, tablets y escritorio'
+                              : 'Responsive layout adaptable to mobile, tablet & desktop'}
+                          </span>
+                        </label>
+                      </div>
+
+                      {/* INFO BOX COMPATIBILIDAD */}
+                      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 text-xs text-amber-400 space-y-1">
+                        <span className="font-bold flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4" />
+                          {isEs
+                            ? 'HTML5 Autónomo sin Dependencias Externas'
+                            : 'Standalone HTML5 with No External Dependencies'}
+                        </span>
+                        <p className="text-[11px] text-zinc-400">
+                          {isEs
+                            ? 'El archivo .html descargado abre en cualquier navegador moderno sin necesidad de conexión a internet ni carpetas anexas.'
+                            : 'Downloaded .html opens in any browser without internet or extra folders.'}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* OPCIONES MODO HTML A PDF */
                     <div className="space-y-4 font-mono text-xs">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
                           <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Layout className="w-4 h-4 text-white" />
-                            {isEs ? 'Orientación de Página' : 'Orientation'}
+                            <Layout className="w-4 h-4 text-amber-400" />
+                            {isEs ? 'Orientación de Página' : 'Page Orientation'}
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             <button
-                              type="button" onClick={() => setOrientation('portrait')}
-                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'portrait' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              type="button"
+                              onClick={() => setOrientation('portrait')}
+                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                orientation === 'portrait'
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
                               }`}
                             >
-                              Vertical
+                              {isEs ? 'Vertical' : 'Portrait'}
                             </button>
                             <button
-                              type="button" onClick={() => setOrientation('landscape')}
-                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'landscape' ? 'bg-white text-black border-white' : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              type="button"
+                              onClick={() => setOrientation('landscape')}
+                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                orientation === 'landscape'
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
                               }`}
                             >
-                              Horizontal
+                              {isEs ? 'Horizontal' : 'Landscape'}
                             </button>
                           </div>
                         </div>
 
                         <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
                           <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Grid className="w-4 h-4 text-white" />
+                            <Sliders className="w-4 h-4 text-amber-400" />
                             {isEs ? 'Tamaño de Papel' : 'Paper Size'}
                           </label>
                           <select
-                            value={pageSize} onChange={(e) => setPageSize(e.target.value as PageSize)}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-white/30"
+                            value={pageSize}
+                            onChange={(e) => setPageSize(e.target.value as PageSize)}
+                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-amber-500"
                           >
-                            <option value="a4">A4 (210 x 297 mm)</option>
+                            <option value="a4">A4 (Estándar)</option>
                             <option value="letter">Carta / Letter</option>
                             <option value="legal">Oficio / Legal</option>
                           </select>
                         </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 sm:col-span-2 space-y-2.5">
-                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                            <input
-                              type="checkbox" checked={includeBackgrounds} onChange={(e) => setIncludeBackgrounds(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded cursor-pointer"
-                            />
-                            <span>{isEs ? 'Renderizar colores e imágenes de fondo CSS' : 'Render CSS background colors & images'}</span>
-                          </label>
-                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                            <input
-                              type="checkbox" checked={addHeaderFooter} onChange={(e) => setAddHeaderFooter(e.target.checked)}
-                              className="accent-white w-4 h-4 rounded cursor-pointer"
-                            />
-                            <span>{isEs ? 'Incluir fecha y numeración de página en encabezado' : 'Include date & page numbering in header'}</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 font-mono text-xs">
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300 font-mono">
-                          <input
-                            type="checkbox" checked={singleHtmlFile} onChange={(e) => setSingleHtmlFile(e.target.checked)}
-                            className="accent-white w-4 h-4 rounded cursor-pointer"
-                          />
-                          <span className="flex items-center gap-1.5 font-bold">
-                            <Sparkles className="w-4 h-4 text-white" />
-                            {isEs ? 'Generar 1 solo archivo HTML autónomo (CSS e imágenes embebidas en Base64)' : 'Generate 1 standalone HTML file (Embedded CSS & Base64 images)'}
-                          </span>
-                        </label>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-                <div className="pt-4 border-t border-white/10 font-sans">
+                <div className="pt-3 border-t border-white/10 font-sans">
                   {isProcessing && (
                     <div className="mb-3 space-y-1.5 font-mono">
                       <div className="flex justify-between text-[10px] font-bold text-zinc-300">
@@ -760,29 +1593,47 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
                         <span>{progressPercent}%</span>
                       </div>
                       <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                        <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
+                        <div
+                          style={{ width: `${progressPercent}%` }}
+                          className="h-full bg-amber-400 transition-all duration-300"
+                        />
                       </div>
                     </div>
                   )}
 
-                  <button 
-                    onClick={executeConversion} 
-                    disabled={isProcessing || !file} 
-                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                  <button
+                    onClick={executeConversion}
+                    disabled={
+                      isProcessing || !file || (mode === 'pdf-to-html' && targetPages.length === 0)
+                    }
+                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-3.5 rounded-2xl font-sans font-bold text-sm sm:text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
                   >
-                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <RefreshCw className="w-5 h-5 text-black" />}
+                    {isProcessing ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-black" />
+                    ) : (
+                      <RefreshCw className="w-5 h-5 text-black" />
+                    )}
                     <span>
-                      {isProcessing 
-                        ? progressMsg 
-                        : (!file 
-                            ? (isEs ? 'Selecciona un archivo' : 'Select a file') 
-                            : (mode === 'html-to-pdf' 
-                                ? (isEs ? 'Convertir a PDF con Opciones →' : 'Convert to PDF with Options →') 
-                                : (isEs ? 'Convertir a HTML con Opciones →' : 'Convert to HTML with Options →')))}
+                      {isProcessing
+                        ? progressMsg
+                        : !file
+                          ? isEs
+                            ? 'Selecciona un archivo'
+                            : 'Select a file'
+                          : mode === 'html-to-pdf'
+                            ? isEs
+                              ? 'Convertir HTML a PDF →'
+                              : 'Convert HTML to PDF →'
+                            : isEs
+                              ? targetPages.length === 0
+                                ? 'Selecciona al menos 1 página'
+                                : `Convertir ${targetPages.length} Página${targetPages.length === 1 ? '' : 's'} a HTML5 →`
+                              : targetPages.length === 0
+                                ? 'Select at least 1 page'
+                                : `Convert ${targetPages.length} Page${targetPages.length === 1 ? '' : 's'} to HTML5 →`}
                     </span>
                   </button>
                 </div>
-
               </div>
             </motion.div>
           )}

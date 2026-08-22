@@ -1,14 +1,30 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { 
-  FileDown, Loader2, X, ShieldCheck, FilePlus, 
-  Sliders, ChevronDown, ChevronUp, Layout 
+import {
+  FileDown,
+  Loader2,
+  X,
+  ShieldCheck,
+  FilePlus,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Layout,
+  Presentation,
 } from 'lucide-react';
 import { PowerPointIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import JSZip from 'jszip';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+
+interface PptxSlideData {
+  slideNumber: number;
+  title: string;
+  paragraphs: string[];
+}
 
 export default function PowerPointToPdf() {
   const { lang } = useLanguage();
@@ -25,8 +41,6 @@ export default function PowerPointToPdf() {
   const [addSlideBorders, setAddSlideBorders] = useState<boolean>(true);
   const [addSlideNumbers, setAddSlideNumbers] = useState<boolean>(true);
 
-  const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
@@ -36,7 +50,9 @@ export default function PowerPointToPdf() {
         setDownloadUrl(null);
         toast.success(isEs ? 'Presentación PowerPoint cargada' : 'PowerPoint presentation loaded');
       } else {
-        toast.error(isEs ? 'Selecciona una presentación (.pptx/.ppt)' : 'Select a presentation (.pptx/.ppt)');
+        toast.error(
+          isEs ? 'Selecciona una presentación (.pptx/.ppt)' : 'Select a presentation (.pptx/.ppt)',
+        );
       }
     }
     e.target.value = '';
@@ -49,79 +65,160 @@ export default function PowerPointToPdf() {
     toast.info(isEs ? 'Convirtiendo PowerPoint a PDF...' : 'Converting PowerPoint to PDF...');
 
     try {
-      if (API_SECRET) {
-        try {
-          const formData = new FormData();
-          formData.append('File', file);
-          formData.append('StoreFile', 'false');
+      let slidesToRender: PptxSlideData[] = [];
 
-          const response = await fetch(`https://v2.convertapi.com/convert/pptx/to/pdf?Secret=${API_SECRET}`, {
-            method: 'POST',
-            body: formData,
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const slideKeys = Object.keys(zip.files)
+          .filter((k) => k.startsWith('ppt/slides/slide') && k.endsWith('.xml'))
+          .sort((a, b) => {
+            const numA = parseInt(a.replace(/[^0-9]/g, '') || '0', 10);
+            const numB = parseInt(b.replace(/[^0-9]/g, '') || '0', 10);
+            return numA - numB;
           });
 
-          const data = await response.json();
-          if (data.Files && data.Files.length > 0) {
-            const base64Data = data.Files[0].FileData;
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'application/pdf' });
-            const localUrl = URL.createObjectURL(blob);
-            setDownloadUrl(localUrl);
-
-            const link = document.createElement('a');
-            link.href = localUrl;
-            link.download = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            toast.success(isEs ? '¡PDF generado con éxito!' : 'PDF generated successfully!');
-            return;
-          }
-        } catch (err) { console.warn("ConvertAPI fallback local", err); }
+        for (let i = 0; i < slideKeys.length; i++) {
+          const key = slideKeys[i];
+          const text = await zip.files[key].async('text');
+          const matches = Array.from(text.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g))
+            .map((m) => m[1].trim())
+            .filter(Boolean);
+          const title = matches[0] || (isEs ? `Diapositiva ${i + 1}` : `Slide ${i + 1}`);
+          const paragraphs = matches.slice(1);
+          slidesToRender.push({
+            slideNumber: i + 1,
+            title,
+            paragraphs,
+          });
+        }
+      } catch (e) {
+        console.warn('PPTX zip parsing fallback', e);
       }
 
-      const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+      if (slidesToRender.length === 0) {
+        slidesToRender = [
+          {
+            slideNumber: 1,
+            title: file.name.replace(/\.[^/.]+$/, ''),
+            paragraphs: [
+              isEs
+                ? 'Presentación convertida a formato PDF'
+                : 'Presentation converted to PDF format',
+            ],
+          },
+        ];
+      }
+
       const pdfDoc = await PDFDocument.create();
       const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
       const pageW = aspectRatio === '16:9' ? 960 : 800;
       const pageH = aspectRatio === '16:9' ? 540 : 600;
-      const page = pdfDoc.addPage([pageW, pageH]);
 
-      if (addSlideBorders) {
+      for (let i = 0; i < slidesToRender.length; i++) {
+        const slide = slidesToRender[i];
+        const page = pdfDoc.addPage([pageW, pageH]);
+
+        page.drawRectangle({
+          x: 0,
+          y: 0,
+          width: pageW,
+          height: pageH,
+          color: rgb(0.97, 0.97, 0.98),
+        });
+
+        if (addSlideBorders) {
+          page.drawRectangle({
+            x: 18,
+            y: 18,
+            width: pageW - 36,
+            height: pageH - 36,
+            borderWidth: 1.5,
+            borderColor: rgb(0.85, 0.35, 0.15),
+            color: rgb(1, 1, 1),
+          });
+        }
+
         page.drawRectangle({
           x: 20,
-          y: 20,
+          y: pageH - 85,
           width: pageW - 40,
-          height: pageH - 40,
-          borderWidth: 2,
-          borderColor: rgb(0.8, 0.3, 0.2),
-          color: rgb(0.97, 0.97, 0.97)
+          height: 65,
+          color: rgb(0.94, 0.95, 0.97),
         });
-      }
 
-      page.drawText(file.name.replace(/\.[^/.]+$/, "").toUpperCase(), { x: 60, y: pageH - 100, size: 24, font: fontBold, color: rgb(0.85, 0.35, 0.1) });
-      page.drawText(isEs ? `Presentación PowerPoint • Formato ${aspectRatio}` : `PowerPoint Presentation • Format ${aspectRatio}`, { x: 60, y: pageH - 140, size: 14, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+        const safeTitle = (slide.title || `Diapositiva ${i + 1}`).substring(0, 75);
+        page.drawText(safeTitle, {
+          x: 45,
+          y: pageH - 55,
+          size: 20,
+          font: fontBold,
+          color: rgb(0.12, 0.12, 0.15),
+        });
 
-      if (addSlideNumbers) {
-        page.drawText(isEs ? "Diapositiva 1 de 1" : "Slide 1 of 1", { x: pageW - 150, y: 35, size: 10, font: fontRegular, color: rgb(0.5, 0.5, 0.5) });
+        page.drawText(
+          isEs
+            ? `Presentación PowerPoint • Formato ${aspectRatio}`
+            : `PowerPoint Presentation • Format ${aspectRatio}`,
+          {
+            x: 45,
+            y: pageH - 74,
+            size: 9.5,
+            font: fontRegular,
+            color: rgb(0.5, 0.5, 0.55),
+          },
+        );
+
+        let currentY = pageH - 120;
+        const contentList =
+          slide.paragraphs.length > 0
+            ? slide.paragraphs
+            : [isEs ? 'Contenido de la diapositiva' : 'Slide content'];
+
+        for (const item of contentList.slice(0, 10)) {
+          if (currentY < 70) break;
+          page.drawCircle({
+            x: 50,
+            y: currentY + 4,
+            size: 3,
+            color: rgb(0.85, 0.35, 0.15),
+          });
+
+          const cleanItem = item.replace(/[\r\n]+/g, ' ');
+          page.drawText(cleanItem.substring(0, 100), {
+            x: 65,
+            y: currentY,
+            size: 13,
+            font: fontRegular,
+            color: rgb(0.2, 0.2, 0.25),
+          });
+
+          currentY -= 28;
+        }
+
+        if (addSlideNumbers) {
+          const numText = isEs
+            ? `Diapositiva ${i + 1} de ${slidesToRender.length}`
+            : `Slide ${i + 1} of ${slidesToRender.length}`;
+          page.drawText(numText, {
+            x: pageW - 160,
+            y: 32,
+            size: 9,
+            font: fontRegular,
+            color: rgb(0.55, 0.55, 0.6),
+          });
+        }
       }
 
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
       setDownloadUrl(localUrl);
 
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
+      link.download = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -153,16 +250,28 @@ export default function PowerPointToPdf() {
 
         <div className="text-center flex flex-col items-center gap-1.5">
           <h2 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-orange-200 transition-colors">
-            {isEs ? 'PowerPoint a PDF (Con Opciones Avanzadas)' : 'PowerPoint to PDF (With Advanced Options)'}
+            {isEs
+              ? 'PowerPoint a PDF (Con Opciones Avanzadas)'
+              : 'PowerPoint to PDF (With Advanced Options)'}
           </h2>
           <p className="text-orange-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-            {isEs ? 'Transforma presentaciones (.pptx) a PDF con relación de aspecto y bordes configurables' : 'Transform PowerPoint (.pptx) into PDF with custom aspect ratio & borders'}
+            {isEs
+              ? 'Transforma presentaciones (.pptx) a PDF con relación de aspecto y bordes configurables'
+              : 'Transform PowerPoint (.pptx) into PDF with custom aspect ratio & borders'}
           </p>
         </div>
 
         <label className="flex items-center justify-center gap-2.5 bg-orange-500 hover:bg-orange-400 text-white px-8 py-3.5 rounded-full font-black text-sm shadow-lg group-hover:scale-105 transition-all mt-1 cursor-pointer border border-orange-300/40">
-          <FilePlus className="w-4 h-4 text-white" /> {isEs ? 'Seleccionar PowerPoint' : 'Select PowerPoint'}
-          <input type="file" accept=".pptx,.ppt" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
+          <FilePlus className="w-4 h-4 text-white" />{' '}
+          {isEs ? 'Seleccionar PowerPoint' : 'Select PowerPoint'}
+          <input
+            type="file"
+            accept=".pptx,.ppt"
+            className="hidden"
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            disabled={isProcessing}
+          />
         </label>
 
         <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-extrabold mt-1 font-mono">
@@ -181,31 +290,48 @@ export default function PowerPointToPdf() {
             <PowerPointIcon className="w-5 h-5 rounded-sm" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
+          <button
+            onClick={() => {
+              setFile(null);
+              setDownloadUrl(null);
+            }}
+            disabled={isProcessing}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex flex-col items-center mt-12">
           <PowerPointIcon className="w-20 h-20 rounded-2xl shadow-2xl mb-4" />
-          <span className="text-xs text-orange-400 font-mono">✓ Presentación cargada correctamente</span>
+          <span className="text-xs text-orange-400 font-mono">
+            ✓ Presentación cargada correctamente
+          </span>
         </div>
       </div>
 
       <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Convertir a PDF' : 'Convert to PDF'}</h3>
+            <h3 className="text-xl font-bold text-white">
+              {isEs ? 'Convertir a PDF' : 'Convert to PDF'}
+            </h3>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Configura la relación de aspecto y formato de diapositivas.' : 'Configure aspect ratio & slide format.'}
+            {isEs
+              ? 'Configura la relación de aspecto y formato de diapositivas.'
+              : 'Configure aspect ratio & slide format.'}
           </p>
 
           <AnimatePresence>
@@ -255,7 +381,9 @@ export default function PowerPointToPdf() {
                       onChange={(e) => setAddSlideBorders(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-700 bg-slate-950 accent-orange-500"
                     />
-                    <span>{isEs ? 'Marco sutil alrededor de diapositivas' : 'Subtle slide border'}</span>
+                    <span>
+                      {isEs ? 'Marco sutil alrededor de diapositivas' : 'Subtle slide border'}
+                    </span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                     <input
@@ -284,8 +412,10 @@ export default function PowerPointToPdf() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm">{isEs ? 'Generando PDF...' : 'Generating PDF...'}</span>
                 </>
+              ) : isEs ? (
+                'Convertir a PDF'
               ) : (
-                isEs ? 'Convertir a PDF' : 'Convert to PDF'
+                'Convert to PDF'
               )}
             </button>
           ) : (

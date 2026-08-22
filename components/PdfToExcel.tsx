@@ -1,14 +1,22 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { 
-  FileSpreadsheet, FileDown, Loader2, X, ShieldCheck, FilePlus, 
-  Sliders, ChevronDown, ChevronUp 
+import {
+  FileSpreadsheet,
+  FileDown,
+  Loader2,
+  X,
+  ShieldCheck,
+  FilePlus,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as XLSX from 'xlsx';
 
 interface PdfTextItem {
   str?: string;
@@ -60,22 +68,14 @@ export default function PdfToExcel() {
 
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      
-      const delimiter = outputFormat === 'csv_semicolon' ? ';' : ',';
-      let csvContent = "";
 
-      if (sheetStructure === 'single') {
-        csvContent += `Pagina${delimiter}Linea${delimiter}Columna_1${delimiter}Columna_2${delimiter}Valor_Numerico\n`;
-      }
+      const pagesData: Array<{ pageNum: number; rows: Array<Array<string | number>> }> = [];
 
       for (let p = 1; p <= pdf.numPages; p++) {
-        if (sheetStructure === 'per_page') {
-          csvContent += `\n--- PAGINA ${p} ---\nPagina${delimiter}Linea${delimiter}Texto Extraido\n`;
-        }
-
         const page = await pdf.getPage(p);
         const textContent = await page.getTextContent();
-        
+        const pageRows: Array<Array<string | number>> = [];
+
         if (extractionStrategy === 'smart') {
           const rowsMap: { [yKey: number]: PdfTextItem[] } = {};
           (textContent.items as PdfTextItem[]).forEach((item) => {
@@ -86,54 +86,134 @@ export default function PdfToExcel() {
             }
           });
 
-          const sortedYKeys = Object.keys(rowsMap).map(Number).sort((a, b) => b - a);
-          let lineIdx = 1;
+          const sortedYKeys = Object.keys(rowsMap)
+            .map(Number)
+            .sort((a, b) => b - a);
 
           sortedYKeys.forEach((yKey) => {
-            const rowItems = rowsMap[yKey].sort((a, b) => (a.transform?.[4] || 0) - (b.transform?.[4] || 0));
-            const rowCells = rowItems.map(i => {
-              const text = (i.str || '').replace(/"/g, '""');
-              if (autoFormatNumbers && !isNaN(Number(text))) {
-                return Number(text);
-              }
-              return `"${text}"`;
-            });
+            const rowItems = rowsMap[yKey].sort(
+              (a, b) => (a.transform?.[4] || 0) - (b.transform?.[4] || 0),
+            );
+            const rowCells = rowItems
+              .map((i) => {
+                const text = (i.str || '').trim();
+                if (autoFormatNumbers) {
+                  const cleanedNum = text.replace(/,/g, '').replace(/\$/g, '').trim();
+                  if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
+                    return Number(cleanedNum);
+                  }
+                }
+                return text;
+              })
+              .filter((c) => c !== '');
 
             if (trimEmptyRows && rowCells.length === 0) return;
-            csvContent += `${p}${delimiter}${lineIdx++}${delimiter}${rowCells.join(delimiter)}\n`;
+            if (rowCells.length > 0) {
+              pageRows.push(rowCells);
+            }
           });
         } else {
-          let lineIdx = 1;
           (textContent.items as PdfTextItem[]).forEach((item) => {
             if (item.str && item.str.trim()) {
-              const cleanStr = item.str.replace(/"/g, '""');
-              csvContent += `${p}${delimiter}${lineIdx++}${delimiter}"${cleanStr}"\n`;
+              const text = item.str.trim();
+              if (autoFormatNumbers) {
+                const cleanedNum = text.replace(/,/g, '').replace(/\$/g, '').trim();
+                if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
+                  pageRows.push([Number(cleanedNum)]);
+                  return;
+                }
+              }
+              pageRows.push([text]);
             }
           });
         }
+
+        pagesData.push({
+          pageNum: p,
+          rows: pageRows.length > 0 ? pageRows : [[`[Página ${p} sin datos]`]],
+        });
       }
 
+      let blob: Blob;
       const ext = outputFormat === 'xlsx' ? 'xlsx' : 'csv';
-      const blob = new Blob([csvContent], { 
-        type: outputFormat === 'xlsx' 
-          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          : 'text/csv;charset=utf-8;' 
-      });
+
+      if (outputFormat === 'xlsx') {
+        const wb = XLSX.utils.book_new();
+
+        if (sheetStructure === 'per_page') {
+          pagesData.forEach((pData) => {
+            const sheetData: Array<Array<string | number>> = [
+              ['Fila', 'Dato 1', 'Dato 2', 'Dato 3', 'Dato 4'],
+            ];
+            pData.rows.forEach((row, rIdx) => {
+              sheetData.push([rIdx + 1, ...row]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws['!cols'] = [{ wch: 8 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, ws, `Pág ${pData.pageNum}`);
+          });
+        } else {
+          const consolidatedData: Array<Array<string | number>> = [
+            ['Página PDF', 'Fila', 'Dato 1', 'Dato 2', 'Dato 3', 'Dato 4'],
+          ];
+          pagesData.forEach((pData) => {
+            pData.rows.forEach((row, rIdx) => {
+              consolidatedData.push([`Pág ${pData.pageNum}`, rIdx + 1, ...row]);
+            });
+          });
+          const ws = XLSX.utils.aoa_to_sheet(consolidatedData);
+          ws['!cols'] = [
+            { wch: 12 },
+            { wch: 8 },
+            { wch: 30 },
+            { wch: 25 },
+            { wch: 20 },
+            { wch: 20 },
+          ];
+          XLSX.utils.book_append_sheet(wb, ws, 'Tablas PDF');
+        }
+
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        blob = new Blob([wbout], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+      } else {
+        const delimiter = outputFormat === 'csv_semicolon' ? ';' : ',';
+        let csvContent = '\uFEFF';
+        csvContent += `Pagina_PDF${delimiter}Fila${delimiter}Dato_1${delimiter}Dato_2\n`;
+
+        pagesData.forEach((pData) => {
+          pData.rows.forEach((row, rIdx) => {
+            const formatted = row.map((c) => `"${String(c).replace(/"/g, '""')}"`);
+            csvContent += `"${pData.pageNum}"${delimiter}${rIdx + 1}${delimiter}${formatted.join(delimiter)}\n`;
+          });
+        });
+
+        blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      }
 
       const localUrl = URL.createObjectURL(blob);
       setDownloadUrl(localUrl);
 
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${file.name.replace(/\.[^/.]+$/, "")}_Tablas.${ext}`;
+      link.download = `${file.name.replace(/\.[^/.]+$/, '')}_Tablas.${ext}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? `¡Tablas extraídas a archivo Excel / ${ext.toUpperCase()}!` : `Data extracted to Excel / ${ext.toUpperCase()} file!`);
+      toast.success(
+        isEs
+          ? `¡Tablas extraídas a archivo Excel (.${ext.toUpperCase()})!`
+          : `Data extracted to Excel (.${ext.toUpperCase()}) file!`,
+      );
     } catch (error) {
       console.error(error);
-      toast.error(isEs ? 'Ocurrió un error al procesar la tabla.' : 'An error occurred while processing table.');
+      toast.error(
+        isEs
+          ? 'Ocurrió un error al procesar la tabla.'
+          : 'An error occurred while processing table.',
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -160,13 +240,22 @@ export default function PdfToExcel() {
             {isEs ? 'PDF a Excel (Con Opciones Avanzadas)' : 'PDF to Excel (With Advanced Options)'}
           </h2>
           <p className="text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-            {isEs ? 'Extrae tablas estructuradas de tu PDF con delimitadores y formato configurable' : 'Extract structured tables from PDF with configurable delimiters & format'}
+            {isEs
+              ? 'Extrae tablas estructuradas de tu PDF con delimitadores y formato configurable'
+              : 'Extract structured tables from PDF with configurable delimiters & format'}
           </p>
         </div>
 
         <label className="flex items-center justify-center gap-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(16,185,129,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(16,185,129,0.7)] transition-all mt-1 cursor-pointer border border-emerald-300/40">
           <FilePlus className="w-4 h-4 text-slate-950" /> {isEs ? 'Seleccionar PDF' : 'Select PDF'}
-          <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
+          <input
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            disabled={isProcessing}
+          />
         </label>
 
         <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
@@ -179,14 +268,20 @@ export default function PdfToExcel() {
 
   return (
     <div className="w-full flex flex-col lg:flex-row gap-6 items-start font-sans">
-      
       <div className="flex-1 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 min-h-[440px] flex flex-col items-center justify-center relative w-full">
         <div className="absolute top-4 left-4 right-4 bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-white/10 flex justify-between items-center shadow-sm">
           <div className="flex items-center gap-3 overflow-hidden">
             <FileSpreadsheet className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
+          <button
+            onClick={() => {
+              setFile(null);
+              setDownloadUrl(null);
+            }}
+            disabled={isProcessing}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -196,24 +291,34 @@ export default function PdfToExcel() {
             <FileSpreadsheet className="w-12 h-12 text-emerald-400 mb-2" />
             <span className="text-xs font-bold text-emerald-300 uppercase">EXCEL / CSV</span>
           </div>
-          <span className="text-xs text-emerald-400 font-mono">✓ Archivo cargado correctamente</span>
+          <span className="text-xs text-emerald-400 font-mono">
+            ✓ Archivo cargado correctamente
+          </span>
         </div>
       </div>
 
       <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Extraer a Excel' : 'Extract to Excel'}</h3>
+            <h3 className="text-xl font-bold text-white">
+              {isEs ? 'Extraer a Excel' : 'Extract to Excel'}
+            </h3>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Configura la estructura de columnas y formatos para tu hoja de cálculo.' : 'Configure column structure & formats for your spreadsheet.'}
+            {isEs
+              ? 'Configura la estructura de columnas y formatos para tu hoja de cálculo.'
+              : 'Configure column structure & formats for your spreadsheet.'}
           </p>
 
           <AnimatePresence>
@@ -230,7 +335,9 @@ export default function PdfToExcel() {
                   </label>
                   <select
                     value={outputFormat}
-                    onChange={(e) => setOutputFormat(e.target.value as 'xlsx' | 'csv_semicolon' | 'csv_comma')}
+                    onChange={(e) =>
+                      setOutputFormat(e.target.value as 'xlsx' | 'csv_semicolon' | 'csv_comma')
+                    }
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl py-2 px-3 text-white text-xs font-mono focus:border-emerald-400 focus:outline-none"
                   >
                     <option value="xlsx">Excel (.xlsx)</option>
@@ -248,8 +355,12 @@ export default function PdfToExcel() {
                     onChange={(e) => setSheetStructure(e.target.value as 'single' | 'per_page')}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl py-2 px-3 text-white text-xs font-mono focus:border-emerald-400 focus:outline-none"
                   >
-                    <option value="single">{isEs ? '1 sola hoja continua' : 'Single continuous sheet'}</option>
-                    <option value="per_page">{isEs ? '1 hoja por cada página' : '1 sheet per PDF page'}</option>
+                    <option value="single">
+                      {isEs ? '1 sola hoja continua' : 'Single continuous sheet'}
+                    </option>
+                    <option value="per_page">
+                      {isEs ? '1 hoja por cada página' : '1 sheet per PDF page'}
+                    </option>
                   </select>
                 </div>
 
@@ -291,7 +402,11 @@ export default function PdfToExcel() {
                       onChange={(e) => setAutoFormatNumbers(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-700 bg-slate-950 accent-emerald-500"
                     />
-                    <span>{isEs ? 'Convertir texto numérico a número' : 'Convert text numbers to numeric'}</span>
+                    <span>
+                      {isEs
+                        ? 'Convertir texto numérico a número'
+                        : 'Convert text numbers to numeric'}
+                    </span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                     <input
@@ -320,8 +435,10 @@ export default function PdfToExcel() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm">{isEs ? 'Extrayendo...' : 'Extracting...'}</span>
                 </>
+              ) : isEs ? (
+                'Convertir a Excel'
               ) : (
-                isEs ? 'Convertir a Excel' : 'Convert to Excel'
+                'Convert to Excel'
               )}
             </button>
           ) : (

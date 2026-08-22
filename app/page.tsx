@@ -33,6 +33,7 @@ import { useActivityStore } from '../store/useActivityStore';
 import { SkeletonTableRow } from '../components/Skeleton';
 import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 import SpotlightCard from '@/components/SpotlightCard';
+import DocumentUploadProgress from '@/components/DocumentUploadProgress';
 
 // ─── JSON-LD Structured Data (Rich Snippets) ───
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdfblack-proy.web.app';
@@ -426,7 +427,9 @@ export default function DashboardPage() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const uploadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [dragCounter, setDragCounter] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropzoneRef = useRef<HTMLDivElement>(null);
@@ -462,32 +465,44 @@ export default function DashboardPage() {
       );
       return;
     }
+    setUploadingFile(archivoSeleccionado);
     setIsUploading(true);
-    setUploadProgress(0);
+    setUploadProgress(12);
 
     const url = URL.createObjectURL(archivoSeleccionado);
 
-    const interval = setInterval(() => {
+    if (uploadTimerRef.current) clearInterval(uploadTimerRef.current);
+
+    uploadTimerRef.current = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 100) {
-          clearInterval(interval);
+          if (uploadTimerRef.current) clearInterval(uploadTimerRef.current);
           setTimeout(() => {
             setPdfUrl(url);
             setFile(archivoSeleccionado);
             setGlobalFile(archivoSeleccionado);
             setIsUploading(false);
+            setUploadingFile(null);
             setUploadProgress(0);
             toast.success(
               isEs
                 ? 'Archivo cargado. ¿Qué deseas hacer con él?'
                 : 'File loaded. What do you want to do?',
             );
-          }, 400);
+          }, 350);
           return 100;
         }
-        return prev + Math.floor(Math.random() * 20) + 15;
+        return prev + Math.floor(Math.random() * 15) + 12;
       });
-    }, 100);
+    }, 90);
+  };
+
+  const handleCancelUpload = () => {
+    if (uploadTimerRef.current) clearInterval(uploadTimerRef.current);
+    setIsUploading(false);
+    setUploadProgress(0);
+    setUploadingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleRemoveFile = (e?: React.MouseEvent) => {
@@ -1497,59 +1512,15 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* ESTADO 2: CARGANDO */}
+          {/* ESTADO 2: CARGANDO CON EXPERIENCIA VISUAL PREMIUM */}
           {isUploading && (
-            <motion.div
+            <DocumentUploadProgress
               key="uploading-view"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-10 lg:p-12 shadow-2xl mt-10 relative z-[50] font-mono"
-              role="status"
-              aria-live="polite"
-              aria-label={
-                isEs
-                  ? `Cargando documento: ${uploadProgress}%`
-                  : `Loading document: ${uploadProgress}%`
-              }
-            >
-              <div className="max-w-md mx-auto">
-                <div className="flex justify-between items-end mb-4 font-sans">
-                  <h2 className="text-white font-bold text-xl flex items-center gap-2.5">
-                    <UploadCloud className="w-5 h-5 text-white animate-pulse" aria-hidden="true" />
-                    {isEs ? 'Cargando documento...' : 'Loading document...'}
-                  </h2>
-                  <span
-                    className="text-white font-bold text-3xl tabular-nums font-mono"
-                    aria-live="polite"
-                  >
-                    {uploadProgress}%
-                  </span>
-                </div>
-                <div
-                  className="w-full bg-zinc-900 rounded-full h-3 overflow-hidden border border-white/10"
-                  role="progressbar"
-                  aria-valuenow={uploadProgress}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={isEs ? 'Progreso de carga' : 'Upload progress'}
-                >
-                  <motion.div
-                    className="bg-white h-full rounded-full relative"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${uploadProgress}%` }}
-                    transition={{ ease: 'linear', duration: 0.1 }}
-                  />
-                </div>
-                <div className="mt-4 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
-                  <span className="flex items-center gap-1.5 text-emerald-400">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
-                    {isEs ? 'Procesamiento 100% Local' : '100% Local Engine'}
-                  </span>
-                  <span>{isEs ? 'Preparando archivo...' : 'Preparing file...'}</span>
-                </div>
-              </div>
-            </motion.div>
+              fileName={uploadingFile?.name}
+              fileSize={uploadingFile?.size}
+              progress={uploadProgress}
+              onCancel={handleCancelUpload}
+            />
           )}
         </AnimatePresence>
 

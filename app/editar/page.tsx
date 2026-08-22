@@ -34,6 +34,7 @@ import {
 import { toast } from 'sonner';
 import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 import SpotlightCard from '@/components/SpotlightCard';
+import DocumentUploadProgress from '@/components/DocumentUploadProgress';
 
 function EditarContent() {
   const searchParams = useSearchParams();
@@ -46,7 +47,9 @@ function EditarContent() {
   const setGlobalFile = useFileStore((state) => state.setGlobalFile);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const uploadTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,24 +64,36 @@ function EditarContent() {
       );
       return;
     }
+    setUploadingFile(archivoSeleccionado);
     setIsUploading(true);
-    setUploadProgress(0);
+    setUploadProgress(12);
 
-    const interval = setInterval(() => {
+    if (uploadTimerRef.current) clearInterval(uploadTimerRef.current);
+
+    uploadTimerRef.current = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 100) {
-          clearInterval(interval);
+          if (uploadTimerRef.current) clearInterval(uploadTimerRef.current);
           setTimeout(() => {
             setGlobalFile(archivoSeleccionado);
             setIsUploading(false);
+            setUploadingFile(null);
             setUploadProgress(0);
             toast.success(isEs ? 'Archivo cargado en el editor.' : 'File loaded into the editor.');
-          }, 400);
+          }, 350);
           return 100;
         }
-        return prev + Math.floor(Math.random() * 20) + 15;
+        return prev + Math.floor(Math.random() * 15) + 12;
       });
-    }, 100);
+    }, 90);
+  };
+
+  const handleCancelUpload = () => {
+    if (uploadTimerRef.current) clearInterval(uploadTimerRef.current);
+    setIsUploading(false);
+    setUploadProgress(0);
+    setUploadingFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,32 +244,13 @@ function EditarContent() {
 
         <AnimatePresence mode="wait">
           {isUploading && (
-            <motion.div
+            <DocumentUploadProgress
               key="loading-view"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-12 shadow-2xl mt-10 font-mono"
-            >
-              <div className="max-w-md mx-auto">
-                <div className="flex justify-between items-end mb-4">
-                  <h3 className="text-white font-bold text-xl flex items-center gap-2 font-sans">
-                    {isEs ? 'Cargando documento...' : 'Loading document...'}
-                  </h3>
-                  <span className="text-white font-bold text-3xl tabular-nums">
-                    {uploadProgress}%
-                  </span>
-                </div>
-                <div className="w-full bg-zinc-900 rounded-full h-3 overflow-hidden border border-white/10">
-                  <motion.div
-                    className="bg-white h-full rounded-full relative"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${uploadProgress}%` }}
-                    transition={{ ease: 'linear', duration: 0.1 }}
-                  ></motion.div>
-                </div>
-              </div>
-            </motion.div>
+              fileName={uploadingFile?.name}
+              fileSize={uploadingFile?.size}
+              progress={uploadProgress}
+              onCancel={handleCancelUpload}
+            />
           )}
 
           {!isUploading && (

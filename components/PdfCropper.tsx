@@ -2,16 +2,42 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PDFDocument } from 'pdf-lib';
-import { 
-  Crop, FileText, X, Loader2, Sliders, 
-  UploadCloud, Sparkles, ZoomIn, ChevronLeft, ChevronRight, RefreshCw,
-  ShieldCheck, ArrowLeft, Lock, Unlock, LayoutGrid, Plus, Trash2
+import {
+  Crop,
+  FileText,
+  X,
+  Loader2,
+  Sliders,
+  UploadCloud,
+  Sparkles,
+  ZoomIn,
+  ZoomOut,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  ShieldCheck,
+  ArrowLeft,
+  Lock,
+  Unlock,
+  LayoutGrid,
+  Plus,
+  Trash2,
+  Link as LinkIcon,
+  Unlink,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Eye,
+  Split,
+  Info,
+  Check,
+  Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CropWorkerMessageIn, CropWorkerMessageOut, CropScope } from '@/workers/pdf-crop.worker';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { useUIStore } from '@/store/useUIStore';
@@ -25,6 +51,11 @@ interface CompletedCropResult {
   originalSize: string;
 }
 
+interface PageThumbnailMini {
+  pageNum: number;
+  dataUrl: string;
+}
+
 export default function PdfCropper() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -33,6 +64,7 @@ export default function PdfCropper() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const topHeaderRef = useRef<HTMLDivElement>(null);
   const successContainerRef = useRef<HTMLDivElement>(null);
+  const cropContainerRef = useRef<HTMLDivElement>(null);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [file, setFile] = useState<File | null>(() => {
@@ -43,31 +75,16 @@ export default function PdfCropper() {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageDataUrl, setPageDataUrl] = useState<string | null>(null);
-  const [pageSize, setPageSize] = useState<{ width: number; height: number }>({ width: 595, height: 842 });
+  const [pageSize, setPageSize] = useState<{ width: number; height: number }>({
+    width: 595,
+    height: 842,
+  });
+  const [miniThumbnails, setMiniThumbnails] = useState<PageThumbnailMini[]>([]);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [completedResult, setCompletedResult] = useState<CompletedCropResult | null>(null);
-
-  // Ocultar barra superior global y scroll automático hacia el tope de la pantalla
-  useEffect(() => {
-    if (completedResult) {
-      setHeaderHidden(true);
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    } else {
-      setHeaderHidden(false);
-    }
-  }, [completedResult, setHeaderHidden]);
-
-  // Asegurar restauración de barra superior al desmontar
-  useEffect(() => {
-    return () => {
-      setHeaderHidden(false);
-    };
-  }, [setHeaderHidden]);
 
   // ENCRYPTION / PASSWORD STATE
   const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
@@ -80,7 +97,14 @@ export default function PdfCropper() {
   const [marginBottom, setMarginBottom] = useState<number>(10);
   const [marginLeft, setMarginLeft] = useState<number>(10);
   const [marginRight, setMarginRight] = useState<number>(10);
+  const [isLinkedMargins, setIsLinkedMargins] = useState<boolean>(false);
   const [cropScope, setCropScope] = useState<CropScope>('all');
+  const [customPagesInput, setCustomPagesInput] = useState<string>('1-5');
+
+  // ZOOM & VISTA
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [previewZoom, setPreviewZoom] = useState<boolean>(false);
+  const [showThumbnailsBar, setShowThumbnailsBar] = useState<boolean>(false);
 
   // RESULTADOS Y PREVIAS
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
@@ -89,65 +113,128 @@ export default function PdfCropper() {
   // OPCIONES AVANZADAS Y METADATOS
   const [filePrefix, setFilePrefix] = useState<string>('Documento_Recortado');
   const [renumberPages, setRenumberPages] = useState<boolean>(false);
-  const [previewZoom, setPreviewZoom] = useState<boolean>(false);
-
-  // METADATOS PERSONALIZADOS
+  const [showMetadata, setShowMetadata] = useState<boolean>(false);
   const [docTitle, setDocTitle] = useState<string>('');
   const [docAuthor, setDocAuthor] = useState<string>('');
   const [docSubject, setDocSubject] = useState<string>('');
 
-  // Cargar PDF y renderizar vista previa de la página actual
-  const renderCurrentPage = useCallback(async (selectedFile: File, pageNum: number, pass?: string) => {
-    setIsProcessing(true);
-    setProgressMsg(isEs ? `Cargando vista previa pág ${pageNum}...` : `Loading preview page ${pageNum}...`);
-    setFilePrefix(selectedFile.name.replace(/\.[^/.]+$/, "") + '_Recortado');
+  // ESTADO DE ARRASTRE DEL RECUADRO DE RECORTE
+  const [isDragging, setIsDragging] = useState<string | null>(null);
+  const dragStartRef = useRef<{
+    startX: number;
+    startY: number;
+    startTop: number;
+    startBottom: number;
+    startLeft: number;
+    startRight: number;
+  } | null>(null);
 
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+  // Dimensiones físicas aproximadas de la página en mm (A4 base estándar o proporcional)
+  const pageAspectRatio = pageSize.height / (pageSize.width || 1);
+  const pageHeightMm = Math.round(210 * pageAspectRatio);
+  const pageWidthMm = 210;
 
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({
-        data: arrayBuffer.slice(0),
-        password: pass,
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-        cMapPacked: true,
-      });
-      const pdf = await loadingTask.promise;
-      setTotalPages(pdf.numPages);
-
-      const targetPageNum = Math.max(1, Math.min(pdf.numPages, pageNum));
-      const page = await pdf.getPage(targetPageNum);
-      const viewport = page.getViewport({ scale: 1.6 });
-
-      setPageSize({ width: Math.round(viewport.width), height: Math.round(viewport.height) });
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-
-      if (context) {
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        await page.render({ canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
-        setPageDataUrl(canvas.toDataURL('image/jpeg', 0.88));
-      }
-
-      setIsEncrypted(false);
-      setIsUnlocked(true);
-    } catch (error: any) {
-      if (error?.name === 'PasswordException' || error?.code === 1) {
-        setIsEncrypted(true);
-        setIsUnlocked(false);
-        toast.warning(isEs ? 'El archivo requiere contraseña para abrirse' : 'File requires password to open');
-      } else {
-        console.error(error);
-        toast.error(isEs ? 'Error al renderizar página del PDF' : 'Error rendering PDF page');
-      }
-    } finally {
-      setIsProcessing(false);
-      setProgressMsg('');
+  // Ocultar barra superior global y scroll automático hacia el tope de la pantalla
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      window.scrollTo(0, 0);
+    } else {
+      setHeaderHidden(false);
     }
-  }, [isEs]);
+  }, [completedResult, setHeaderHidden]);
+
+  // Asegurar restauración de barra superior al desmontar
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
+
+  // Cargar PDF y renderizar vista previa de la página actual
+  const renderCurrentPage = useCallback(
+    async (selectedFile: File, pageNum: number, pass?: string) => {
+      setIsProcessing(true);
+      setProgressMsg(
+        isEs ? `Cargando vista previa pág ${pageNum}...` : `Loading preview page ${pageNum}...`,
+      );
+      setFilePrefix(selectedFile.name.replace(/\.[^/.]+$/, '') + '_Recortado');
+
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          password: pass,
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        });
+        const pdf = await loadingTask.promise;
+        setTotalPages(pdf.numPages);
+
+        const targetPageNum = Math.max(1, Math.min(pdf.numPages, pageNum));
+        const page = await pdf.getPage(targetPageNum);
+        const viewport = page.getViewport({ scale: 1.6 });
+
+        setPageSize({ width: Math.round(viewport.width), height: Math.round(viewport.height) });
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        if (context) {
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          await page.render({ canvasContext: context, viewport } as unknown as Parameters<
+            typeof page.render
+          >[0]).promise;
+          setPageDataUrl(canvas.toDataURL('image/jpeg', 0.9));
+        }
+
+        setIsEncrypted(false);
+        setIsUnlocked(true);
+
+        // Cargar miniaturas rápidas para las primeras 20 páginas
+        if (miniThumbnails.length === 0) {
+          const thumbs: PageThumbnailMini[] = [];
+          const limit = Math.min(pdf.numPages, 16);
+          for (let i = 1; i <= limit; i++) {
+            try {
+              const p = await pdf.getPage(i);
+              const vp = p.getViewport({ scale: 0.25 });
+              const c = document.createElement('canvas');
+              const ctx = c.getContext('2d');
+              c.height = vp.height;
+              c.width = vp.width;
+              if (ctx) {
+                await p.render({ canvasContext: ctx, viewport: vp } as any).promise;
+                thumbs.push({ pageNum: i, dataUrl: c.toDataURL('image/jpeg', 0.6) });
+              }
+            } catch {
+              // skip
+            }
+          }
+          setMiniThumbnails(thumbs);
+        }
+      } catch (error: any) {
+        if (error?.name === 'PasswordException' || error?.code === 1) {
+          setIsEncrypted(true);
+          setIsUnlocked(false);
+          toast.warning(
+            isEs ? 'El archivo requiere contraseña para abrirse' : 'File requires password to open',
+          );
+        } else {
+          console.error(error);
+          toast.error(isEs ? 'Error al renderizar página del PDF' : 'Error rendering PDF page');
+        }
+      } finally {
+        setIsProcessing(false);
+        setProgressMsg('');
+      }
+    },
+    [isEs, miniThumbnails.length],
+  );
 
   useEffect(() => {
     if (file && !isEncrypted) {
@@ -162,6 +249,7 @@ export default function PdfCropper() {
         setFile(selected);
         setGlobalFile(selected);
         setCurrentPage(1);
+        setMiniThumbnails([]);
         setDownloadUrl(null);
         setIsEncrypted(false);
         setIsUnlocked(false);
@@ -182,7 +270,9 @@ export default function PdfCropper() {
       setUnlockedPassword(passwordInput);
       setIsUnlocked(true);
       setIsEncrypted(false);
-      toast.success(isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF unlocked successfully!');
+      toast.success(
+        isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF unlocked successfully!',
+      );
     } catch {
       toast.error(isEs ? 'Contraseña incorrecta' : 'Incorrect password');
     }
@@ -193,6 +283,7 @@ export default function PdfCropper() {
     setFile(null);
     setTotalPages(0);
     setPageDataUrl(null);
+    setMiniThumbnails([]);
     setDownloadUrl(null);
     setCompletedResult(null);
     setGlobalFile(null);
@@ -203,13 +294,33 @@ export default function PdfCropper() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [setGlobalFile, setHeaderHidden]);
 
-  const applyPreset = (mm: number) => {
-    setMarginTop(mm);
-    setMarginBottom(mm);
-    setMarginLeft(mm);
-    setMarginRight(mm);
+  // MANEJO DE MÁRGENES (CON SOPORTE DE ENLACE)
+  const updateMargin = (field: 'top' | 'bottom' | 'left' | 'right', val: number) => {
+    const clamped = Math.max(
+      0,
+      Math.min(field === 'top' || field === 'bottom' ? pageHeightMm - 20 : pageWidthMm - 20, val),
+    );
+    if (isLinkedMargins) {
+      setMarginTop(clamped);
+      setMarginBottom(clamped);
+      setMarginLeft(clamped);
+      setMarginRight(clamped);
+    } else {
+      if (field === 'top') setMarginTop(clamped);
+      if (field === 'bottom') setMarginBottom(clamped);
+      if (field === 'left') setMarginLeft(clamped);
+      if (field === 'right') setMarginRight(clamped);
+    }
     setDownloadUrl(null);
-    toast.info(isEs ? `Márgenes ajustados a ${mm} mm` : `Margins adjusted to ${mm} mm`);
+  };
+
+  const applyPreset = (t: number, b: number, l: number, r: number, name: string) => {
+    setMarginTop(t);
+    setMarginBottom(b);
+    setMarginLeft(l);
+    setMarginRight(r);
+    setDownloadUrl(null);
+    toast.info(isEs ? `Preajuste aplicado: ${name}` : `Preset applied: ${name}`);
   };
 
   const resetMargins = () => {
@@ -218,7 +329,171 @@ export default function PdfCropper() {
     setMarginLeft(0);
     setMarginRight(0);
     setDownloadUrl(null);
+    toast.info(isEs ? 'Márgenes restablecidos a 0 mm' : 'Margins reset to 0 mm');
   };
+
+  // MANEJADORES DE ARRASTRE INTERACTIVO DEL RECUADRO DE RECORTE
+  const handleMouseDownOnHandle = (handleType: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDragging(handleType);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startTop: marginTop,
+      startBottom: marginBottom,
+      startLeft: marginLeft,
+      startRight: marginRight,
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !dragStartRef.current || !cropContainerRef.current) return;
+      const rect = cropContainerRef.current.getBoundingClientRect();
+      const deltaX_px = e.clientX - dragStartRef.current.startX;
+      const deltaY_px = e.clientY - dragStartRef.current.startY;
+
+      const deltaX_mm = Math.round((deltaX_px / rect.width) * pageWidthMm);
+      const deltaY_mm = Math.round((deltaY_px / rect.height) * pageHeightMm);
+
+      const maxH = pageHeightMm - 20;
+      const maxW = pageWidthMm - 20;
+
+      if (isDragging === 'top' || isDragging === 'nw' || isDragging === 'ne') {
+        const newTop = Math.max(
+          0,
+          Math.min(
+            maxH - dragStartRef.current.startBottom,
+            dragStartRef.current.startTop + deltaY_mm,
+          ),
+        );
+        setMarginTop(newTop);
+      }
+      if (isDragging === 'bottom' || isDragging === 'sw' || isDragging === 'se') {
+        const newBottom = Math.max(
+          0,
+          Math.min(
+            maxH - dragStartRef.current.startTop,
+            dragStartRef.current.startBottom - deltaY_mm,
+          ),
+        );
+        setMarginBottom(newBottom);
+      }
+      if (isDragging === 'left' || isDragging === 'nw' || isDragging === 'sw') {
+        const newLeft = Math.max(
+          0,
+          Math.min(
+            maxW - dragStartRef.current.startRight,
+            dragStartRef.current.startLeft + deltaX_mm,
+          ),
+        );
+        setMarginLeft(newLeft);
+      }
+      if (isDragging === 'right' || isDragging === 'ne' || isDragging === 'se') {
+        const newRight = Math.max(
+          0,
+          Math.min(
+            maxW - dragStartRef.current.startLeft,
+            dragStartRef.current.startRight - deltaX_mm,
+          ),
+        );
+        setMarginRight(newRight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(null);
+        dragStartRef.current = null;
+      }
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, pageHeightMm, pageWidthMm]);
+
+  // PARSEO DE PÁGINAS PERSONALIZADAS
+  const parsedCustomPages = useMemo(() => {
+    if (cropScope !== 'custom') return [];
+    const pages = new Set<number>();
+    customPagesInput.split(',').forEach((part) => {
+      const trimmed = part.trim();
+      if (trimmed.includes('-')) {
+        const [start, end] = trimmed.split('-').map((n) => parseInt(n.trim(), 10));
+        if (!isNaN(start) && !isNaN(end)) {
+          for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
+            if (i >= 1 && i <= totalPages) pages.add(i);
+          }
+        }
+      } else {
+        const num = parseInt(trimmed, 10);
+        if (!isNaN(num) && num >= 1 && num <= totalPages) pages.add(num);
+      }
+    });
+    return Array.from(pages).sort((a, b) => a - b);
+  }, [cropScope, customPagesInput, totalPages]);
+
+  // CÁLCULO DE MÉTRICAS Y RESUMEN DINÁMICO EN TIEMPO REAL
+  const liveSummary = useMemo(() => {
+    if (totalPages === 0) return null;
+
+    let affectedPagesCount = 0;
+    let scopeLabel = '';
+
+    if (cropScope === 'all') {
+      affectedPagesCount = totalPages;
+      scopeLabel = isEs ? 'Todas las páginas' : 'All pages';
+    } else if (cropScope === 'even') {
+      affectedPagesCount = Math.floor(totalPages / 2);
+      scopeLabel = isEs ? 'Páginas pares' : 'Even pages';
+    } else if (cropScope === 'odd') {
+      affectedPagesCount = Math.ceil(totalPages / 2);
+      scopeLabel = isEs ? 'Páginas impares' : 'Odd pages';
+    } else if (cropScope === 'current') {
+      affectedPagesCount = 1;
+      scopeLabel = isEs ? `Página ${currentPage}` : `Page ${currentPage}`;
+    } else {
+      affectedPagesCount = parsedCustomPages.length;
+      scopeLabel = isEs
+        ? `${affectedPagesCount} páginas seleccionadas`
+        : `${affectedPagesCount} custom pages`;
+    }
+
+    const finalWidthMm = Math.max(10, pageWidthMm - marginLeft - marginRight);
+    const finalHeightMm = Math.max(10, pageHeightMm - marginTop - marginBottom);
+    const originalArea = pageWidthMm * pageHeightMm;
+    const finalArea = finalWidthMm * finalHeightMm;
+    const areaReductionPercent = Math.max(
+      0,
+      Math.round(((originalArea - finalArea) / originalArea) * 100),
+    );
+
+    return {
+      affectedPagesCount,
+      scopeLabel,
+      finalWidthMm,
+      finalHeightMm,
+      areaReductionPercent,
+    };
+  }, [
+    totalPages,
+    cropScope,
+    currentPage,
+    parsedCustomPages,
+    pageWidthMm,
+    pageHeightMm,
+    marginLeft,
+    marginRight,
+    marginTop,
+    marginBottom,
+    isEs,
+  ]);
 
   // EJECUCIÓN CON WEB WORKER
   const executeCrop = async () => {
@@ -228,7 +503,11 @@ export default function PdfCropper() {
     }
 
     if (isEncrypted && !isUnlocked) {
-      toast.error(isEs ? 'Desbloquea el PDF con su contraseña antes de procesar' : 'Unlock PDF with password before processing');
+      toast.error(
+        isEs
+          ? 'Desbloquea el PDF con su contraseña antes de procesar'
+          : 'Unlock PDF with password before processing',
+      );
       return;
     }
 
@@ -240,7 +519,9 @@ export default function PdfCropper() {
       const buffer = await file.arrayBuffer();
       const bufferCopy = buffer.slice(0);
 
-      const worker = new Worker(new URL('../workers/pdf-crop.worker.ts', import.meta.url), { type: 'module' });
+      const worker = new Worker(new URL('../workers/pdf-crop.worker.ts', import.meta.url), {
+        type: 'module',
+      });
 
       const payload: CropWorkerMessageIn = {
         action: 'crop',
@@ -255,34 +536,36 @@ export default function PdfCropper() {
           marginRight,
           cropScope,
           currentPage,
+          customPages: cropScope === 'custom' ? parsedCustomPages : undefined,
           metadata: {
             title: docTitle.trim() || undefined,
             author: docAuthor.trim() || undefined,
             subject: docSubject.trim() || undefined,
-          }
-        }
+          },
+        },
       };
 
-      const result = await new Promise<{ buffer: ArrayBuffer; totalPages: number }>((resolve, reject) => {
-        worker.onmessage = (e: MessageEvent<CropWorkerMessageOut>) => {
-          const msg = e.data;
-          if (msg.type === 'progress') {
-            setProgressPercent(msg.percent);
-            setProgressMsg(msg.message);
-          } else if (msg.type === 'result') {
-            resolve({
-              buffer: msg.buffer,
-              totalPages: msg.totalPages,
-            });
-          } else if (msg.type === 'error') {
-            reject(new Error(msg.message));
-          }
-        };
+      const result = await new Promise<{ buffer: ArrayBuffer; totalPages: number }>(
+        (resolve, reject) => {
+          worker.onmessage = (e: MessageEvent<CropWorkerMessageOut>) => {
+            const msg = e.data;
+            if (msg.type === 'progress') {
+              setProgressPercent(msg.percent);
+              setProgressMsg(msg.message);
+            } else if (msg.type === 'result') {
+              resolve({
+                buffer: msg.buffer,
+                totalPages: msg.totalPages,
+              });
+            } else if (msg.type === 'error') {
+              reject(new Error(msg.message));
+            }
+          };
 
-        worker.onerror = (err) => reject(err);
-
-        worker.postMessage(payload, [bufferCopy]);
-      });
+          worker.onerror = (err) => reject(err);
+          worker.postMessage(payload, [bufferCopy]);
+        },
+      );
 
       worker.terminate();
 
@@ -304,10 +587,15 @@ export default function PdfCropper() {
       });
 
       setProgressPercent(100);
-      toast.success(isEs ? '¡Márgenes del PDF recortados con éxito!' : 'PDF margins cropped successfully!');
+      toast.success(
+        isEs ? '¡Márgenes del PDF recortados con éxito!' : 'PDF margins cropped successfully!',
+      );
     } catch (error: any) {
       console.error(error);
-      toast.error(error?.message || (isEs ? 'Error al recortar los márgenes del PDF' : 'Error cropping PDF margins'));
+      toast.error(
+        error?.message ||
+          (isEs ? 'Error al recortar los márgenes del PDF' : 'Error cropping PDF margins'),
+      );
     } finally {
       setIsProcessing(false);
       setProgressMsg('');
@@ -324,22 +612,37 @@ export default function PdfCropper() {
 
   return (
     <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
-      <input type="file" accept=".pdf" className="hidden" ref={fileInputRef} onChange={handleFileChange} disabled={isProcessing} />
+      <input
+        type="file"
+        accept=".pdf"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        disabled={isProcessing}
+      />
 
       {/* HEADER SUPERIOR UNIFICADO */}
-      <div ref={topHeaderRef} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
+      <div
+        ref={topHeaderRef}
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono"
+      >
         <div className="flex items-center gap-4">
-          <Link href="/organizar" className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10">
-            <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? "Volver" : "Back"}
+          <Link
+            href="/organizar"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? 'Volver' : 'Back'}
           </Link>
           <div className="hidden sm:block h-5 w-px bg-white/10" />
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-              {isEs ? "002 / RECORTE Y AJUSTE DE MÁRGENES PDF" : "002 / PDF MARGIN CROPPING & ADJUSTMENT"}
+              {isEs
+                ? '002 / RECORTE Y AJUSTE DE MÁRGENES PDF'
+                : '002 / PDF MARGIN CROPPING & ADJUSTMENT'}
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Crop className="w-6 h-6 text-white flex-shrink-0" />
-              {isEs ? "RECORTAR MÁRGENES DE DOCUMENTOS PDF" : "CROP PDF MARGINS"}
+              {isEs ? 'RECORTAR MÁRGENES DE DOCUMENTOS PDF' : 'CROP PDF MARGINS'}
             </h1>
           </div>
         </div>
@@ -347,18 +650,22 @@ export default function PdfCropper() {
         {completedResult ? (
           <div className="flex items-center gap-2.5 bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl text-xs font-mono text-white">
             <FileText className="w-4 h-4 text-emerald-400" />
-            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">{completedResult.filename}</span>
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">
+              {completedResult.filename}
+            </span>
           </div>
         ) : file ? (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
+                {file.name}
+              </span>
             </div>
-            <button 
-              onClick={removeFile} 
+            <button
+              onClick={removeFile}
               className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
-              title={isEs ? "Quitar archivo" : "Remove file"}
+              title={isEs ? 'Quitar archivo' : 'Remove file'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -392,7 +699,9 @@ export default function PdfCropper() {
               </div>
               <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
                 <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">{isEs ? 'Estado del proceso' : 'Process status'}</div>
+                  <div className="text-[10px] text-zinc-400 font-bold">
+                    {isEs ? 'Estado del proceso' : 'Process status'}
+                  </div>
                   <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
@@ -402,19 +711,25 @@ export default function PdfCropper() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Tamaño Original' : 'Original Size'}
+                </span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5">
                   {completedResult.originalSize}
                 </span>
               </div>
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Procesadas' : 'Processed Pages'}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
+                </span>
                 <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
                   {completedResult.totalPages} {isEs ? 'Páginas' : 'Pages'}
                 </span>
               </div>
               <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Modo de Procesamiento' : 'Processing Mode'}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
+                </span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5">
                   {isEs ? 'Recorte Box Nativo' : 'Native Box Crop'}
                 </span>
@@ -435,7 +750,7 @@ export default function PdfCropper() {
         </motion.div>
       ) : !file ? (
         /* VISTA DROPZONE VACÍA */
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => fileInputRef.current?.click()}
@@ -445,46 +760,84 @@ export default function PdfCropper() {
             <UploadCloud className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
-            {isEs ? "RECORTAR MÁRGENES DE DOCUMENTOS PDF" : "CROP PDF MARGINS"}
+            {isEs ? 'RECORTAR MÁRGENES DE DOCUMENTOS PDF' : 'CROP PDF MARGINS'}
           </h2>
           <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
-            {isEs ? "Recorta los márgenes superior, inferior y laterales de tu PDF de forma 100% confidencial y local." : "Crop top, bottom, left, and right margins of your PDF 100% locally."}
+            {isEs
+              ? 'Recorta los márgenes superior, inferior y laterales de tu PDF con control interactivo 100% local.'
+              : 'Crop top, bottom, left, and right margins of your PDF with interactive control 100% locally.'}
           </p>
-          <button 
+          <button
             type="button"
             className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4 text-black" />
-            <span>{isEs ? "Seleccionar Archivo PDF" : "Select PDF File"}</span>
+            <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
           </button>
 
           <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isEs ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL' : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}</span>
+            <span>
+              {isEs
+                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
+                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+            </span>
           </div>
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PANEL DE CONTROL Y VISOR DE PÁGINA */
-        <motion.div 
+        /* VISTA PRINCIPAL CON PANEL DE CONTROL Y VISOR INTERACTIVO CROPBOX */
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
-          {/* LADO IZQUIERDO: VISOR INTERACTIVO CROP BOX */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
+          {/* LADO IZQUIERDO: VISOR INTERACTIVO CROP BOX CON HANDLES ARRASTRABLES */}
+          <div className="lg:col-span-7 xl:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col h-[750px] lg:h-[830px] max-h-[850px] overflow-hidden">
+            {/* CABECERA DE LA VISTA PREVIA */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold shrink-0">
               <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
-                <span>{isEs ? `001 / VISTA PREVIA Y ÁREA CONSERVADA` : `001 / PREVIEW & CONSERVED AREA`}</span>
+                <span>
+                  {isEs ? `001 / VISOR CROPBOX INTERACTIVO` : `001 / INTERACTIVE CROPBOX VIEWER`}
+                </span>
               </div>
 
-              {/* NAVEGADOR DE PÁGINAS Y CONTROLES */}
+              {/* NAVEGADOR DE PÁGINAS Y CONTROLES DE ZOOM */}
               <div className="flex items-center gap-2">
+                {/* ZOOM CONTROLS */}
+                <div className="flex items-center bg-zinc-900 border border-white/10 rounded-lg p-0.5 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomLevel((prev) => Math.max(0.8, parseFloat((prev - 0.2).toFixed(1))))
+                    }
+                    className="p-1 text-zinc-400 hover:text-white rounded transition-colors"
+                    title={isEs ? 'Reducir Zoom' : 'Zoom Out'}
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[10px] text-zinc-300 font-bold px-1 min-w-[32px] text-center">
+                    {Math.round(zoomLevel * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomLevel((prev) => Math.min(2.0, parseFloat((prev + 0.2).toFixed(1))))
+                    }
+                    className="p-1 text-zinc-400 hover:text-white rounded transition-colors"
+                    title={isEs ? 'Aumentar Zoom' : 'Zoom In'}
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* PAGINADOR */}
                 <div className="flex items-center gap-1 bg-zinc-900 border border-white/10 px-2 py-1 rounded-xl text-xs font-mono">
                   <button
-                    type="button" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage <= 1}
-                    className="p-1 text-zinc-400 hover:text-white disabled:opacity-30 cursor-pointer"
+                    className="p-0.5 text-zinc-400 hover:text-white disabled:opacity-30 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -492,14 +845,16 @@ export default function PdfCropper() {
                     {currentPage} / {totalPages}
                   </span>
                   <button
-                    type="button" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage >= totalPages}
-                    className="p-1 text-zinc-400 hover:text-white disabled:opacity-30 cursor-pointer"
+                    className="p-0.5 text-zinc-400 hover:text-white disabled:opacity-30 cursor-pointer"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
+
+                <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
                 </div>
               </div>
@@ -507,15 +862,21 @@ export default function PdfCropper() {
 
             {/* PASSWORD WIDGET FOR ENCRYPTED PDF */}
             {isEncrypted && !isUnlocked && (
-              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4 space-y-2 font-mono text-xs">
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-3 space-y-2 font-mono text-xs shrink-0">
                 <div className="flex items-center gap-2 text-amber-400 font-bold">
                   <Lock className="w-4 h-4" />
-                  <span>{isEs ? "Este PDF está protegido con contraseña" : "This PDF is password protected"}</span>
+                  <span>
+                    {isEs
+                      ? 'Este PDF está protegido con contraseña'
+                      : 'This PDF is password protected'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="password"
-                    placeholder={isEs ? "Ingresa la contraseña de apertura..." : "Enter open password..."}
+                    placeholder={
+                      isEs ? 'Ingresa la contraseña de apertura...' : 'Enter open password...'
+                    }
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
@@ -526,121 +887,259 @@ export default function PdfCropper() {
                     className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 font-mono"
                   >
                     <Unlock className="w-3.5 h-3.5" />
-                    <span>{isEs ? "Desbloquear" : "Unlock"}</span>
+                    <span>{isEs ? 'Desbloquear' : 'Unlock'}</span>
                   </button>
                 </div>
               </div>
             )}
 
-            {/* DETALLES DEL ARCHIVO CARGADO */}
-            <div className="bg-zinc-950 border border-white/10 p-3 rounded-xl mb-4 flex items-center justify-between font-mono text-xs">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <FileText className="w-5 h-5 text-white flex-shrink-0" />
+            {/* DETALLES DEL ARCHIVO CARGADO Y DIMENSIONES DINÁMICAS */}
+            <div className="bg-zinc-950 border border-white/10 p-2.5 rounded-xl mb-3 flex items-center justify-between font-mono text-xs shrink-0">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <FileText className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                 <div className="truncate">
-                  <span className="text-white font-bold block truncate">{file.name}</span>
-                  <span className="text-[10px] text-zinc-400">{formatFileSize(file.size)} • {pageSize.width}x{pageSize.height}px • {totalPages} {isEs ? 'páginas en total' : 'total pages'}</span>
+                  <span className="text-white font-bold block truncate text-xs">{file.name}</span>
+                  <span className="text-[10px] text-zinc-400">
+                    {formatFileSize(file.size)} • Original: {pageWidthMm}×{pageHeightMm} mm •{' '}
+                    {totalPages} {isEs ? 'páginas' : 'pages'}
+                  </span>
                 </div>
               </div>
-              <button type="button" onClick={removeFile} className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors">
-                <Trash2 className="w-4 h-4" />
-              </button>
+
+              {liveSummary && (
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-md font-bold">
+                    📐 {liveSummary.finalWidthMm} × {liveSummary.finalHeightMm} mm
+                  </span>
+                  {liveSummary.areaReductionPercent > 0 && (
+                    <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-md font-bold">
+                      -{liveSummary.areaReductionPercent}%
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* CONTENEDOR CANVAS DE PÁGINA CON OVERLAY DE MÁRGENES DE RECORTE (CROP BOX) */}
-            <div className="relative w-full flex-1 min-h-0 bg-zinc-950 rounded-xl overflow-hidden flex items-center justify-center p-3 sm:p-4 shadow-inner border border-white/5 font-mono">
+            {/* CONTENEDOR CANVAS DE PÁGINA CON OVERLAY DE MÁRGENES DE RECORTE INTERACTIVO */}
+            <div
+              ref={cropContainerRef}
+              className="relative w-full flex-1 min-h-0 bg-zinc-950 rounded-xl overflow-hidden flex items-center justify-center p-3 shadow-inner border border-white/5 font-mono select-none"
+            >
               {pageDataUrl ? (
-                <div className="relative inline-block max-h-full max-w-full shadow-2xl rounded overflow-hidden">
+                <div
+                  className="relative inline-block max-h-full max-w-full shadow-2xl rounded transition-transform duration-200"
+                  style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
+                >
+                  {/* IMAGEN DE LA PÁGINA */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={pageDataUrl}
                     alt={`Página ${currentPage}`}
-                    className="max-h-[580px] w-auto max-w-full object-contain block rounded shadow-2xl bg-white"
+                    draggable={false}
+                    className="max-h-[520px] w-auto max-w-full object-contain block rounded shadow-2xl bg-white select-none pointer-events-none"
                   />
 
-                  {/* OVERLAY VISUAL DE MÁRGENES DE RECORTE (CROP BOX DE ALTO CONTRASTE) */}
-                  <div 
-                    className="absolute border-2 border-dashed border-cyan-400 bg-cyan-400/10 pointer-events-none transition-all duration-150 rounded shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_12px_rgba(6,182,212,0.8)]"
+                  {/* OVERLAY VISUAL DE MÁRGENES DE RECORTE (CROP BOX INTERACTIVO) */}
+                  <div
+                    className="absolute border-2 border-dashed border-cyan-400 bg-cyan-400/10 rounded shadow-[0_0_0_9999px_rgba(0,0,0,0.5),0_0_15px_rgba(6,182,212,0.6)] transition-all duration-75"
                     style={{
-                      top: `${(marginTop / 297) * 100}%`,
-                      bottom: `${(marginBottom / 297) * 100}%`,
-                      left: `${(marginLeft / 210) * 100}%`,
-                      right: `${(marginRight / 210) * 100}%`,
+                      top: `${(marginTop / pageHeightMm) * 100}%`,
+                      bottom: `${(marginBottom / pageHeightMm) * 100}%`,
+                      left: `${(marginLeft / pageWidthMm) * 100}%`,
+                      right: `${(marginRight / pageWidthMm) * 100}%`,
                     }}
                   >
-                    <div className="absolute top-1.5 left-2 bg-cyan-400 text-black text-[9px] font-mono font-extrabold px-2 py-0.5 rounded shadow-lg flex items-center gap-1 uppercase tracking-wider">
+                    {/* ETIQUETA EN VIVO DE ÁREA CONSERVADA */}
+                    <div className="absolute top-1.5 left-2 bg-cyan-400 text-black text-[9px] font-mono font-extrabold px-2 py-0.5 rounded shadow-lg flex items-center gap-1 uppercase tracking-wider select-none pointer-events-none">
                       <Crop className="w-3 h-3 text-black" />
                       <span>{isEs ? 'Área Conservada' : 'Conserved Area'}</span>
                     </div>
+
+                    {/* MANEJADORES DE LAS 4 ESQUINAS (HANDLES NW, NE, SW, SE) */}
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('nw', e)}
+                      className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-cyan-400 rounded-sm cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+                      title={isEs ? 'Arrastrar esquina superior izquierda' : 'Drag top-left corner'}
+                    />
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('ne', e)}
+                      className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-cyan-400 rounded-sm cursor-nesw-resize shadow-md hover:scale-125 transition-transform"
+                      title={isEs ? 'Arrastrar esquina superior derecha' : 'Drag top-right corner'}
+                    />
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('sw', e)}
+                      className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-cyan-400 rounded-sm cursor-nesw-resize shadow-md hover:scale-125 transition-transform"
+                      title={
+                        isEs ? 'Arrastrar esquina inferior izquierda' : 'Drag bottom-left corner'
+                      }
+                    />
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('se', e)}
+                      className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-cyan-400 rounded-sm cursor-nwse-resize shadow-md hover:scale-125 transition-transform"
+                      title={
+                        isEs ? 'Arrastrar esquina inferior derecha' : 'Drag bottom-right corner'
+                      }
+                    />
+
+                    {/* MANEJADORES DE LOS 4 BORDES (HANDLES TOP, BOTTOM, LEFT, RIGHT) */}
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('top', e)}
+                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-8 h-3 bg-cyan-400 rounded-full cursor-ns-resize shadow-md hover:scale-110 transition-transform"
+                      title={isEs ? 'Arrastrar margen superior' : 'Drag top margin'}
+                    />
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('bottom', e)}
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-8 h-3 bg-cyan-400 rounded-full cursor-ns-resize shadow-md hover:scale-110 transition-transform"
+                      title={isEs ? 'Arrastrar margen inferior' : 'Drag bottom margin'}
+                    />
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('left', e)}
+                      className="absolute top-1/2 -translate-y-1/2 -left-1.5 h-8 w-3 bg-cyan-400 rounded-full cursor-ew-resize shadow-md hover:scale-110 transition-transform"
+                      title={isEs ? 'Arrastrar margen izquierdo' : 'Drag left margin'}
+                    />
+                    <div
+                      onMouseDown={(e) => handleMouseDownOnHandle('right', e)}
+                      className="absolute top-1/2 -translate-y-1/2 -right-1.5 h-8 w-3 bg-cyan-400 rounded-full cursor-ew-resize shadow-md hover:scale-110 transition-transform"
+                      title={isEs ? 'Arrastrar margen derecho' : 'Drag right margin'}
+                    />
                   </div>
 
+                  {/* BOTÓN EXPANDIR FULLSCREEN */}
                   <button
-                    type="button" onClick={() => setPreviewZoom(true)}
+                    type="button"
+                    onClick={() => setPreviewZoom(true)}
                     className="absolute bottom-2 right-2 p-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-white rounded-lg border border-white/20 shadow-md cursor-pointer transition-transform hover:scale-105"
-                    title={isEs ? "Zoom" : "Zoom"}
+                    title={isEs ? 'Pantalla completa' : 'Fullscreen'}
                   >
-                    <ZoomIn className="w-3.5 h-3.5" />
+                    <Maximize2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
-                  <span className="text-xs text-zinc-400">{isEs ? 'Renderizando vista previa HD...' : 'Rendering HD preview...'}</span>
+                  <span className="text-xs text-zinc-400">
+                    {isEs ? 'Renderizando vista previa HD...' : 'Rendering HD preview...'}
+                  </span>
                 </div>
               )}
             </div>
 
+            {/* MINI TIRA DE NAVEGACIÓN RÁPIDA ENTRE PÁGINAS */}
+            {totalPages > 1 && (
+              <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0 py-1">
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider shrink-0 font-mono">
+                  {isEs ? 'Saltar a pág:' : 'Jump to pg:'}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {miniThumbnails.length > 0
+                    ? miniThumbnails.map((thumb) => (
+                        <button
+                          key={thumb.pageNum}
+                          type="button"
+                          onClick={() => setCurrentPage(thumb.pageNum)}
+                          className={`relative w-9 h-11 rounded-lg border overflow-hidden transition-all cursor-pointer shrink-0 ${
+                            currentPage === thumb.pageNum
+                              ? 'border-cyan-400 ring-2 ring-cyan-400/40 bg-zinc-900'
+                              : 'border-white/10 hover:border-white/30 bg-zinc-950 opacity-70 hover:opacity-100'
+                          }`}
+                          title={
+                            isEs ? `Ir a página ${thumb.pageNum}` : `Go to page ${thumb.pageNum}`
+                          }
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={thumb.dataUrl}
+                            alt={`Pg ${thumb.pageNum}`}
+                            className="w-full h-full object-contain"
+                          />
+                          <span className="absolute bottom-0 right-0 left-0 bg-black/80 text-[8px] text-center font-bold text-white font-mono">
+                            {thumb.pageNum}
+                          </span>
+                        </button>
+                      ))
+                    : Array.from({ length: Math.min(totalPages, 12) }, (_, i) => i + 1).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`px-2 py-1 rounded-md text-[10px] font-mono font-bold border transition-all ${
+                            currentPage === p
+                              ? 'bg-white text-black border-white shadow'
+                              : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]">
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
+          {/* LADO DERECHO: PANEL DE CONTROL (ALTURA NATURAL SIN SCROLL FORZADO) */}
+          <div className="lg:col-span-5 xl:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-5">
+            <div className="space-y-4">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-4 pb-3 border-b border-white/10">
+              <div className="mb-3 pb-3 border-b border-white/10">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>
                 <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? "PANEL DE CONTROL" : "CONTROL PANEL"}</span>
+                  <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
                   <Sliders className="w-5 h-5 text-white" />
                 </h2>
               </div>
 
-              {/* MODO DE ALCANCE DEL RECORTE */}
-              <div className="space-y-4 font-mono text-xs mb-5">
+              {/* 1. MODO DE ALCANCE DEL RECORTE */}
+              <div className="space-y-3 font-mono text-xs">
                 <div>
-                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">{isEs ? "Alcance del Recorte:" : "Crop Scope:"}</label>
+                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2 font-bold">
+                    {isEs ? 'Alcance del Recorte:' : 'Crop Scope:'}
+                  </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     <button
-                      type="button" onClick={() => setCropScope('all')}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'all' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      type="button"
+                      onClick={() => setCropScope('all')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'all'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
                       }`}
                     >
                       {isEs ? 'Todas' : 'All'}
                     </button>
 
                     <button
-                      type="button" onClick={() => setCropScope('even')}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'even' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      type="button"
+                      onClick={() => setCropScope('even')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'even'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
                       }`}
                     >
                       {isEs ? 'Pares' : 'Evens'}
                     </button>
 
                     <button
-                      type="button" onClick={() => setCropScope('odd')}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'odd' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      type="button"
+                      onClick={() => setCropScope('odd')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'odd'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
                       }`}
                     >
                       {isEs ? 'Impares' : 'Odds'}
                     </button>
 
                     <button
-                      type="button" onClick={() => setCropScope('current')}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'current' ? 'bg-white text-black border-white shadow-md' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      type="button"
+                      onClick={() => setCropScope('current')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'current'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
                       }`}
                     >
                       {isEs ? 'Actual' : 'Current'}
@@ -648,216 +1147,425 @@ export default function PdfCropper() {
                   </div>
                 </div>
 
-                {/* MÁRGENES DE RECORTE (MM) */}
-                <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-3">
+                {/* ALCANCE PERSONALIZADO SI SE DESEA */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCropScope(cropScope === 'custom' ? 'all' : 'custom')}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      cropScope === 'custom'
+                        ? 'bg-white text-black border-white'
+                        : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Filter className="w-3 h-3" />
+                    <span>{isEs ? 'Rango Personalizado' : 'Custom Range'}</span>
+                  </button>
+
+                  {cropScope === 'custom' && (
+                    <input
+                      type="text"
+                      placeholder="Ej: 1-5, 8, 12"
+                      value={customPagesInput}
+                      onChange={(e) => setCustomPagesInput(e.target.value)}
+                      className="flex-1 bg-zinc-900 border border-white/20 rounded-lg py-1 px-2.5 text-xs text-white outline-none focus:border-white/50 font-mono"
+                    />
+                  )}
+                </div>
+
+                {/* 2. MÁRGENES DE RECORTE EN MM CON VINCULACIÓN */}
+                <div className="bg-zinc-950 p-3.5 rounded-xl border border-white/10 space-y-3">
                   <div className="flex items-center justify-between text-[11px] font-bold text-white">
-                    <span>{isEs ? 'Márgenes de Recorte (mm):' : 'Crop Margins (mm):'}</span>
-                    <button type="button" onClick={resetMargins} className="text-zinc-400 hover:text-white transition-colors">
-                      <RefreshCw className="w-3.5 h-3.5" />
-                    </button>
+                    <span className="flex items-center gap-1.5">
+                      <Crop className="w-3.5 h-3.5 text-cyan-400" />
+                      {isEs ? 'Márgenes de Recorte (mm):' : 'Crop Margins (mm):'}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      {/* BOTÓN VINCULAR MÁRGENES */}
+                      <button
+                        type="button"
+                        onClick={() => setIsLinkedMargins(!isLinkedMargins)}
+                        className={`p-1.5 rounded-lg border text-xs transition-colors flex items-center gap-1 ${
+                          isLinkedMargins
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                            : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                        }`}
+                        title={
+                          isEs ? 'Vincular/desvincular todos los márgenes' : 'Link/unlink margins'
+                        }
+                      >
+                        {isLinkedMargins ? (
+                          <LinkIcon className="w-3 h-3 text-cyan-400" />
+                        ) : (
+                          <Unlink className="w-3 h-3" />
+                        )}
+                        <span className="text-[10px]">
+                          {isLinkedMargins
+                            ? isEs
+                              ? 'Vinculados'
+                              : 'Linked'
+                            : isEs
+                              ? 'Libres'
+                              : 'Free'}
+                        </span>
+                      </button>
+
+                      {/* RESET */}
+                      <button
+                        type="button"
+                        onClick={resetMargins}
+                        className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors"
+                        title={isEs ? 'Restablecer márgenes a 0' : 'Reset margins to 0'}
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">{isEs ? 'Superior (Top):' : 'Top:'}</span>
+                      <span className="text-[10px] text-zinc-400 block">
+                        {isEs ? 'Superior (Top):' : 'Top:'}
+                      </span>
                       <input
-                        type="number" min={0} max={100} value={marginTop}
-                        onChange={(e) => setMarginTop(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-white/50"
+                        type="number"
+                        min={0}
+                        max={150}
+                        value={marginTop}
+                        onChange={(e) => updateMargin('top', parseInt(e.target.value, 10) || 0)}
+                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">{isEs ? 'Inferior (Bottom):' : 'Bottom:'}</span>
+                      <span className="text-[10px] text-zinc-400 block">
+                        {isEs ? 'Inferior (Bottom):' : 'Bottom:'}
+                      </span>
                       <input
-                        type="number" min={0} max={100} value={marginBottom}
-                        onChange={(e) => setMarginBottom(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-white/50"
+                        type="number"
+                        min={0}
+                        max={150}
+                        value={marginBottom}
+                        onChange={(e) => updateMargin('bottom', parseInt(e.target.value, 10) || 0)}
+                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">{isEs ? 'Izquierdo (Left):' : 'Left:'}</span>
+                      <span className="text-[10px] text-zinc-400 block">
+                        {isEs ? 'Izquierdo (Left):' : 'Left:'}
+                      </span>
                       <input
-                        type="number" min={0} max={100} value={marginLeft}
-                        onChange={(e) => setMarginLeft(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-white/50"
+                        type="number"
+                        min={0}
+                        max={150}
+                        value={marginLeft}
+                        onChange={(e) => updateMargin('left', parseInt(e.target.value, 10) || 0)}
+                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">{isEs ? 'Derecho (Right):' : 'Right:'}</span>
+                      <span className="text-[10px] text-zinc-400 block">
+                        {isEs ? 'Derecho (Right):' : 'Right:'}
+                      </span>
                       <input
-                        type="number" min={0} max={100} value={marginRight}
-                        onChange={(e) => setMarginRight(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-white/50"
+                        type="number"
+                        min={0}
+                        max={150}
+                        value={marginRight}
+                        onChange={(e) => updateMargin('right', parseInt(e.target.value, 10) || 0)}
+                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* PREAJUSTES RÁPIDOS EN 1-CLIC */}
+                {/* PREAJUSTES RÁPIDOS PROFESIONALES */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? 'Preajustes Rápido:' : 'Quick Presets:'}</span>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'Preajustes de Recorte:' : 'Crop Presets:'}
+                  </span>
+                  <div className="grid grid-cols-4 gap-1.5">
                     <button
-                      type="button" onClick={() => applyPreset(0)}
-                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center font-mono"
+                      type="button"
+                      onClick={() => applyPreset(0, 0, 0, 0, 'Sin Recorte')}
+                      className="py-1.5 px-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold rounded-xl border border-white/10 text-[11px] transition-colors cursor-pointer text-center"
                     >
                       0 mm
                     </button>
                     <button
-                      type="button" onClick={() => applyPreset(10)}
-                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center font-mono"
+                      type="button"
+                      onClick={() => applyPreset(5, 5, 5, 5, 'Bordes Limpios (5mm)')}
+                      className="py-1.5 px-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold rounded-xl border border-white/10 text-[11px] transition-colors cursor-pointer text-center"
+                    >
+                      5 mm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPreset(10, 10, 10, 10, 'Estándar (10mm)')}
+                      className="py-1.5 px-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold rounded-xl border border-white/10 text-[11px] transition-colors cursor-pointer text-center"
                     >
                       10 mm
                     </button>
                     <button
-                      type="button" onClick={() => applyPreset(20)}
-                      className="py-2 px-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-white/10 text-xs transition-colors cursor-pointer text-center font-mono"
+                      type="button"
+                      onClick={() => applyPreset(15, 15, 0, 0, 'Cabecera y Pie')}
+                      className="py-1.5 px-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold rounded-xl border border-white/10 text-[11px] transition-colors cursor-pointer text-center"
+                      title={isEs ? 'Eliminar 15mm arriba y abajo' : 'Remove 15mm top and bottom'}
                     >
-                      20 mm
+                      {isEs ? 'Cab/Pie' : 'Top/Bot'}
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
-              <div className="pt-4 border-t border-white/10 my-4 space-y-3 font-mono">
-                <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
-                  <Sliders className="w-4 h-4 text-white" />
-                  <span>{isEs ? "Opciones Avanzadas PDFBLACK" : "PDFBLACK Advanced Options"}</span>
-                </div>
-
+              {/* SECCIÓN DE OPCIONES AVANZADAS Y METADATOS PLEGABLES */}
+              <div className="pt-3 border-t border-white/10 space-y-3 font-mono">
                 <div>
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">{isEs ? "Prefijo del Archivo Resultante:" : "Output File Prefix:"}</label>
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
+                    {isEs ? 'Prefijo del Archivo Resultante:' : 'Output File Prefix:'}
+                  </label>
                   <input
-                    type="text" value={filePrefix} onChange={(e) => setFilePrefix(e.target.value)}
+                    type="text"
+                    value={filePrefix}
+                    onChange={(e) => setFilePrefix(e.target.value)}
                     placeholder="Documento_Recortado"
                     className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
                   />
                 </div>
 
                 <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">{isEs ? "AJUSTES DE NUMERACIÓN" : "NUMBERING SETTINGS"}</label>
-                  
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'AJUSTES DE NUMERACIÓN' : 'NUMBERING SETTINGS'}
+                  </label>
+
                   <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                    <input 
-                      type="checkbox" checked={renumberPages} onChange={(e) => setRenumberPages(e.target.checked)}
-                      className="accent-white w-4 h-4 rounded"
+                    <input
+                      type="checkbox"
+                      checked={renumberPages}
+                      onChange={(e) => setRenumberPages(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded cursor-pointer"
                     />
-                    <span>{isEs ? "Re-numerar páginas en pie de página (Página N / M)" : "Re-number footer pages (Page N / M)"}</span>
+                    <span>
+                      {isEs
+                        ? 'Re-numerar páginas en pie de página (Página N / M)'
+                        : 'Re-number footer pages (Page N / M)'}
+                    </span>
                   </label>
                 </div>
 
-                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
-                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">{isEs ? "METADATOS DEL PDF RECORTADO" : "CROPPED PDF METADATA"}</label>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Título:" : "Title:"}</label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? "Ej: Documento_Ajustado_2026" : "Ex: Cropped_Document_2026"}
-                      value={docTitle}
-                      onChange={(e) => setDocTitle(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Autor / Organización:" : "Author / Organization:"}</label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? "Ej: Mi Empresa S.A." : "Ex: Company Inc."}
-                      value={docAuthor}
-                      onChange={(e) => setDocAuthor(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">{isEs ? "Asunto / Descripción:" : "Subject / Description:"}</label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? "Ej: Ajuste de márgenes de escaneo" : "Ex: Margin crop adjustment"}
-                      value={docSubject}
-                      onChange={(e) => setDocSubject(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
+                {/* METADATOS DEL DOCUMENTO RESULTANTE (PLEGABLE CON ACCORDEON) */}
+                <div className="bg-zinc-950/70 rounded-xl border border-white/10 overflow-hidden font-mono">
+                  <button
+                    type="button"
+                    onClick={() => setShowMetadata(!showMetadata)}
+                    className="w-full p-2.5 flex items-center justify-between text-left hover:bg-zinc-900/60 transition-colors cursor-pointer"
+                  >
+                    <span className="text-[10px] text-zinc-300 uppercase tracking-wider font-bold flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-zinc-400" />
+                      {isEs ? 'Metadatos del PDF (Opcional)' : 'PDF Metadata (Optional)'}
+                    </span>
+                    {showMetadata ? (
+                      <ChevronUp className="w-3.5 h-3.5 text-zinc-400" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                    )}
+                  </button>
+
+                  {showMetadata && (
+                    <div className="p-3 pt-1 border-t border-white/5 space-y-2">
+                      <div>
+                        <label className="text-[10px] text-zinc-400 block mb-1">
+                          {isEs ? 'Título:' : 'Title:'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={
+                            isEs ? 'Ej: Documento_Ajustado_2026' : 'Ex: Cropped_Document_2026'
+                          }
+                          value={docTitle}
+                          onChange={(e) => setDocTitle(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-zinc-400 block mb-1">
+                          {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
+                          value={docAuthor}
+                          onChange={(e) => setDocAuthor(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-zinc-400 block mb-1">
+                          {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={
+                            isEs
+                              ? 'Ej: Ajuste de márgenes de escaneo'
+                              : 'Ex: Margin crop adjustment'
+                          }
+                          value={docSubject}
+                          onChange={(e) => setDocSubject(e.target.value)}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-4 border-t border-white/10 font-sans">
+            {/* TARJETA DE RESUMEN EN VIVO & BOTÓN PRINCIPAL */}
+            <div className="pt-3 border-t border-white/10 space-y-3">
+              {/* TARJETA DE RESUMEN DINÁMICO EN VIVO */}
+              {liveSummary && (
+                <div className="bg-zinc-950 border border-cyan-500/30 rounded-xl p-3 font-mono text-xs flex items-center justify-between shadow-inner">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-zinc-400 uppercase font-bold block">
+                      {isEs ? 'Resumen del recorte' : 'Crop summary'}
+                    </span>
+                    <span className="text-white font-bold text-xs">
+                      {liveSummary.scopeLabel} • {liveSummary.finalWidthMm}×
+                      {liveSummary.finalHeightMm} mm
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded font-bold">
+                      {liveSummary.affectedPagesCount}{' '}
+                      {liveSummary.affectedPagesCount === 1 ? 'pág' : 'págs'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* BARRA DE PROGRESO */}
               {isProcessing && (
-                <div className="mb-3 space-y-1.5 font-mono">
+                <div className="space-y-1.5 font-mono">
                   <div className="flex justify-between text-[10px] font-bold text-zinc-300">
                     <span className="truncate max-w-[200px]">{progressMsg}</span>
                     <span>{progressPercent}%</span>
                   </div>
                   <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                    <div style={{ width: `${progressPercent}%` }} className="h-full bg-white transition-all duration-300" />
+                    <div
+                      style={{ width: `${progressPercent}%` }}
+                      className="h-full bg-cyan-400 transition-all duration-300"
+                    />
                   </div>
                 </div>
               )}
 
-              <button 
-                onClick={executeCrop} 
-                disabled={isProcessing || !file || (isEncrypted && !isUnlocked)} 
+              <button
+                onClick={executeCrop}
+                disabled={isProcessing || !file || (isEncrypted && !isUnlocked)}
                 className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
-                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : <Sparkles className="w-5 h-5 text-black" />}
+                {isProcessing ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-black" />
+                ) : (
+                  <Sparkles className="w-5 h-5 text-black" />
+                )}
                 <span>
-                  {isProcessing 
-                    ? progressMsg 
-                    : (!file 
-                        ? (isEs ? 'Selecciona un archivo PDF' : 'Select a PDF file') 
-                        : (isEs ? 'Recortar Márgenes del PDF →' : 'Crop PDF Margins →'))}
+                  {isProcessing
+                    ? progressMsg
+                    : !file
+                      ? isEs
+                        ? 'Selecciona un archivo PDF'
+                        : 'Select a PDF file'
+                      : isEs
+                        ? 'Recortar Márgenes del PDF →'
+                        : 'Crop PDF Margins →'}
                 </span>
               </button>
             </div>
-
           </div>
         </motion.div>
       )}
 
       {/* MODAL ZOOM DE PREVISUALIZACIÓN DE HOJA CON CROP BOX */}
-      {previewZoom && pageDataUrl && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 font-mono">
-          <div className="bg-zinc-900 border border-white/20 p-6 rounded-2xl max-w-xl w-full flex flex-col items-center gap-4 relative shadow-2xl">
-            <button
-              type="button" onClick={() => setPreviewZoom(false)}
-              className="absolute top-4 right-4 p-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl"
+      <AnimatePresence>
+        {previewZoom && pageDataUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 font-mono"
+            onClick={() => setPreviewZoom(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#09090b] border border-white/20 p-6 rounded-2xl max-w-2xl w-full flex flex-col items-center gap-4 relative shadow-2xl"
             >
-              <X className="w-5 h-5" />
-            </button>
-            <h4 className="text-white font-bold text-sm">
-              {isEs ? `Previsualización Recorte - Página ${currentPage}` : `Crop Preview - Page ${currentPage}`}
-            </h4>
-            <div className="w-full max-h-[70vh] bg-zinc-950 rounded-xl overflow-hidden p-2 flex items-center justify-center shadow-inner relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <div className="relative inline-block max-h-[65vh] max-w-full overflow-hidden rounded">
-                <img src={pageDataUrl} alt="Preview Zoom" className="max-h-[65vh] object-contain block rounded bg-white" />
-                <div 
-                  className="absolute border-2 border-dashed border-cyan-400 bg-cyan-400/10 pointer-events-none rounded shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_12px_rgba(6,182,212,0.8)]"
-                  style={{
-                    top: `${(marginTop / 297) * 100}%`,
-                    bottom: `${(marginBottom / 297) * 100}%`,
-                    left: `${(marginLeft / 210) * 100}%`,
-                    right: `${(marginRight / 210) * 100}%`,
-                  }}
-                >
-                  <div className="absolute top-1.5 left-2 bg-cyan-400 text-black text-[9px] font-mono font-extrabold px-2 py-0.5 rounded shadow-lg flex items-center gap-1 uppercase tracking-wider">
-                    <Crop className="w-3 h-3 text-black" />
-                    <span>{isEs ? 'Área Conservada' : 'Conserved Area'}</span>
+              <button
+                type="button"
+                onClick={() => setPreviewZoom(false)}
+                className="absolute top-4 right-4 p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-xl border border-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2">
+                <Crop className="w-4 h-4 text-cyan-400" />
+                <h4 className="text-white font-bold text-sm">
+                  {isEs
+                    ? `Previsualización Recorte - Página ${currentPage} de ${totalPages}`
+                    : `Crop Preview - Page ${currentPage} of ${totalPages}`}
+                </h4>
+              </div>
+
+              <div className="w-full max-h-[70vh] bg-zinc-950 rounded-xl overflow-hidden p-3 flex items-center justify-center shadow-inner relative border border-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <div className="relative inline-block max-h-[65vh] max-w-full overflow-hidden rounded">
+                  <img
+                    src={pageDataUrl}
+                    alt="Preview Zoom"
+                    className="max-h-[65vh] object-contain block rounded bg-white shadow-2xl"
+                  />
+                  <div
+                    className="absolute border-2 border-dashed border-cyan-400 bg-cyan-400/10 pointer-events-none rounded shadow-[0_0_0_9999px_rgba(0,0,0,0.5),0_0_15px_rgba(6,182,212,0.7)]"
+                    style={{
+                      top: `${(marginTop / pageHeightMm) * 100}%`,
+                      bottom: `${(marginBottom / pageHeightMm) * 100}%`,
+                      left: `${(marginLeft / pageWidthMm) * 100}%`,
+                      right: `${(marginRight / pageWidthMm) * 100}%`,
+                    }}
+                  >
+                    <div className="absolute top-1.5 left-2 bg-cyan-400 text-black text-[9px] font-mono font-extrabold px-2 py-0.5 rounded shadow-lg flex items-center gap-1 uppercase tracking-wider">
+                      <Crop className="w-3 h-3 text-black" />
+                      <span>{isEs ? 'Área Conservada' : 'Conserved Area'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
 
+              {liveSummary && (
+                <div className="text-xs text-zinc-400 font-mono">
+                  {isEs ? 'Dimensiones estimadas:' : 'Estimated dimensions:'}{' '}
+                  <strong className="text-cyan-400 font-bold">
+                    {liveSummary.finalWidthMm} × {liveSummary.finalHeightMm} mm
+                  </strong>{' '}
+                  (
+                  {isEs
+                    ? `Reducción de área: ${liveSummary.areaReductionPercent}%`
+                    : `Area reduction: ${liveSummary.areaReductionPercent}%`}
+                  )
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

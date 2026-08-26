@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
-export type CropScope = 'all' | 'even' | 'odd' | 'current';
+export type CropScope = 'all' | 'even' | 'odd' | 'current' | 'custom';
 
 export interface CropWorkerOptions {
   filePrefix: string;
@@ -11,6 +11,7 @@ export interface CropWorkerOptions {
   marginRight: number;
   cropScope: CropScope;
   currentPage: number;
+  customPages?: number[];
   metadata?: {
     title?: string;
     author?: string;
@@ -37,7 +38,11 @@ self.onmessage = async (e: MessageEvent<CropWorkerMessageIn>) => {
 
   try {
     const postProgress = (percent: number, message: string) => {
-      (self as unknown as Worker).postMessage({ type: 'progress', percent, message } as CropWorkerMessageOut);
+      (self as unknown as Worker).postMessage({
+        type: 'progress',
+        percent,
+        message,
+      } as CropWorkerMessageOut);
     };
 
     postProgress(10, 'Cargando estructura del documento PDF...');
@@ -58,7 +63,18 @@ self.onmessage = async (e: MessageEvent<CropWorkerMessageIn>) => {
       throw new Error('El documento PDF no contiene páginas válidas para procesar.');
     }
 
-    const { filePrefix, renumberPages, marginTop, marginBottom, marginLeft, marginRight, cropScope, currentPage, metadata } = options;
+    const {
+      filePrefix,
+      renumberPages,
+      marginTop,
+      marginBottom,
+      marginLeft,
+      marginRight,
+      cropScope,
+      currentPage,
+      customPages,
+      metadata,
+    } = options;
 
     postProgress(30, 'Calculando coordenadas de márgenes en CropBox...');
 
@@ -87,6 +103,8 @@ self.onmessage = async (e: MessageEvent<CropWorkerMessageIn>) => {
       else if (cropScope === 'even' && pageNum % 2 === 0) shouldCrop = true;
       else if (cropScope === 'odd' && pageNum % 2 !== 0) shouldCrop = true;
       else if (cropScope === 'current' && pageNum === currentPage) shouldCrop = true;
+      else if (cropScope === 'custom' && customPages && customPages.includes(pageNum))
+        shouldCrop = true;
 
       if (shouldCrop) {
         const { width, height } = page.getSize();
@@ -114,7 +132,7 @@ self.onmessage = async (e: MessageEvent<CropWorkerMessageIn>) => {
     const resultBytes = await pdfDoc.save();
     const resultBuffer = resultBytes.buffer.slice(
       resultBytes.byteOffset,
-      resultBytes.byteOffset + resultBytes.byteLength
+      resultBytes.byteOffset + resultBytes.byteLength,
     ) as ArrayBuffer;
 
     postProgress(100, '¡Documento PDF recortado con éxito!');
@@ -124,7 +142,7 @@ self.onmessage = async (e: MessageEvent<CropWorkerMessageIn>) => {
         buffer: resultBuffer,
         totalPages,
       } as CropWorkerMessageOut,
-      [resultBuffer]
+      [resultBuffer],
     );
   } catch (error: any) {
     (self as unknown as Worker).postMessage({

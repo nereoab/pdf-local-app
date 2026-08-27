@@ -1,33 +1,26 @@
 'use client';
 
-import { useFileStore } from '../../store/useFileStore';
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { Suspense, useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { motion, AnimatePresence, animate } from 'framer-motion';
+import { motion, animate } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   ArrowRight,
-  ShieldCheck,
   Edit3,
-  Type,
-  PenTool,
-  Hash,
-  ShieldAlert,
   FileText,
-  X,
+  Type,
+  Hash,
+  PenTool,
+  Droplet,
+  ScanText,
+  ShieldCheck,
   HardDrive,
   Clock,
-  Search,
-  Star,
-  Eye,
-  Download,
-  Trash2,
-  Bot,
-  CheckCircle2,
-  FolderOpen,
   Sparkles,
   Lock,
+  CheckCircle2,
+  Stamp,
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
@@ -38,78 +31,83 @@ function EditarContent() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
-  const [isAiOpen, setIsAiOpen] = useState(false);
+  const emptySubscribe = () => () => {};
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   const editingTools = [
     {
       id: 'texto',
-      tagEs: '001 / TEXTO E IMÁGENES',
-      tagEn: '001 / TEXT & IMAGES',
-      titleEs: 'Editar Texto e Imágenes',
-      titleEn: 'Edit Text & Images',
-      descEs:
-        'Edita texto e imágenes directamente en tu PDF sin perder el formato original del documento.',
-      descEn: 'Edit text and images directly in your PDF without losing original layout.',
+      tagEs: '001 / AGREGAR CONTENIDO',
+      tagEn: '001 / ADD CONTENT',
+      titleEs: 'Editar Texto PDF',
+      titleEn: 'Edit PDF Text',
+      descEs: 'Inserta párrafos, títulos y anotaciones con tipografías personalizadas.',
+      descEn: 'Insert paragraphs, titles, and annotations with custom fonts.',
       icon: Type,
       path: '/editar/texto',
     },
     {
-      id: 'foliado',
-      tagEs: '002 / FOLIADO Y NÚMEROS',
-      tagEn: '002 / PAGE NUMBERS',
-      titleEs: 'Poner Números a Páginas (Foliado)',
-      titleEn: 'Add Page Numbers (Folios)',
-      descEs:
-        'Añade números correlativos y foliados personalizados en el encabezado o pie de página.',
-      descEn: 'Add consecutive page numbers and customized folios in headers or footers.',
+      id: 'foliar',
+      tagEs: '002 / NUMERACIÓN DE HOJAS',
+      tagEn: '002 / PAGE NUMBERING',
+      titleEs: 'Foliar PDF',
+      titleEn: 'Number PDF Pages',
+      descEs: 'Numera correlativamente páginas de expedientes legales o informes técnicos.',
+      descEn: 'Add consecutive page numbering for legal files or technical reports.',
       icon: Hash,
       path: '/editar/foliar',
     },
     {
-      id: 'poner-marca-agua',
-      tagEs: '003 / SELLO DE AGUA',
-      tagEn: '003 / ADD WATERMARK',
-      titleEs: 'Poner Sello de Agua',
-      titleEn: 'Add Watermark',
-      descEs: 'Inserta sellos de agua personalizados en texto o imagen en todo el documento PDF.',
-      descEn: 'Insert customized text or image watermarks across the entire PDF document.',
-      icon: ShieldAlert,
+      id: 'firmar',
+      tagEs: '003 / FIRMA DIGITAL',
+      tagEn: '003 / DIGITAL SIGNATURE',
+      titleEs: 'Firmar PDF',
+      titleEn: 'Sign PDF',
+      descEs: 'Dibuja o sube tu firma manuscrita y posiciónala en cualquier hoja.',
+      descEn: 'Draw or upload your handwritten signature and place it on any page.',
+      icon: PenTool,
+      path: '/editar/firmar',
+    },
+    {
+      id: 'marca-agua',
+      tagEs: '004 / SELLO DE AGUA',
+      tagEn: '004 / WATERMARK STAMP',
+      titleEs: 'Marca de Agua',
+      titleEn: 'Watermark PDF',
+      descEs: 'Aplica sellos de CONFIDENCIAL o logotipos transparentes a tus documentos.',
+      descEn: 'Apply CONFIDENTIAL stamps or transparent logos to your documents.',
+      icon: Droplet,
       path: '/editar/marca-agua',
     },
     {
-      id: 'quitar-marca-agua',
-      tagEs: '004 / QUITAR SELLO DE AGUA',
-      tagEn: '004 / REMOVE WATERMARK',
-      titleEs: 'Quitar Sello de Agua',
-      titleEn: 'Remove Watermark',
-      descEs: 'Detecta y remueve sellos o marcas de agua existentes de un documento PDF.',
-      descEn: 'Detect and remove existing watermarks or stamps from a PDF document.',
-      icon: Sparkles,
-      path: '/editar/quitar-marca-agua',
-    },
-    {
-      id: 'firmar',
-      tagEs: '005 / FIRMA DIGITAL',
-      tagEn: '005 / DIGITAL SIGNATURE',
-      titleEs: 'Firmar PDF',
-      titleEn: 'Sign PDF',
-      descEs: 'Dibuja, escribe o sube una imagen de tu firma para estamparla en el documento.',
-      descEn: 'Draw, type, or upload an image of your signature to stamp on the document.',
-      icon: PenTool,
-      path: '/editar/firma',
-    },
-    {
       id: 'ocr',
-      tagEs: '006 / OCR RECONOCIMIENTO',
-      tagEn: '006 / SEARCHABLE OCR',
-      titleEs: 'OCR PDF (Texto Seleccionable)',
-      titleEn: 'OCR PDF (Selectable Text)',
-      descEs: 'Convierte un PDF escaneado o imágenes en un documento PDF con texto seleccionable.',
-      descEn: 'Convert scanned PDF or images into a PDF with selectable text.',
-      icon: Search,
+      tagEs: '005 / RECONOCIMIENTO OCR',
+      tagEn: '005 / OCR RECOGNITION',
+      titleEs: 'OCR en PDF',
+      titleEn: 'PDF OCR',
+      descEs: 'Convierte documentos escaneados en texto seleccionable y editable.',
+      descEn: 'Convert scanned documents into selectable and editable text.',
+      icon: ScanText,
       path: '/editar/ocr',
     },
+    {
+      id: 'quitar-marca-agua',
+      tagEs: '006 / LIMPIAR MARCAS',
+      tagEn: '006 / REMOVE MARKS',
+      titleEs: 'Quitar Marca de Agua',
+      titleEn: 'Remove Watermark',
+      descEs: 'Limpia sellos y superposiciones no deseadas de tu archivo PDF.',
+      descEn: 'Clean unwanted stamps and overlays from your PDF file.',
+      icon: Stamp,
+      path: '/editar/quitar-marca-agua',
+    },
   ];
+
+  if (!isMounted) return null;
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
@@ -140,8 +138,8 @@ function EditarContent() {
                 </div>
                 <p className="text-zinc-300 text-xs sm:text-sm font-mono mt-1">
                   {isEs
-                    ? 'Selecciona el módulo de edición que deseas aplicar sobre tu documento:'
-                    : 'Select the editing module you wish to apply to your document:'}
+                    ? 'Agrega texto, folios, firmas y marcas de agua a tu documento PDF:'
+                    : 'Add text, folios, signatures, and watermarks to your PDF document:'}
                 </p>
               </div>
             </div>
@@ -253,315 +251,213 @@ function EditarContent() {
             })}
           </div>
 
-          {/* SECCIÓN: 3 PASOS PARA TRABAJAR PDF */}
-          <div className="w-full mt-14 pt-10 border-t border-zinc-800 flex flex-col items-center font-mono">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-4 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-              {isEs ? '000 / PASOS DE EDICIÓN' : '000 / EDITING STEPS'}
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-8 font-sans">
-              {isEs ? 'Solo 3 pasos para editar tu PDF' : 'Only 3 steps to edit your PDF'}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-              {/* PASO 1 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  1
+          {/* SECCIÓN DE 4 PUNTOS ESTANDARIZADA MONOCROMÁTICA */}
+          <div className="w-full mt-4 space-y-8 font-sans">
+            {/* 1. CÓMO FUNCIONA PASO A PASO */}
+            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
+                <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
+                  <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '1. Elige una herramienta' : '1. Select a tool'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
                   {isEs
-                    ? 'Selecciona la función que necesitas: Texto, Foliar, Firmar, Sello o OCR.'
-                    : 'Choose the function you need: Text, Folios, Sign, Watermark, or OCR.'}
-                </p>
-              </SpotlightCard>
+                    ? '1. Cómo editar archivos PDF paso a paso'
+                    : '1. How to edit PDF files step by step'}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    step: '01',
+                    es: 'Selecciona la herramienta deseada o sube tu documento PDF.',
+                    en: 'Select desired tool or upload your PDF document.',
+                  },
+                  {
+                    step: '02',
+                    es: 'El visor carga las páginas y capas de edición en la memoria local.',
+                    en: 'The viewer loads pages and editing layers into local memory.',
+                  },
+                  {
+                    step: '03',
+                    es: 'Agrega texto, folios, firmas, sellos o aplica OCR según necesites.',
+                    en: 'Add text, folios, signatures, watermarks or apply OCR as needed.',
+                  },
+                  {
+                    step: '04',
+                    es: 'Guarda los cambios y descarga tu PDF editado con máxima resolución.',
+                    en: 'Save changes and download your edited PDF with maximum resolution.',
+                  },
+                ].map((item, i) => (
+                  <SpotlightCard
+                    key={i}
+                    className="bg-zinc-800/80 border border-zinc-600 rounded-2xl p-5 flex flex-col gap-2.5 shadow-md"
+                  >
+                    <span className="text-[10px] font-mono font-bold text-white bg-zinc-800 border border-zinc-500 px-2.5 py-0.5 rounded-full w-fit shadow-sm">
+                      Paso {item.step}
+                    </span>
+                    <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+                      {isEs ? item.es : item.en}
+                    </p>
+                  </SpotlightCard>
+                ))}
+              </div>
+            </SpotlightCard>
 
-              {/* PASO 2 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  2
+            {/* 2. LIMITACIONES Y CONSEJOS ÚTILES */}
+            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
+                <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '2. Personaliza tu PDF' : '2. Customize your PDF'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
-                  {isEs
-                    ? 'Aplica tus cambios directamente en el visor de edición con procesamiento local.'
-                    : 'Apply your changes directly in the editing viewer with local execution.'}
-                </p>
-              </SpotlightCard>
-
-              {/* PASO 3 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  3
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
+                  {isEs ? '2. Limitaciones y consejos útiles' : '2. Limitations & useful tips'}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-3 bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 shadow-md">
+                  <h4 className="text-xs font-mono text-white font-bold uppercase tracking-wider border-b border-zinc-700 pb-2.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                    {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
+                  </h4>
+                  {[
+                    isEs
+                      ? 'Agregar texto nuevo, firmas manuscritas y números de folios correlativos.'
+                      : 'Add new text, handwritten signatures, and sequential page numbering.',
+                    isEs
+                      ? 'Aplicar marcas de agua de seguridad y sellos notariales vectoriales.'
+                      : 'Apply security watermarks and vector notarial stamps.',
+                    isEs
+                      ? 'Reconocimiento óptico de caracteres (OCR) para hacer texto seleccionable.'
+                      : 'Optical character recognition (OCR) to make text selectable.',
+                    isEs
+                      ? 'Conservar fuentes vectoriales y maquetación original sin compresión destructiva.'
+                      : 'Preserve vector fonts and original layout without lossy compression.',
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                      <span className="text-white font-bold flex-shrink-0 mt-0.5">•</span>
+                      <span>{t}</span>
+                    </div>
+                  ))}
                 </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '3. Descarga instantánea' : '3. Instant download'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
-                  {isEs
-                    ? 'Obtén tu documento final 100% procesado de forma privada en tu navegador.'
-                    : 'Get your final document 100% processed privately in your browser.'}
-                </p>
-              </SpotlightCard>
-            </div>
-          </div>
-
-          {/* SECCIÓN DETALLADA: ¿QUÉ SUCEDE CON TU ARCHIVO PDF Y EXPLICACIÓN DE HERRAMIENTAS DE EDICIÓN */}
-          <div className="w-full mt-12 space-y-8 font-sans">
-            {/* BLOQUE 1: ¿QUÉ SUCEDE CON TU ARCHIVO PDF? (PRIVACIDAD Y SEGURIDAD LOCAL) */}
-            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-              <div className="flex items-center gap-3.5 mb-6">
-                <div className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md">
-                  <ShieldCheck className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-extrabold text-white tracking-tight">
-                    {isEs
-                      ? '¿Qué sucede exactamente con tu archivo PDF al editarlo?'
-                      : 'What exactly happens to your PDF file when edited?'}
-                  </h3>
-                  <span className="text-xs font-mono text-zinc-200 font-bold flex items-center gap-1.5 mt-0.5">
+                <div className="space-y-3 bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 shadow-md">
+                  <h4 className="text-xs font-mono text-zinc-200 font-bold uppercase tracking-wider border-b border-zinc-700 pb-2.5 flex items-center gap-1.5">
                     <Lock className="w-3.5 h-3.5 text-white" />
-                    {isEs
-                      ? 'PRIVACIDAD ABSOLUTA • PROCESAMIENTO 100% LOCAL EN RAM • SIN SERVIDORES'
-                      : 'ABSOLUTE PRIVACY • 100% LOCAL RAM PROCESSING • ZERO SERVERS'}
-                  </span>
+                    {isEs ? 'CONSEJOS RECOMENDADOS' : 'RECOMMENDED TIPS'}
+                  </h4>
+                  {[
+                    isEs
+                      ? 'Usa imágenes con fondo transparente (PNG) para firmas digitales más nítidas.'
+                      : 'Use transparent PNG images for sharper, professional digital signatures.',
+                    isEs
+                      ? 'Verifica la orientación y rango de hojas antes de foliar expedientes extensos.'
+                      : 'Verify page orientation and range before numbering large dossiers.',
+                    isEs
+                      ? 'Emplea navegadores modernos para máximo rendimiento en la edición vectorial.'
+                      : 'Use modern browsers for maximum vector editing and rendering performance.',
+                    isEs
+                      ? 'Todo el procesamiento se ejecuta de forma 100% local en tu memoria RAM.'
+                      : 'All processing completes 100% locally in your browser RAM.',
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                      <span className="text-zinc-200 flex-shrink-0 mt-0.5">→</span>
+                      <span>{t}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
+            </SpotlightCard>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
+            {/* 3. PRIVACIDAD Y PROCESAMIENTO LOCAL */}
+            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
+                <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
+                  <ShieldCheck className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
+                  {isEs
+                    ? '3. ¿Qué sucede con tu documento al editarlo?'
+                    : '3. What happens to your document when editing it?'}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs text-zinc-300 leading-relaxed">
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
                     <HardDrive className="w-4 h-4 text-white" />
-                    {isEs ? '1. Ejecución Local en tu Navegador' : '1. Local Browser Execution'}
+                    {isEs ? 'Procesamiento 100% local' : '100% local processing'}
                   </strong>
-                  <p className="font-normal text-zinc-300">
+                  <p className="text-xs text-zinc-300 font-normal">
                     {isEs
-                      ? 'Tu documento PDF se carga y procesa exclusivamente dentro de la memoria RAM de tu propio navegador. Ningún byte o página de tu archivo se envía a servidores externos ni a almacenamiento en la nube.'
-                      : 'Your PDF document is loaded and processed exclusively within your browser RAM. Zero bytes or pages are uploaded to external servers or cloud storage.'}
+                      ? 'La edición ocurre íntegramente en la memoria RAM de tu navegador. Ningún byte o dato confidencial sale de tu dispositivo.'
+                      : 'Editing occurs strictly inside your browser RAM. Zero bytes or confidential data leave your device.'}
                   </p>
                 </SpotlightCard>
-
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
                     <Lock className="w-4 h-4 text-white" />
-                    {isEs
-                      ? '2. Conservación de Formato y Estructura'
-                      : '2. Format & Layout Integrity'}
+                    {isEs ? 'Seguridad y confidencialidad' : 'Security & confidentiality'}
                   </strong>
-                  <p className="font-normal text-zinc-300">
+                  <p className="text-xs text-zinc-300 font-normal">
                     {isEs
-                      ? 'La edición modifica únicamente las capas de contenido seleccionadas (texto, foliado, sellos de agua o firmas). El documento conserva intacta su resolución original, fuentes vectoriales y maquetación.'
-                      : 'Editing only alters the selected content layers (text, folios, watermarks, or signatures). The document preserves its original resolution, vector fonts, and layout.'}
+                      ? 'Tus contratos, facturas y firmas permanecen privadas y protegidas sin rastreadores ni accesos externos.'
+                      : 'Your contracts, invoices, and signatures remain private and protected without trackers.'}
                   </p>
                 </SpotlightCard>
-
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
                     <Sparkles className="w-4 h-4 text-white" />
-                    {isEs ? '3. Purga Automática de Memoria' : '3. Automatic Memory Purge'}
+                    {isEs ? 'Descarga directa' : 'Direct download'}
                   </strong>
-                  <p className="font-normal text-zinc-300">
+                  <p className="text-xs text-zinc-300 font-normal">
                     {isEs
-                      ? 'Una vez descargado el PDF editado o al cerrar la ventana, la memoria RAM libera automáticamente todos los datos procesados, garantizando la confidencialidad de tus contratos, facturas o archivos personales.'
-                      : 'Once the edited PDF is downloaded or the tab is closed, browser RAM automatically purges all processed buffers, guaranteeing privacy for confidential files.'}
+                      ? 'El documento resultante se genera al instante con calidad profesional y queda disponible de inmediato.'
+                      : 'The resulting document generates instantly with professional quality and is ready immediately.'}
                   </p>
                 </SpotlightCard>
               </div>
             </SpotlightCard>
 
-            {/* BLOQUE 2: GUÍA EXPLICATIVA DE TODAS LAS HERRAMIENTAS DE EDICIÓN */}
+            {/* 4. PREGUNTAS FRECUENTES */}
             <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
               <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
                 <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
-                  <Edit3 className="w-5 h-5 text-white" />
+                  <HardDrive className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-extrabold text-white tracking-tight font-sans">
-                    {isEs
-                      ? 'Herramientas disponibles en el Módulo de Edición'
-                      : 'Available Tools in the Editing Module'}
-                  </h3>
-                  <p className="text-xs text-zinc-300 font-mono">
-                    {isEs
-                      ? 'Conoce en detalle las 6 funciones avanzadas para personalizar tus documentos PDF.'
-                      : 'Learn in detail about the 6 advanced functions to customize your PDF documents.'}
-                  </p>
-                </div>
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
+                  {isEs ? '4. Preguntas Frecuentes' : '4. Frequently Asked Questions'}
+                </h3>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 font-sans">
-                {editingTools.map((tool) => (
+              <div className="space-y-4">
+                {[
+                  {
+                    qEs: '¿Las firmas y textos añadidos conservan la calidad vectorial?',
+                    qEn: 'Do added signatures and text preserve vector quality?',
+                    aEs: 'Sí. Todos los textos, números de folios y sellos se incrustan como vectores de alta precisión, garantizando nitidez perfecta al imprimir o hacer zoom.',
+                    aEn: 'Yes. All texts, page numbers, and stamps are embedded as high-precision vectors, ensuring crisp output when printing or zooming.',
+                  },
+                  {
+                    qEs: '¿Mis documentos editados quedan guardados en algún servidor?',
+                    qEn: 'Are my edited documents saved on any server?',
+                    aEs: 'No. Toda la edición se ejecuta de manera local y autónoma en tu navegador; al cerrar la pestaña los datos se purgan de inmediato.',
+                    aEn: 'No. All editing runs locally and autonomously in your browser; once you close the tab, all memory buffers are purged immediately.',
+                  },
+                ].map((faq, i) => (
                   <SpotlightCard
-                    key={tool.id}
-                    className="bg-zinc-800/80 border border-zinc-600 hover:border-white rounded-2xl p-5 transition-all flex flex-col justify-between shadow-md"
+                    key={i}
+                    className="bg-zinc-800/80 border border-zinc-600 rounded-2xl p-5 space-y-2 shadow-md"
                   >
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-2.5">
-                        <div className="p-2 rounded-lg bg-zinc-800 border border-zinc-500 text-white">
-                          <tool.icon className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-[10px] font-mono text-zinc-300 font-bold tracking-wider">
-                          {isEs ? tool.tagEs : tool.tagEn}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-bold text-white mb-2">
-                        {isEs ? tool.titleEs : tool.titleEn}
-                      </h4>
-                      <p className="text-xs text-zinc-300 leading-relaxed font-normal">
-                        {isEs ? tool.descEs : tool.descEn}
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-zinc-700 flex items-center justify-between text-[11px] font-mono text-zinc-200 font-bold">
-                      <span className="flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-white" /> 100% Local
-                      </span>
-                      <span className="text-zinc-400 font-sans font-normal">
-                        {isEs ? 'Sin Servidores' : 'No Servers'}
-                      </span>
-                    </div>
+                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                      <span className="text-white font-mono font-bold">Q:</span>{' '}
+                      {isEs ? faq.qEs : faq.qEn}
+                    </h4>
+                    <p className="text-xs text-zinc-300 leading-relaxed pl-5 font-normal">
+                      {isEs ? faq.aEs : faq.aEn}
+                    </p>
                   </SpotlightCard>
                 ))}
               </div>
             </SpotlightCard>
           </div>
-
-          {/* TABLA DE ARCHIVOS RECIENTES */}
-          <div className="relative z-10 mt-12 sm:mt-16 font-sans">
-            <SpotlightCard className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl mb-12">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-zinc-700 pb-5">
-                <div className="flex items-center gap-3">
-                  <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
-                    <FolderOpen className="w-4 h-4 text-white" />
-                  </div>
-                  <h3 className="text-base font-bold text-white font-mono tracking-tight flex items-center gap-2">
-                    <span>007 /</span> {isEs ? 'ARCHIVOS RECIENTES' : 'RECENT FILES'}
-                  </h3>
-                </div>
-
-                <div className="relative w-full sm:w-72 font-mono">
-                  <Search className="w-3.5 h-3.5 text-zinc-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder={isEs ? 'Buscar archivos...' : 'Search files...'}
-                    className="w-full bg-zinc-900 border border-zinc-600 rounded-full py-2 pl-9 pr-4 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-mono whitespace-nowrap">
-                  <thead>
-                    <tr className="border-b border-zinc-700">
-                      <th className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider pl-2">
-                        {isEs ? 'NOMBRE DEL ARCHIVO' : 'FILE NAME'}
-                      </th>
-                      <th className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider">
-                        {isEs ? 'TAMAÑO' : 'SIZE'}
-                      </th>
-                      <th className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider">
-                        {isEs ? 'ACCIÓN REALIZADA' : 'ACTION PERFORMED'}
-                      </th>
-                      <th className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider">
-                        {isEs ? 'ESTADO' : 'STATUS'}
-                      </th>
-                      <th className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider text-right pr-2">
-                        {isEs ? 'ACCIONES' : 'ACTIONS'}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-700/80 text-zinc-200">
-                    <TableRow
-                      name="Documento_Editado_v1.pdf"
-                      size="3.1 MB"
-                      action={isEs ? 'Texto & Firma Editados' : 'Text & Signature Edited'}
-                      status={isEs ? 'Completado' : 'Completed'}
-                      icon={FileText}
-                    />
-                    <TableRow
-                      name="Expediente_Foliado.pdf"
-                      size="8.4 MB"
-                      action={isEs ? 'Folios Agregados (1-42)' : 'Page Numbers Added (1-42)'}
-                      status={isEs ? 'Completado' : 'Completed'}
-                      icon={Hash}
-                    />
-                    <TableRow
-                      name="Contrato_Protegido.pdf"
-                      size="1.2 MB"
-                      action={isEs ? 'Cifrado con Contraseña' : 'Encrypted with Password'}
-                      status={isEs ? 'Completado' : 'Completed'}
-                      icon={ShieldCheck}
-                    />
-                  </tbody>
-                </table>
-              </div>
-            </SpotlightCard>
-          </div>
         </motion.div>
-      </div>
-
-      {/* ASISTENTE IA */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
-        <AnimatePresence>
-          {isAiOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="mb-4 w-80 sm:w-96 bg-[#0a0a0d] border border-zinc-600 rounded-3xl shadow-2xl overflow-hidden font-mono"
-            >
-              <div className="bg-zinc-900 p-4 border-b border-zinc-700 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-white animate-ping" />
-                  <Sparkles className="w-4 h-4 text-white" />
-                  <span className="font-bold text-white text-xs tracking-wider">
-                    {isEs ? '008 / ASISTENTE LOCAL' : '008 / LOCAL ASSISTANT'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setIsAiOpen(false)}
-                  className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="p-4 h-44 flex flex-col justify-end bg-[#0a0a0d]">
-                <div className="bg-zinc-800 border border-zinc-600 p-3.5 rounded-2xl rounded-bl-none w-[90%] mb-2 shadow-md">
-                  <p className="text-xs text-zinc-200 font-sans">
-                    {isEs
-                      ? '¡Hola! Estoy listo para ayudarte a editar tus archivos PDF de forma 100% local.'
-                      : 'Hello! I am ready to help you edit your PDF files 100% locally.'}
-                  </p>
-                </div>
-              </div>
-              <div className="p-3 border-t border-zinc-700 bg-zinc-900">
-                <input
-                  type="text"
-                  placeholder={isEs ? '$ Escribe una consulta...' : '$ Type a command...'}
-                  className="w-full bg-zinc-950 border border-zinc-600 rounded-xl px-3 py-2 text-xs font-mono text-white placeholder-zinc-400 focus:outline-none focus:border-white transition-colors"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="relative group">
-          <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-zinc-800 border border-zinc-600 rounded-full text-xs font-mono text-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
-            {isEs ? '$ asistente-local' : '$ local-assistant'}
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsAiOpen(!isAiOpen)}
-            className="bg-white text-black hover:bg-zinc-200 p-3.5 rounded-full shadow-2xl transition-all cursor-pointer border border-white"
-          >
-            <Bot className="w-5 h-5 text-black" />
-          </motion.button>
-        </div>
       </div>
     </div>
   );
@@ -633,73 +529,6 @@ function KpiPill({
         </div>
       )}
     </div>
-  );
-}
-
-function TableRow({
-  name,
-  size,
-  action,
-  status,
-  icon: Icon,
-}: {
-  name: string;
-  size: string;
-  action: string;
-  status: string;
-  icon: React.ElementType;
-}) {
-  const { lang } = useLanguage();
-  const isEs = lang === 'es';
-
-  return (
-    <tr className="border-b border-zinc-700/80 hover:bg-zinc-800/40 transition-colors group">
-      <td className="py-3.5 pl-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-zinc-800 rounded-xl border border-zinc-600 group-hover:border-zinc-400 transition-colors text-white shadow-sm">
-            <Icon className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-sans font-semibold text-xs text-white group-hover:text-white transition-colors">
-            {name}
-          </span>
-        </div>
-      </td>
-      <td className="py-3.5 text-zinc-300 text-xs font-mono">{size}</td>
-      <td className="py-3.5 text-zinc-300 text-xs font-mono">{action}</td>
-      <td className="py-3.5">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 border border-zinc-600 text-white text-xs font-mono font-bold shadow-sm">
-          <CheckCircle2 className="w-3 h-3 text-white" /> {status}
-        </span>
-      </td>
-      <td className="py-3.5 pr-2 text-right">
-        <div className="flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity duration-200">
-          <button
-            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-            title={isEs ? 'Favorito' : 'Favorite'}
-          >
-            <Star className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-            title={isEs ? 'Vista Previa' : 'Preview'}
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-            title={isEs ? 'Descargar' : 'Download'}
-          >
-            <Download className="w-3.5 h-3.5" />
-          </button>
-          <button
-            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-            title={isEs ? 'Eliminar' : 'Delete'}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </td>
-    </tr>
   );
 }
 

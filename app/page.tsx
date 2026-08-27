@@ -158,34 +158,22 @@ const categories = [
     descEs:
       'Edición directa de texto, firmas digitales, folios correlativos y marcas de agua sobre el documento.',
     descEn: 'Direct text editing, digital signatures, page numbering, and watermarks.',
-    toolsListEs: [
-      '1. Editar Texto',
-      '2. Foliar Páginas',
-      '3. Poner Marca Agua',
-      '4. Quitar Marca Agua',
-      '5. Firmar PDF',
-      '6. OCR PDF',
-    ],
-    toolsListEn: [
-      '1. Edit Text',
-      '2. Page Numbers',
-      '3. Add Watermark',
-      '4. Remove Watermark',
-      '5. Sign PDF',
-      '6. OCR PDF',
+    tools: [
+      { nameEs: '1. Editar Texto', nameEn: '1. Edit Text', path: '/editar/texto' },
+      { nameEs: '2. Foliar Páginas', nameEn: '2. Page Numbers', path: '/editar/foliar' },
+      { nameEs: '3. Poner Marca Agua', nameEn: '3. Add Watermark', path: '/editar/marca-agua' },
+      {
+        nameEs: '4. Quitar Marca Agua',
+        nameEn: '4. Remove Watermark',
+        path: '/editar/quitar-marca-agua',
+      },
+      { nameEs: '5. Firmar PDF', nameEn: '5. Sign PDF', path: '/editar/firmar' },
+      { nameEs: '6. OCR PDF', nameEn: '6. OCR PDF', path: '/editar/ocr' },
     ],
     badgeEs: 'MÁS USADO',
     badgeEn: 'MOST USED',
     icon: Edit3,
     path: '/editar',
-    color: 'text-white',
-    borderColor: 'border-white/10 hover:border-white/40',
-    shadowColor: 'shadow-lg',
-    hoverGlow: 'group-hover:border-white/40',
-    shadowColorValue: '0 0 15px rgba(255,255,255,0.05)',
-    peakShadowValue: '0 0 35px rgba(255,255,255,0.15)',
-    borderColorValue: 'rgba(255,255,255,0.1)',
-    peakBorderValue: 'rgba(255,255,255,0.4)',
   },
   {
     id: 'organizar',
@@ -196,34 +184,18 @@ const categories = [
     descEs:
       'Gestión completa de estructura: unir múltiples archivos, dividir por rangos, rotar y recortar.',
     descEn: 'Full structure management: merge multiple files, split by range, rotate and crop.',
-    toolsListEs: [
-      '1. Unir PDF',
-      '2. Dividir PDF',
-      '3. Eliminar Páginas',
-      '4. Reordenar PDF',
-      '5. Rotar PDF',
-      '6. Recortar PDF',
-    ],
-    toolsListEn: [
-      '1. Merge PDF',
-      '2. Split PDF',
-      '3. Delete Pages',
-      '4. Reorder PDF',
-      '5. Rotate PDF',
-      '6. Crop PDF',
+    tools: [
+      { nameEs: '1. Unir PDF', nameEn: '1. Merge PDF', path: '/organizar/unir' },
+      { nameEs: '2. Dividir PDF', nameEn: '2. Split PDF', path: '/organizar/dividir' },
+      { nameEs: '3. Eliminar Páginas', nameEn: '3. Delete Pages', path: '/organizar/eliminar' },
+      { nameEs: '4. Reordenar PDF', nameEn: '4. Reorder PDF', path: '/organizar/reordenar' },
+      { nameEs: '5. Rotar PDF', nameEn: '5. Rotate PDF', path: '/organizar/rotar' },
+      { nameEs: '6. Recortar PDF', nameEn: '6. Crop PDF', path: '/organizar/recortar' },
     ],
     badgeEs: 'INDISPENSABLE',
     badgeEn: 'ESSENTIAL',
     icon: FolderOpen,
     path: '/organizar',
-    color: 'text-white',
-    borderColor: 'border-white/10 hover:border-white/40',
-    shadowColor: 'shadow-lg',
-    hoverGlow: 'group-hover:border-white/40',
-    shadowColorValue: '0 0 15px rgba(255,255,255,0.05)',
-    peakShadowValue: '0 0 35px rgba(255,255,255,0.15)',
-    borderColorValue: 'rgba(255,255,255,0.1)',
-    peakBorderValue: 'rgba(255,255,255,0.4)',
   },
   {
     id: 'convertir',
@@ -235,34 +207,22 @@ const categories = [
       'Conversión bidireccional de alta precisión entre PDF y formatos Word, Excel, PowerPoint e imágenes.',
     descEn:
       'High-precision bidirectional conversion between PDF and Word, Excel, PowerPoint, and images.',
-    toolsListEs: [
-      '1. PDF ↔ Word',
-      '2. PDF ↔ Excel',
-      '3. PDF ↔ PowerPoint',
-      '4. PDF ↔ JPG',
-      '5. PDF ↔ HTML',
-      '6. PDF ↔ Texto',
-    ],
-    toolsListEn: [
-      '1. PDF ↔ Word',
-      '2. PDF ↔ Excel',
-      '3. PDF ↔ PowerPoint',
-      '4. PDF ↔ JPG',
-      '5. PDF ↔ HTML',
-      '6. PDF ↔ Text',
+    tools: [
+      { nameEs: '1. PDF ↔ Word', nameEn: '1. PDF ↔ Word', path: '/convertir/pdf-word' },
+      { nameEs: '2. PDF ↔ Excel', nameEn: '2. PDF ↔ Excel', path: '/convertir/pdf-excel' },
+      {
+        nameEs: '3. PDF ↔ PowerPoint',
+        nameEn: '3. PDF ↔ PowerPoint',
+        path: '/convertir/pdf-powerpoint',
+      },
+      { nameEs: '4. PDF ↔ JPG', nameEn: '4. PDF ↔ JPG', path: '/convertir/pdf-jpg' },
+      { nameEs: '5. PDF ↔ HTML', nameEn: '5. PDF ↔ HTML', path: '/convertir/pdf-html' },
+      { nameEs: '6. PDF ↔ Texto', nameEn: '6. PDF ↔ Text', path: '/convertir/pdf-texto' },
     ],
     badgeEs: 'ALTA PRECISIÓN',
     badgeEn: 'HIGH PRECISION',
     icon: RefreshCw,
     path: '/convertir',
-    color: 'text-white',
-    borderColor: 'border-white/10 hover:border-white/40',
-    shadowColor: 'shadow-lg',
-    hoverGlow: 'group-hover:border-white/40',
-    shadowColorValue: '0 0 15px rgba(255,255,255,0.05)',
-    peakShadowValue: '0 0 35px rgba(255,255,255,0.15)',
-    borderColorValue: 'rgba(255,255,255,0.1)',
-    peakBorderValue: 'rgba(255,255,255,0.4)',
   },
   {
     id: 'optimizar',
@@ -273,34 +233,18 @@ const categories = [
     descEs:
       'Algoritmos locales de compresión de tamaño, cifrado de seguridad, censura y reparación.',
     descEn: 'Local algorithms for size compression, security encryption, redaction, and repair.',
-    toolsListEs: [
-      '1. Comprimir PDF',
-      '2. Reparar PDF',
-      '3. Desbloquear PDF',
-      '4. Proteger PDF',
-      '5. Censurar PDF',
-      '6. Comparar PDF',
-    ],
-    toolsListEn: [
-      '1. Compress PDF',
-      '2. Repair PDF',
-      '3. Unlock PDF',
-      '4. Protect PDF',
-      '5. Redact PDF',
-      '6. Compare PDF',
+    tools: [
+      { nameEs: '1. Comprimir PDF', nameEn: '1. Compress PDF', path: '/optimizar/comprimir' },
+      { nameEs: '2. Reparar PDF', nameEn: '2. Repair PDF', path: '/optimizar/reparar' },
+      { nameEs: '3. Desbloquear PDF', nameEn: '3. Unlock PDF', path: '/optimizar/desbloquear' },
+      { nameEs: '4. Proteger PDF', nameEn: '4. Protect PDF', path: '/optimizar/proteger' },
+      { nameEs: '5. Censurar PDF', nameEn: '5. Redact PDF', path: '/optimizar/censurar' },
+      { nameEs: '6. Comparar PDF', nameEn: '6. Compare PDF', path: '/optimizar/comparar' },
     ],
     badgeEs: 'REDUCE HASTA 90%',
     badgeEn: 'SAVE UP TO 90%',
     icon: Zap,
     path: '/optimizar',
-    color: 'text-white',
-    borderColor: 'border-white/10 hover:border-white/40',
-    shadowColor: 'shadow-lg',
-    hoverGlow: 'group-hover:border-white/40',
-    shadowColorValue: '0 0 15px rgba(255,255,255,0.05)',
-    peakShadowValue: '0 0 35px rgba(255,255,255,0.15)',
-    borderColorValue: 'rgba(255,255,255,0.1)',
-    peakBorderValue: 'rgba(255,255,255,0.4)',
   },
 ];
 
@@ -324,89 +268,107 @@ function CategoryCard({
     });
   };
 
-  return (
-    <Link
-      href={cat.path}
-      className="outline-none group block h-full"
-      aria-label={`${isEs ? cat.titleEs : cat.titleEn} — ${isEs ? cat.descEs : cat.descEn}`}
-    >
-      <motion.div
-        onMouseMove={handleMouseMove}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className="bg-[#09090b] border border-white/10 group-hover:border-white/30 rounded-2xl p-6 transition-all duration-300 h-full min-h-[285px] flex flex-col justify-between relative overflow-hidden group-hover:bg-zinc-900/40"
-      >
-        {/* Glow Spotlight Effect */}
-        {isHovered && (
-          <div
-            className="pointer-events-none absolute -inset-px rounded-2xl transition-opacity duration-300 opacity-100"
-            style={{
-              background: `radial-gradient(350px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255,255,255,0.08), transparent 80%)`,
-            }}
-            aria-hidden="true"
-          />
-        )}
+  const IconComponent = cat.icon;
 
-        <div className="relative z-10">
-          <div className="mb-3 flex items-center justify-between font-mono">
-            <span className="text-xs text-zinc-500 group-hover:text-zinc-300 transition-colors font-medium">
+  return (
+    <motion.div
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 sm:p-7 transition-all duration-300 h-full min-h-[330px] flex flex-col justify-between relative overflow-hidden group shadow-2xl hover:shadow-[0_0_45px_rgba(255,255,255,0.12)]"
+    >
+      {/* Línea de brillo superior para efecto 3D pulido */}
+      <div
+        className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
+        aria-hidden="true"
+      />
+
+      {/* Glow Spotlight Effect */}
+      {isHovered && (
+        <div
+          className="pointer-events-none absolute -inset-px rounded-3xl transition-opacity duration-300 opacity-100"
+          style={{
+            background: `radial-gradient(400px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255,255,255,0.12), transparent 80%)`,
+          }}
+          aria-hidden="true"
+        />
+      )}
+
+      <div className="relative z-10">
+        <div className="mb-4 flex items-center justify-between font-mono">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-zinc-800 border border-zinc-500 text-white shadow-md group-hover:border-zinc-300 transition-colors">
+              <IconComponent className="w-4 h-4 text-white" aria-hidden="true" />
+            </div>
+            <span className="text-xs text-zinc-300 group-hover:text-white transition-colors font-bold tracking-wider">
               {isEs ? cat.indexEs : cat.indexEn}
             </span>
-            {cat.badgeEs && (
-              <span
-                className="px-2 py-0.5 text-[9px] font-semibold border border-white/10 bg-zinc-900 text-zinc-400 rounded-full"
-                aria-label={isEs ? cat.badgeEs : cat.badgeEn}
-              >
-                {isEs ? cat.badgeEs : cat.badgeEn}
-              </span>
-            )}
           </div>
-
-          <h3 className="text-lg font-bold text-white tracking-tight mb-2 group-hover:text-white transition-colors">
-            {isEs ? cat.titleEs : cat.titleEn}
-          </h3>
-
-          <p className="text-xs text-zinc-400 mb-4 font-normal leading-relaxed">
-            {isEs ? cat.descEs : cat.descEn}
-          </p>
-
-          {/* LISTA DE FUNCIONES DE CADA HERRAMIENTA */}
-          <div
-            className="grid grid-cols-2 gap-1.5 mb-2 font-mono"
-            role="list"
-            aria-label={isEs ? 'Herramientas disponibles' : 'Available tools'}
-          >
-            {(isEs ? cat.toolsListEs : cat.toolsListEn).map((toolName, tIdx) => (
-              <div
-                key={tIdx}
-                className="bg-zinc-900/80 border border-white/5 rounded-md px-2 py-1 text-[10px] text-zinc-400 group-hover:text-zinc-200 transition-colors truncate"
-                role="listitem"
-              >
-                <span className="truncate">{toolName}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4 pt-3 border-t border-white/10 font-mono relative z-10">
-          <span className="text-xs text-white group-hover:text-zinc-200 flex items-center justify-between transition-colors">
-            <span>
-              {file
-                ? isEs
-                  ? 'Iniciar módulo →'
-                  : 'Start module →'
-                : isEs
-                  ? 'Explorar herramientas →'
-                  : 'Explore tools →'}
+          {cat.badgeEs && (
+            <span
+              className="px-3 py-1 text-[10px] font-bold border border-zinc-500 bg-zinc-800 text-white rounded-full shadow-sm"
+              aria-label={isEs ? cat.badgeEs : cat.badgeEn}
+            >
+              {isEs ? cat.badgeEs : cat.badgeEn}
             </span>
-            <ArrowRight
-              className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
-              aria-hidden="true"
-            />
-          </span>
+          )}
         </div>
-      </motion.div>
-    </Link>
+
+        <Link href={cat.path} className="group/title block">
+          <h3 className="text-2xl font-black text-white tracking-tight mb-2 group-hover/title:text-zinc-200 transition-colors flex items-center gap-2">
+            <span>{isEs ? cat.titleEs : cat.titleEn}</span>
+          </h3>
+        </Link>
+
+        <p className="text-xs text-zinc-300 mb-5 font-normal leading-relaxed">
+          {isEs ? cat.descEs : cat.descEn}
+        </p>
+
+        {/* LISTA DE FUNCIONES INTERACTIVAS (ENLACES DIRECTOS) */}
+        <div
+          className="grid grid-cols-2 gap-2.5 mb-2 font-mono relative z-20"
+          role="list"
+          aria-label={isEs ? 'Herramientas disponibles' : 'Available tools'}
+        >
+          {cat.tools.map((tool, tIdx) => (
+            <Link
+              key={tIdx}
+              href={tool.path}
+              className="bg-[#181822] hover:bg-white hover:text-black border border-zinc-600 hover:border-white rounded-xl px-3.5 py-2.5 text-xs text-zinc-100 hover:text-black font-semibold transition-all duration-200 truncate flex items-center justify-between group/tool shadow-md active:scale-[0.98]"
+              role="listitem"
+              title={isEs ? `Ir a ${tool.nameEs}` : `Go to ${tool.nameEn}`}
+            >
+              <span className="truncate font-semibold">{isEs ? tool.nameEs : tool.nameEn}</span>
+              <ArrowRight
+                className="w-3.5 h-3.5 opacity-0 group-hover/tool:opacity-100 -translate-x-1 group-hover/tool:translate-x-0 transition-all flex-shrink-0 ml-1 text-black"
+                aria-hidden="true"
+              />
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 pt-4 border-t border-zinc-700 font-mono relative z-10">
+        <Link
+          href={cat.path}
+          className="text-xs font-bold text-white hover:text-zinc-200 flex items-center justify-between transition-colors group/link py-1"
+        >
+          <span>
+            {file
+              ? isEs
+                ? 'Iniciar módulo completo →'
+                : 'Start full module →'
+              : isEs
+                ? 'Explorar herramientas →'
+                : 'Explore tools →'}
+          </span>
+          <ArrowRight
+            className="w-4 h-4 group-hover/link:translate-x-1 transition-transform text-white"
+            aria-hidden="true"
+          />
+        </Link>
+      </div>
+    </motion.div>
   );
 }
 
@@ -622,259 +584,181 @@ export default function DashboardPage() {
               className={`relative ${file ? 'z-[50]' : 'z-10'}`}
             >
               {/* HERO CONTENT ARCHITECTURE STYLING */}
-              <div className="mb-6 text-center md:text-left flex flex-col items-center md:items-start">
-                {/* INSIGNIA DE CONFIANZA Y PRIVACIDAD TOTAL */}
-                <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-xs font-mono mb-4 shadow-[0_0_30px_rgba(16,185,129,0.2)] backdrop-blur-md">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
-                  </span>
-                  <ShieldCheck
-                    className="w-4 h-4 text-emerald-400 flex-shrink-0"
-                    aria-hidden="true"
-                  />
-                  <span className="font-bold tracking-wide">
-                    {isEs
-                      ? 'INSIGNIA DE CONFIANZA: 100% LOCAL Y PRIVADO'
-                      : 'TRUST BADGE: 100% LOCAL & PRIVATE'}
-                  </span>
-                  <span className="text-zinc-300 text-xs hidden sm:inline-block">
-                    •{' '}
-                    {isEs
-                      ? 'Tus archivos nunca salen de tu navegador'
-                      : 'Your files never leave your browser'}
-                  </span>
-                </div>
-
+              <div className="mb-8 text-center md:text-left flex flex-col items-center md:items-start">
                 <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold text-zinc-900 dark:text-white tracking-tight leading-[1.05] antialiased">
                   {isEs ? 'Procesamiento PDF local. ' : 'Local PDF engine. '}
-                  <span className="text-zinc-500 dark:text-zinc-400 font-light">
+                  <span className="text-zinc-400 dark:text-zinc-300 font-light">
                     {isEs ? 'Sin servidores, privacidad total.' : 'Zero servers, absolute privacy.'}
                   </span>
                 </h1>
-
-                {/* SUBTÍTULO Y GARANTÍAS DE CONFIANZA */}
-                <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 mt-4 font-mono text-xs text-zinc-400">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    {isEs ? 'Cero Servidores' : 'Zero Servers'}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    {isEs ? '100% Gratis' : '100% Free'}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
-                    <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                    {isEs ? 'Sin Registro' : 'No Sign-up'}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-zinc-900/80 border border-white/10 rounded-full text-zinc-300">
-                    <Sparkles className="w-3.5 h-3.5 text-white" />
-                    {isEs ? '24 Herramientas' : '24 Tools'}
-                  </span>
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mb-6">
-                {/* DROPZONE / FILE PREVIEW */}
-                <div className="lg:col-span-5 flex flex-col h-full">
-                  {!file ? (
-                    <div
-                      ref={dropzoneRef}
-                      onClick={() => fileInputRef.current?.click()}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          fileInputRef.current?.click();
-                        }
-                      }}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={
-                        isEs
-                          ? 'Zona de carga de archivos PDF. Haz clic o arrastra un archivo.'
-                          : 'PDF upload area. Click or drag a file.'
+              {/* DROPZONE / FILE PREVIEW - FULL WIDTH */}
+              <div className="w-full mb-8 relative group">
+                {/* Glow ambiental perimetral */}
+                {!file && (
+                  <div
+                    className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-white/10 via-zinc-400/20 to-white/10 opacity-40 group-hover:opacity-80 blur-xl transition-all duration-500 pointer-events-none"
+                    aria-hidden="true"
+                  />
+                )}
+
+                {!file ? (
+                  <div
+                    ref={dropzoneRef}
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
                       }
-                      aria-describedby="dropzone-instructions"
-                      className="w-full flex-1 h-full min-h-[480px] bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/30 rounded-2xl p-8 lg:p-10 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl relative overflow-hidden"
-                    >
-                      <span id="dropzone-instructions" className="sr-only">
-                        {isEs
-                          ? 'Arrastra un archivo PDF a esta zona o haz clic para seleccionar un archivo de tu equipo. Solo se aceptan archivos PDF.'
-                          : 'Drag a PDF file to this area or click to select a file from your device. Only PDF files are accepted.'}
-                      </span>
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={
+                      isEs
+                        ? 'Zona de carga de archivos PDF. Haz clic o arrastra un archivo.'
+                        : 'PDF upload area. Click or drag a file.'
+                    }
+                    aria-describedby="dropzone-instructions"
+                    className="w-full min-h-[320px] sm:min-h-[360px] bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border-2 border-dashed border-zinc-600 group-hover:border-white rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 shadow-2xl relative overflow-hidden"
+                  >
+                    <span id="dropzone-instructions" className="sr-only">
+                      {isEs
+                        ? 'Arrastra un archivo PDF a esta zona o haz clic para seleccionar un archivo de tu equipo. Solo se aceptan archivos PDF.'
+                        : 'Drag a PDF file to this area or click to select a file from your device. Only PDF files are accepted.'}
+                    </span>
 
-                      <motion.div
-                        animate={{ y: [0, -5, 0] }}
-                        transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                        className="bg-zinc-100 dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-white/10 group-hover:border-zinc-300 dark:group-hover:border-white/30 transition-colors"
-                        aria-hidden="true"
-                      >
-                        <UploadCloud className="w-12 h-12 text-zinc-700 dark:text-white" />
-                      </motion.div>
-
-                      <div className="text-center flex flex-col items-center gap-2">
-                        <p className="text-lg lg:text-xl font-bold text-zinc-900 dark:text-white tracking-tight">
-                          {isEs ? 'Arrastra tu archivo PDF aquí' : 'Drop your PDF file here'}
-                        </p>
-                        <p className="text-zinc-500 dark:text-zinc-400 text-xs font-mono flex items-center justify-center gap-1.5">
-                          <Sparkles
-                            className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-300"
-                            aria-hidden="true"
-                          />
-                          {isEs
-                            ? 'o haz clic para explorar en tu equipo'
-                            : 'or click to browse local files'}
-                        </p>
-                      </div>
-
-                      <span className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all mt-2 shadow-md">
-                        <FilePlus className="w-4 h-4 text-black" aria-hidden="true" />{' '}
-                        {isEs ? 'Seleccionar PDF' : 'Select PDF'}
-                      </span>
-
-                      <div className="flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono rounded-full mt-2">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
-                        <span>
-                          {isEs
-                            ? '100% GRATIS • SIN REGISTRO • SIN TARJETA'
-                            : '100% FREE • NO SIGN-UP • NO CREDIT CARD'}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    /* VISOR DEL PDF */
+                    {/* Efecto Spotlight dinámico en hover */}
                     <div
-                      className="w-full flex-1 h-full min-h-[480px] bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative"
-                      role="region"
-                      aria-label={isEs ? 'Vista previa del PDF cargado' : 'Loaded PDF preview'}
-                    >
-                      <div className="bg-zinc-900 border-b border-white/10 p-4 flex justify-between items-center z-10 font-mono">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div
-                            className="bg-white/10 p-2 border border-white/10 rounded-lg flex-shrink-0"
-                            aria-hidden="true"
-                          >
-                            <FileText className="w-4 h-4 text-white" />
-                          </div>
-                          <div className="flex flex-col overflow-hidden">
-                            <span className="text-white font-bold text-xs truncate w-32 sm:w-48">
-                              {file.name}
-                            </span>
-                            <span className="text-zinc-400 text-[10px]">
-                              {formatFileSize(file.size)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px]">
-                            <ShieldCheck className="w-3 h-3 text-emerald-400" aria-hidden="true" />
-                            <span>LOCAL</span>
-                          </div>
-                          <button
-                            onClick={handleRemoveFile}
-                            className="flex-shrink-0 p-1.5 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-all cursor-pointer"
-                            aria-label={
-                              isEs ? `Quitar archivo ${file.name}` : `Remove file ${file.name}`
-                            }
-                          >
-                            <X className="w-4 h-4" aria-hidden="true" />
-                          </button>
-                        </div>
-                      </div>
+                      className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-b from-white/[0.08] via-transparent to-transparent"
+                      aria-hidden="true"
+                    />
 
-                      <div className="w-full flex-1 bg-[#09090b] relative overflow-hidden flex items-center justify-center">
-                        <PdfPreviewThumbnail file={file} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* TARJETAS DE MÓDULOS 001 - 004 */}
-                <div className="lg:col-span-7 flex flex-col justify-between">
-                  {file && (
-                    <div
-                      className="mb-3 flex items-center gap-2.5 bg-white/10 border border-white/20 text-white px-4 py-2.5 rounded-xl shadow-lg font-mono"
-                      role="status"
-                      aria-live="polite"
+                    {/* Icono de carga con relieve y brillo */}
+                    <motion.div
+                      animate={{ y: [0, -6, 0] }}
+                      transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                      className="bg-zinc-800 p-5 rounded-2xl border border-zinc-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:border-zinc-300 group-hover:scale-110 transition-all duration-300 relative z-10"
+                      aria-hidden="true"
                     >
-                      <Zap className="w-4 h-4 text-white" aria-hidden="true" />
-                      <h2 className="text-xs font-bold uppercase tracking-wider">
+                      <UploadCloud className="w-12 h-12 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]" />
+                    </motion.div>
+
+                    <div className="text-center flex flex-col items-center gap-2 relative z-10">
+                      <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                        {isEs ? 'Arrastra tu archivo PDF aquí' : 'Drop your PDF file here'}
+                      </p>
+                      <p className="text-zinc-300 text-xs sm:text-sm font-mono flex items-center justify-center gap-1.5 font-medium">
+                        <Sparkles className="w-4 h-4 text-zinc-300" aria-hidden="true" />
                         {isEs
-                          ? 'DOCUMENTO CARGADO. SELECCIONA EL MÓDULO A EJECUTAR:'
-                          : 'DOCUMENT LOADED. SELECT MODULE TO EXECUTE:'}
-                      </h2>
+                          ? 'o haz clic para explorar en tu equipo'
+                          : 'or click to browse local files'}
+                      </p>
                     </div>
-                  )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 h-full">
-                    {categories.map((cat) => (
-                      <CategoryCard key={cat.id} cat={cat} file={file} isEs={isEs} />
-                    ))}
+                    {/* Botón CTA principal */}
+                    <span className="flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-100 px-8 py-3.5 rounded-full font-sans text-sm font-bold transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 relative z-10">
+                      <FilePlus className="w-4 h-4 text-black" aria-hidden="true" />{' '}
+                      {isEs ? 'Seleccionar PDF' : 'Select PDF'}
+                    </span>
+
+                    <div className="flex items-center gap-2 px-4 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-mono rounded-full mt-1 relative z-10 shadow-md">
+                      <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                      <span className="font-semibold tracking-wide">
+                        {isEs
+                          ? '100% GRATIS • SIN REGISTRO • SIN TARJETA'
+                          : '100% FREE • NO SIGN-UP • NO CREDIT CARD'}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* VISOR DEL PDF */
+                  <div
+                    className="w-full min-h-[440px] sm:min-h-[520px] bg-[#09090b] border border-zinc-600 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative"
+                    role="region"
+                    aria-label={isEs ? 'Vista previa del PDF cargado' : 'Loaded PDF preview'}
+                  >
+                    <div className="bg-zinc-900 border-b border-zinc-700 p-4 flex justify-between items-center z-10 font-mono">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div
+                          className="bg-zinc-800 p-2 border border-zinc-700 rounded-lg flex-shrink-0"
+                          aria-hidden="true"
+                        >
+                          <FileText className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex flex-col overflow-hidden">
+                          <span className="text-white font-bold text-xs truncate max-w-xs sm:max-w-md">
+                            {file.name}
+                          </span>
+                          <span className="text-zinc-300 text-[10px]">
+                            {formatFileSize(file.size)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-white text-[10px] font-bold">
+                          <ShieldCheck className="w-3 h-3 text-white" aria-hidden="true" />
+                          <span>LOCAL</span>
+                        </div>
+                        <button
+                          onClick={handleRemoveFile}
+                          className="flex-shrink-0 p-1.5 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-all cursor-pointer"
+                          aria-label={
+                            isEs ? `Quitar archivo ${file.name}` : `Remove file ${file.name}`
+                          }
+                        >
+                          <X className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="w-full flex-1 min-h-[380px] bg-[#09090b] relative overflow-hidden flex items-center justify-center p-4">
+                      <PdfPreviewThumbnail file={file} />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* CÁPSULAS Y KPIS UBICADOS DEBAJO DE LA CAJA DE CARGA Y DE LOS 4 BOTONES PRINCIPALES */}
-              <div
-                className="flex flex-wrap items-center justify-center sm:justify-start gap-3 my-6 font-mono"
-                role="region"
-                aria-label={isEs ? 'Estadísticas de sesión' : 'Session statistics'}
-              >
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 rounded-full text-zinc-300 text-xs font-mono">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true"></span>
-                  <span>
-                    {isEs
-                      ? '001 / Arquitectura PDF local 100% gratuita'
-                      : '001 / 100% Free local PDF engine'}
-                  </span>
+              {/* TARJETAS DE MÓDULOS 001 - 004 */}
+              <div className="w-full mb-8">
+                {file && (
+                  <div
+                    className="mb-4 flex items-center gap-2.5 bg-white/10 border border-white/20 text-white px-4 py-3 rounded-xl shadow-lg font-mono"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <Zap className="w-4 h-4 text-white" aria-hidden="true" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider">
+                      {isEs
+                        ? 'DOCUMENTO CARGADO. SELECCIONA EL MÓDULO A EJECUTAR:'
+                        : 'DOCUMENT LOADED. SELECT MODULE TO EXECUTE:'}
+                    </h2>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                  {categories.map((cat) => (
+                    <CategoryCard key={cat.id} cat={cat} file={file} isEs={isEs} />
+                  ))}
                 </div>
-                <KpiPill
-                  icon={FileText}
-                  title={isEs ? 'Archivos' : 'Files'}
-                  value={filesProcessed}
-                  tooltip={
-                    isEs ? 'Tus archivos procesados esta semana' : 'Files processed this week'
-                  }
-                  color="text-white"
-                />
-                <KpiPill
-                  icon={HardDrive}
-                  title={isEs ? 'Ahorrado' : 'Saved'}
-                  value={bytesSaved / (1024 * 1024)}
-                  decimals={1}
-                  suffix=" MB"
-                  tooltip={
-                    isEs ? 'Almacenamiento optimizado localmente' : 'Locally optimized storage'
-                  }
-                  color="text-zinc-300"
-                />
-                <KpiPill
-                  icon={Clock}
-                  title={isEs ? 'Tiempo' : 'Time'}
-                  value={timeSavedMinutes}
-                  suffix=" min"
-                  tooltip={
-                    isEs ? 'Tiempo ahorrado en tu sesión actual' : 'Time saved in current session'
-                  }
-                  color="text-zinc-400"
-                />
               </div>
 
               {/* SECCIÓN 4 PASOS STYLE CONTENT ARCHITECTURE */}
               {!file && (
                 <section
-                  className="w-full mt-14 pt-12 border-t border-white/10 flex flex-col items-center font-mono"
+                  className="w-full mt-14 pt-12 border-t border-zinc-800 flex flex-col items-center font-mono"
                   aria-label={isEs ? 'Cómo funciona PDFBlack' : 'How PDFBlack works'}
                 >
                   <div className="text-center mb-10 max-w-2xl">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold rounded-full mb-3">
-                      <Sparkles className="w-3.5 h-3.5 text-zinc-300" aria-hidden="true" />
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-3 shadow-md">
+                      <Sparkles className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                       {isEs ? '000 / ¿CÓMO FUNCIONA PDFBLACK?' : '000 / HOW PDFBLACK WORKS'}
                     </div>
                     <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-2 font-sans">
                       {isEs ? 'Procesamiento en 4 pasos sencillos' : 'Simple 4-Step Process'}
                     </h2>
-                    <p className="text-zinc-400 text-xs sm:text-sm font-sans leading-relaxed">
+                    <p className="text-zinc-300 text-xs sm:text-sm font-sans leading-relaxed">
                       {isEs
                         ? 'Garantía absoluta de privacidad. Tus documentos nunca salen de tu equipo ni tocan servidores externos.'
                         : 'Absolute privacy guarantee. Your documents never leave your device or touch external servers.'}
@@ -884,19 +768,19 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
                     {/* PASO 1 */}
                     <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
+                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
                       aria-labelledby="step-1-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
                         001 / CARGAR
                       </span>
                       <h3
                         id="step-1-title"
-                        className="text-sm font-bold text-white mb-1.5 font-sans"
+                        className="text-base font-bold text-white mb-2 font-sans"
                       >
                         {isEs ? '1. Carga tu Archivo PDF' : '1. Upload your PDF File'}
                       </h3>
-                      <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
                         {isEs
                           ? 'Arrastra tu documento a la zona de carga o selecciónalo de tu equipo. Sin registro ni tarjeta de crédito.'
                           : 'Drag your document into the dropzone or select it from your device. No sign-up or credit card needed.'}
@@ -905,19 +789,19 @@ export default function DashboardPage() {
 
                     {/* PASO 2 */}
                     <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
+                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
                       aria-labelledby="step-2-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
                         002 / CATEGORÍA
                       </span>
                       <h3
                         id="step-2-title"
-                        className="text-sm font-bold text-white mb-1.5 font-sans"
+                        className="text-base font-bold text-white mb-2 font-sans"
                       >
                         {isEs ? '2. Selecciona la Categoría' : '2. Choose your Category'}
                       </h3>
-                      <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
                         {isEs
                           ? 'Elige uno de los 4 botones principales (Editar, Organizar, Convertir u Optimizar) según la herramienta que necesites.'
                           : 'Select one of the 4 main buttons (Edit, Organize, Convert, or Optimize) depending on the tool group you need.'}
@@ -926,19 +810,19 @@ export default function DashboardPage() {
 
                     {/* PASO 3 */}
                     <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
+                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
                       aria-labelledby="step-3-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
                         003 / EDICIÓN
                       </span>
                       <h3
                         id="step-3-title"
-                        className="text-sm font-bold text-white mb-1.5 font-sans"
+                        className="text-base font-bold text-white mb-2 font-sans"
                       >
                         {isEs ? '3. Trabaja en la Sub-Página' : '3. Work in Tool Sub-Page'}
                       </h3>
-                      <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
                         {isEs
                           ? 'Serás llevado a la página específica de la herramienta para personalizar, modificar y procesar tu PDF en vivo.'
                           : 'You will be taken to your selected tool sub-page to customize, modify, and process your PDF live.'}
@@ -947,19 +831,19 @@ export default function DashboardPage() {
 
                     {/* PASO 4 */}
                     <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-[#09090b] border border-white/10 rounded-2xl hover:border-white/30 transition-all group"
+                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
                       aria-labelledby="step-4-title"
                     >
-                      <span className="text-xs text-zinc-500 font-bold mb-3 block">
+                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
                         004 / DESCARGAR
                       </span>
                       <h3
                         id="step-4-title"
-                        className="text-sm font-bold text-white mb-1.5 font-sans"
+                        className="text-base font-bold text-white mb-2 font-sans"
                       >
                         {isEs ? '4. Descarga tu PDF Listo' : '4. Download your Ready PDF'}
                       </h3>
-                      <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
                         {isEs
                           ? 'Obtén tu documento modificado inmediatamente con un solo clic, 100% privado y listo para usar.'
                           : 'Get your modified document immediately with a single click, 100% private and ready to use.'}
@@ -969,14 +853,14 @@ export default function DashboardPage() {
 
                   {/* SECCIÓN DETALLADA DE GRUPOS DE HERRAMIENTAS: EDITAR, ORGANIZAR, CONVERTIR, OPTIMIZAR */}
                   <section
-                    className="w-full mt-14 pt-12 border-t border-white/10 font-sans"
+                    className="w-full mt-14 pt-12 border-t border-zinc-800 font-sans"
                     aria-label={
                       isEs ? 'Guía técnica de grupos de herramientas' : 'Technical tool group guide'
                     }
                   >
                     <div className="text-center mb-10 max-w-3xl mx-auto">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-zinc-300 text-xs font-semibold rounded-full mb-3 font-mono">
-                        <Sparkles className="w-3.5 h-3.5 text-zinc-300" aria-hidden="true" />
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-3 font-mono shadow-md">
+                        <Sparkles className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                         {isEs ? 'GUÍA TÉCNICA Y DE SEGURIDAD' : 'TECHNICAL & SECURITY GUIDE'}
                       </div>
                       <h3 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-3">
@@ -984,7 +868,7 @@ export default function DashboardPage() {
                           ? '¿Qué le sucede a tu archivo PDF en cada grupo de herramientas?'
                           : 'What happens to your PDF in each tool group?'}
                       </h3>
-                      <p className="text-zinc-400 text-xs sm:text-sm font-mono leading-relaxed">
+                      <p className="text-zinc-300 text-xs sm:text-sm font-mono leading-relaxed">
                         {isEs
                           ? 'Transparencia absoluta. Conoce en detalle qué ocurre dentro de tu navegador al procesar tus documentos.'
                           : 'Absolute transparency. Discover in detail what happens inside your browser when processing documents.'}
@@ -994,20 +878,20 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
                       {/* GRUPO 1: EDITAR */}
                       <SpotlightCard
-                        className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-edit-title"
                       >
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div
-                                className="bg-zinc-900 p-3 rounded-xl border border-white/10"
+                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
                                 aria-hidden="true"
                               >
                                 <Edit3 className="w-5 h-5 text-white" />
                               </div>
                               <div>
-                                <span className="text-xs font-mono text-zinc-500 font-bold block">
+                                <span className="text-xs font-mono text-zinc-300 font-bold block">
                                   001 / EDICIÓN DIRECTA
                                 </span>
                                 <h4
@@ -1018,28 +902,25 @@ export default function DashboardPage() {
                                 </h4>
                               </div>
                             </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
                               {isEs ? 'Edición Visual' : 'Visual Editing'}
                             </span>
                           </div>
 
                           {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
-                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
-                              <ShieldCheck
-                                className="w-4 h-4 text-emerald-400"
-                                aria-hidden="true"
-                              />
+                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                               {isEs
-                                ? '🔒 Proceso Binario y Seguridad en EDITAR:'
-                                : '🔒 Binary Process & Security in EDIT:'}
+                                ? 'Proceso Binario y Seguridad en EDITAR:'
+                                : 'Binary Process & Security in EDIT:'}
                             </strong>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'Al editar un documento, el archivo PDF se descompone en objetos en la memoria RAM aislada de tu navegador. Las modificaciones de texto, marcas de agua, números de folio o firmas trazadas no sobreescriben destructivamente el archivo; se inyectan como capas vectoriales nativas bajo la especificación PDF 1.7.'
                                 : 'When editing, the PDF decodes into objects inside isolated browser RAM. Text edits, watermarks, page numbers, or drawn signatures embed as clean native vector streams under PDF 1.7 standard.'}
                             </p>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'En OCR, el reconocimiento de caracteres se ejecuta mediante modelos WebAssembly locales que analizan píxeles sin transmitir ninguna imagen a servidores externos. Tu archivo original permanece 100% intacto en tu equipo.'
                                 : 'In OCR, character recognition runs via local WebAssembly models analyzing image pixels with zero external API calls. Your original file remains untouched on your drive.'}
@@ -1047,16 +928,16 @@ export default function DashboardPage() {
                           </div>
 
                           <ul
-                            className="space-y-2 text-xs text-zinc-300 font-mono mb-6"
+                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
                             aria-label={isEs ? 'Herramientas de edición' : 'Editing tools'}
                           >
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Editar Texto:</strong>{' '}
+                                <strong className="text-white">Editar Texto:</strong>{' '}
                                 {isEs
                                   ? 'Inserta texto nativo ajustando fuentes y alineación.'
                                   : 'Inserts native text adjusting fonts and alignment.'}
@@ -1064,11 +945,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Foliar Páginas:</strong>{' '}
+                                <strong className="text-white">Foliar Páginas:</strong>{' '}
                                 {isEs
                                   ? 'Agrega numeración correlativa automatizada.'
                                   : 'Adds automated sequential page numbers.'}
@@ -1076,11 +957,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Marcas de Agua:</strong>{' '}
+                                <strong className="text-white">Marcas de Agua:</strong>{' '}
                                 {isEs
                                   ? 'Aplica sellos o textos de seguridad sobre cada página.'
                                   : 'Applies security stamps or text across pages.'}
@@ -1088,11 +969,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Firmar & OCR:</strong>{' '}
+                                <strong className="text-white">Firmar & OCR:</strong>{' '}
                                 {isEs
                                   ? 'Estampa firmas trazadas y convierte imágenes escaneadas en texto.'
                                   : 'Stamps drawn signatures and turns scanned images into text.'}
@@ -1103,7 +984,7 @@ export default function DashboardPage() {
 
                         <Link
                           href="/editar"
-                          className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group"
+                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                           aria-label={
                             isEs
                               ? 'Ver todas las herramientas de editar PDF'
@@ -1112,7 +993,7 @@ export default function DashboardPage() {
                         >
                           <span>{isEs ? 'Ver herramientas de Editar →' : 'View Edit tools →'}</span>
                           <ArrowRight
-                            className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform"
+                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
                             aria-hidden="true"
                           />
                         </Link>
@@ -1120,20 +1001,20 @@ export default function DashboardPage() {
 
                       {/* GRUPO 2: ORGANIZAR */}
                       <SpotlightCard
-                        className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-organize-title"
                       >
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div
-                                className="bg-zinc-900 p-3 rounded-xl border border-white/10"
+                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
                                 aria-hidden="true"
                               >
                                 <FolderOpen className="w-5 h-5 text-white" />
                               </div>
                               <div>
-                                <span className="text-xs font-mono text-zinc-500 font-bold block">
+                                <span className="text-xs font-mono text-zinc-300 font-bold block">
                                   002 / ESTRUCTURA
                                 </span>
                                 <h4
@@ -1144,28 +1025,25 @@ export default function DashboardPage() {
                                 </h4>
                               </div>
                             </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
                               {isEs ? 'Gestor de Páginas' : 'Page Builder'}
                             </span>
                           </div>
 
                           {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
-                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
-                              <ShieldCheck
-                                className="w-4 h-4 text-emerald-400"
-                                aria-hidden="true"
-                              />
+                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                               {isEs
-                                ? '🔒 Proceso Binario y Seguridad en ORGANIZAR:'
-                                : '🔒 Binary Process & Security in ORGANIZE:'}
+                                ? 'Proceso Binario y Seguridad en ORGANIZAR:'
+                                : 'Binary Process & Security in ORGANIZE:'}
                             </strong>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'El motor de organización manipula directamente el diccionario jerárquico de páginas (`PageTree`) en la RAM. Al reordenar, rotar, recortar o dividir, el navegador no recodifica las imágenes ni los textos; únicamente reorganiza los punteros lógicos en la tabla de referencias cruzadas.'
                                 : 'Organize tools modify the document PageTree catalog in RAM. When reordering, rotating, cropping, or splitting, only logical pointers update without re-encoding images or reducing vector quality.'}
                             </p>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'Al unir múltiples archivos, el sistema fusiona las tablas de recursos compartidas en un nuevo contenedor PDF unificado a máxima velocidad local, garantizando que planos técnicos, imágenes y documentos conserven 100% su nitidez.'
                                 : 'When merging multiple files, shared resource tables merge into a unified PDF container at max local CPU speed, ensuring blueprints and images retain 100% sharpness.'}
@@ -1173,18 +1051,18 @@ export default function DashboardPage() {
                           </div>
 
                           <ul
-                            className="space-y-2 text-xs text-zinc-300 font-mono mb-6"
+                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
                             aria-label={
                               isEs ? 'Herramientas de organización' : 'Organization tools'
                             }
                           >
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Unir PDF:</strong>{' '}
+                                <strong className="text-white">Unir PDF:</strong>{' '}
                                 {isEs
                                   ? 'Combina árboles de páginas de varios PDFs sin pérdida de nitidez.'
                                   : 'Merges page trees from multiple PDFs without resolution loss.'}
@@ -1192,11 +1070,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Dividir & Eliminar:</strong>{' '}
+                                <strong className="text-white">Dividir & Eliminar:</strong>{' '}
                                 {isEs
                                   ? 'Corta por rangos exactos o quita páginas descartables.'
                                   : 'Splits by exact page ranges or removes unnecessary pages.'}
@@ -1204,11 +1082,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Reordenar & Rotar:</strong>{' '}
+                                <strong className="text-white">Reordenar & Rotar:</strong>{' '}
                                 {isEs
                                   ? 'Arrastra miniaturas e invierte ángulos a 90°/180°.'
                                   : 'Drag page thumbnails and adjust angles to 90°/180°.'}
@@ -1216,11 +1094,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Recortar Márgenes:</strong>{' '}
+                                <strong className="text-white">Recortar Márgenes:</strong>{' '}
                                 {isEs
                                   ? 'Recorta los bordes a dimensiones estandarizadas.'
                                   : 'Crops document margins to standard dimensions.'}
@@ -1231,7 +1109,7 @@ export default function DashboardPage() {
 
                         <Link
                           href="/organizar"
-                          className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group"
+                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                           aria-label={
                             isEs
                               ? 'Ver todas las herramientas de organizar PDF'
@@ -1242,7 +1120,7 @@ export default function DashboardPage() {
                             {isEs ? 'Ver herramientas de Organizar →' : 'View Organize tools →'}
                           </span>
                           <ArrowRight
-                            className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform"
+                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
                             aria-hidden="true"
                           />
                         </Link>
@@ -1250,20 +1128,20 @@ export default function DashboardPage() {
 
                       {/* GRUPO 3: CONVERTIR */}
                       <SpotlightCard
-                        className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-convert-title"
                       >
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div
-                                className="bg-zinc-900 p-3 rounded-xl border border-white/10"
+                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
                                 aria-hidden="true"
                               >
                                 <RefreshCw className="w-5 h-5 text-white" />
                               </div>
                               <div>
-                                <span className="text-xs font-mono text-zinc-500 font-bold block">
+                                <span className="text-xs font-mono text-zinc-300 font-bold block">
                                   003 / CONVERSIÓN
                                 </span>
                                 <h4
@@ -1274,28 +1152,25 @@ export default function DashboardPage() {
                                 </h4>
                               </div>
                             </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
                               {isEs ? 'Alta Fidelidad' : 'High Precision'}
                             </span>
                           </div>
 
                           {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
-                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
-                              <ShieldCheck
-                                className="w-4 h-4 text-emerald-400"
-                                aria-hidden="true"
-                              />
+                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                               {isEs
-                                ? '🔒 Proceso Binario y Seguridad en CONVERTIR:'
-                                : '🔒 Binary Process & Security in CONVERT:'}
+                                ? 'Proceso Binario y Seguridad en CONVERTIR:'
+                                : 'Binary Process & Security in CONVERT:'}
                             </strong>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'El motor cliente de conversión analiza las coordenadas tridimensionales (`x, y, z-index`) de párrafos, tablas de datos e imágenes en el PDF. Reconstruye el documento traduciendo su maquetación a estructuras de archivos XML compatibles con Word (DOCX), Excel (XLSX) o PowerPoint (PPTX) de forma instantánea.'
                                 : 'The client-side conversion engine parses spatial coordinates (`x, y, z`) of text, table cells, and images from the PDF, recompiling them into OpenXML structures (DOCX, XLSX, PPTX) in real-time.'}
                             </p>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'No existen servidores intermedios ni APIs de terceros procesando tus estados financieros, contratos o presentaciones comerciales. Todo el análisis sintáctico y empaquetado comprimido se realiza dentro de la memoria privada de tu navegador.'
                                 : 'No intermediate cloud servers or third-party APIs process your financial sheets or contracts. Parsing and ZIP generation happen inside private browser memory.'}
@@ -1303,16 +1178,16 @@ export default function DashboardPage() {
                           </div>
 
                           <ul
-                            className="space-y-2 text-xs text-zinc-300 font-mono mb-6"
+                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
                             aria-label={isEs ? 'Herramientas de conversión' : 'Conversion tools'}
                           >
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>PDF ↔ Word:</strong>{' '}
+                                <strong className="text-white">PDF ↔ Word:</strong>{' '}
                                 {isEs
                                   ? 'Convierte párrafos y estilos a formato editable DOCX.'
                                   : 'Converts paragraphs and formatting into editable DOCX.'}
@@ -1320,11 +1195,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>PDF ↔ Excel:</strong>{' '}
+                                <strong className="text-white">PDF ↔ Excel:</strong>{' '}
                                 {isEs
                                   ? 'Extrae tablas de datos directamente a hojas XLSX.'
                                   : 'Extracts data tables directly into XLSX spreadsheets.'}
@@ -1332,11 +1207,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>PDF ↔ PowerPoint:</strong>{' '}
+                                <strong className="text-white">PDF ↔ PowerPoint:</strong>{' '}
                                 {isEs
                                   ? 'Transforma páginas en diapositivas PPTX.'
                                   : 'Transforms pages into PPTX slides.'}
@@ -1344,11 +1219,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>PDF ↔ JPG / HTML / TXT:</strong>{' '}
+                                <strong className="text-white">PDF ↔ JPG / HTML / TXT:</strong>{' '}
                                 {isEs
                                   ? 'Exporta láminas a imágenes HD, código web o texto plano.'
                                   : 'Exports pages into HD images, web code, or text.'}
@@ -1359,7 +1234,7 @@ export default function DashboardPage() {
 
                         <Link
                           href="/convertir"
-                          className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group"
+                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                           aria-label={
                             isEs
                               ? 'Ver todas las herramientas de convertir PDF'
@@ -1370,7 +1245,7 @@ export default function DashboardPage() {
                             {isEs ? 'Ver herramientas de Convertir →' : 'View Convert tools →'}
                           </span>
                           <ArrowRight
-                            className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform"
+                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
                             aria-hidden="true"
                           />
                         </Link>
@@ -1378,20 +1253,20 @@ export default function DashboardPage() {
 
                       {/* GRUPO 4: OPTIMIZAR */}
                       <SpotlightCard
-                        className="bg-[#09090b] border border-white/10 hover:border-white/30 rounded-2xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
                         aria-labelledby="group-optimize-title"
                       >
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div
-                                className="bg-zinc-900 p-3 rounded-xl border border-white/10"
+                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
                                 aria-hidden="true"
                               >
                                 <Zap className="w-5 h-5 text-white" />
                               </div>
                               <div>
-                                <span className="text-xs font-mono text-zinc-500 font-bold block">
+                                <span className="text-xs font-mono text-zinc-300 font-bold block">
                                   004 / OPTIMIZACIÓN
                                 </span>
                                 <h4
@@ -1402,28 +1277,25 @@ export default function DashboardPage() {
                                 </h4>
                               </div>
                             </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-900 border border-white/10 text-zinc-300 rounded-full">
+                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
                               {isEs ? 'Seguridad & Peso' : 'Security & Size'}
                             </span>
                           </div>
 
                           {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-white/10 rounded-xl p-4 mb-4 font-mono text-xs text-zinc-300 space-y-2">
-                            <strong className="text-emerald-400 block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-white/10 pb-2">
-                              <ShieldCheck
-                                className="w-4 h-4 text-emerald-400"
-                                aria-hidden="true"
-                              />
+                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                               {isEs
-                                ? '🔒 Proceso Binario y Seguridad en OPTIMIZAR:'
-                                : '🔒 Binary Process & Security in OPTIMIZE:'}
+                                ? 'Proceso Binario y Seguridad en OPTIMIZAR:'
+                                : 'Binary Process & Security in OPTIMIZE:'}
                             </strong>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'Optimiza y re-comprime las fuentes de datos primarias. Al comprimir, re-codifica imágenes JPEG pesadas mediante resampling Canvas y elimina metadatos redundantes de la tabla XRef. Al cifrar o desbloquear, ejecuta algoritmos criptográficos nativos **AES-256** (`crypto.subtle`) sin enviar jamás tus contraseñas a la red.'
                                 : 'Optimizes binary data streams in memory. Compression re-encodes heavy JPEG images via Canvas resampling and purges redundant XRef metadata. Encryption runs native **AES-256** cryptography (`crypto.subtle`) without sending passwords online.'}
                             </p>
-                            <p className="text-zinc-400 text-[11px] font-sans leading-relaxed">
+                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
                               {isEs
                                 ? 'En censura confidencial, la información seleccionada se borra físicamente del código binario del archivo (a diferencia de marcar con recuadros negros editables). En reparación, se reconstruyen cabeceras `%PDF-` y estructuras dañadas.'
                                 : 'In redaction, confidential text is permanently erased from the document binary code (unlike overlaying editable black boxes). Repair rebuilds corrupt headers and dictionaries.'}
@@ -1431,18 +1303,18 @@ export default function DashboardPage() {
                           </div>
 
                           <ul
-                            className="space-y-2 text-xs text-zinc-300 font-mono mb-6"
+                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
                             aria-label={
                               isEs ? 'Herramientas de optimización' : 'Optimization tools'
                             }
                           >
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Comprimir PDF:</strong>{' '}
+                                <strong className="text-white">Comprimir PDF:</strong>{' '}
                                 {isEs
                                   ? 'Reduce hasta un 90% el peso manteniendo textos legibles.'
                                   : 'Reduces file size up to 90% keeping text clear.'}
@@ -1450,11 +1322,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Reparar PDF:</strong>{' '}
+                                <strong className="text-white">Reparar PDF:</strong>{' '}
                                 {isEs
                                   ? 'Reconstruye tablas XRef y arregla archivos corruptos.'
                                   : 'Rebuilds XRef tables and fixes corrupt files.'}
@@ -1462,11 +1334,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Proteger & Desbloquear:</strong>{' '}
+                                <strong className="text-white">Proteger & Desbloquear:</strong>{' '}
                                 {isEs
                                   ? 'Cifra con contraseña o remueve contraseñas locales.'
                                   : 'Encrypts with password or removes local passwords.'}
@@ -1474,11 +1346,11 @@ export default function DashboardPage() {
                             </li>
                             <li className="flex items-start gap-2">
                               <CheckCircle2
-                                className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"
+                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
                                 aria-hidden="true"
                               />
                               <span>
-                                <strong>Censurar & Comparar:</strong>{' '}
+                                <strong className="text-white">Censurar & Comparar:</strong>{' '}
                                 {isEs
                                   ? 'Oculta datos confidenciales o compara visualmente PDFs.'
                                   : 'Redacts private data or compares PDFs visually.'}
@@ -1489,7 +1361,7 @@ export default function DashboardPage() {
 
                         <Link
                           href="/optimizar"
-                          className="inline-flex items-center justify-between bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group"
+                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                           aria-label={
                             isEs
                               ? 'Ver todas las herramientas de optimizar PDF'
@@ -1500,7 +1372,7 @@ export default function DashboardPage() {
                             {isEs ? 'Ver herramientas de Optimizar →' : 'View Optimize tools →'}
                           </span>
                           <ArrowRight
-                            className="w-3.5 h-3.5 text-white group-hover:translate-x-1 transition-transform"
+                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
                             aria-hidden="true"
                           />
                         </Link>
@@ -1529,11 +1401,11 @@ export default function DashboardPage() {
           className="relative z-10 mt-12 sm:mt-16 font-sans"
           aria-label={isEs ? 'Archivos recientes' : 'Recent files'}
         >
-          <SpotlightCard className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl mb-12">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-white/10 pb-5">
+          <SpotlightCard className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl mb-12">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-zinc-700 pb-5">
               <div className="flex items-center gap-3">
                 <div
-                  className="bg-zinc-900 p-2.5 rounded-xl border border-white/10"
+                  className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md"
                   aria-hidden="true"
                 >
                   <FolderOpen className="w-4 h-4 text-white" />
@@ -1545,7 +1417,7 @@ export default function DashboardPage() {
 
               <div className="relative w-full sm:w-72 font-mono">
                 <Search
-                  className="w-3.5 h-3.5 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2"
+                  className="w-3.5 h-3.5 text-zinc-300 absolute left-3.5 top-1/2 -translate-y-1/2"
                   aria-hidden="true"
                 />
                 <label htmlFor="file-search" className="sr-only">
@@ -1555,7 +1427,7 @@ export default function DashboardPage() {
                   id="file-search"
                   type="text"
                   placeholder={isEs ? 'Buscar archivos...' : 'Search files...'}
-                  className="w-full bg-zinc-900 border border-white/10 rounded-full py-2 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition-colors"
+                  className="w-full bg-zinc-900 border border-zinc-600 rounded-full py-2 pl-9 pr-4 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-white transition-colors"
                 />
               </div>
             </div>
@@ -1567,40 +1439,40 @@ export default function DashboardPage() {
             >
               <table className="w-full text-left text-xs font-mono whitespace-nowrap">
                 <thead>
-                  <tr className="border-b border-white/10">
+                  <tr className="border-b border-zinc-700">
                     <th
                       scope="col"
-                      className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider pl-2"
+                      className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider pl-2"
                     >
                       {isEs ? 'NOMBRE DEL ARCHIVO' : 'FILE NAME'}
                     </th>
                     <th
                       scope="col"
-                      className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider"
+                      className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider"
                     >
                       {isEs ? 'TAMAÑO' : 'SIZE'}
                     </th>
                     <th
                       scope="col"
-                      className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider"
+                      className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider"
                     >
                       {isEs ? 'ACCIÓN REALIZADA' : 'ACTION PERFORMED'}
                     </th>
                     <th
                       scope="col"
-                      className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider"
+                      className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider"
                     >
                       {isEs ? 'ESTADO' : 'STATUS'}
                     </th>
                     <th
                       scope="col"
-                      className="pb-3 font-semibold text-zinc-400 uppercase tracking-wider text-right pr-2"
+                      className="pb-3 font-semibold text-zinc-300 uppercase tracking-wider text-right pr-2"
                     >
                       {isEs ? 'ACCIONES' : 'ACTIONS'}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-zinc-300">
+                <tbody className="divide-y divide-zinc-700 text-zinc-200">
                   {!isHistoryLoaded ? (
                     <>
                       <SkeletonTableRow key="skel-row-1" />
@@ -1651,6 +1523,101 @@ export default function DashboardPage() {
             </div>
           </SpotlightCard>
         </section>
+
+        {/* GARANTÍAS DE CONFIANZA, PRIVACIDAD Y ESTADÍSTICAS - FINAL DE LA PÁGINA (CENTRADO) */}
+        <section
+          className="relative z-10 w-full mt-4 mb-8 flex flex-col items-center justify-center gap-5 font-mono"
+          aria-label={
+            isEs
+              ? 'Garantías y estadísticas de la plataforma'
+              : 'Platform guarantees and statistics'
+          }
+        >
+          {/* TARJETA DE CONFIANZA Y PRIVACIDAD TOTAL (CENTRADA) */}
+          <div className="w-full max-w-5xl flex flex-col md:flex-row flex-wrap items-center justify-center gap-4 p-5 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-400 rounded-3xl shadow-2xl transition-all duration-300 text-center">
+            {/* INSIGNIA DE CONFIANZA Y PRIVACIDAD TOTAL */}
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-zinc-800 border border-zinc-600 text-white text-xs shadow-md">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+              </span>
+              <ShieldCheck className="w-4 h-4 text-white flex-shrink-0" aria-hidden="true" />
+              <span className="font-bold tracking-wide">
+                {isEs
+                  ? 'INSIGNIA DE CONFIANZA: 100% LOCAL Y PRIVADO'
+                  : 'TRUST BADGE: 100% LOCAL & PRIVATE'}
+              </span>
+              <span className="text-zinc-300 text-xs hidden md:inline-block font-normal">
+                •{' '}
+                {isEs
+                  ? 'Tus archivos nunca salen de tu navegador'
+                  : 'Your files never leave your browser'}
+              </span>
+            </div>
+
+            {/* LAS 4 CÁPSULAS CENTRADAS */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-zinc-300">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-200 font-bold shadow-sm">
+                <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                {isEs ? 'Cero Servidores' : 'Zero Servers'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-200 font-bold shadow-sm">
+                <Zap className="w-3.5 h-3.5 text-zinc-200" />
+                {isEs ? '100% Gratis' : '100% Free'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-200 font-bold shadow-sm">
+                <Lock className="w-3.5 h-3.5 text-white" />
+                {isEs ? 'Sin Registro' : 'No Sign-up'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-200 font-bold shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-white" />
+                {isEs ? '24 Herramientas' : '24 Tools'}
+              </span>
+            </div>
+          </div>
+
+          {/* KPIS DE SESIÓN CENTRADOS */}
+          <div
+            className="flex flex-wrap items-center justify-center gap-3 font-mono"
+            role="region"
+            aria-label={isEs ? 'Estadísticas de sesión' : 'Session statistics'}
+          >
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-200 text-xs font-mono font-bold shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-white" aria-hidden="true"></span>
+              <span>
+                {isEs
+                  ? '001 / Arquitectura PDF local 100% gratuita'
+                  : '001 / 100% Free local PDF engine'}
+              </span>
+            </div>
+            <KpiPill
+              icon={FileText}
+              title={isEs ? 'Archivos' : 'Files'}
+              value={filesProcessed}
+              tooltip={isEs ? 'Tus archivos procesados esta semana' : 'Files processed this week'}
+              color="text-white"
+            />
+            <KpiPill
+              icon={HardDrive}
+              title={isEs ? 'Ahorrado' : 'Saved'}
+              value={bytesSaved / (1024 * 1024)}
+              decimals={1}
+              suffix=" MB"
+              tooltip={isEs ? 'Almacenamiento optimizado localmente' : 'Locally optimized storage'}
+              color="text-zinc-200"
+            />
+            <KpiPill
+              icon={Clock}
+              title={isEs ? 'Tiempo' : 'Time'}
+              value={timeSavedMinutes}
+              suffix=" min"
+              tooltip={
+                isEs ? 'Tiempo ahorrado en tu sesión actual' : 'Time saved in current session'
+              }
+              color="text-zinc-200"
+            />
+          </div>
+        </section>
       </div>
     </section>
   );
@@ -1676,7 +1643,7 @@ function KpiPill({
   return (
     <div className="relative group/kpi">
       <div
-        className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-full transition-all cursor-help font-mono"
+        className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 hover:border-white rounded-full transition-all cursor-help font-mono shadow-sm"
         role="status"
         aria-label={`${title}: ${value}${suffix}${tooltip ? ` — ${tooltip}` : ''}`}
       >
@@ -1684,12 +1651,12 @@ function KpiPill({
         <span className="text-xs font-bold text-white">
           <AnimatedCounter to={value} decimals={decimals} suffix={suffix} />
         </span>
-        <span className="text-[10px] text-zinc-400 font-semibold uppercase">{title}</span>
+        <span className="text-[10px] text-zinc-300 font-bold uppercase">{title}</span>
       </div>
 
       {tooltip && (
         <div
-          className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-[10px] font-mono text-zinc-300 opacity-0 group-hover/kpi:opacity-100 transition-opacity duration-200 pointer-events-none shadow-2xl whitespace-nowrap z-50"
+          className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-800 border border-zinc-600 rounded-xl text-[10px] font-mono text-zinc-100 opacity-0 group-hover/kpi:opacity-100 transition-opacity duration-200 pointer-events-none shadow-2xl whitespace-nowrap z-50"
           aria-hidden="true"
         >
           {tooltip}
@@ -1716,49 +1683,49 @@ function TableRow({
   const isEs = lang === 'es';
 
   return (
-    <tr className="border-b border-white/10 hover:bg-zinc-900/40 transition-colors group">
+    <tr className="border-b border-zinc-700/80 hover:bg-zinc-800/40 transition-colors group">
       <td className="py-3.5 pl-2">
         <div className="flex items-center gap-3">
           <div
-            className="p-2 bg-zinc-900 rounded-xl border border-white/10 group-hover:border-white/30 transition-colors"
+            className="p-2 bg-zinc-800 rounded-xl border border-zinc-600 group-hover:border-zinc-400 transition-colors text-white shadow-sm"
             aria-hidden="true"
           >
             <Icon className="w-4 h-4 text-white" />
           </div>
-          <span className="font-sans font-medium text-xs text-white group-hover:text-white transition-colors">
+          <span className="font-sans font-semibold text-xs text-white group-hover:text-white transition-colors">
             {name}
           </span>
         </div>
       </td>
-      <td className="py-3.5 text-zinc-400 text-xs font-mono">{size}</td>
-      <td className="py-3.5 text-zinc-400 text-xs font-mono">{action}</td>
+      <td className="py-3.5 text-zinc-300 text-xs font-mono">{size}</td>
+      <td className="py-3.5 text-zinc-300 text-xs font-mono">{action}</td>
       <td className="py-3.5">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900 border border-white/10 text-emerald-400 text-xs font-mono">
-          <CheckCircle2 className="w-3 h-3 text-emerald-400" aria-hidden="true" /> {status}
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-800 border border-zinc-600 text-white text-xs font-mono font-bold shadow-sm">
+          <CheckCircle2 className="w-3 h-3 text-white" aria-hidden="true" /> {status}
         </span>
       </td>
       <td className="py-3.5 pr-2 text-right">
-        <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity duration-200">
           <button
-            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
             aria-label={isEs ? `Añadir ${name} a favoritos` : `Add ${name} to favorites`}
           >
             <Star className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
           <button
-            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
             aria-label={isEs ? `Vista previa de ${name}` : `Preview ${name}`}
           >
             <Eye className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
           <button
-            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
             aria-label={isEs ? `Descargar ${name}` : `Download ${name}`}
           >
             <Download className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
           <button
-            className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
             aria-label={isEs ? `Eliminar ${name}` : `Delete ${name}`}
           >
             <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />

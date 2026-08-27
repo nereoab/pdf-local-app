@@ -2,7 +2,39 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { ArrowLeft, Activity, FileDown, Loader2, X, FilePlus, FileText, UploadCloud, ChevronDown, ChevronUp, SlidersHorizontal, Shield, Zap, Target, Archive, RotateCcw, FileCheck2, AlertTriangle, CheckCircle2, Info, Clock, Binary, FileWarning, Database, FileCode2, Lock, Eye, ZoomIn, ZoomOut, HelpCircle, ShieldCheck } from 'lucide-react';
+import {
+  ArrowLeft,
+  Activity,
+  FileDown,
+  Loader2,
+  X,
+  FilePlus,
+  FileText,
+  UploadCloud,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+  Shield,
+  Zap,
+  Target,
+  Archive,
+  RotateCcw,
+  FileCheck2,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Clock,
+  Binary,
+  FileWarning,
+  Database,
+  FileCode2,
+  Lock,
+  Eye,
+  ZoomIn,
+  ZoomOut,
+  HelpCircle,
+  ShieldCheck,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
@@ -40,11 +72,7 @@ interface DiagnosticDisplay {
 // ---------------------------------------------------------------------------
 
 type WorkerMessageFromWorker =
-  | DiagnosticResult
-  | RepairProgress
-  | RecoveryReport
-  | RepairResult
-  | RepairError;
+  DiagnosticResult | RepairProgress | RecoveryReport | RepairResult | RepairError;
 
 // ---------------------------------------------------------------------------
 // COMPONENTE PRINCIPAL
@@ -208,7 +236,9 @@ export default function PdfRepairer() {
         canvas.height = viewport.height;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+          await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+            typeof page.render
+          >[0]).promise;
           generated.push({ pageNum: pn, dataUrl: canvas.toDataURL('image/jpeg', 0.85) });
         }
       }
@@ -286,52 +316,103 @@ export default function PdfRepairer() {
     // 1. Header
     let headerOffset = -1;
     for (let i = 0; i < Math.min(uint8.length - 5, 8192); i++) {
-      if (uint8[i] === 0x25 && uint8[i + 1] === 0x50 && uint8[i + 2] === 0x44 && uint8[i + 3] === 0x46 && uint8[i + 4] === 0x2d) {
+      if (
+        uint8[i] === 0x25 &&
+        uint8[i + 1] === 0x50 &&
+        uint8[i + 2] === 0x44 &&
+        uint8[i + 3] === 0x46 &&
+        uint8[i + 4] === 0x2d
+      ) {
         headerOffset = i;
         break;
       }
     }
     if (headerOffset < 0) {
-      issues.push({ category: 'header', severity: 'critical', message: 'Firma %PDF- no encontrada', details: 'Archivo severamente corrupto o no es PDF' });
+      issues.push({
+        category: 'header',
+        severity: 'critical',
+        message: 'Firma %PDF- no encontrada',
+        details: 'Archivo severamente corrupto o no es PDF',
+      });
       criticalCount++;
     } else if (headerOffset > 0) {
-      issues.push({ category: 'header', severity: 'warning', message: `${headerOffset} bytes basura antes de %PDF-`, details: 'Posible corrupción por descarga interrumpida' });
+      issues.push({
+        category: 'header',
+        severity: 'warning',
+        message: `${headerOffset} bytes basura antes de %PDF-`,
+        details: 'Posible corrupción por descarga interrumpida',
+      });
       warningCount++;
     } else {
-      issues.push({ category: 'header', severity: 'ok', message: 'Cabecera %PDF- en posición correcta' });
+      issues.push({
+        category: 'header',
+        severity: 'ok',
+        message: 'Cabecera %PDF- en posición correcta',
+      });
     }
 
     // 2. Trailer EOF
     const tailCheck = Math.min(uint8.length, 4096);
     let hasEof = false;
     for (let i = uint8.length - tailCheck; i < uint8.length - 4; i++) {
-      if (uint8[i] === 0x25 && uint8[i + 1] === 0x25 && uint8[i + 2] === 0x45 && uint8[i + 3] === 0x4f && uint8[i + 4] === 0x46) {
+      if (
+        uint8[i] === 0x25 &&
+        uint8[i + 1] === 0x25 &&
+        uint8[i + 2] === 0x45 &&
+        uint8[i + 3] === 0x4f &&
+        uint8[i + 4] === 0x46
+      ) {
         hasEof = true;
         break;
       }
     }
     if (!hasEof) {
-      issues.push({ category: 'trailer', severity: 'critical', message: 'Marcador %%EOF ausente o corrupto', details: 'El fin de documento no es válido' });
+      issues.push({
+        category: 'trailer',
+        severity: 'critical',
+        message: 'Marcador %%EOF ausente o corrupto',
+        details: 'El fin de documento no es válido',
+      });
       criticalCount++;
     } else {
       issues.push({ category: 'trailer', severity: 'ok', message: 'Marcador %%EOF verificado' });
     }
 
     // 3. XRef
-    const text = new TextDecoder('latin1').decode(uint8.slice(0, Math.min(uint8.length, 512 * 1024)));
+    const text = new TextDecoder('latin1').decode(
+      uint8.slice(0, Math.min(uint8.length, 512 * 1024)),
+    );
     const xrefCount = (text.match(/xref\s+/g) || []).length;
     const startxrefCount = (text.match(/startxref\s+\d+/g) || []).length;
     if (xrefCount === 0) {
-      issues.push({ category: 'xref', severity: 'critical', message: 'Tabla xref no encontrada', details: 'Los objetos no pueden localizarse' });
+      issues.push({
+        category: 'xref',
+        severity: 'critical',
+        message: 'Tabla xref no encontrada',
+        details: 'Los objetos no pueden localizarse',
+      });
       criticalCount++;
     } else if (xrefCount > 3) {
-      issues.push({ category: 'xref', severity: 'warning', message: `Múltiples tablas xref (${xrefCount})`, details: 'Posible fusión incorrecta de documentos' });
+      issues.push({
+        category: 'xref',
+        severity: 'warning',
+        message: `Múltiples tablas xref (${xrefCount})`,
+        details: 'Posible fusión incorrecta de documentos',
+      });
       warningCount++;
     } else {
-      issues.push({ category: 'xref', severity: 'ok', message: `Tabla xref presente (${xrefCount} sección)` });
+      issues.push({
+        category: 'xref',
+        severity: 'ok',
+        message: `Tabla xref presente (${xrefCount} sección)`,
+      });
     }
     if (startxrefCount === 0) {
-      issues.push({ category: 'xref', severity: 'critical', message: 'Puntero startxref no encontrado' });
+      issues.push({
+        category: 'xref',
+        severity: 'critical',
+        message: 'Puntero startxref no encontrado',
+      });
       criticalCount++;
     }
 
@@ -341,25 +422,51 @@ export default function PdfRepairer() {
     const streamCount = (text.match(/\bstream\b/g) || []).length;
     const endstreamCount = (text.match(/\bendstream\b/g) || []).length;
     if (objCount === 0) {
-      issues.push({ category: 'objects', severity: 'critical', message: 'No se detectaron objetos PDF', details: 'Estructura de objetos ausente' });
+      issues.push({
+        category: 'objects',
+        severity: 'critical',
+        message: 'No se detectaron objetos PDF',
+        details: 'Estructura de objetos ausente',
+      });
       criticalCount++;
     } else {
-      issues.push({ category: 'objects', severity: 'ok', message: `${objCount} objetos PDF detectados` });
+      issues.push({
+        category: 'objects',
+        severity: 'ok',
+        message: `${objCount} objetos PDF detectados`,
+      });
     }
     if (objCount !== endobjCount && objCount > 0) {
-      issues.push({ category: 'objects', severity: 'warning', message: `Desbalance obj/endobj: ${objCount} vs ${endobjCount}` });
+      issues.push({
+        category: 'objects',
+        severity: 'warning',
+        message: `Desbalance obj/endobj: ${objCount} vs ${endobjCount}`,
+      });
       warningCount++;
     }
     if (streamCount !== endstreamCount) {
-      issues.push({ category: 'streams', severity: 'warning', message: `Desbalance stream/endstream: ${streamCount} vs ${endstreamCount}` });
+      issues.push({
+        category: 'streams',
+        severity: 'warning',
+        message: `Desbalance stream/endstream: ${streamCount} vs ${endstreamCount}`,
+      });
       warningCount++;
     } else if (streamCount > 0) {
-      issues.push({ category: 'streams', severity: 'ok', message: `${streamCount} flujos de datos balanceados` });
+      issues.push({
+        category: 'streams',
+        severity: 'ok',
+        message: `${streamCount} flujos de datos balanceados`,
+      });
     }
 
     // 5. Encriptación
     if (text.includes('/Encrypt')) {
-      issues.push({ category: 'encryption', severity: 'warning', message: 'Documento cifrado (/Encrypt)', details: 'Se intentará ignorar el cifrado' });
+      issues.push({
+        category: 'encryption',
+        severity: 'warning',
+        message: 'Documento cifrado (/Encrypt)',
+        details: 'Se intentará ignorar el cifrado',
+      });
       warningCount++;
     } else {
       issues.push({ category: 'encryption', severity: 'ok', message: 'Sin cifrado detectado' });
@@ -369,13 +476,19 @@ export default function PdfRepairer() {
     let summary = '';
     if (criticalCount >= 2) {
       severity = 'critical';
-      summary = isEs ? '🔴 Daño estructural severo. Se requiere Deep Rescue.' : '🔴 Severe structural damage. Deep Rescue required.';
+      summary = isEs
+        ? '🔴 Daño estructural severo. Se requiere Deep Rescue.'
+        : '🔴 Severe structural damage. Deep Rescue required.';
     } else if (warningCount >= 2 || criticalCount >= 1) {
       severity = 'warning';
-      summary = isEs ? '⚠️ Anomalías estructurales detectadas. Se recomienda Smart Repair.' : '⚠️ Structural anomalies detected. Smart Repair recommended.';
+      summary = isEs
+        ? '⚠️ Anomalías estructurales detectadas. Se recomienda Smart Repair.'
+        : '⚠️ Structural anomalies detected. Smart Repair recommended.';
     } else {
       severity = 'ok';
-      summary = isEs ? '✅ Estructura PDF sana. Se recomienda reparación ligera.' : '✅ PDF structure healthy. Light repair recommended.';
+      summary = isEs
+        ? '✅ Estructura PDF sana. Se recomienda reparación ligera.'
+        : '✅ PDF structure healthy. Light repair recommended.';
     }
 
     setDiagnostic({ severity, summary, issues, fileSize: file.size });
@@ -395,12 +508,16 @@ export default function PdfRepairer() {
 
     setIsProcessing(true);
     setProgressPercent(0);
-    setProgressMsg(isEs ? 'Iniciando motor de reparación en Worker...' : 'Starting repair engine in Worker...');
+    setProgressMsg(
+      isEs ? 'Iniciando motor de reparación en Worker...' : 'Starting repair engine in Worker...',
+    );
     setRecoveryReport(null);
     setDownloadUrl(null);
 
     let localUrl: string | null = null;
-    const workerRef = new Worker(new URL('@/workers/pdf-repair.worker.ts', import.meta.url), { type: 'module' });
+    const workerRef = new Worker(new URL('@/workers/pdf-repair.worker.ts', import.meta.url), {
+      type: 'module',
+    });
 
     try {
       const fileBuffer = await file.arrayBuffer();
@@ -426,7 +543,7 @@ export default function PdfRepairer() {
               setDiagnostic({
                 severity: data.severity,
                 summary: data.summary,
-                issues: data.issues.map(i => ({
+                issues: data.issues.map((i) => ({
                   category: i.category,
                   severity: i.severity,
                   message: i.message,
@@ -487,7 +604,8 @@ export default function PdfRepairer() {
       });
     } catch (error) {
       console.error(error);
-      const errMsg = error instanceof Error ? error.message : (isEs ? 'Error desconocido' : 'Unknown error');
+      const errMsg =
+        error instanceof Error ? error.message : isEs ? 'Error desconocido' : 'Unknown error';
       toast.error(isEs ? `Error al reparar: ${errMsg}` : `Repair error: ${errMsg}`);
     } finally {
       setIsProcessing(false);
@@ -515,13 +633,20 @@ export default function PdfRepairer() {
 
   const categoryIcon = (cat: string) => {
     switch (cat) {
-      case 'header': return <FileCode2 className="w-3 h-3" />;
-      case 'xref': return <Database className="w-3 h-3" />;
-      case 'trailer': return <FileWarning className="w-3 h-3" />;
-      case 'objects': return <Binary className="w-3 h-3" />;
-      case 'streams': return <Eye className="w-3 h-3" />;
-      case 'encryption': return <Lock className="w-3 h-3" />;
-      default: return <Info className="w-3 h-3" />;
+      case 'header':
+        return <FileCode2 className="w-3 h-3" />;
+      case 'xref':
+        return <Database className="w-3 h-3" />;
+      case 'trailer':
+        return <FileWarning className="w-3 h-3" />;
+      case 'objects':
+        return <Binary className="w-3 h-3" />;
+      case 'streams':
+        return <Eye className="w-3 h-3" />;
+      case 'encryption':
+        return <Lock className="w-3 h-3" />;
+      default:
+        return <Info className="w-3 h-3" />;
     }
   };
 
@@ -531,10 +656,20 @@ export default function PdfRepairer() {
 
   return (
     <div className="w-full max-w-7xl mx-auto">
-      <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
+      <input
+        type="file"
+        accept=".pdf"
+        className="hidden"
+        onChange={handleFileChange}
+        ref={fileInputRef}
+        disabled={isProcessing}
+      />
 
       {/* CABECERA */}
-      <div ref={topHeaderRef} className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+      <div
+        ref={topHeaderRef}
+        className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl"
+      >
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
             href="/#herramientas"
@@ -552,7 +687,11 @@ export default function PdfRepairer() {
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Activity className="w-6 h-6 text-white flex-shrink-0" />
-              <span>{isEs ? 'REPARAR Y RESTAURAR DOCUMENTOS PDF DAÑADOS' : 'REPAIR AND RESTORE DAMAGED PDF DOCUMENTS'}</span>
+              <span>
+                {isEs
+                  ? 'REPARAR Y RESTAURAR DOCUMENTOS PDF DAÑADOS'
+                  : 'REPAIR AND RESTORE DAMAGED PDF DOCUMENTS'}
+              </span>
             </h1>
           </div>
         </div>
@@ -561,7 +700,9 @@ export default function PdfRepairer() {
           <div className="flex items-center gap-3 font-mono">
             <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs text-white">
               <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">{file.name}</span>
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
+                {file.name}
+              </span>
             </div>
             <button
               onClick={removeFile}
@@ -580,7 +721,7 @@ export default function PdfRepairer() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full max-w-3xl mx-auto bg-[#09090b] hover:bg-zinc-900/60 border border-white/10 hover:border-white/30 rounded-2xl p-8 lg:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[480px] relative overflow-hidden"
+          className="w-full bg-[#09090b] hover:bg-zinc-900/60 border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-8 lg:p-14 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[480px] relative overflow-hidden"
         >
           <div className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors">
             <UploadCloud className="w-12 h-12 text-white" />
@@ -591,7 +732,9 @@ export default function PdfRepairer() {
               {isEs ? 'Arrastra tu archivo PDF dañado aquí' : 'Drop your corrupted PDF file here'}
             </h2>
             <p className="text-zinc-400 text-xs sm:text-sm font-mono">
-              {isEs ? 'O haz clic para explorar tus archivos y diagnosticar el problema' : 'Or click to browse your files and diagnose issue'}
+              {isEs
+                ? 'O haz clic para explorar tus archivos y diagnosticar el problema'
+                : 'Or click to browse your files and diagnose issue'}
             </p>
           </div>
 
@@ -638,20 +781,36 @@ export default function PdfRepairer() {
             {/* MÉTRICAS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Original' : 'Original Size'}</span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.originalSize)}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Tamaño Original' : 'Original Size'}
+                </span>
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                  {formatFileSize(completedResult.originalSize)}
+                </span>
               </div>
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Tamaño Reparado' : 'Repaired Size'}</span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">{formatFileSize(completedResult.repairedSize)}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Tamaño Reparado' : 'Repaired Size'}
+                </span>
+                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                  {formatFileSize(completedResult.repairedSize)}
+                </span>
               </div>
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Recuperadas' : 'Pages Recovered'}</span>
-                <span className="text-white font-bold text-lg font-mono mt-0.5">{completedResult.pagesRecovered}</span>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Páginas Recuperadas' : 'Pages Recovered'}
+                </span>
+                <span className="text-white font-bold text-lg font-mono mt-0.5">
+                  {completedResult.pagesRecovered}
+                </span>
               </div>
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">{isEs ? 'Páginas Perdidas' : 'Pages Lost'}</span>
-                <span className={`font-bold text-lg font-mono mt-0.5 ${completedResult.pagesLost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  {isEs ? 'Páginas Perdidas' : 'Pages Lost'}
+                </span>
+                <span
+                  className={`font-bold text-lg font-mono mt-0.5 ${completedResult.pagesLost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}
+                >
                   {completedResult.pagesLost}
                 </span>
               </div>
@@ -681,9 +840,15 @@ export default function PdfRepairer() {
         </motion.div>
       ) : (
         /* WORKSPACE */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans" style={{ alignItems: 'stretch' }}>
+        <div
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans"
+          style={{ alignItems: 'stretch' }}
+        >
           {/* LADO IZQUIERDO: PREVIEW (MINIATURAS) + DIAGNÓSTICO + REPORTE */}
-          <div className="lg:col-span-5" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div
+            className="lg:col-span-5"
+            style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+          >
             {/* PREVIEW CON GRILLA DE MINIATURAS */}
             <div
               className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex flex-col shadow-2xl overflow-hidden"
@@ -699,12 +864,28 @@ export default function PdfRepairer() {
                     <Activity className="w-4 h-4 text-emerald-400" />
                   </div>
                   <div className="overflow-hidden">
-                    <span className="text-white font-bold text-xs truncate block max-w-[180px] sm:max-w-[240px]">{file.name}</span>
+                    <span className="text-white font-bold text-xs truncate block max-w-[180px] sm:max-w-[240px]">
+                      {file.name}
+                    </span>
                     <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5">
                       <span>{formatFileSize(file.size)}</span>
                       <span className="text-zinc-600">•</span>
-                      <span className={diagnostic?.severity === 'critical' ? 'text-red-400 font-bold' : diagnostic?.severity === 'warning' ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
-                        {diagnostic ? (isEs ? 'Diagnóstico listo' : 'Diagnosis ready') : (isEs ? 'Listo para reparar' : 'Ready to repair')}
+                      <span
+                        className={
+                          diagnostic?.severity === 'critical'
+                            ? 'text-red-400 font-bold'
+                            : diagnostic?.severity === 'warning'
+                              ? 'text-amber-400 font-bold'
+                              : 'text-emerald-400 font-bold'
+                        }
+                      >
+                        {diagnostic
+                          ? isEs
+                            ? 'Diagnóstico listo'
+                            : 'Diagnosis ready'
+                          : isEs
+                            ? 'Listo para reparar'
+                            : 'Ready to repair'}
                       </span>
                     </span>
                   </div>
@@ -720,7 +901,9 @@ export default function PdfRepairer() {
                       }`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      <span>{isEs ? `Miniaturas (${totalPages})` : `Thumbnails (${totalPages})`}</span>
+                      <span>
+                        {isEs ? `Miniaturas (${totalPages})` : `Thumbnails (${totalPages})`}
+                      </span>
                     </button>
                     <button
                       onClick={() => {
@@ -736,13 +919,23 @@ export default function PdfRepairer() {
                       <Activity className="w-3 h-3 text-emerald-400" />
                       <span>{isEs ? 'Diagnóstico' : 'Diagnosis'}</span>
                       {diagnostic && (
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          diagnostic.severity === 'critical' ? 'bg-red-400' : diagnostic.severity === 'warning' ? 'bg-amber-400' : 'bg-emerald-400'
-                        }`} />
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            diagnostic.severity === 'critical'
+                              ? 'bg-red-400'
+                              : diagnostic.severity === 'warning'
+                                ? 'bg-amber-400'
+                                : 'bg-emerald-400'
+                          }`}
+                        />
                       )}
                     </button>
                   </div>
-                  <button onClick={removeFile} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer" title={isEs ? 'Remover archivo' : 'Remove file'}>
+                  <button
+                    onClick={removeFile}
+                    className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer"
+                    title={isEs ? 'Remover archivo' : 'Remove file'}
+                  >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -755,28 +948,48 @@ export default function PdfRepairer() {
                     <div className="space-y-3 font-mono">
                       <div className="flex items-center justify-between pb-2 border-b border-white/10">
                         <div className="flex items-center gap-2">
-                          {diagnostic.severity === 'critical' ? <AlertTriangle className="w-5 h-5 text-red-400" /> : diagnostic.severity === 'warning' ? <AlertTriangle className="w-5 h-5 text-amber-400" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+                          {diagnostic.severity === 'critical' ? (
+                            <AlertTriangle className="w-5 h-5 text-red-400" />
+                          ) : diagnostic.severity === 'warning' ? (
+                            <AlertTriangle className="w-5 h-5 text-amber-400" />
+                          ) : (
+                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                          )}
                           <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                            {isEs ? 'Informe de Diagnóstico Estructural' : 'Structural Diagnosis Report'}
+                            {isEs
+                              ? 'Informe de Diagnóstico Estructural'
+                              : 'Structural Diagnosis Report'}
                           </h3>
                         </div>
-                        <span className="text-[10px] text-zinc-500">{formatFileSize(diagnostic.fileSize)}</span>
+                        <span className="text-[10px] text-zinc-500">
+                          {formatFileSize(diagnostic.fileSize)}
+                        </span>
                       </div>
 
-                      <div className={`p-3 rounded-xl border ${severityColor(diagnostic.severity)}`}>
+                      <div
+                        className={`p-3 rounded-xl border ${severityColor(diagnostic.severity)}`}
+                      >
                         <p className="text-xs font-bold">{diagnostic.summary}</p>
                       </div>
 
                       <div className="space-y-1.5">
                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                          {isEs ? 'Análisis de Componentes' : 'Component Breakdown'} ({diagnostic.issues.length})
+                          {isEs ? 'Análisis de Componentes' : 'Component Breakdown'} (
+                          {diagnostic.issues.length})
                         </span>
                         {diagnostic.issues.map((issue, i) => (
-                          <div key={i} className={`flex items-start gap-2 text-[11px] px-2.5 py-2 rounded-xl border ${severityColor(issue.severity)}`}>
-                            <span className="flex-shrink-0 mt-0.5">{categoryIcon(issue.category)}</span>
+                          <div
+                            key={i}
+                            className={`flex items-start gap-2 text-[11px] px-2.5 py-2 rounded-xl border ${severityColor(issue.severity)}`}
+                          >
+                            <span className="flex-shrink-0 mt-0.5">
+                              {categoryIcon(issue.category)}
+                            </span>
                             <div>
                               <span className="font-bold text-zinc-200">{issue.message}</span>
-                              {issue.details && <p className="text-[10px] text-zinc-400 mt-0.5">{issue.details}</p>}
+                              {issue.details && (
+                                <p className="text-[10px] text-zinc-400 mt-0.5">{issue.details}</p>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -785,13 +998,19 @@ export default function PdfRepairer() {
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
                       <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                      <span className="text-xs font-mono">{isEs ? 'Ejecutando diagnóstico estructural...' : 'Running structural diagnosis...'}</span>
+                      <span className="text-xs font-mono">
+                        {isEs
+                          ? 'Ejecutando diagnóstico estructural...'
+                          : 'Running structural diagnosis...'}
+                      </span>
                     </div>
                   )
                 ) : isLoadingThumbnails ? (
                   <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                    <span className="text-xs font-mono">{isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}</span>
+                    <span className="text-xs font-mono">
+                      {isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}
+                    </span>
                   </div>
                 ) : thumbnails.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full">
@@ -813,26 +1032,36 @@ export default function PdfRepairer() {
                           />
                         </div>
                         <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[9px] sm:text-[10px]">
-                          <span className={`font-bold px-1.5 py-0.5 rounded-full ${
-                            previewPageNum === thumb.pageNum
-                              ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
-                              : 'bg-zinc-800 text-zinc-300 border border-white/10'
-                          }`}>
+                          <span
+                            className={`font-bold px-1.5 py-0.5 rounded-full ${
+                              previewPageNum === thumb.pageNum
+                                ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
+                                : 'bg-zinc-800 text-zinc-300 border border-white/10'
+                            }`}
+                          >
                             {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
                           </span>
                           {previewPageNum === thumb.pageNum && (
-                            <span className="text-emerald-400 text-[8px] sm:text-[9px] font-bold">✓</span>
+                            <span className="text-emerald-400 text-[8px] sm:text-[9px] font-bold">
+                              ✓
+                            </span>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : pdfUrl ? (
-                  <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} className="w-full h-full rounded border-0 min-h-[300px]" title="PDF Preview" />
+                  <iframe
+                    src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                    className="w-full h-full rounded border-0 min-h-[300px]"
+                    title="PDF Preview"
+                  />
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
                     <FileText className="w-10 h-10 text-zinc-600" />
-                    <span className="text-xs font-mono">{isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}</span>
+                    <span className="text-xs font-mono">
+                      {isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -851,28 +1080,50 @@ export default function PdfRepairer() {
                     <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">
                       {isEs ? 'Reporte de Recuperación' : 'Recovery Report'}
                     </h3>
-                    <span className="text-[10px] text-zinc-500 ml-auto font-mono">{recoveryReport.repairTimeMs}ms</span>
+                    <span className="text-[10px] text-zinc-500 ml-auto font-mono">
+                      {recoveryReport.repairTimeMs}ms
+                    </span>
                   </div>
 
                   {/* KPIs */}
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">{isEs ? 'Método' : 'Method'}</span>
-                      <span className="text-sm font-bold text-white">{recoveryReport.repairMethod === 'smart' ? 'Smart Repair' : recoveryReport.repairMethod === 'deep' ? 'Deep Rescue' : 'Parcial'}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono block">
+                        {isEs ? 'Método' : 'Method'}
+                      </span>
+                      <span className="text-sm font-bold text-white">
+                        {recoveryReport.repairMethod === 'smart'
+                          ? 'Smart Repair'
+                          : recoveryReport.repairMethod === 'deep'
+                            ? 'Deep Rescue'
+                            : 'Parcial'}
+                      </span>
                     </div>
                     <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">{isEs ? 'Págs. Recuperadas' : 'Pages Recovered'}</span>
-                      <span className="text-sm font-bold text-emerald-400">{recoveryReport.pagesRecovered}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono block">
+                        {isEs ? 'Págs. Recuperadas' : 'Pages Recovered'}
+                      </span>
+                      <span className="text-sm font-bold text-emerald-400">
+                        {recoveryReport.pagesRecovered}
+                      </span>
                     </div>
                     <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">{isEs ? 'Vectores' : 'Vectors'}</span>
-                      <span className={`text-sm font-bold ${recoveryReport.vectorPreserved ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className="text-[10px] text-zinc-500 font-mono block">
+                        {isEs ? 'Vectores' : 'Vectors'}
+                      </span>
+                      <span
+                        className={`text-sm font-bold ${recoveryReport.vectorPreserved ? 'text-emerald-400' : 'text-amber-400'}`}
+                      >
                         {recoveryReport.vectorPreserved ? '✓ Preservados' : '✗ Rasterizados'}
                       </span>
                     </div>
                     <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">{isEs ? 'Fuentes' : 'Fonts'}</span>
-                      <span className={`text-sm font-bold ${recoveryReport.fontsPreserved ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className="text-[10px] text-zinc-500 font-mono block">
+                        {isEs ? 'Fuentes' : 'Fonts'}
+                      </span>
+                      <span
+                        className={`text-sm font-bold ${recoveryReport.fontsPreserved ? 'text-emerald-400' : 'text-amber-400'}`}
+                      >
                         {recoveryReport.fontsPreserved ? '✓ Preservadas' : '✗ Perdidas'}
                       </span>
                     </div>
@@ -882,20 +1133,29 @@ export default function PdfRepairer() {
                   {recoveryReport.pagesLost > 0 && (
                     <div className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 mb-2 font-mono">
                       <AlertTriangle className="w-3.5 h-3.5 inline-block mr-1" />
-                      {recoveryReport.pagesLost} {isEs ? 'página(s) perdida(s) por corrupción irrecuperable' : 'page(s) lost to irrecoverable corruption'}
+                      {recoveryReport.pagesLost}{' '}
+                      {isEs
+                        ? 'página(s) perdida(s) por corrupción irrecuperable'
+                        : 'page(s) lost to irrecoverable corruption'}
                       {recoveryReport.lostPageNumbers.length > 0 && (
-                        <span className="text-zinc-400 ml-1">({recoveryReport.lostPageNumbers.join(', ')})</span>
+                        <span className="text-zinc-400 ml-1">
+                          ({recoveryReport.lostPageNumbers.join(', ')})
+                        </span>
                       )}
                     </div>
                   )}
                   {recoveryReport.blankPageNumbers.length > 0 && (
                     <div className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-white/10 rounded-lg p-2.5 mb-2 font-mono">
-                      {recoveryReport.blankPageNumbers.length} {isEs ? 'página(s) en blanco insertada(s)' : 'blank page(s) inserted'}: {recoveryReport.blankPageNumbers.join(', ')}
+                      {recoveryReport.blankPageNumbers.length}{' '}
+                      {isEs ? 'página(s) en blanco insertada(s)' : 'blank page(s) inserted'}:{' '}
+                      {recoveryReport.blankPageNumbers.join(', ')}
                     </div>
                   )}
                   {recoveryReport.substitutedPageNumbers.length > 0 && (
                     <div className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-white/10 rounded-lg p-2.5 mb-2 font-mono">
-                      {recoveryReport.substitutedPageNumbers.length} {isEs ? 'página(s) sustituida(s) con aviso' : 'page(s) replaced with notice'}: {recoveryReport.substitutedPageNumbers.join(', ')}
+                      {recoveryReport.substitutedPageNumbers.length}{' '}
+                      {isEs ? 'página(s) sustituida(s) con aviso' : 'page(s) replaced with notice'}:{' '}
+                      {recoveryReport.substitutedPageNumbers.join(', ')}
                     </div>
                   )}
 
@@ -907,7 +1167,12 @@ export default function PdfRepairer() {
                           {isEs ? '✓ Problemas Resueltos' : '✓ Issues Fixed'}
                         </span>
                         {recoveryReport.issuesFixed.map((f, i) => (
-                          <p key={i} className="text-[10px] text-zinc-300 font-mono leading-relaxed">{f}</p>
+                          <p
+                            key={i}
+                            className="text-[10px] text-zinc-300 font-mono leading-relaxed"
+                          >
+                            {f}
+                          </p>
                         ))}
                       </div>
                     )}
@@ -917,7 +1182,12 @@ export default function PdfRepairer() {
                           {isEs ? '⚠ Problemas Sin Resolver' : '⚠ Unresolved Issues'}
                         </span>
                         {recoveryReport.issuesUnresolved.map((u, i) => (
-                          <p key={i} className="text-[10px] text-zinc-400 font-mono leading-relaxed">{u}</p>
+                          <p
+                            key={i}
+                            className="text-[10px] text-zinc-400 font-mono leading-relaxed"
+                          >
+                            {u}
+                          </p>
                         ))}
                       </div>
                     )}
@@ -930,7 +1200,9 @@ export default function PdfRepairer() {
                         {isEs ? 'Avisos' : 'Warnings'}
                       </span>
                       {recoveryReport.warnings.map((w, i) => (
-                        <p key={i} className="text-[10px] text-zinc-500 font-mono leading-relaxed">{w}</p>
+                        <p key={i} className="text-[10px] text-zinc-500 font-mono leading-relaxed">
+                          {w}
+                        </p>
                       ))}
                     </div>
                   )}
@@ -949,8 +1221,12 @@ export default function PdfRepairer() {
                 {/* CABECERA PANEL */}
                 <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
                   <div>
-                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">002 / CONFIGURACIÓN</span>
-                    <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">PANEL DE CONTROL</h2>
+                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
+                      002 / CONFIGURACIÓN
+                    </span>
+                    <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
+                      PANEL DE CONTROL
+                    </h2>
                   </div>
                   <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
                     <Activity className="w-5 h-5 text-white" />
@@ -969,7 +1245,9 @@ export default function PdfRepairer() {
 
                 {/* RESUMEN DEL DIAGNÓSTICO (INMEDIATO EN PANEL DERECHO) */}
                 {diagnostic && (
-                  <div className={`p-3 rounded-xl border mb-4 font-mono text-xs ${severityColor(diagnostic.severity)} flex flex-col gap-1.5 animate-fadeIn`}>
+                  <div
+                    className={`p-3 rounded-xl border mb-4 font-mono text-xs ${severityColor(diagnostic.severity)} flex flex-col gap-1.5 animate-fadeIn`}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-bold">{diagnostic.summary}</span>
                       <button
@@ -981,7 +1259,10 @@ export default function PdfRepairer() {
                       </button>
                     </div>
                     <p className="text-[10px] opacity-80">
-                      {diagnostic.issues.length} {isEs ? 'componentes analizados. Resultados visibles en el visor izquierdo.' : 'scans run. Details displayed in left viewport.'}
+                      {diagnostic.issues.length}{' '}
+                      {isEs
+                        ? 'componentes analizados. Resultados visibles en el visor izquierdo.'
+                        : 'scans run. Details displayed in left viewport.'}
                     </p>
                   </div>
                 )}
@@ -997,26 +1278,48 @@ export default function PdfRepairer() {
                       className={`p-3 rounded-xl border cursor-pointer transition-all ${repairMode === 'smart' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-white/10 bg-zinc-900/80 text-zinc-400 hover:text-white'}`}
                     >
                       <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
-                        <span className="flex items-center gap-1.5"><Zap className="w-3 h-3 text-emerald-400" />Smart Repair</span>
-                        <div className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'smart' ? 'border-white bg-white' : 'border-zinc-500'}`}>
-                          {repairMode === 'smart' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                        <span className="flex items-center gap-1.5">
+                          <Zap className="w-3 h-3 text-emerald-400" />
+                          Smart Repair
+                        </span>
+                        <div
+                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'smart' ? 'border-white bg-white' : 'border-zinc-500'}`}
+                        >
+                          {repairMode === 'smart' && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                          )}
                         </div>
                       </div>
-                      <p className="text-[10px] text-zinc-400 leading-tight">{isEs ? 'XRef + metadatos' : 'XRef + metadata'}</p>
-                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-emerald-900/60 text-emerald-400 px-1.5 py-0.5 rounded">Estructural</span>
+                      <p className="text-[10px] text-zinc-400 leading-tight">
+                        {isEs ? 'XRef + metadatos' : 'XRef + metadata'}
+                      </p>
+                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-emerald-900/60 text-emerald-400 px-1.5 py-0.5 rounded">
+                        Estructural
+                      </span>
                     </div>
                     <div
                       onClick={() => setRepairMode('deep')}
                       className={`p-3 rounded-xl border cursor-pointer transition-all ${repairMode === 'deep' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-white/10 bg-zinc-900/80 text-zinc-400 hover:text-white'}`}
                     >
                       <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
-                        <span className="flex items-center gap-1.5"><Activity className="w-3 h-3 text-blue-400" />Deep Rebuild</span>
-                        <div className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'deep' ? 'border-white bg-white' : 'border-zinc-500'}`}>
-                          {repairMode === 'deep' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                        <span className="flex items-center gap-1.5">
+                          <Activity className="w-3 h-3 text-blue-400" />
+                          Deep Rebuild
+                        </span>
+                        <div
+                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'deep' ? 'border-white bg-white' : 'border-zinc-500'}`}
+                        >
+                          {repairMode === 'deep' && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                          )}
                         </div>
                       </div>
-                      <p className="text-[10px] text-zinc-400 leading-tight">{isEs ? 'Render visual avanzado' : 'Advanced visual render'}</p>
-                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-blue-900/60 text-blue-400 px-1.5 py-0.5 rounded">Visual</span>
+                      <p className="text-[10px] text-zinc-400 leading-tight">
+                        {isEs ? 'Render visual avanzado' : 'Advanced visual render'}
+                      </p>
+                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-blue-900/60 text-blue-400 px-1.5 py-0.5 rounded">
+                        Visual
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1027,13 +1330,29 @@ export default function PdfRepairer() {
                     <div className="flex items-center gap-2 mb-2">
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
                       <span className="text-[11px] font-bold text-white font-mono">
-                        {progressPhase === 'diagnosis' ? (isEs ? '🔍 Diagnóstico' : '🔍 Diagnosis') :
-                         progressPhase === 'smart-repair' ? (isEs ? '🔧 Smart Repair' : '🔧 Smart Repair') :
-                         progressPhase === 'deep-rescue' ? (isEs ? '⚙️ Deep Rescue' : '⚙️ Deep Rescue') :
-                         progressPhase === 'packaging' ? (isEs ? '📦 Empaquetando' : '📦 Packaging') :
-                         (isEs ? 'Procesando' : 'Processing')}
+                        {progressPhase === 'diagnosis'
+                          ? isEs
+                            ? '🔍 Diagnóstico'
+                            : '🔍 Diagnosis'
+                          : progressPhase === 'smart-repair'
+                            ? isEs
+                              ? '🔧 Smart Repair'
+                              : '🔧 Smart Repair'
+                            : progressPhase === 'deep-rescue'
+                              ? isEs
+                                ? '⚙️ Deep Rescue'
+                                : '⚙️ Deep Rescue'
+                              : progressPhase === 'packaging'
+                                ? isEs
+                                  ? '📦 Empaquetando'
+                                  : '📦 Packaging'
+                                : isEs
+                                  ? 'Procesando'
+                                  : 'Processing'}
                       </span>
-                      <span className="text-[10px] text-zinc-500 ml-auto font-mono">{progressPercent}%</span>
+                      <span className="text-[10px] text-zinc-500 ml-auto font-mono">
+                        {progressPercent}%
+                      </span>
                     </div>
                     <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
                       <div
@@ -1041,7 +1360,9 @@ export default function PdfRepairer() {
                         style={{ width: `${progressPercent}%` }}
                       />
                     </div>
-                    <p className="text-[10px] text-zinc-400 font-mono mt-2 leading-relaxed">{progressMsg}</p>
+                    <p className="text-[10px] text-zinc-400 font-mono mt-2 leading-relaxed">
+                      {progressMsg}
+                    </p>
                   </div>
                 )}
 
@@ -1049,7 +1370,9 @@ export default function PdfRepairer() {
                 <div className="mb-4 space-y-4 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5">
                   <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 mb-3 uppercase">
                     <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{isEs ? 'OPCIONES AVANZADAS DE RECUPERACIÓN' : 'ADVANCED RECOVERY OPTIONS'}</span>
+                    <span>
+                      {isEs ? 'OPCIONES AVANZADAS DE RECUPERACIÓN' : 'ADVANCED RECOVERY OPTIONS'}
+                    </span>
                   </div>
 
                   {/* PRIORIDAD */}
@@ -1059,9 +1382,17 @@ export default function PdfRepairer() {
                       {isEs ? 'Prioridad de Recuperación' : 'Recovery Priority'}
                     </label>
                     <div className="grid grid-cols-3 gap-1.5">
-                      {(['texto', 'imagenes', 'todo'] as RecoveryPriority[]).map(opt => (
-                        <button key={opt} onClick={() => setRecoveryPriority(opt)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${recoveryPriority === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>
-                          {opt === 'texto' ? '📄 Texto' : opt === 'imagenes' ? '🖼️ Imgs' : '⚡ Todo'}
+                      {(['texto', 'imagenes', 'todo'] as RecoveryPriority[]).map((opt) => (
+                        <button
+                          key={opt}
+                          onClick={() => setRecoveryPriority(opt)}
+                          className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${recoveryPriority === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                        >
+                          {opt === 'texto'
+                            ? '📄 Texto'
+                            : opt === 'imagenes'
+                              ? '🖼️ Imgs'
+                              : '⚡ Todo'}
                         </button>
                       ))}
                     </div>
@@ -1074,14 +1405,38 @@ export default function PdfRepairer() {
                       {isEs ? 'Alcance de Páginas' : 'Page Scope'}
                     </label>
                     <div className="grid grid-cols-2 gap-1.5 mb-2">
-                      {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map(opt => (
-                        <button key={opt} onClick={() => setPageScope(opt)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${pageScope === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>
-                          {opt === 'todas' ? (isEs ? 'Todas' : 'All') : opt === 'pares' ? (isEs ? 'Pares' : 'Even') : opt === 'impares' ? (isEs ? 'Impares' : 'Odd') : (isEs ? 'Rango' : 'Range')}
+                      {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map((opt) => (
+                        <button
+                          key={opt}
+                          onClick={() => setPageScope(opt)}
+                          className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${pageScope === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                        >
+                          {opt === 'todas'
+                            ? isEs
+                              ? 'Todas'
+                              : 'All'
+                            : opt === 'pares'
+                              ? isEs
+                                ? 'Pares'
+                                : 'Even'
+                              : opt === 'impares'
+                                ? isEs
+                                  ? 'Impares'
+                                  : 'Odd'
+                                : isEs
+                                  ? 'Rango'
+                                  : 'Range'}
                         </button>
                       ))}
                     </div>
                     {pageScope === 'rango' && (
-                      <input type="text" value={pageRange} onChange={e => setPageRange(e.target.value)} placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'} className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition" />
+                      <input
+                        type="text"
+                        value={pageRange}
+                        onChange={(e) => setPageRange(e.target.value)}
+                        placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'}
+                        className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
+                      />
                     )}
                   </div>
 
@@ -1092,8 +1447,21 @@ export default function PdfRepairer() {
                       {isEs ? 'Compresión de Salida' : 'Output Compression'}
                     </label>
                     <div className="flex gap-1.5">
-                      {([['none', isEs ? 'Sin comprimir' : 'None'], ['low', isEs ? 'Baja' : 'Low'], ['medium', isEs ? 'Media' : 'Med'], ['high', isEs ? 'Alta' : 'High']] as [CompressionLevel, string][]).map(([lvl, label]) => (
-                        <button key={lvl} onClick={() => setCompressionLevel(lvl)} className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${compressionLevel === lvl ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>{label}</button>
+                      {(
+                        [
+                          ['none', isEs ? 'Sin comprimir' : 'None'],
+                          ['low', isEs ? 'Baja' : 'Low'],
+                          ['medium', isEs ? 'Media' : 'Med'],
+                          ['high', isEs ? 'Alta' : 'High'],
+                        ] as [CompressionLevel, string][]
+                      ).map(([lvl, label]) => (
+                        <button
+                          key={lvl}
+                          onClick={() => setCompressionLevel(lvl)}
+                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${compressionLevel === lvl ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                        >
+                          {label}
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -1105,39 +1473,86 @@ export default function PdfRepairer() {
                       {isEs ? 'Acción ante Páginas Dañadas' : 'Action on Corrupted Pages'}
                     </label>
                     <div className="grid grid-cols-3 gap-1.5">
-                      {([['omitir', isEs ? 'Omitir' : 'Skip'], ['sustituir', isEs ? 'Sustituir' : 'Replace'], ['incluir_vacia', isEs ? 'Vía en blanco' : 'Blank']] as [DamagedPageAction, string][]).map(([act, label]) => (
-                        <button key={act} onClick={() => setDamagedPageAction(act)} className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${damagedPageAction === act ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}>{label}</button>
+                      {(
+                        [
+                          ['omitir', isEs ? 'Omitir' : 'Skip'],
+                          ['sustituir', isEs ? 'Sustituir' : 'Replace'],
+                          ['incluir_vacia', isEs ? 'Vía en blanco' : 'Blank'],
+                        ] as [DamagedPageAction, string][]
+                      ).map(([act, label]) => (
+                        <button
+                          key={act}
+                          onClick={() => setDamagedPageAction(act)}
+                          className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${damagedPageAction === act ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                        >
+                          {label}
+                        </button>
                       ))}
                     </div>
                   </div>
 
                   {/* OPCIONES DE SEGURIDAD Y SELLADO */}
                   <div className="space-y-2">
-                    <div onClick={() => setRemoveRestrictions(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                    <div
+                      onClick={() => setRemoveRestrictions((v) => !v)}
+                      className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                    >
                       <div>
-                        <p className="text-[11px] font-bold text-white">{isEs ? 'Eliminar restricciones de impresión/copia' : 'Remove print/copy restrictions'}</p>
-                        <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Desbloquea permisos del documento' : 'Unlock document permissions'}</p>
+                        <p className="text-[11px] font-bold text-white">
+                          {isEs
+                            ? 'Eliminar restricciones de impresión/copia'
+                            : 'Remove print/copy restrictions'}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-mono">
+                          {isEs
+                            ? 'Desbloquea permisos del documento'
+                            : 'Unlock document permissions'}
+                        </p>
                       </div>
-                      <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${removeRestrictions ? 'bg-white' : 'bg-zinc-700'}`}>
-                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${removeRestrictions ? 'left-4' : 'left-0.5'}`} />
+                      <div
+                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${removeRestrictions ? 'bg-white' : 'bg-zinc-700'}`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${removeRestrictions ? 'left-4' : 'left-0.5'}`}
+                        />
                       </div>
                     </div>
 
-                    <div onClick={() => setAddRepairStamp(v => !v)} className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition">
+                    <div
+                      onClick={() => setAddRepairStamp((v) => !v)}
+                      className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                    >
                       <div>
-                        <p className="text-[11px] font-bold text-white">{isEs ? 'Añadir sello de reparación (pie)' : 'Add repair stamp (footer)'}</p>
-                        <p className="text-[10px] text-zinc-500 font-mono">{isEs ? 'Marca el PDF como reparado' : 'Marks the PDF as repaired'}</p>
+                        <p className="text-[11px] font-bold text-white">
+                          {isEs ? 'Añadir sello de reparación (pie)' : 'Add repair stamp (footer)'}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-mono">
+                          {isEs ? 'Marca el PDF como reparado' : 'Marks the PDF as repaired'}
+                        </p>
                       </div>
-                      <div className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${addRepairStamp ? 'bg-white' : 'bg-zinc-700'}`}>
-                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${addRepairStamp ? 'left-4' : 'left-0.5'}`} />
+                      <div
+                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${addRepairStamp ? 'bg-white' : 'bg-zinc-700'}`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${addRepairStamp ? 'left-4' : 'left-0.5'}`}
+                        />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">{isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}</label>
-                      <input type="text" value={customSuffix} onChange={e => setCustomSuffix(e.target.value)} className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition" />
+                      <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">
+                        {isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}
+                      </label>
+                      <input
+                        type="text"
+                        value={customSuffix}
+                        onChange={(e) => setCustomSuffix(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
+                      />
                       <p className="text-[9px] font-mono text-zinc-600 mt-1">
-                        {isEs ? `Salida: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'archivo'}${customSuffix}.pdf` : `Output: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'file'}${customSuffix}.pdf`}
+                        {isEs
+                          ? `Salida: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'archivo'}${customSuffix}.pdf`
+                          : `Output: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'file'}${customSuffix}.pdf`}
                       </p>
                     </div>
                   </div>
@@ -1154,7 +1569,13 @@ export default function PdfRepairer() {
                   {isProcessing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-black" />
-                      <span>{progressPercent > 0 ? `${progressPercent}%` : (isEs ? 'Reparando...' : 'Repairing...')}</span>
+                      <span>
+                        {progressPercent > 0
+                          ? `${progressPercent}%`
+                          : isEs
+                            ? 'Reparando...'
+                            : 'Repairing...'}
+                      </span>
                     </>
                   ) : (
                     <>
@@ -1184,7 +1605,6 @@ export default function PdfRepairer() {
           3 SECCIONES INFORMATIVAS
           ══════════════════════════════════════════════ */}
       <div className="space-y-8 text-zinc-300 font-sans border-t border-white/10 pt-10 mt-10">
-
         {/* ── SECCIÓN 1: CÓMO USAR LA HERRAMIENTA ── */}
         <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
           <div className="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
@@ -1197,13 +1617,34 @@ export default function PdfRepairer() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { step: '01', es: 'Sube tu PDF dañado a la zona de carga arrastrándolo o haciendo clic en "Seleccionar PDF Dañado".', en: 'Upload your damaged PDF to the upload zone by dragging it or clicking "Select Corrupted PDF".' },
-              { step: '02', es: '(Recomendado) Ejecuta el "Diagnóstico Previo" para conocer el nivel de daño estructural del archivo.', en: '(Recommended) Run "Preliminary Diagnosis" to know the structural damage level of the file.' },
-              { step: '03', es: 'Selecciona el modo de reparación: Smart Repair (preserva vectores y fuentes) o Deep Rebuild (rescate visual extremo).', en: 'Select the repair mode: Smart Repair (preserves vectors and fonts) or Deep Rebuild (extreme visual rescue).' },
-              { step: '04', es: 'Haz clic en "Reparar PDF →". El motor analiza la cabecera binaria, repara la tabla XRef y regenera un PDF 1.7 limpio.', en: 'Click "Repair PDF →". The engine scans the binary header, repairs the XRef table, and regenerates a clean PDF 1.7.' },
+              {
+                step: '01',
+                es: 'Sube tu PDF dañado a la zona de carga arrastrándolo o haciendo clic en "Seleccionar PDF Dañado".',
+                en: 'Upload your damaged PDF to the upload zone by dragging it or clicking "Select Corrupted PDF".',
+              },
+              {
+                step: '02',
+                es: '(Recomendado) Ejecuta el "Diagnóstico Previo" para conocer el nivel de daño estructural del archivo.',
+                en: '(Recommended) Run "Preliminary Diagnosis" to know the structural damage level of the file.',
+              },
+              {
+                step: '03',
+                es: 'Selecciona el modo de reparación: Smart Repair (preserva vectores y fuentes) o Deep Rebuild (rescate visual extremo).',
+                en: 'Select the repair mode: Smart Repair (preserves vectors and fonts) or Deep Rebuild (extreme visual rescue).',
+              },
+              {
+                step: '04',
+                es: 'Haz clic en "Reparar PDF →". El motor analiza la cabecera binaria, repara la tabla XRef y regenera un PDF 1.7 limpio.',
+                en: 'Click "Repair PDF →". The engine scans the binary header, repairs the XRef table, and regenerates a clean PDF 1.7.',
+              },
             ].map((item, i) => (
-              <div key={i} className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2">
-                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">Paso {item.step}</span>
+              <div
+                key={i}
+                className="bg-zinc-900/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2"
+              >
+                <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-full w-fit">
+                  Paso {item.step}
+                </span>
                 <p className="text-xs text-zinc-400 leading-relaxed">{isEs ? item.es : item.en}</p>
               </div>
             ))}
@@ -1222,13 +1663,25 @@ export default function PdfRepairer() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
-              <h4 className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">✓ {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}</h4>
+              <h4 className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                ✓ {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
+              </h4>
               {[
-                isEs ? 'Reparar archivos PDF corruptos que no abren en ningún visor estándar.' : 'Repair corrupt PDF files that won\'t open in any standard viewer.',
-                isEs ? 'Recuperar documentos dañados por descargas interrumpidas, fallos de disco o transmisión.' : 'Recover documents damaged by interrupted downloads, disk failures, or transmission errors.',
-                isEs ? 'Reconstruir la tabla de referencias cruzadas (XRef) y regenerar el catálogo de objetos.' : 'Rebuild the cross-reference table (XRef) and regenerate the object catalog.',
-                isEs ? 'Reparar marcadores de fin de archivo (%%EOF) faltantes o corruptos.' : 'Repair missing or corrupt end-of-file markers (%%EOF).',
-                isEs ? 'Generar un nuevo PDF 1.7 estándar completamente funcional y compatible con todos los visores modernos.' : 'Generate a new fully functional standard PDF 1.7 compatible with all modern viewers.',
+                isEs
+                  ? 'Reparar archivos PDF corruptos que no abren en ningún visor estándar.'
+                  : "Repair corrupt PDF files that won't open in any standard viewer.",
+                isEs
+                  ? 'Recuperar documentos dañados por descargas interrumpidas, fallos de disco o transmisión.'
+                  : 'Recover documents damaged by interrupted downloads, disk failures, or transmission errors.',
+                isEs
+                  ? 'Reconstruir la tabla de referencias cruzadas (XRef) y regenerar el catálogo de objetos.'
+                  : 'Rebuild the cross-reference table (XRef) and regenerate the object catalog.',
+                isEs
+                  ? 'Reparar marcadores de fin de archivo (%%EOF) faltantes o corruptos.'
+                  : 'Repair missing or corrupt end-of-file markers (%%EOF).',
+                isEs
+                  ? 'Generar un nuevo PDF 1.7 estándar completamente funcional y compatible con todos los visores modernos.'
+                  : 'Generate a new fully functional standard PDF 1.7 compatible with all modern viewers.',
               ].map((text, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
                   <span className="text-emerald-400 font-bold flex-shrink-0 mt-0.5">✓</span>
@@ -1237,13 +1690,25 @@ export default function PdfRepairer() {
               ))}
             </div>
             <div className="space-y-3">
-              <h4 className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">💡 {isEs ? 'CONSEJOS' : 'TIPS'}</h4>
+              <h4 className="text-xs font-mono text-amber-400 font-bold uppercase tracking-wider border-b border-white/10 pb-2">
+                💡 {isEs ? 'CONSEJOS' : 'TIPS'}
+              </h4>
               {[
-                isEs ? 'Smart Repair preserva vectores, fuentes incrustadas e imágenes sin rasterizar — ideal para documentos legales y financieros.' : 'Smart Repair preserves vectors, embedded fonts, and images without rasterizing — ideal for legal and financial documents.',
-                isEs ? 'Deep Rebuild renderiza páginas como imágenes de alta calidad cuando la estructura de objetos es irrecuperable.' : 'Deep Rebuild renders pages as high-quality images when the object structure is irrecoverable.',
-                isEs ? 'Haz una copia de seguridad del archivo original antes de reparar. El proceso genera un archivo nuevo, no modifica el original.' : 'Back up the original file before repairing. The process generates a new file, it does not modify the original.',
-                isEs ? 'Para archivos de más de 100 páginas o 50MB, el proceso puede tardar varios minutos. Se paciente, el motor está trabajando.' : 'For files over 100 pages or 50MB, the process may take several minutes. Be patient, the engine is working.',
-                isEs ? 'Si el documento está cifrado con contraseña, usa primero la herramienta "Desbloquear PDF" del módulo Optimizar.' : 'If the document is password-encrypted, first use the "Unlock PDF" tool in the Optimize module.',
+                isEs
+                  ? 'Smart Repair preserva vectores, fuentes incrustadas e imágenes sin rasterizar — ideal para documentos legales y financieros.'
+                  : 'Smart Repair preserves vectors, embedded fonts, and images without rasterizing — ideal for legal and financial documents.',
+                isEs
+                  ? 'Deep Rebuild renderiza páginas como imágenes de alta calidad cuando la estructura de objetos es irrecuperable.'
+                  : 'Deep Rebuild renders pages as high-quality images when the object structure is irrecoverable.',
+                isEs
+                  ? 'Haz una copia de seguridad del archivo original antes de reparar. El proceso genera un archivo nuevo, no modifica el original.'
+                  : 'Back up the original file before repairing. The process generates a new file, it does not modify the original.',
+                isEs
+                  ? 'Para archivos de más de 100 páginas o 50MB, el proceso puede tardar varios minutos. Se paciente, el motor está trabajando.'
+                  : 'For files over 100 pages or 50MB, the process may take several minutes. Be patient, the engine is working.',
+                isEs
+                  ? 'Si el documento está cifrado con contraseña, usa primero la herramienta "Desbloquear PDF" del módulo Optimizar.'
+                  : 'If the document is password-encrypted, first use the "Unlock PDF" tool in the Optimize module.',
               ].map((text, i) => (
                 <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
                   <span className="text-amber-400 flex-shrink-0 mt-0.5">→</span>
@@ -1261,13 +1726,18 @@ export default function PdfRepairer() {
               <Shield className="w-5 h-5 text-emerald-400" />
             </div>
             <h2 className="text-lg font-bold text-white tracking-tight">
-              {isEs ? '3. ¿Qué sucede con tu documento al repararlo?' : '3. What happens to your document when repairing it?'}
+              {isEs
+                ? '3. ¿Qué sucede con tu documento al repararlo?'
+                : '3. What happens to your document when repairing it?'}
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400 leading-relaxed">
             <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
               <strong className="text-white font-bold text-xs block">
-                🖥️ {isEs ? 'Procesamiento 100% local con Web Worker' : '100% local processing with Web Worker'}
+                🖥️{' '}
+                {isEs
+                  ? 'Procesamiento 100% local con Web Worker'
+                  : '100% local processing with Web Worker'}
               </strong>
               <p className="text-[11px]">
                 {isEs
@@ -1277,7 +1747,10 @@ export default function PdfRepairer() {
             </div>
             <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
               <strong className="text-white font-bold text-xs block">
-                🔬 {isEs ? 'Diagnóstico y reconstrucción binaria profunda' : 'Deep binary diagnosis & reconstruction'}
+                🔬{' '}
+                {isEs
+                  ? 'Diagnóstico y reconstrucción binaria profunda'
+                  : 'Deep binary diagnosis & reconstruction'}
               </strong>
               <p className="text-[11px]">
                 {isEs
@@ -1287,7 +1760,10 @@ export default function PdfRepairer() {
             </div>
             <div className="bg-zinc-900/60 p-4 rounded-xl border border-white/5 space-y-1.5">
               <strong className="text-white font-bold text-xs block">
-                📥 {isEs ? 'Descarga directa y archivo original intacto' : 'Direct download & original file untouched'}
+                📥{' '}
+                {isEs
+                  ? 'Descarga directa y archivo original intacto'
+                  : 'Direct download & original file untouched'}
               </strong>
               <p className="text-[11px]">
                 {isEs
@@ -1322,49 +1798,54 @@ export default function PdfRepairer() {
                 qEs: '¿Qué tipo de daños en archivos PDF puede reparar esta herramienta?',
                 qEn: 'What types of PDF file damage can this tool repair?',
                 aEs: 'La herramienta repara PDFs que no abren debido a cabeceras binarias dañadas (%PDF-), tablas de referencias cruzadas (XRef) desalineadas o inexistentes, marcadores de fin de archivo (%%EOF) ausentes, basura de transmisión al inicio o fin del archivo por descargas incompletas, e inconsistencias en la estructura de objetos.',
-                aEn: 'The tool repairs PDFs that fail to open due to corrupt binary headers (%PDF-), missing or misaligned cross-reference tables (XRef), missing end-of-file markers (%%EOF), stream garbage from incomplete downloads, and object catalog inconsistencies.'
+                aEn: 'The tool repairs PDFs that fail to open due to corrupt binary headers (%PDF-), missing or misaligned cross-reference tables (XRef), missing end-of-file markers (%%EOF), stream garbage from incomplete downloads, and object catalog inconsistencies.',
               },
               {
                 qEs: '¿Cuál es la diferencia entre el modo Smart Repair y Deep Rescue?',
                 qEn: 'What is the difference between Smart Repair and Deep Rescue mode?',
                 aEs: 'Smart Repair re-indexa la tabla de objetos preservando la fidelidad vectorial original, textos seleccionables e indexables y fuentes integradas sin perder resolución. Deep Rescue es un modo de rescate extremo que decodifica tolerante a fallos el contenido visual de cada página cuando la tabla interna de objetos está totalmente destruida.',
-                aEn: 'Smart Repair re-indexes the object table while preserving original vector quality, selectable text, and embedded fonts without resolution loss. Deep Rescue is an extreme rescue mode that decodes page visual content when the internal object table is completely destroyed.'
+                aEn: 'Smart Repair re-indexes the object table while preserving original vector quality, selectable text, and embedded fonts without resolution loss. Deep Rescue is an extreme rescue mode that decodes page visual content when the internal object table is completely destroyed.',
               },
               {
                 qEs: '¿Tus documentos o datos se envían a algún servidor externo durante la reparación?',
                 qEn: 'Are your documents or data sent to any external server during repair?',
                 aEs: 'No. El análisis binario, diagnóstico de estructura y reconstrucción del documento se ejecutan 100% en tu navegador Web dentro de la memoria RAM (vía Web Worker). Ningún archivo o byte se transmite a servidores remotos.',
-                aEn: 'No. Binary scanning, structural diagnosis, and document reconstruction run 100% locally inside your browser RAM via Web Worker. No files or bytes are ever transmitted to remote servers.'
+                aEn: 'No. Binary scanning, structural diagnosis, and document reconstruction run 100% locally inside your browser RAM via Web Worker. No files or bytes are ever transmitted to remote servers.',
               },
               {
                 qEs: '¿Qué sucede si el PDF dañado está protegido con contraseña?',
                 qEn: 'What happens if the damaged PDF is password protected?',
                 aEs: 'Si el archivo tiene una contraseña de apertura que impide leer su estructura binaria, el motor de reparación te indicará utilizar primero la herramienta "Desbloquear PDF" del módulo Optimizar para retirar el cifrado antes de iniciar el diagnóstico binario.',
-                aEn: 'If the file has an open password preventing binary structure reading, the engine will advise you to use the "Unlock PDF" tool in the Optimize module to remove encryption before starting binary diagnosis.'
+                aEn: 'If the file has an open password preventing binary structure reading, the engine will advise you to use the "Unlock PDF" tool in the Optimize module to remove encryption before starting binary diagnosis.',
               },
               {
                 qEs: '¿Puedo elegir qué hacer si una página del documento está irrecuperable?',
                 qEn: 'Can I choose what to do if a page in the document is irrecoverable?',
                 aEs: 'Sí. En las opciones avanzadas puedes configurar la acción ante páginas dañadas: (1) Omitir páginas corruptas, (2) Sustituir con una página de reemplazo informativa con sello explicativo, o (3) Incluir una página en blanco preservando la numeración original.',
-                aEn: 'Yes. In advanced options you can select damaged page actions: (1) Skip corrupt pages, (2) Replace with an informative substitute page with repair stamp, or (3) Insert a blank page preserving original numbering.'
+                aEn: 'Yes. In advanced options you can select damaged page actions: (1) Skip corrupt pages, (2) Replace with an informative substitute page with repair stamp, or (3) Insert a blank page preserving original numbering.',
               },
               {
                 qEs: '¿La herramienta modifica o sobrescribe mi archivo PDF original?',
                 qEn: 'Does the tool modify or overwrite my original PDF file?',
                 aEs: 'No. La herramienta trabaja sobre una copia en memoria y genera un archivo PDF 1.7 totalmente nuevo. Tu archivo original permanece intacto e inalterado en tu dispositivo.',
-                aEn: 'No. The tool works on an in-memory copy and generates a completely new PDF 1.7 file. Your original file remains untouched and unmodified on your device.'
+                aEn: 'No. The tool works on an in-memory copy and generates a completely new PDF 1.7 file. Your original file remains untouched and unmodified on your device.',
               },
               {
                 qEs: '¿Puedo descargar un informe técnico con los detalles del diagnóstico y la reparación?',
                 qEn: 'Can I download a technical report with diagnosis and repair details?',
                 aEs: 'Sí. Al finalizar la reparación, la herramienta genera un reporte técnico de auditoría con la severidad del daño, listado de problemas corregidos, páginas recuperadas vs. perdidas y métricas de tamaño, exportable en formato JSON para control de calidad de TI.',
-                aEn: 'Yes. Upon completion, the tool generates an audit report detailing damage severity, fixed issues, recovered vs. lost pages, and size metrics, exportable in JSON format for IT quality control.'
-              }
+                aEn: 'Yes. Upon completion, the tool generates an audit report detailing damage severity, fixed issues, recovered vs. lost pages, and size metrics, exportable in JSON format for IT quality control.',
+              },
             ].map((faq, i) => (
-              <details key={i} className="group bg-zinc-900/60 border border-white/5 rounded-xl transition-all duration-200 hover:border-white/15">
+              <details
+                key={i}
+                className="group bg-zinc-900/60 border border-white/5 rounded-xl transition-all duration-200 hover:border-white/15"
+              >
                 <summary className="flex items-center justify-between p-4 cursor-pointer text-xs font-bold text-white select-none">
                   <span className="flex items-center gap-2.5">
-                    <span className="text-zinc-400 font-mono text-[11px] font-normal">0{i + 1}.</span>
+                    <span className="text-zinc-400 font-mono text-[11px] font-normal">
+                      0{i + 1}.
+                    </span>
                     {isEs ? faq.qEs : faq.qEn}
                   </span>
                   <ChevronDown className="w-4 h-4 text-zinc-400 transition-transform duration-200 group-open:rotate-180 flex-shrink-0" />
@@ -1376,7 +1857,6 @@ export default function PdfRepairer() {
             ))}
           </div>
         </div>
-
       </div>
     </div>
   );

@@ -462,6 +462,24 @@ function ConvertirContent() {
                     aEs: 'El único límite depende de la memoria RAM disponible en tu dispositivo. Puedes procesar documentos extensos sin restricciones artificiales.',
                     aEn: "The only limit depends on your device's available RAM. You can process extensive documents with no artificial restrictions.",
                   },
+                  {
+                    qEs: '¿Las tablas de PDF se convierten en celdas editables en Excel (.xlsx)?',
+                    qEn: 'Do PDF tables convert into editable cells in Excel (.xlsx)?',
+                    aEs: 'Sí. El motor de extracción analiza la estructura tabular y delimitadores para reconstruir una hoja de cálculo con filas y columnas editables.',
+                    aEn: 'Yes. The extraction engine parses tabular structures and delimiters to reconstruct spreadsheets with editable rows and columns.',
+                  },
+                  {
+                    qEs: '¿Se preservan las tipografías y el formato de párrafos al convertir a Word (.docx)?',
+                    qEn: 'Are fonts and paragraph formatting preserved when converting to Word (.docx)?',
+                    aEs: 'Sí. La conversión recrea estilos, tamaños de fuente, espaciados y jerarquías para facilitar una edición fiel en Microsoft Word o Google Docs.',
+                    aEn: 'Yes. Conversion recreates styles, font sizes, line spacing, and hierarchies for seamless editing in Word or Google Docs.',
+                  },
+                  {
+                    qEs: '¿Qué resolución tienen las imágenes exportadas desde un archivo PDF?',
+                    qEn: 'What resolution do exported images from a PDF have?',
+                    aEs: 'Puedes extraer imágenes incrustadas en su resolución nativa o renderizar páginas completas en alta definición (150 a 300 DPI) en formato JPG/PNG.',
+                    aEn: 'You can extract embedded images in their native resolution or render entire pages in high definition (150-300 DPI) as JPG/PNG.',
+                  },
                 ].map((faq, i) => (
                   <SpotlightCard
                     key={i}

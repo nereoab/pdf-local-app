@@ -457,6 +457,24 @@ function OptimizarContent() {
                     aEs: 'Sí. El contenido censurado se destruye a nivel vectorial dentro del archivo PDF, impidiendo que el texto original sea extraído o copiado.',
                     aEn: 'Yes. Redacted content is destroyed at the vector level inside the PDF, preventing any extraction or copying.',
                   },
+                  {
+                    qEs: '¿Qué nivel de cifrado se aplica al proteger un archivo PDF con contraseña?',
+                    qEn: 'What encryption level is applied when password-protecting a PDF?',
+                    aEs: 'Se implementa cifrado estándar AES de 128 o 256 bits, compatible universalmente con Adobe Acrobat y todos los visores oficiales de PDF.',
+                    aEn: 'Standard 128-bit or 256-bit AES encryption is applied, universally compatible with Adobe Acrobat and all standard PDF readers.',
+                  },
+                  {
+                    qEs: '¿Qué tipos de errores puede solucionar la herramienta de reparación de PDF?',
+                    qEn: 'What types of errors can the PDF repair tool fix?',
+                    aEs: 'Reconstruye tablas de referencias cruzadas (XREF) corruptas, recupera flujos de páginas truncados y restaura índices dañados.',
+                    aEn: 'It rebuilds corrupted cross-reference (XREF) tables, recovers truncated page streams, and restores damaged document indices.',
+                  },
+                  {
+                    qEs: '¿Cómo funciona la comparación entre dos archivos PDF?',
+                    qEn: 'How does comparison between two PDF files work?',
+                    aEs: 'Analiza y resalta visualmente adiciones, eliminaciones o cambios de texto y diseño entre dos versiones de un documento lado a lado.',
+                    aEn: 'It visually analyzes and highlights additions, deletions, and textual or layout changes between two versions side by side.',
+                  },
                 ].map((faq, i) => (
                   <SpotlightCard
                     key={i}

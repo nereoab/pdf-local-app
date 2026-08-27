@@ -458,6 +458,24 @@ function EditarContent() {
                     aEs: 'No. Toda la edición se ejecuta de manera local y autónoma en tu navegador; al cerrar la pestaña los datos se purgan de inmediato.',
                     aEn: 'No. All editing runs locally and autonomously in your browser; once you close the tab, all memory buffers are purged immediately.',
                   },
+                  {
+                    qEs: '¿Cómo funciona el reconocimiento óptico de caracteres (OCR) en local?',
+                    qEn: 'How does local Optical Character Recognition (OCR) work?',
+                    aEs: 'Utilizamos modelos WebAssembly y Tesseract integrados en el navegador para extraer y reconocer texto de páginas escaneadas sin enviar imágenes a la nube.',
+                    aEn: 'We use in-browser WebAssembly and Tesseract models to extract and recognize text from scanned pages without sending images to the cloud.',
+                  },
+                  {
+                    qEs: '¿Puedo personalizar la numeración de folios con formatos legales o institucionales?',
+                    qEn: 'Can I customize page numbering with legal or institutional formats?',
+                    aEs: 'Sí. Puedes definir prefijos, sufijos, posición en hoja, tamaño, tipografía y rangos de páginas específicos según los requisitos de tu expediente.',
+                    aEn: 'Yes. You can customize prefixes, suffixes, page placement, font size, family, and page ranges to meet legal filing requirements.',
+                  },
+                  {
+                    qEs: '¿La eliminación de marcas de agua altera el texto original del PDF?',
+                    qEn: 'Does watermark removal alter the original PDF text?',
+                    aEs: 'No. El algoritmo identifica y retira selectivamente las capas de superposición superficiales, preservando intacto el texto de fondo y los gráficos subyacentes.',
+                    aEn: 'No. The algorithm selectively isolates and removes overlay layers while preserving background text and underlying graphics intact.',
+                  },
                 ].map((faq, i) => (
                   <SpotlightCard
                     key={i}

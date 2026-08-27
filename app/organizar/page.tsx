@@ -460,6 +460,24 @@ function OrganizarContent() {
                     aEs: 'No. Las operaciones de organización no rasterizan ni comprimen el contenido; conservan todas las fuentes y vectores originales.',
                     aEn: 'No. Organization operations do not rasterize or compress content; all original fonts and vectors remain intact.',
                   },
+                  {
+                    qEs: '¿Puedo reordenar páginas de varios archivos PDF combinados simultáneamente?',
+                    qEn: 'Can I reorder pages from multiple combined PDF files simultaneously?',
+                    aEs: 'Sí. Puedes cargar múltiples PDFs, visualizarlos en una cuadrícula interactiva y arrastrar cualquier página a la posición exacta deseada.',
+                    aEn: 'Yes. You can upload multiple PDFs, view them in an interactive grid, and drag any page to its exact desired position.',
+                  },
+                  {
+                    qEs: '¿Cómo funciona la división por rangos de páginas específicos?',
+                    qEn: 'How does splitting by specific page ranges work?',
+                    aEs: 'Puedes ingresar rangos personalizados (ej. 1-5, 8, 11-14) o extraer cada página por separado; los nuevos archivos se generan al instante.',
+                    aEn: 'You can enter custom ranges (e.g. 1-5, 8, 11-14) or extract each page into individual files; new files generate instantly.',
+                  },
+                  {
+                    qEs: '¿El recorte de páginas reduce el tamaño físico de la hoja o solo oculta bordes?',
+                    qEn: 'Does page cropping resize the physical sheet or just hide borders?',
+                    aEs: 'Reajusta la caja de visualización (CropBox/MediaBox) del estándar PDF, recortando márgenes en blanco de manera uniforme sin degradar el contenido.',
+                    aEn: 'It recalculates the PDF CropBox/MediaBox, trimming white margins uniformly without degrading any internal content.',
+                  },
                 ].map((faq, i) => (
                   <SpotlightCard
                     key={i}

@@ -574,827 +574,802 @@ export default function DashboardPage() {
           aria-label={isEs ? 'Seleccionar archivo PDF' : 'Select PDF file'}
         />
 
-        <AnimatePresence mode="wait">
-          {/* VISTA PRINCIPAL */}
-          {!isUploading && (
-            <motion.div
-              key="main-view"
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className={`relative ${file ? 'z-[50]' : 'z-10'}`}
-            >
-              {/* HERO CONTENT ARCHITECTURE STYLING */}
-              <div className="mb-8 text-center md:text-left flex flex-col items-center md:items-start">
-                <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold text-zinc-900 dark:text-white tracking-tight leading-[1.05] antialiased">
-                  {isEs ? 'Procesamiento PDF local. ' : 'Local PDF engine. '}
-                  <span className="text-zinc-400 dark:text-zinc-300 font-light">
-                    {isEs ? 'Sin servidores, privacidad total.' : 'Zero servers, absolute privacy.'}
-                  </span>
-                </h1>
-              </div>
+        <div className={`relative ${file ? 'z-[50]' : 'z-10'}`}>
+          {/* HERO CONTENT ARCHITECTURE STYLING */}
+          <div className="mb-8 text-center md:text-left flex flex-col items-center md:items-start">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold text-zinc-900 dark:text-white tracking-tight leading-[1.05] antialiased">
+              {isEs ? 'Procesamiento PDF local. ' : 'Local PDF engine. '}
+              <span className="text-zinc-400 dark:text-zinc-300 font-light">
+                {isEs ? 'Sin servidores, privacidad total.' : 'Zero servers, absolute privacy.'}
+              </span>
+            </h1>
+          </div>
 
-              {/* DROPZONE / FILE PREVIEW - FULL WIDTH */}
-              <div className="w-full mb-8 relative group">
-                {/* Glow ambiental perimetral */}
-                {!file && (
+          {/* DROPZONE / FILE PREVIEW / UPLOAD PROGRESS - FULL WIDTH */}
+          <div className="w-full mb-8 relative group">
+            {/* Glow ambiental perimetral */}
+            {!file && !isUploading && (
+              <div
+                className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-white/10 via-zinc-400/20 to-white/10 opacity-40 group-hover:opacity-80 blur-xl transition-all duration-500 pointer-events-none"
+                aria-hidden="true"
+              />
+            )}
+
+            <AnimatePresence mode="wait">
+              {isUploading ? (
+                <DocumentUploadProgress
+                  key="uploading-view"
+                  fileName={uploadingFile?.name}
+                  fileSize={uploadingFile?.size}
+                  progress={uploadProgress}
+                  onCancel={handleCancelUpload}
+                />
+              ) : !file ? (
+                <div
+                  key="dropzone-view"
+                  ref={dropzoneRef}
+                  onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={
+                    isEs
+                      ? 'Zona de carga de archivos PDF. Haz clic o arrastra un archivo.'
+                      : 'PDF upload area. Click or drag a file.'
+                  }
+                  aria-describedby="dropzone-instructions"
+                  className="w-full min-h-[320px] sm:min-h-[360px] bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border-2 border-dashed border-zinc-600 group-hover:border-white rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 shadow-2xl relative overflow-hidden"
+                >
+                  <span id="dropzone-instructions" className="sr-only">
+                    {isEs
+                      ? 'Arrastra un archivo PDF a esta zona o haz clic para seleccionar un archivo de tu equipo. Solo se aceptan archivos PDF.'
+                      : 'Drag a PDF file to this area or click to select a file from your device. Only PDF files are accepted.'}
+                  </span>
+
+                  {/* Efecto Spotlight dinámico en hover */}
                   <div
-                    className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-white/10 via-zinc-400/20 to-white/10 opacity-40 group-hover:opacity-80 blur-xl transition-all duration-500 pointer-events-none"
+                    className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-b from-white/[0.08] via-transparent to-transparent"
                     aria-hidden="true"
                   />
-                )}
 
-                {!file ? (
-                  <div
-                    ref={dropzoneRef}
-                    onClick={() => fileInputRef.current?.click()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        fileInputRef.current?.click();
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={
-                      isEs
-                        ? 'Zona de carga de archivos PDF. Haz clic o arrastra un archivo.'
-                        : 'PDF upload area. Click or drag a file.'
-                    }
-                    aria-describedby="dropzone-instructions"
-                    className="w-full min-h-[320px] sm:min-h-[360px] bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border-2 border-dashed border-zinc-600 group-hover:border-white rounded-3xl p-8 sm:p-12 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 shadow-2xl relative overflow-hidden"
+                  {/* Icono de carga con relieve y brillo */}
+                  <motion.div
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                    className="bg-zinc-800 p-5 rounded-2xl border border-zinc-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:border-zinc-300 group-hover:scale-110 transition-all duration-300 relative z-10"
+                    aria-hidden="true"
                   >
-                    <span id="dropzone-instructions" className="sr-only">
+                    <UploadCloud className="w-12 h-12 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]" />
+                  </motion.div>
+
+                  <div className="text-center flex flex-col items-center gap-2 relative z-10">
+                    <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                      {isEs ? 'Arrastra tu archivo PDF aquí' : 'Drop your PDF file here'}
+                    </p>
+                    <p className="text-zinc-300 text-xs sm:text-sm font-mono flex items-center justify-center gap-1.5 font-medium">
+                      <Sparkles className="w-4 h-4 text-zinc-300" aria-hidden="true" />
                       {isEs
-                        ? 'Arrastra un archivo PDF a esta zona o haz clic para seleccionar un archivo de tu equipo. Solo se aceptan archivos PDF.'
-                        : 'Drag a PDF file to this area or click to select a file from your device. Only PDF files are accepted.'}
-                    </span>
-
-                    {/* Efecto Spotlight dinámico en hover */}
-                    <div
-                      className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-b from-white/[0.08] via-transparent to-transparent"
-                      aria-hidden="true"
-                    />
-
-                    {/* Icono de carga con relieve y brillo */}
-                    <motion.div
-                      animate={{ y: [0, -6, 0] }}
-                      transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                      className="bg-zinc-800 p-5 rounded-2xl border border-zinc-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)] group-hover:border-zinc-300 group-hover:scale-110 transition-all duration-300 relative z-10"
-                      aria-hidden="true"
-                    >
-                      <UploadCloud className="w-12 h-12 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]" />
-                    </motion.div>
-
-                    <div className="text-center flex flex-col items-center gap-2 relative z-10">
-                      <p className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                        {isEs ? 'Arrastra tu archivo PDF aquí' : 'Drop your PDF file here'}
-                      </p>
-                      <p className="text-zinc-300 text-xs sm:text-sm font-mono flex items-center justify-center gap-1.5 font-medium">
-                        <Sparkles className="w-4 h-4 text-zinc-300" aria-hidden="true" />
-                        {isEs
-                          ? 'o haz clic para explorar en tu equipo'
-                          : 'or click to browse local files'}
-                      </p>
-                    </div>
-
-                    {/* Botón CTA principal */}
-                    <span className="flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-100 px-8 py-3.5 rounded-full font-sans text-sm font-bold transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 relative z-10">
-                      <FilePlus className="w-4 h-4 text-black" aria-hidden="true" />{' '}
-                      {isEs ? 'Seleccionar PDF' : 'Select PDF'}
-                    </span>
-
-                    <div className="flex items-center gap-2 px-4 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-mono rounded-full mt-1 relative z-10 shadow-md">
-                      <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-                      <span className="font-semibold tracking-wide">
-                        {isEs
-                          ? '100% GRATIS • SIN REGISTRO • SIN TARJETA'
-                          : '100% FREE • NO SIGN-UP • NO CREDIT CARD'}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  /* VISOR DEL PDF */
-                  <div
-                    className="w-full min-h-[440px] sm:min-h-[520px] bg-[#09090b] border border-zinc-600 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative"
-                    role="region"
-                    aria-label={isEs ? 'Vista previa del PDF cargado' : 'Loaded PDF preview'}
-                  >
-                    <div className="bg-zinc-900 border-b border-zinc-700 p-4 flex justify-between items-center z-10 font-mono">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div
-                          className="bg-zinc-800 p-2 border border-zinc-700 rounded-lg flex-shrink-0"
-                          aria-hidden="true"
-                        >
-                          <FileText className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex flex-col overflow-hidden">
-                          <span className="text-white font-bold text-xs truncate max-w-xs sm:max-w-md">
-                            {file.name}
-                          </span>
-                          <span className="text-zinc-300 text-[10px]">
-                            {formatFileSize(file.size)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-white text-[10px] font-bold">
-                          <ShieldCheck className="w-3 h-3 text-white" aria-hidden="true" />
-                          <span>LOCAL</span>
-                        </div>
-                        <button
-                          onClick={handleRemoveFile}
-                          className="flex-shrink-0 p-1.5 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-all cursor-pointer"
-                          aria-label={
-                            isEs ? `Quitar archivo ${file.name}` : `Remove file ${file.name}`
-                          }
-                        >
-                          <X className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="w-full flex-1 min-h-[380px] bg-[#09090b] relative overflow-hidden flex items-center justify-center p-4">
-                      <PdfPreviewThumbnail file={file} />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* TARJETAS DE MÓDULOS 001 - 004 */}
-              <div className="w-full mb-8">
-                {file && (
-                  <div
-                    className="mb-4 flex items-center gap-2.5 bg-white/10 border border-white/20 text-white px-4 py-3 rounded-xl shadow-lg font-mono"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <Zap className="w-4 h-4 text-white" aria-hidden="true" />
-                    <h2 className="text-xs font-bold uppercase tracking-wider">
-                      {isEs
-                        ? 'DOCUMENTO CARGADO. SELECCIONA EL MÓDULO A EJECUTAR:'
-                        : 'DOCUMENT LOADED. SELECT MODULE TO EXECUTE:'}
-                    </h2>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                  {categories.map((cat) => (
-                    <CategoryCard key={cat.id} cat={cat} file={file} isEs={isEs} />
-                  ))}
-                </div>
-              </div>
-
-              {/* SECCIÓN 4 PASOS STYLE CONTENT ARCHITECTURE */}
-              {!file && (
-                <section
-                  className="w-full mt-14 pt-12 border-t border-zinc-800 flex flex-col items-center font-mono"
-                  aria-label={isEs ? 'Cómo funciona PDFBlack' : 'How PDFBlack works'}
-                >
-                  <div className="text-center mb-10 max-w-2xl">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-3 shadow-md">
-                      <Sparkles className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-                      {isEs ? '000 / ¿CÓMO FUNCIONA PDFBLACK?' : '000 / HOW PDFBLACK WORKS'}
-                    </div>
-                    <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-2 font-sans">
-                      {isEs ? 'Procesamiento en 4 pasos sencillos' : 'Simple 4-Step Process'}
-                    </h2>
-                    <p className="text-zinc-300 text-xs sm:text-sm font-sans leading-relaxed">
-                      {isEs
-                        ? 'Garantía absoluta de privacidad. Tus documentos nunca salen de tu equipo ni tocan servidores externos.'
-                        : 'Absolute privacy guarantee. Your documents never leave your device or touch external servers.'}
+                        ? 'o haz clic para explorar en tu equipo'
+                        : 'or click to browse local files'}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
-                    {/* PASO 1 */}
-                    <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
-                      aria-labelledby="step-1-title"
-                    >
-                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
-                        001 / CARGAR
-                      </span>
-                      <h3
-                        id="step-1-title"
-                        className="text-base font-bold text-white mb-2 font-sans"
-                      >
-                        {isEs ? '1. Carga tu Archivo PDF' : '1. Upload your PDF File'}
-                      </h3>
-                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
-                        {isEs
-                          ? 'Arrastra tu documento a la zona de carga o selecciónalo de tu equipo. Sin registro ni tarjeta de crédito.'
-                          : 'Drag your document into the dropzone or select it from your device. No sign-up or credit card needed.'}
-                      </p>
-                    </SpotlightCard>
+                  {/* Botón CTA principal */}
+                  <span className="flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-100 px-8 py-3.5 rounded-full font-sans text-sm font-bold transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 relative z-10">
+                    <FilePlus className="w-4 h-4 text-black" aria-hidden="true" />{' '}
+                    {isEs ? 'Seleccionar PDF' : 'Select PDF'}
+                  </span>
 
-                    {/* PASO 2 */}
-                    <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
-                      aria-labelledby="step-2-title"
-                    >
-                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
-                        002 / CATEGORÍA
-                      </span>
-                      <h3
-                        id="step-2-title"
-                        className="text-base font-bold text-white mb-2 font-sans"
+                  <div className="flex items-center gap-2 px-4 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-mono rounded-full mt-1 relative z-10 shadow-md">
+                    <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                    <span className="font-semibold tracking-wide">
+                      {isEs
+                        ? '100% GRATIS • SIN REGISTRO • SIN TARJETA'
+                        : '100% FREE • NO SIGN-UP • NO CREDIT CARD'}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* VISOR DEL PDF */
+                <div
+                  key="viewer-view"
+                  className="w-full min-h-[440px] sm:min-h-[520px] bg-[#09090b] border border-zinc-600 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 flex flex-col relative"
+                  role="region"
+                  aria-label={isEs ? 'Vista previa del PDF cargado' : 'Loaded PDF preview'}
+                >
+                  <div className="bg-zinc-900 border-b border-zinc-700 p-4 flex justify-between items-center z-10 font-mono">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div
+                        className="bg-zinc-800 p-2 border border-zinc-700 rounded-lg flex-shrink-0"
+                        aria-hidden="true"
                       >
-                        {isEs ? '2. Selecciona la Categoría' : '2. Choose your Category'}
-                      </h3>
-                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
-                        {isEs
-                          ? 'Elige uno de los 4 botones principales (Editar, Organizar, Convertir u Optimizar) según la herramienta que necesites.'
-                          : 'Select one of the 4 main buttons (Edit, Organize, Convert, or Optimize) depending on the tool group you need.'}
-                      </p>
-                    </SpotlightCard>
-
-                    {/* PASO 3 */}
-                    <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
-                      aria-labelledby="step-3-title"
-                    >
-                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
-                        003 / EDICIÓN
-                      </span>
-                      <h3
-                        id="step-3-title"
-                        className="text-base font-bold text-white mb-2 font-sans"
+                        <FileText className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-white font-bold text-xs truncate max-w-xs sm:max-w-md">
+                          {file.name}
+                        </span>
+                        <span className="text-zinc-300 text-[10px]">
+                          {formatFileSize(file.size)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-white text-[10px] font-bold">
+                        <ShieldCheck className="w-3 h-3 text-white" aria-hidden="true" />
+                        <span>LOCAL</span>
+                      </div>
+                      <button
+                        onClick={handleRemoveFile}
+                        className="flex-shrink-0 p-1.5 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-all cursor-pointer"
+                        aria-label={
+                          isEs ? `Quitar archivo ${file.name}` : `Remove file ${file.name}`
+                        }
                       >
-                        {isEs ? '3. Trabaja en la Sub-Página' : '3. Work in Tool Sub-Page'}
-                      </h3>
-                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
-                        {isEs
-                          ? 'Serás llevado a la página específica de la herramienta para personalizar, modificar y procesar tu PDF en vivo.'
-                          : 'You will be taken to your selected tool sub-page to customize, modify, and process your PDF live.'}
-                      </p>
-                    </SpotlightCard>
-
-                    {/* PASO 4 */}
-                    <SpotlightCard
-                      className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
-                      aria-labelledby="step-4-title"
-                    >
-                      <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
-                        004 / DESCARGAR
-                      </span>
-                      <h3
-                        id="step-4-title"
-                        className="text-base font-bold text-white mb-2 font-sans"
-                      >
-                        {isEs ? '4. Descarga tu PDF Listo' : '4. Download your Ready PDF'}
-                      </h3>
-                      <p className="text-xs text-zinc-300 font-sans leading-relaxed">
-                        {isEs
-                          ? 'Obtén tu documento modificado inmediatamente con un solo clic, 100% privado y listo para usar.'
-                          : 'Get your modified document immediately with a single click, 100% private and ready to use.'}
-                      </p>
-                    </SpotlightCard>
+                        <X className="w-4 h-4" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* SECCIÓN DETALLADA DE GRUPOS DE HERRAMIENTAS: EDITAR, ORGANIZAR, CONVERTIR, OPTIMIZAR */}
-                  <section
-                    className="w-full mt-14 pt-12 border-t border-zinc-800 font-sans"
-                    aria-label={
-                      isEs ? 'Guía técnica de grupos de herramientas' : 'Technical tool group guide'
-                    }
-                  >
-                    <div className="text-center mb-10 max-w-3xl mx-auto">
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-3 font-mono shadow-md">
-                        <Sparkles className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-                        {isEs ? 'GUÍA TÉCNICA Y DE SEGURIDAD' : 'TECHNICAL & SECURITY GUIDE'}
-                      </div>
-                      <h3 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-3">
-                        {isEs
-                          ? '¿Qué le sucede a tu archivo PDF en cada grupo de herramientas?'
-                          : 'What happens to your PDF in each tool group?'}
-                      </h3>
-                      <p className="text-zinc-300 text-xs sm:text-sm font-mono leading-relaxed">
-                        {isEs
-                          ? 'Transparencia absoluta. Conoce en detalle qué ocurre dentro de tu navegador al procesar tus documentos.'
-                          : 'Absolute transparency. Discover in detail what happens inside your browser when processing documents.'}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
-                      {/* GRUPO 1: EDITAR */}
-                      <SpotlightCard
-                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
-                        aria-labelledby="group-edit-title"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
-                                aria-hidden="true"
-                              >
-                                <Edit3 className="w-5 h-5 text-white" />
-                              </div>
-                              <div>
-                                <span className="text-xs font-mono text-zinc-300 font-bold block">
-                                  001 / EDICIÓN DIRECTA
-                                </span>
-                                <h4
-                                  id="group-edit-title"
-                                  className="text-xl font-bold text-white tracking-tight"
-                                >
-                                  {isEs ? 'Grupo EDITAR PDF' : 'EDIT PDF Group'}
-                                </h4>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
-                              {isEs ? 'Edición Visual' : 'Visual Editing'}
-                            </span>
-                          </div>
-
-                          {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
-                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-                              {isEs
-                                ? 'Proceso Binario y Seguridad en EDITAR:'
-                                : 'Binary Process & Security in EDIT:'}
-                            </strong>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'Al editar un documento, el archivo PDF se descompone en objetos en la memoria RAM aislada de tu navegador. Las modificaciones de texto, marcas de agua, números de folio o firmas trazadas no sobreescriben destructivamente el archivo; se inyectan como capas vectoriales nativas bajo la especificación PDF 1.7.'
-                                : 'When editing, the PDF decodes into objects inside isolated browser RAM. Text edits, watermarks, page numbers, or drawn signatures embed as clean native vector streams under PDF 1.7 standard.'}
-                            </p>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'En OCR, el reconocimiento de caracteres se ejecuta mediante modelos WebAssembly locales que analizan píxeles sin transmitir ninguna imagen a servidores externos. Tu archivo original permanece 100% intacto en tu equipo.'
-                                : 'In OCR, character recognition runs via local WebAssembly models analyzing image pixels with zero external API calls. Your original file remains untouched on your drive.'}
-                            </p>
-                          </div>
-
-                          <ul
-                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
-                            aria-label={isEs ? 'Herramientas de edición' : 'Editing tools'}
-                          >
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Editar Texto:</strong>{' '}
-                                {isEs
-                                  ? 'Inserta texto nativo ajustando fuentes y alineación.'
-                                  : 'Inserts native text adjusting fonts and alignment.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Foliar Páginas:</strong>{' '}
-                                {isEs
-                                  ? 'Agrega numeración correlativa automatizada.'
-                                  : 'Adds automated sequential page numbers.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Marcas de Agua:</strong>{' '}
-                                {isEs
-                                  ? 'Aplica sellos o textos de seguridad sobre cada página.'
-                                  : 'Applies security stamps or text across pages.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Firmar & OCR:</strong>{' '}
-                                {isEs
-                                  ? 'Estampa firmas trazadas y convierte imágenes escaneadas en texto.'
-                                  : 'Stamps drawn signatures and turns scanned images into text.'}
-                              </span>
-                            </li>
-                          </ul>
-                        </div>
-
-                        <Link
-                          href="/editar"
-                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
-                          aria-label={
-                            isEs
-                              ? 'Ver todas las herramientas de editar PDF'
-                              : 'View all edit PDF tools'
-                          }
-                        >
-                          <span>{isEs ? 'Ver herramientas de Editar →' : 'View Edit tools →'}</span>
-                          <ArrowRight
-                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
-                            aria-hidden="true"
-                          />
-                        </Link>
-                      </SpotlightCard>
-
-                      {/* GRUPO 2: ORGANIZAR */}
-                      <SpotlightCard
-                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
-                        aria-labelledby="group-organize-title"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
-                                aria-hidden="true"
-                              >
-                                <FolderOpen className="w-5 h-5 text-white" />
-                              </div>
-                              <div>
-                                <span className="text-xs font-mono text-zinc-300 font-bold block">
-                                  002 / ESTRUCTURA
-                                </span>
-                                <h4
-                                  id="group-organize-title"
-                                  className="text-xl font-bold text-white tracking-tight"
-                                >
-                                  {isEs ? 'Grupo ORGANIZAR PDF' : 'ORGANIZE PDF Group'}
-                                </h4>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
-                              {isEs ? 'Gestor de Páginas' : 'Page Builder'}
-                            </span>
-                          </div>
-
-                          {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
-                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-                              {isEs
-                                ? 'Proceso Binario y Seguridad en ORGANIZAR:'
-                                : 'Binary Process & Security in ORGANIZE:'}
-                            </strong>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'El motor de organización manipula directamente el diccionario jerárquico de páginas (`PageTree`) en la RAM. Al reordenar, rotar, recortar o dividir, el navegador no recodifica las imágenes ni los textos; únicamente reorganiza los punteros lógicos en la tabla de referencias cruzadas.'
-                                : 'Organize tools modify the document PageTree catalog in RAM. When reordering, rotating, cropping, or splitting, only logical pointers update without re-encoding images or reducing vector quality.'}
-                            </p>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'Al unir múltiples archivos, el sistema fusiona las tablas de recursos compartidas en un nuevo contenedor PDF unificado a máxima velocidad local, garantizando que planos técnicos, imágenes y documentos conserven 100% su nitidez.'
-                                : 'When merging multiple files, shared resource tables merge into a unified PDF container at max local CPU speed, ensuring blueprints and images retain 100% sharpness.'}
-                            </p>
-                          </div>
-
-                          <ul
-                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
-                            aria-label={
-                              isEs ? 'Herramientas de organización' : 'Organization tools'
-                            }
-                          >
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Unir PDF:</strong>{' '}
-                                {isEs
-                                  ? 'Combina árboles de páginas de varios PDFs sin pérdida de nitidez.'
-                                  : 'Merges page trees from multiple PDFs without resolution loss.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Dividir & Eliminar:</strong>{' '}
-                                {isEs
-                                  ? 'Corta por rangos exactos o quita páginas descartables.'
-                                  : 'Splits by exact page ranges or removes unnecessary pages.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Reordenar & Rotar:</strong>{' '}
-                                {isEs
-                                  ? 'Arrastra miniaturas e invierte ángulos a 90°/180°.'
-                                  : 'Drag page thumbnails and adjust angles to 90°/180°.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Recortar Márgenes:</strong>{' '}
-                                {isEs
-                                  ? 'Recorta los bordes a dimensiones estandarizadas.'
-                                  : 'Crops document margins to standard dimensions.'}
-                              </span>
-                            </li>
-                          </ul>
-                        </div>
-
-                        <Link
-                          href="/organizar"
-                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
-                          aria-label={
-                            isEs
-                              ? 'Ver todas las herramientas de organizar PDF'
-                              : 'View all organize PDF tools'
-                          }
-                        >
-                          <span>
-                            {isEs ? 'Ver herramientas de Organizar →' : 'View Organize tools →'}
-                          </span>
-                          <ArrowRight
-                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
-                            aria-hidden="true"
-                          />
-                        </Link>
-                      </SpotlightCard>
-
-                      {/* GRUPO 3: CONVERTIR */}
-                      <SpotlightCard
-                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
-                        aria-labelledby="group-convert-title"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
-                                aria-hidden="true"
-                              >
-                                <RefreshCw className="w-5 h-5 text-white" />
-                              </div>
-                              <div>
-                                <span className="text-xs font-mono text-zinc-300 font-bold block">
-                                  003 / CONVERSIÓN
-                                </span>
-                                <h4
-                                  id="group-convert-title"
-                                  className="text-xl font-bold text-white tracking-tight"
-                                >
-                                  {isEs ? 'Grupo CONVERTIR PDF' : 'CONVERT PDF Group'}
-                                </h4>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
-                              {isEs ? 'Alta Fidelidad' : 'High Precision'}
-                            </span>
-                          </div>
-
-                          {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
-                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-                              {isEs
-                                ? 'Proceso Binario y Seguridad en CONVERTIR:'
-                                : 'Binary Process & Security in CONVERT:'}
-                            </strong>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'El motor cliente de conversión analiza las coordenadas tridimensionales (`x, y, z-index`) de párrafos, tablas de datos e imágenes en el PDF. Reconstruye el documento traduciendo su maquetación a estructuras de archivos XML compatibles con Word (DOCX), Excel (XLSX) o PowerPoint (PPTX) de forma instantánea.'
-                                : 'The client-side conversion engine parses spatial coordinates (`x, y, z`) of text, table cells, and images from the PDF, recompiling them into OpenXML structures (DOCX, XLSX, PPTX) in real-time.'}
-                            </p>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'No existen servidores intermedios ni APIs de terceros procesando tus estados financieros, contratos o presentaciones comerciales. Todo el análisis sintáctico y empaquetado comprimido se realiza dentro de la memoria privada de tu navegador.'
-                                : 'No intermediate cloud servers or third-party APIs process your financial sheets or contracts. Parsing and ZIP generation happen inside private browser memory.'}
-                            </p>
-                          </div>
-
-                          <ul
-                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
-                            aria-label={isEs ? 'Herramientas de conversión' : 'Conversion tools'}
-                          >
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">PDF ↔ Word:</strong>{' '}
-                                {isEs
-                                  ? 'Convierte párrafos y estilos a formato editable DOCX.'
-                                  : 'Converts paragraphs and formatting into editable DOCX.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">PDF ↔ Excel:</strong>{' '}
-                                {isEs
-                                  ? 'Extrae tablas de datos directamente a hojas XLSX.'
-                                  : 'Extracts data tables directly into XLSX spreadsheets.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">PDF ↔ PowerPoint:</strong>{' '}
-                                {isEs
-                                  ? 'Transforma páginas en diapositivas PPTX.'
-                                  : 'Transforms pages into PPTX slides.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">PDF ↔ JPG / HTML / TXT:</strong>{' '}
-                                {isEs
-                                  ? 'Exporta láminas a imágenes HD, código web o texto plano.'
-                                  : 'Exports pages into HD images, web code, or text.'}
-                              </span>
-                            </li>
-                          </ul>
-                        </div>
-
-                        <Link
-                          href="/convertir"
-                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
-                          aria-label={
-                            isEs
-                              ? 'Ver todas las herramientas de convertir PDF'
-                              : 'View all convert PDF tools'
-                          }
-                        >
-                          <span>
-                            {isEs ? 'Ver herramientas de Convertir →' : 'View Convert tools →'}
-                          </span>
-                          <ArrowRight
-                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
-                            aria-hidden="true"
-                          />
-                        </Link>
-                      </SpotlightCard>
-
-                      {/* GRUPO 4: OPTIMIZAR */}
-                      <SpotlightCard
-                        className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
-                        aria-labelledby="group-optimize-title"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
-                                aria-hidden="true"
-                              >
-                                <Zap className="w-5 h-5 text-white" />
-                              </div>
-                              <div>
-                                <span className="text-xs font-mono text-zinc-300 font-bold block">
-                                  004 / OPTIMIZACIÓN
-                                </span>
-                                <h4
-                                  id="group-optimize-title"
-                                  className="text-xl font-bold text-white tracking-tight"
-                                >
-                                  {isEs ? 'Grupo OPTIMIZAR PDF' : 'OPTIMIZE PDF Group'}
-                                </h4>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
-                              {isEs ? 'Seguridad & Peso' : 'Security & Size'}
-                            </span>
-                          </div>
-
-                          {/* QUÉ SUCEDE A TU ARCHIVO */}
-                          <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                            <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
-                              <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-                              {isEs
-                                ? 'Proceso Binario y Seguridad en OPTIMIZAR:'
-                                : 'Binary Process & Security in OPTIMIZE:'}
-                            </strong>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'Optimiza y re-comprime las fuentes de datos primarias. Al comprimir, re-codifica imágenes JPEG pesadas mediante resampling Canvas y elimina metadatos redundantes de la tabla XRef. Al cifrar o desbloquear, ejecuta algoritmos criptográficos nativos **AES-256** (`crypto.subtle`) sin enviar jamás tus contraseñas a la red.'
-                                : 'Optimizes binary data streams in memory. Compression re-encodes heavy JPEG images via Canvas resampling and purges redundant XRef metadata. Encryption runs native **AES-256** cryptography (`crypto.subtle`) without sending passwords online.'}
-                            </p>
-                            <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
-                              {isEs
-                                ? 'En censura confidencial, la información seleccionada se borra físicamente del código binario del archivo (a diferencia de marcar con recuadros negros editables). En reparación, se reconstruyen cabeceras `%PDF-` y estructuras dañadas.'
-                                : 'In redaction, confidential text is permanently erased from the document binary code (unlike overlaying editable black boxes). Repair rebuilds corrupt headers and dictionaries.'}
-                            </p>
-                          </div>
-
-                          <ul
-                            className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
-                            aria-label={
-                              isEs ? 'Herramientas de optimización' : 'Optimization tools'
-                            }
-                          >
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Comprimir PDF:</strong>{' '}
-                                {isEs
-                                  ? 'Reduce hasta un 90% el peso manteniendo textos legibles.'
-                                  : 'Reduces file size up to 90% keeping text clear.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Reparar PDF:</strong>{' '}
-                                {isEs
-                                  ? 'Reconstruye tablas XRef y arregla archivos corruptos.'
-                                  : 'Rebuilds XRef tables and fixes corrupt files.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Proteger & Desbloquear:</strong>{' '}
-                                {isEs
-                                  ? 'Cifra con contraseña o remueve contraseñas locales.'
-                                  : 'Encrypts with password or removes local passwords.'}
-                              </span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <CheckCircle2
-                                className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
-                                aria-hidden="true"
-                              />
-                              <span>
-                                <strong className="text-white">Censurar & Comparar:</strong>{' '}
-                                {isEs
-                                  ? 'Oculta datos confidenciales o compara visualmente PDFs.'
-                                  : 'Redacts private data or compares PDFs visually.'}
-                              </span>
-                            </li>
-                          </ul>
-                        </div>
-
-                        <Link
-                          href="/optimizar"
-                          className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
-                          aria-label={
-                            isEs
-                              ? 'Ver todas las herramientas de optimizar PDF'
-                              : 'View all optimize PDF tools'
-                          }
-                        >
-                          <span>
-                            {isEs ? 'Ver herramientas de Optimizar →' : 'View Optimize tools →'}
-                          </span>
-                          <ArrowRight
-                            className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
-                            aria-hidden="true"
-                          />
-                        </Link>
-                      </SpotlightCard>
-                    </div>
-                  </section>
-                </section>
+                  <div className="w-full flex-1 min-h-[380px] bg-[#09090b] relative overflow-hidden flex items-center justify-center p-4">
+                    <PdfPreviewThumbnail file={file} />
+                  </div>
+                </div>
               )}
-            </motion.div>
-          )}
+            </AnimatePresence>
+          </div>
 
-          {/* ESTADO 2: CARGANDO CON EXPERIENCIA VISUAL PREMIUM */}
-          {isUploading && (
-            <DocumentUploadProgress
-              key="uploading-view"
-              fileName={uploadingFile?.name}
-              fileSize={uploadingFile?.size}
-              progress={uploadProgress}
-              onCancel={handleCancelUpload}
-            />
+          {/* TARJETAS DE MÓDULOS 001 - 004 */}
+          <div className="w-full mb-8">
+            {file && (
+              <div
+                className="mb-4 flex items-center gap-2.5 bg-white/10 border border-white/20 text-white px-4 py-3 rounded-xl shadow-lg font-mono"
+                role="status"
+                aria-live="polite"
+              >
+                <Zap className="w-4 h-4 text-white" aria-hidden="true" />
+                <h2 className="text-xs font-bold uppercase tracking-wider">
+                  {isEs
+                    ? 'DOCUMENTO CARGADO. SELECCIONA EL MÓDULO A EJECUTAR:'
+                    : 'DOCUMENT LOADED. SELECT MODULE TO EXECUTE:'}
+                </h2>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              {categories.map((cat) => (
+                <CategoryCard key={cat.id} cat={cat} file={file} isEs={isEs} />
+              ))}
+            </div>
+          </div>
+
+          {/* SECCIÓN 4 PASOS STYLE CONTENT ARCHITECTURE */}
+          {!file && (
+            <section
+              className="w-full mt-14 pt-12 border-t border-zinc-800 flex flex-col items-center font-mono"
+              aria-label={isEs ? 'Cómo funciona PDFBlack' : 'How PDFBlack works'}
+            >
+              <div className="text-center mb-10 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-3 shadow-md">
+                  <Sparkles className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                  {isEs ? '000 / ¿CÓMO FUNCIONA PDFBLACK?' : '000 / HOW PDFBLACK WORKS'}
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-2 font-sans">
+                  {isEs ? 'Procesamiento en 4 pasos sencillos' : 'Simple 4-Step Process'}
+                </h2>
+                <p className="text-zinc-300 text-xs sm:text-sm font-sans leading-relaxed">
+                  {isEs
+                    ? 'Garantía absoluta de privacidad. Tus documentos nunca salen de tu equipo ni tocan servidores externos.'
+                    : 'Absolute privacy guarantee. Your documents never leave your device or touch external servers.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+                {/* PASO 1 */}
+                <SpotlightCard
+                  className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
+                  aria-labelledby="step-1-title"
+                >
+                  <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
+                    001 / CARGAR
+                  </span>
+                  <h3 id="step-1-title" className="text-base font-bold text-white mb-2 font-sans">
+                    {isEs ? '1. Carga tu Archivo PDF' : '1. Upload your PDF File'}
+                  </h3>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">
+                    {isEs
+                      ? 'Arrastra tu documento a la zona de carga o selecciónalo de tu equipo. Sin registro ni tarjeta de crédito.'
+                      : 'Drag your document into the dropzone or select it from your device. No sign-up or credit card needed.'}
+                  </p>
+                </SpotlightCard>
+
+                {/* PASO 2 */}
+                <SpotlightCard
+                  className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
+                  aria-labelledby="step-2-title"
+                >
+                  <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
+                    002 / CATEGORÍA
+                  </span>
+                  <h3 id="step-2-title" className="text-base font-bold text-white mb-2 font-sans">
+                    {isEs ? '2. Selecciona la Categoría' : '2. Choose your Category'}
+                  </h3>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">
+                    {isEs
+                      ? 'Elige uno de los 4 botones principales (Editar, Organizar, Convertir u Optimizar) según la herramienta que necesites.'
+                      : 'Select one of the 4 main buttons (Edit, Organize, Convert, or Optimize) depending on the tool group you need.'}
+                  </p>
+                </SpotlightCard>
+
+                {/* PASO 3 */}
+                <SpotlightCard
+                  className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
+                  aria-labelledby="step-3-title"
+                >
+                  <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
+                    003 / EDICIÓN
+                  </span>
+                  <h3 id="step-3-title" className="text-base font-bold text-white mb-2 font-sans">
+                    {isEs ? '3. Trabaja en la Sub-Página' : '3. Work in Tool Sub-Page'}
+                  </h3>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">
+                    {isEs
+                      ? 'Serás llevado a la página específica de la herramienta para personalizar, modificar y procesar tu PDF en vivo.'
+                      : 'You will be taken to your selected tool sub-page to customize, modify, and process your PDF live.'}
+                  </p>
+                </SpotlightCard>
+
+                {/* PASO 4 */}
+                <SpotlightCard
+                  className="flex flex-col items-start p-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl transition-all group shadow-xl"
+                  aria-labelledby="step-4-title"
+                >
+                  <span className="text-xs text-zinc-300 font-bold mb-3 block font-mono">
+                    004 / DESCARGAR
+                  </span>
+                  <h3 id="step-4-title" className="text-base font-bold text-white mb-2 font-sans">
+                    {isEs ? '4. Descarga tu PDF Listo' : '4. Download your Ready PDF'}
+                  </h3>
+                  <p className="text-xs text-zinc-300 font-sans leading-relaxed">
+                    {isEs
+                      ? 'Obtén tu documento modificado inmediatamente con un solo clic, 100% privado y listo para usar.'
+                      : 'Get your modified document immediately with a single click, 100% private and ready to use.'}
+                  </p>
+                </SpotlightCard>
+              </div>
+
+              {/* SECCIÓN DETALLADA DE GRUPOS DE HERRAMIENTAS: EDITAR, ORGANIZAR, CONVERTIR, OPTIMIZAR */}
+              <section
+                className="w-full mt-14 pt-12 border-t border-zinc-800 font-sans"
+                aria-label={
+                  isEs ? 'Guía técnica de grupos de herramientas' : 'Technical tool group guide'
+                }
+              >
+                <div className="text-center mb-10 max-w-3xl mx-auto">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-3 font-mono shadow-md">
+                    <Sparkles className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                    {isEs ? 'GUÍA TÉCNICA Y DE SEGURIDAD' : 'TECHNICAL & SECURITY GUIDE'}
+                  </div>
+                  <h3 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-3">
+                    {isEs
+                      ? '¿Qué le sucede a tu archivo PDF en cada grupo de herramientas?'
+                      : 'What happens to your PDF in each tool group?'}
+                  </h3>
+                  <p className="text-zinc-300 text-xs sm:text-sm font-mono leading-relaxed">
+                    {isEs
+                      ? 'Transparencia absoluta. Conoce en detalle qué ocurre dentro de tu navegador al procesar tus documentos.'
+                      : 'Absolute transparency. Discover in detail what happens inside your browser when processing documents.'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
+                  {/* GRUPO 1: EDITAR */}
+                  <SpotlightCard
+                    className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                    aria-labelledby="group-edit-title"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
+                            aria-hidden="true"
+                          >
+                            <Edit3 className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-mono text-zinc-300 font-bold block">
+                              001 / EDICIÓN DIRECTA
+                            </span>
+                            <h4
+                              id="group-edit-title"
+                              className="text-xl font-bold text-white tracking-tight"
+                            >
+                              {isEs ? 'Grupo EDITAR PDF' : 'EDIT PDF Group'}
+                            </h4>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
+                          {isEs ? 'Edición Visual' : 'Visual Editing'}
+                        </span>
+                      </div>
+
+                      {/* QUÉ SUCEDE A TU ARCHIVO */}
+                      <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                          <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                          {isEs
+                            ? 'Proceso Binario y Seguridad en EDITAR:'
+                            : 'Binary Process & Security in EDIT:'}
+                        </strong>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'Al editar un documento, el archivo PDF se descompone en objetos en la memoria RAM aislada de tu navegador. Las modificaciones de texto, marcas de agua, números de folio o firmas trazadas no sobreescriben destructivamente el archivo; se inyectan como capas vectoriales nativas bajo la especificación PDF 1.7.'
+                            : 'When editing, the PDF decodes into objects inside isolated browser RAM. Text edits, watermarks, page numbers, or drawn signatures embed as clean native vector streams under PDF 1.7 standard.'}
+                        </p>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'En OCR, el reconocimiento de caracteres se ejecuta mediante modelos WebAssembly locales que analizan píxeles sin transmitir ninguna imagen a servidores externos. Tu archivo original permanece 100% intacto en tu equipo.'
+                            : 'In OCR, character recognition runs via local WebAssembly models analyzing image pixels with zero external API calls. Your original file remains untouched on your drive.'}
+                        </p>
+                      </div>
+
+                      <ul
+                        className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
+                        aria-label={isEs ? 'Herramientas de edición' : 'Editing tools'}
+                      >
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Editar Texto:</strong>{' '}
+                            {isEs
+                              ? 'Inserta texto nativo ajustando fuentes y alineación.'
+                              : 'Inserts native text adjusting fonts and alignment.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Foliar Páginas:</strong>{' '}
+                            {isEs
+                              ? 'Agrega numeración correlativa automatizada.'
+                              : 'Adds automated sequential page numbers.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Marcas de Agua:</strong>{' '}
+                            {isEs
+                              ? 'Aplica sellos o textos de seguridad sobre cada página.'
+                              : 'Applies security stamps or text across pages.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Firmar & OCR:</strong>{' '}
+                            {isEs
+                              ? 'Estampa firmas trazadas y convierte imágenes escaneadas en texto.'
+                              : 'Stamps drawn signatures and turns scanned images into text.'}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <Link
+                      href="/editar"
+                      className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
+                      aria-label={
+                        isEs
+                          ? 'Ver todas las herramientas de editar PDF'
+                          : 'View all edit PDF tools'
+                      }
+                    >
+                      <span>{isEs ? 'Ver herramientas de Editar →' : 'View Edit tools →'}</span>
+                      <ArrowRight
+                        className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  </SpotlightCard>
+
+                  {/* GRUPO 2: ORGANIZAR */}
+                  <SpotlightCard
+                    className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                    aria-labelledby="group-organize-title"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
+                            aria-hidden="true"
+                          >
+                            <FolderOpen className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-mono text-zinc-300 font-bold block">
+                              002 / ESTRUCTURA
+                            </span>
+                            <h4
+                              id="group-organize-title"
+                              className="text-xl font-bold text-white tracking-tight"
+                            >
+                              {isEs ? 'Grupo ORGANIZAR PDF' : 'ORGANIZE PDF Group'}
+                            </h4>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
+                          {isEs ? 'Gestor de Páginas' : 'Page Builder'}
+                        </span>
+                      </div>
+
+                      {/* QUÉ SUCEDE A TU ARCHIVO */}
+                      <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                          <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                          {isEs
+                            ? 'Proceso Binario y Seguridad en ORGANIZAR:'
+                            : 'Binary Process & Security in ORGANIZE:'}
+                        </strong>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'El motor de organización manipula directamente el diccionario jerárquico de páginas (`PageTree`) en la RAM. Al reordenar, rotar, recortar o dividir, el navegador no recodifica las imágenes ni los textos; únicamente reorganiza los punteros lógicos en la tabla de referencias cruzadas.'
+                            : 'Organize tools modify the document PageTree catalog in RAM. When reordering, rotating, cropping, or splitting, only logical pointers update without re-encoding images or reducing vector quality.'}
+                        </p>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'Al unir múltiples archivos, el sistema fusiona las tablas de recursos compartidas en un nuevo contenedor PDF unificado a máxima velocidad local, garantizando que planos técnicos, imágenes y documentos conserven 100% su nitidez.'
+                            : 'When merging multiple files, shared resource tables merge into a unified PDF container at max local CPU speed, ensuring blueprints and images retain 100% sharpness.'}
+                        </p>
+                      </div>
+
+                      <ul
+                        className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
+                        aria-label={isEs ? 'Herramientas de organización' : 'Organization tools'}
+                      >
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Unir PDF:</strong>{' '}
+                            {isEs
+                              ? 'Combina árboles de páginas de varios PDFs sin pérdida de nitidez.'
+                              : 'Merges page trees from multiple PDFs without resolution loss.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Dividir & Eliminar:</strong>{' '}
+                            {isEs
+                              ? 'Corta por rangos exactos o quita páginas descartables.'
+                              : 'Splits by exact page ranges or removes unnecessary pages.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Reordenar & Rotar:</strong>{' '}
+                            {isEs
+                              ? 'Arrastra miniaturas e invierte ángulos a 90°/180°.'
+                              : 'Drag page thumbnails and adjust angles to 90°/180°.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Recortar Márgenes:</strong>{' '}
+                            {isEs
+                              ? 'Recorta los bordes a dimensiones estandarizadas.'
+                              : 'Crops document margins to standard dimensions.'}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <Link
+                      href="/organizar"
+                      className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
+                      aria-label={
+                        isEs
+                          ? 'Ver todas las herramientas de organizar PDF'
+                          : 'View all organize PDF tools'
+                      }
+                    >
+                      <span>
+                        {isEs ? 'Ver herramientas de Organizar →' : 'View Organize tools →'}
+                      </span>
+                      <ArrowRight
+                        className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  </SpotlightCard>
+
+                  {/* GRUPO 3: CONVERTIR */}
+                  <SpotlightCard
+                    className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                    aria-labelledby="group-convert-title"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
+                            aria-hidden="true"
+                          >
+                            <RefreshCw className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-mono text-zinc-300 font-bold block">
+                              003 / CONVERSIÓN
+                            </span>
+                            <h4
+                              id="group-convert-title"
+                              className="text-xl font-bold text-white tracking-tight"
+                            >
+                              {isEs ? 'Grupo CONVERTIR PDF' : 'CONVERT PDF Group'}
+                            </h4>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
+                          {isEs ? 'Alta Fidelidad' : 'High Precision'}
+                        </span>
+                      </div>
+
+                      {/* QUÉ SUCEDE A TU ARCHIVO */}
+                      <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                          <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                          {isEs
+                            ? 'Proceso Binario y Seguridad en CONVERTIR:'
+                            : 'Binary Process & Security in CONVERT:'}
+                        </strong>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'El motor cliente de conversión analiza las coordenadas tridimensionales (`x, y, z-index`) de párrafos, tablas de datos e imágenes en el PDF. Reconstruye el documento traduciendo su maquetación a estructuras de archivos XML compatibles con Word (DOCX), Excel (XLSX) o PowerPoint (PPTX) de forma instantánea.'
+                            : 'The client-side conversion engine parses spatial coordinates (`x, y, z`) of text, table cells, and images from the PDF, recompiling them into OpenXML structures (DOCX, XLSX, PPTX) in real-time.'}
+                        </p>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'No existen servidores intermedios ni APIs de terceros procesando tus estados financieros, contratos o presentaciones comerciales. Todo el análisis sintáctico y empaquetado comprimido se realiza dentro de la memoria privada de tu navegador.'
+                            : 'No intermediate cloud servers or third-party APIs process your financial sheets or contracts. Parsing and ZIP generation happen inside private browser memory.'}
+                        </p>
+                      </div>
+
+                      <ul
+                        className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
+                        aria-label={isEs ? 'Herramientas de conversión' : 'Conversion tools'}
+                      >
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">PDF ↔ Word:</strong>{' '}
+                            {isEs
+                              ? 'Convierte párrafos y estilos a formato editable DOCX.'
+                              : 'Converts paragraphs and formatting into editable DOCX.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">PDF ↔ Excel:</strong>{' '}
+                            {isEs
+                              ? 'Extrae tablas de datos directamente a hojas XLSX.'
+                              : 'Extracts data tables directly into XLSX spreadsheets.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">PDF ↔ PowerPoint:</strong>{' '}
+                            {isEs
+                              ? 'Transforma páginas en diapositivas PPTX.'
+                              : 'Transforms pages into PPTX slides.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">PDF ↔ JPG / HTML / TXT:</strong>{' '}
+                            {isEs
+                              ? 'Exporta láminas a imágenes HD, código web o texto plano.'
+                              : 'Exports pages into HD images, web code, or text.'}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <Link
+                      href="/convertir"
+                      className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
+                      aria-label={
+                        isEs
+                          ? 'Ver todas las herramientas de convertir PDF'
+                          : 'View all convert PDF tools'
+                      }
+                    >
+                      <span>
+                        {isEs ? 'Ver herramientas de Convertir →' : 'View Convert tools →'}
+                      </span>
+                      <ArrowRight
+                        className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  </SpotlightCard>
+
+                  {/* GRUPO 4: OPTIMIZAR */}
+                  <SpotlightCard
+                    className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-6 lg:p-8 transition-all shadow-2xl flex flex-col justify-between"
+                    aria-labelledby="group-optimize-title"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md"
+                            aria-hidden="true"
+                          >
+                            <Zap className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-mono text-zinc-300 font-bold block">
+                              004 / OPTIMIZACIÓN
+                            </span>
+                            <h4
+                              id="group-optimize-title"
+                              className="text-xl font-bold text-white tracking-tight"
+                            >
+                              {isEs ? 'Grupo OPTIMIZAR PDF' : 'OPTIMIZE PDF Group'}
+                            </h4>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
+                          {isEs ? 'Seguridad & Peso' : 'Security & Size'}
+                        </span>
+                      </div>
+
+                      {/* QUÉ SUCEDE A TU ARCHIVO */}
+                      <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
+                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                          <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+                          {isEs
+                            ? 'Proceso Binario y Seguridad en OPTIMIZAR:'
+                            : 'Binary Process & Security in OPTIMIZE:'}
+                        </strong>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'Optimiza y re-comprime las fuentes de datos primarias. Al comprimir, re-codifica imágenes JPEG pesadas mediante resampling Canvas y elimina metadatos redundantes de la tabla XRef. Al cifrar o desbloquear, ejecuta algoritmos criptográficos nativos **AES-256** (`crypto.subtle`) sin enviar jamás tus contraseñas a la red.'
+                            : 'Optimizes binary data streams in memory. Compression re-encodes heavy JPEG images via Canvas resampling and purges redundant XRef metadata. Encryption runs native **AES-256** cryptography (`crypto.subtle`) without sending passwords online.'}
+                        </p>
+                        <p className="text-zinc-300 text-[11.5px] font-sans leading-relaxed">
+                          {isEs
+                            ? 'En censura confidencial, la información seleccionada se borra físicamente del código binario del archivo (a diferencia de marcar con recuadros negros editables). En reparación, se reconstruyen cabeceras `%PDF-` y estructuras dañadas.'
+                            : 'In redaction, confidential text is permanently erased from the document binary code (unlike overlaying editable black boxes). Repair rebuilds corrupt headers and dictionaries.'}
+                        </p>
+                      </div>
+
+                      <ul
+                        className="space-y-2.5 text-xs text-zinc-200 font-mono mb-6"
+                        aria-label={isEs ? 'Herramientas de optimización' : 'Optimization tools'}
+                      >
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Comprimir PDF:</strong>{' '}
+                            {isEs
+                              ? 'Reduce hasta un 90% el peso manteniendo textos legibles.'
+                              : 'Reduces file size up to 90% keeping text clear.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Reparar PDF:</strong>{' '}
+                            {isEs
+                              ? 'Reconstruye tablas XRef y arregla archivos corruptos.'
+                              : 'Rebuilds XRef tables and fixes corrupt files.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Proteger & Desbloquear:</strong>{' '}
+                            {isEs
+                              ? 'Cifra con contraseña o remueve contraseñas locales.'
+                              : 'Encrypts with password or removes local passwords.'}
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2
+                            className="w-4 h-4 text-white flex-shrink-0 mt-0.5"
+                            aria-hidden="true"
+                          />
+                          <span>
+                            <strong className="text-white">Censurar & Comparar:</strong>{' '}
+                            {isEs
+                              ? 'Oculta datos confidenciales o compara visualmente PDFs.'
+                              : 'Redacts private data or compares PDFs visually.'}
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <Link
+                      href="/optimizar"
+                      className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
+                      aria-label={
+                        isEs
+                          ? 'Ver todas las herramientas de optimizar PDF'
+                          : 'View all optimize PDF tools'
+                      }
+                    >
+                      <span>
+                        {isEs ? 'Ver herramientas de Optimizar →' : 'View Optimize tools →'}
+                      </span>
+                      <ArrowRight
+                        className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  </SpotlightCard>
+                </div>
+              </section>
+            </section>
           )}
-        </AnimatePresence>
+        </div>
 
         {/* TABLA DE ARCHIVOS RECIENTES */}
         <section

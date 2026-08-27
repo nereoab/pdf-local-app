@@ -250,8 +250,26 @@ function OptimizarContent() {
             })}
           </div>
 
+          {/* ENCABEZADO DE GUÍA TÉCNICA Y PRIVACIDAD */}
+          <div className="w-full mt-14 mb-8 pt-8 border-t border-zinc-800 flex flex-col items-center text-center font-mono">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-3 shadow-sm">
+              <ShieldCheck className="w-3.5 h-3.5 text-white" />
+              {isEs ? '100% SEGURO • CERO SERVIDORES' : '100% SECURE • ZERO SERVERS'}
+            </div>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2 font-sans">
+              {isEs
+                ? 'Cómo funciona el procesamiento local de tus archivos'
+                : 'How local file processing works'}
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-300 font-mono max-w-2xl">
+              {isEs
+                ? 'Conoce el flujo de trabajo, consejos prácticos, protección de datos y preguntas frecuentes.'
+                : 'Learn about the workflow, practical tips, data protection, and frequently asked questions.'}
+            </p>
+          </div>
+
           {/* SECCIÓN DE 4 PUNTOS ESTANDARIZADA MONOCROMÁTICA */}
-          <div className="w-full mt-4 space-y-8 font-sans">
+          <div className="w-full space-y-8 font-sans">
             {/* 1. CÓMO FUNCIONA PASO A PASO */}
             <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
               <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">

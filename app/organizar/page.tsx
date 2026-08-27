@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useRef, useEffect } from 'react';
+import { Suspense, useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, animate } from 'framer-motion';
 import Link from 'next/link';
@@ -30,6 +30,13 @@ function OrganizarContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+
+  const emptySubscribe = () => () => {};
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   const organizingTools = [
     {
@@ -99,6 +106,8 @@ function OrganizarContent() {
       path: '/organizar/recortar',
     },
   ];
+
+  if (!isMounted) return null;
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
@@ -244,177 +253,207 @@ function OrganizarContent() {
             })}
           </div>
 
-          {/* SECCIÓN: 3 PASOS PARA ORGANIZAR PDF */}
-          <div className="w-full mt-14 pt-10 border-t border-zinc-800 flex flex-col items-center font-mono">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-4 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-              {isEs ? '000 / PASOS DE ORGANIZACIÓN' : '000 / ORGANIZATION STEPS'}
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-8 font-sans">
-              {isEs ? 'Solo 3 pasos para organizar tu PDF' : 'Only 3 steps to organize your PDF'}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-              {/* PASO 1 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  1
+          {/* SECCIÓN DE 4 PUNTOS ESTANDARIZADA MONOCROMÁTICA */}
+          <div className="w-full mt-4 space-y-8 font-sans">
+            {/* 1. CÓMO FUNCIONA PASO A PASO */}
+            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
+                <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
+                  <FileText className="w-5 h-5 text-white" />
                 </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '1. Selecciona la herramienta' : '1. Select the tool'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
                   {isEs
-                    ? 'Elige la función exacta que deseas realizar (Unir, Dividir, Eliminar, Rotar, Reordenar o Recortar).'
-                    : 'Choose the exact function you need (Merge, Split, Delete, Rotate, Reorder, or Crop).'}
-                </p>
-              </SpotlightCard>
+                    ? '1. Cómo organizar archivos PDF paso a paso'
+                    : '1. How to organize PDF files step by step'}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    step: '01',
+                    es: 'Selecciona la herramienta deseada o sube tus documentos PDF.',
+                    en: 'Select desired tool or upload your PDF documents.',
+                  },
+                  {
+                    step: '02',
+                    es: 'El motor carga las miniaturas de todas las páginas en memoria local.',
+                    en: 'The engine loads thumbnails of all pages into local memory.',
+                  },
+                  {
+                    step: '03',
+                    es: 'Reordena, rota, elimina o recorta páginas en tiempo real.',
+                    en: 'Reorder, rotate, delete, or crop pages in real time.',
+                  },
+                  {
+                    step: '04',
+                    es: 'Compila y descarga tu nuevo documento PDF 100% ordenado.',
+                    en: 'Compile and download your new 100% organized PDF document.',
+                  },
+                ].map((item, i) => (
+                  <SpotlightCard
+                    key={i}
+                    className="bg-zinc-800/80 border border-zinc-600 rounded-2xl p-5 flex flex-col gap-2.5 shadow-md"
+                  >
+                    <span className="text-[10px] font-mono font-bold text-white bg-zinc-800 border border-zinc-500 px-2.5 py-0.5 rounded-full w-fit shadow-sm">
+                      Paso {item.step}
+                    </span>
+                    <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+                      {isEs ? item.es : item.en}
+                    </p>
+                  </SpotlightCard>
+                ))}
+              </div>
+            </SpotlightCard>
 
-              {/* PASO 2 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  2
+            {/* 2. LIMITACIONES Y CONSEJOS ÚTILES */}
+            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
+                <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '2. Reorganiza tus páginas' : '2. Reorganize your pages'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
-                  {isEs
-                    ? 'Carga tus archivos y ajusta el orden o la selección de páginas de forma visual e interactiva.'
-                    : 'Upload your files and adjust page order or selection visually and interactively.'}
-                </p>
-              </SpotlightCard>
-
-              {/* PASO 3 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  3
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
+                  {isEs ? '2. Limitaciones y consejos útiles' : '2. Limitations & useful tips'}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-3 bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 shadow-md">
+                  <h4 className="text-xs font-mono text-white font-bold uppercase tracking-wider border-b border-zinc-700 pb-2.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                    {isEs ? 'LO QUE PUEDES HACER' : 'WHAT YOU CAN DO'}
+                  </h4>
+                  {[
+                    isEs
+                      ? 'Unir múltiples documentos PDF en un solo archivo continuo y ordenado.'
+                      : 'Merge multiple PDF documents into a single continuous, ordered file.',
+                    isEs
+                      ? 'Dividir y extraer rangos de páginas específicas hacia archivos independientes.'
+                      : 'Split and extract specific page ranges into independent PDF files.',
+                    isEs
+                      ? 'Reordenar visualmente las páginas arrastrando y soltando miniaturas.'
+                      : 'Visually reorder pages by dragging and dropping thumbnails.',
+                    isEs
+                      ? 'Rotar páginas individuales o documentos completos con corrección de orientación.'
+                      : 'Rotate individual pages or entire documents with orientation fix.',
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                      <span className="text-white font-bold flex-shrink-0 mt-0.5">•</span>
+                      <span>{t}</span>
+                    </div>
+                  ))}
                 </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '3. Descarga instantánea' : '3. Instant download'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
-                  {isEs
-                    ? 'Obtén tu nuevo documento PDF organizado de manera privada y 100% local.'
-                    : 'Get your newly organized PDF document privately and 100% locally.'}
-                </p>
-              </SpotlightCard>
-            </div>
-          </div>
-
-          {/* SECCIÓN DETALLADA: ¿QUÉ SUCEDE CON TU ARCHIVO PDF Y EXPLICACIÓN DE HERRAMIENTAS DE ORGANIZACIÓN */}
-          <div className="w-full mt-12 space-y-8 font-sans">
-            {/* BLOQUE 1: ¿QUÉ SUCEDE CON TU ARCHIVO PDF? (PRIVACIDAD Y SEGURIDAD LOCAL) */}
-            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-              <div className="flex items-center gap-3.5 mb-6">
-                <div className="bg-zinc-800 p-3 rounded-2xl border border-zinc-500 text-white shadow-md">
-                  <ShieldCheck className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-extrabold text-white tracking-tight">
-                    {isEs
-                      ? '¿Qué sucede exactamente con tu archivo PDF al organizarlo?'
-                      : 'What exactly happens to your PDF file when organized?'}
-                  </h3>
-                  <span className="text-xs font-mono text-zinc-200 font-bold flex items-center gap-1.5 mt-0.5">
+                <div className="space-y-3 bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 shadow-md">
+                  <h4 className="text-xs font-mono text-zinc-200 font-bold uppercase tracking-wider border-b border-zinc-700 pb-2.5 flex items-center gap-1.5">
                     <Lock className="w-3.5 h-3.5 text-white" />
-                    {isEs
-                      ? 'PRIVACIDAD ABSOLUTA • PROCESAMIENTO 100% LOCAL EN RAM • SIN SERVIDORES'
-                      : 'ABSOLUTE PRIVACY • 100% LOCAL RAM PROCESSING • ZERO SERVERS'}
-                  </span>
+                    {isEs ? 'CONSEJOS RECOMENDADOS' : 'RECOMMENDED TIPS'}
+                  </h4>
+                  {[
+                    isEs
+                      ? 'Revisa la vista previa de miniaturas para confirmar el orden antes de compilar.'
+                      : 'Review the thumbnail preview to confirm page order before compiling.',
+                    isEs
+                      ? 'Para unir archivos grandes, asegúrate de que todos los PDFs estén sin contraseñas.'
+                      : 'For merging large files, ensure all PDFs are unlocked and without passwords.',
+                    isEs
+                      ? 'El recorte de márgenes elimina espacios en blanco sin perder nitidez de texto.'
+                      : 'Margin cropping trims white borders without losing vector text crispness.',
+                    isEs
+                      ? 'Todo el ensamblado se procesa 100% en la memoria RAM de tu navegador.'
+                      : 'All assembly processes 100% locally inside your browser RAM.',
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-zinc-300">
+                      <span className="text-zinc-200 flex-shrink-0 mt-0.5">→</span>
+                      <span>{t}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
+            </SpotlightCard>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
+            {/* 3. PRIVACIDAD Y PROCESAMIENTO LOCAL */}
+            <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
+                <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
+                  <ShieldCheck className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
+                  {isEs
+                    ? '3. ¿Qué sucede con tu documento al organizarlo?'
+                    : '3. What happens to your document when organizing it?'}
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs text-zinc-300 leading-relaxed">
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
                     <HardDrive className="w-4 h-4 text-white" />
-                    {isEs ? '1. Ejecución Local en tu Navegador' : '1. Local Browser Execution'}
+                    {isEs ? 'Procesamiento 100% local' : '100% local processing'}
                   </strong>
-                  <p className="font-normal text-zinc-300">
+                  <p className="text-xs text-zinc-300 font-normal">
                     {isEs
-                      ? 'Tus archivos PDF se unen, dividen, reordenan o recortan exclusivamente dentro de la memoria RAM de tu navegador. Ningún dato o página se sube a servidores externos.'
-                      : 'Your PDF files are merged, split, reordered, or cropped exclusively within your browser RAM. Zero data or pages are uploaded to external servers.'}
+                      ? 'Tus archivos se unen, dividen o reordenan estrictamente dentro de la memoria RAM de tu navegador. Cero bytes tocan servidores externos.'
+                      : 'Your files are merged, split, or reordered strictly inside browser RAM. Zero bytes touch external servers.'}
                   </p>
                 </SpotlightCard>
-
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
                     <Lock className="w-4 h-4 text-white" />
-                    {isEs
-                      ? '2. Conservación de Calidad y Vectores'
-                      : '2. Quality & Vector Integrity'}
+                    {isEs ? 'Seguridad y confidencialidad' : 'Security & confidentiality'}
                   </strong>
-                  <p className="font-normal text-zinc-300">
+                  <p className="text-xs text-zinc-300 font-normal">
                     {isEs
-                      ? 'Al reorganizar o extraer páginas, el contenido original (texto seleccionable, fuentes e imágenes) se conserva intacto en máxima resolución sin compresión destructiva.'
-                      : 'When reorganizing or extracting pages, original content (selectable text, fonts, and images) remains intact in full resolution without lossy compression.'}
+                      ? 'La estructura original, fuentes vectoriales e imágenes se conservan intactas en máxima calidad sin compresión destructiva.'
+                      : 'Original structure, vector fonts, and images remain intact in full quality without lossy compression.'}
                   </p>
                 </SpotlightCard>
-
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-sm block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
                     <Sparkles className="w-4 h-4 text-white" />
-                    {isEs ? '3. Purga Automática de Memoria' : '3. Automatic Memory Purge'}
+                    {isEs ? 'Descarga directa' : 'Direct download'}
                   </strong>
-                  <p className="font-normal text-zinc-300">
+                  <p className="text-xs text-zinc-300 font-normal">
                     {isEs
-                      ? 'Una vez descargado el nuevo documento organizado o al cerrar la sesión, los datos procesados en la memoria RAM se purgan por completo inmediatamente.'
-                      : 'Once the newly organized document is downloaded or session ends, processed buffers in RAM are completely purged immediately.'}
+                      ? 'El nuevo documento organizado se genera al instante y queda listo para descargar en tu dispositivo inmediatamente.'
+                      : 'The newly organized document generates instantly and is ready to download to your device immediately.'}
                   </p>
                 </SpotlightCard>
               </div>
             </SpotlightCard>
 
-            {/* BLOQUE 2: GUÍA EXPLICATIVA DE TODAS LAS HERRAMIENTAS DE ORGANIZACIÓN */}
+            {/* 4. PREGUNTAS FRECUENTES */}
             <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
               <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">
                 <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-500 text-white shadow-md">
-                  <FolderOpen className="w-5 h-5 text-white" />
+                  <HardDrive className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-extrabold text-white tracking-tight font-sans">
-                    {isEs
-                      ? 'Herramientas disponibles en el Módulo de Organización'
-                      : 'Available Tools in the Organization Module'}
-                  </h3>
-                  <p className="text-xs text-zinc-300 font-mono">
-                    {isEs
-                      ? 'Conoce en detalle las 6 funciones avanzadas para administrar la estructura de tus archivos PDF.'
-                      : 'Learn in detail about the 6 advanced functions to manage your PDF files layout.'}
-                  </p>
-                </div>
+                <h3 className="text-xl font-extrabold text-white tracking-tight">
+                  {isEs ? '4. Preguntas Frecuentes' : '4. Frequently Asked Questions'}
+                </h3>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 font-sans">
-                {organizingTools.map((tool) => (
+              <div className="space-y-4">
+                {[
+                  {
+                    qEs: '¿Existe algún límite de páginas o archivos para unir y organizar?',
+                    qEn: 'Is there a page or file limit when merging and organizing?',
+                    aEs: 'No hay límites artificiales. Puedes unir o reorganizar tantos documentos como la memoria RAM de tu dispositivo permita.',
+                    aEn: 'No artificial limits. You can merge or reorganize as many documents as your device RAM allows.',
+                  },
+                  {
+                    qEs: '¿Se pierde calidad o texto seleccionable al dividir o rotar páginas?',
+                    qEn: 'Is quality or selectable text lost when splitting or rotating pages?',
+                    aEs: 'No. Las operaciones de organización no rasterizan ni comprimen el contenido; conservan todas las fuentes y vectores originales.',
+                    aEn: 'No. Organization operations do not rasterize or compress content; all original fonts and vectors remain intact.',
+                  },
+                ].map((faq, i) => (
                   <SpotlightCard
-                    key={tool.id}
-                    className="bg-zinc-800/80 border border-zinc-600 hover:border-white rounded-2xl p-5 transition-all flex flex-col justify-between shadow-md"
+                    key={i}
+                    className="bg-zinc-800/80 border border-zinc-600 rounded-2xl p-5 space-y-2 shadow-md"
                   >
-                    <div>
-                      <div className="flex items-center gap-2.5 mb-2.5">
-                        <div className="p-2 rounded-lg bg-zinc-800 border border-zinc-500 text-white">
-                          <tool.icon className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-[10px] font-mono text-zinc-300 font-bold tracking-wider">
-                          {isEs ? tool.tagEs : tool.tagEn}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-bold text-white mb-2">
-                        {isEs ? tool.titleEs : tool.titleEn}
-                      </h4>
-                      <p className="text-xs text-zinc-300 leading-relaxed font-normal">
-                        {isEs ? tool.descEs : tool.descEn}
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-zinc-700 flex items-center justify-between text-[11px] font-mono text-zinc-200 font-bold">
-                      <span className="flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-white" /> 100% Local
-                      </span>
-                      <span className="text-zinc-400 font-sans font-normal">
-                        {isEs ? 'Sin Servidores' : 'No Servers'}
-                      </span>
-                    </div>
+                    <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                      <span className="text-white font-mono font-bold">Q:</span>{' '}
+                      {isEs ? faq.qEs : faq.qEn}
+                    </h4>
+                    <p className="text-xs text-zinc-300 leading-relaxed pl-5 font-normal">
+                      {isEs ? faq.aEs : faq.aEn}
+                    </p>
                   </SpotlightCard>
                 ))}
               </div>

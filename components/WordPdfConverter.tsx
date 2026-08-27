@@ -32,6 +32,7 @@ import {
   Table as TableIcon,
   FileSpreadsheet,
   BookOpen,
+  Trash2,
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -1043,16 +1044,17 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
       />
 
       {/* HEADER SUPERIOR UNIFICADO */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono">
+      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex items-center gap-4">
           <Link
             href="/convertir"
             onClick={() => setHeaderHidden(false)}
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? 'Volver' : 'Back'}
+            <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
           </Link>
-          <div className="hidden sm:block h-5 w-px bg-white/10" />
+          <div className="hidden sm:block h-5 w-px bg-zinc-700" />
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
               {isEs
@@ -1074,73 +1076,63 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
 
         {(file || completedResult) && (
           <div className="flex items-center gap-3">
-            <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
-              <FileText className="w-4 h-4 text-zinc-400" />
+            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
+              <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
                 {completedResult ? completedResult.filename : file?.name}
               </span>
             </div>
             <button
               onClick={handleRemoveFile}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all cursor-pointer"
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Quitar archivo' : 'Remove file'}
             >
-              <X className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         )}
       </div>
 
       {completedResult ? (
-        /* VISTA DE ÉXITO ESTILO PDFBLACK CON ENCADENAMIENTO DE HERRAMIENTAS */
+        /* ── PANTALLA DE ÉXITO DEDICADA ── */
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE ÉXITO */}
-          <div className="bg-[#09090b] border border-blue-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden font-mono">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+          {/* BANNER DE RESULTADO Y MÉTRICAS */}
+          <div className="bg-[#09090b] border border-white/20 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg border border-blue-400/30">
-                  <WordIcon className="w-6 h-6 text-white rounded-sm" />
+                <div className="p-3 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
+                  <WordIcon className="w-6 h-6 rounded-sm" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight font-sans">
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA CONVERSIÓN' : 'CONVERSION RESULT'}
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
                     {isEs
-                      ? '¡Conversión de Documento Completada con Éxito!'
-                      : 'Document Conversion Completed Successfully!'}
+                      ? '¡Conversión de documento completada con éxito!'
+                      : 'Document conversion completed successfully!'}
                   </h3>
-                  <p className="text-zinc-400 text-xs font-mono mt-0.5">
-                    {mode === 'word-to-pdf'
-                      ? isEs
-                        ? 'Documento Word compilado a PDF vectorial listo para descargar.'
-                        : 'Word document compiled to vector PDF ready for download.'
-                      : isEs
-                        ? `${completedResult.itemCount} páginas exportadas a Microsoft Word (.docx) editable sin errores.`
-                        : `${completedResult.itemCount} pages exported to editable Microsoft Word (.docx) with zero errors.`}
-                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-blue-400">
-                <ShieldCheck className="w-4 h-4" />
-                <span>
-                  {mode === 'word-to-pdf'
-                    ? isEs
-                      ? 'PDF Vectorial Listo'
-                      : 'Vector PDF Ready'
-                    : isEs
-                      ? 'DOCX 100% Válido'
-                      : '100% Valid DOCX'}
-                </span>
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-xl">
+                <div className="text-right">
+                  <div className="text-[10px] text-zinc-400 font-bold">
+                    {isEs ? 'Estado del proceso' : 'Process status'}
+                  </div>
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1">
+                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* MÉTRICAS DE LA CONVERSIÓN */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs border-t border-zinc-800 mt-4">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Formato de Salida' : 'Output Format'}
                 </span>
@@ -1148,15 +1140,15 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                   {completedResult.outputFormat}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Resultante' : 'Result Size'}
                 </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
                   {completedResult.fileSize}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
                 </span>
@@ -1164,7 +1156,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                   {completedResult.itemCount} {isEs ? 'págs' : 'pages'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Procesamiento' : 'Processing'}
                 </span>
@@ -1190,7 +1182,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
         <>
           {/* SELECTOR DUAL DE MODO 2 EN 1 */}
           <div className="flex items-center justify-center mb-6 font-mono">
-            <div className="bg-[#09090b] border border-white/20 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
+            <div className="bg-[#09090b] border border-zinc-700 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
               <button
                 type="button"
                 onClick={() => handleSwitchMode('word-to-pdf')}
@@ -1225,9 +1217,10 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer"
+              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
             >
-              <div className="bg-zinc-900 p-6 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors mb-6">
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+              <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
                 <UploadCloud className="w-12 h-12 text-white" />
               </div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
@@ -1250,7 +1243,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               </p>
               <button
                 type="button"
-                className="bg-white text-black hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4 text-black" />
                 <span>
@@ -1264,8 +1257,8 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
+                <ShieldCheck className="w-3.5 h-3.5 text-white" />
                 <span>
                   {isEs
                     ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'

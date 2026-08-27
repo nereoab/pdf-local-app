@@ -734,16 +734,17 @@ export default function PdfOrganizer() {
       {/* HEADER SUPERIOR UNIFICADO */}
       <div
         ref={topHeaderRef}
-        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#09090b] border border-white/10 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono"
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden"
       >
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex items-center gap-4">
           <Link
             href="/organizar"
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> {isEs ? 'Volver' : 'Back'}
+            <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
           </Link>
-          <div className="hidden sm:block h-5 w-px bg-white/10" />
+          <div className="hidden sm:block h-5 w-px bg-zinc-700" />
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
               {isEs
@@ -758,16 +759,16 @@ export default function PdfOrganizer() {
         </div>
 
         {completedResult ? (
-          <div className="flex items-center gap-2.5 bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl text-xs font-mono text-white">
-            <FileText className="w-4 h-4 text-emerald-400" />
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <FileText className="w-4 h-4 text-zinc-300" />
             <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">
               {completedResult.filename}
             </span>
           </div>
         ) : pages.length > 0 ? (
           <div className="flex items-center gap-3">
-            <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
-              <FileText className="w-4 h-4 text-zinc-400" />
+            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
+              <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
                 {files.length} {isEs ? 'archivo(s)' : 'file(s)'} ({pages.length}{' '}
                 {isEs ? 'páginas' : 'pages'})
@@ -775,7 +776,7 @@ export default function PdfOrganizer() {
             </div>
             <button
               onClick={removeFile}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all"
               title={isEs ? 'Limpiar mesa' : 'Clear deck'}
             >
               <Trash2 className="w-4 h-4" />
@@ -793,11 +794,11 @@ export default function PdfOrganizer() {
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
           {/* BANNER DE RESULTADO Y MÉTRICAS DE REORDENAMIENTO */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          <div className="bg-[#09090b] border border-white/20 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
-                  <LayoutGrid className="w-6 h-6" />
+                <div className="p-3 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
+                  <LayoutGrid className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
@@ -810,20 +811,20 @@ export default function PdfOrganizer() {
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-xl">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-zinc-800 text-xs">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
@@ -831,20 +832,20 @@ export default function PdfOrganizer() {
                   {completedResult.originalSize}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Totales' : 'Total Pages'}
                 </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
                   {completedResult.totalPages} {isEs ? 'Páginas' : 'Pages'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
                 </span>
                 <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {isEs ? 'Reordenamiento Local Nativo' : 'Native Local Reorder'}
+                  {isEs ? 'Vectorial Nativo' : 'Native Vector'}
                 </span>
               </div>
             </div>
@@ -901,12 +902,11 @@ export default function PdfOrganizer() {
               }
             }
           }}
-          className={`w-full border rounded-2xl sm:rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center bg-[#09090b] shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer relative overflow-hidden ${
-            isDragging
-              ? 'border-white bg-zinc-900/60 scale-[1.01]'
-              : 'border-white/10 hover:border-white/30'
+          className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer relative overflow-hidden ${
+            isDragging ? 'border-white scale-[1.01]' : 'border-zinc-600 hover:border-white'
           }`}
         >
+          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           {/* INPUT TRANSPARENTE DE COBERTURA TOTAL NATIVA */}
           <input
             type="file"
@@ -918,15 +918,13 @@ export default function PdfOrganizer() {
           />
 
           <div
-            className={`p-6 rounded-2xl border transition-colors mb-6 relative z-10 pointer-events-none ${
+            className={`p-6 rounded-2xl border transition-all mb-6 relative z-10 pointer-events-none shadow-md ${
               isDragging
                 ? 'bg-white/10 border-white'
-                : 'bg-zinc-900 border-white/10 group-hover:border-white/30'
+                : 'bg-zinc-900 border-zinc-700 group-hover:border-white group-hover:scale-105 text-white'
             }`}
           >
-            <UploadCloud
-              className={`w-12 h-12 ${isDragging ? 'text-emerald-400 animate-bounce' : 'text-white'}`}
-            />
+            <UploadCloud className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase relative z-10 pointer-events-none">
             {isEs ? 'ORDENAR Y REORGANIZAR PÁGINAS PDF' : 'REORDER PDF PAGES'}
@@ -936,13 +934,13 @@ export default function PdfOrganizer() {
               ? 'Cambia el orden, rota, duplica e intercala hojas de tu PDF de forma 100% confidencial y local.'
               : 'Reorder, rotate, duplicate, and interleave pages from your PDF 100% locally.'}
           </p>
-          <div className="bg-white text-black group-hover:bg-zinc-200 px-8 py-3.5 rounded-full font-sans font-semibold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer relative z-20 pointer-events-none">
+          <div className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer relative z-20 pointer-events-none">
             <Plus className="w-4 h-4 text-black" />
             <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
           </div>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full mt-8 relative z-10 pointer-events-none">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 relative z-10 pointer-events-none shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-white" />
             <span>
               {isEs
                 ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'

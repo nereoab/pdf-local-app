@@ -34,6 +34,8 @@ import {
   ZoomOut,
   HelpCircle,
   ShieldCheck,
+  Trash2,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -665,21 +667,22 @@ export default function PdfRepairer() {
         disabled={isProcessing}
       />
 
-      {/* CABECERA */}
+      {/* HEADER SUPERIOR UNIFICADO */}
       <div
         ref={topHeaderRef}
-        className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl"
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden"
       >
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
-            href="/#herramientas"
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+            href="/optimizar"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-3.5 h-3.5 text-white" />
             <span>{isEs ? 'Volver' : 'Back'}</span>
           </Link>
 
-          <div className="hidden sm:block h-5 w-px bg-white/10" />
+          <div className="hidden sm:block h-5 w-px bg-zinc-700" />
 
           <div>
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
@@ -698,18 +701,18 @@ export default function PdfRepairer() {
 
         {file && (
           <div className="flex items-center gap-3 font-mono">
-            <div className="bg-zinc-900 border border-white/10 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs text-white">
-              <FileText className="w-4 h-4 text-zinc-400" />
+            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs text-white">
+              <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
                 {file.name}
               </span>
             </div>
             <button
               onClick={removeFile}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all"
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Quitar archivo' : 'Remove file'}
             >
-              <X className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -721,27 +724,40 @@ export default function PdfRepairer() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-[#09090b] hover:bg-zinc-900/60 border border-white/10 hover:border-white/30 rounded-2xl sm:rounded-3xl p-8 lg:p-14 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 group shadow-2xl min-h-[480px] relative overflow-hidden"
+          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
         >
-          <div className="bg-zinc-900 p-5 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors">
+          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+          <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
             <UploadCloud className="w-12 h-12 text-white" />
           </div>
 
-          <div className="text-center flex flex-col items-center gap-2 font-sans">
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              {isEs ? 'Arrastra tu archivo PDF dañado aquí' : 'Drop your corrupted PDF file here'}
-            </h2>
-            <p className="text-zinc-400 text-xs sm:text-sm font-mono">
-              {isEs
-                ? 'O haz clic para explorar tus archivos y diagnosticar el problema'
-                : 'Or click to browse your files and diagnose issue'}
-            </p>
-          </div>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+            {isEs
+              ? 'REPARAR Y RESTAURAR DOCUMENTOS PDF DAÑADOS'
+              : 'REPAIR AND RESTORE DAMAGED PDF DOCUMENTS'}
+          </h2>
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+            {isEs
+              ? 'Recupera y repara archivos PDF corruptos o dañados con reconstrucción estructural y renderizado vectorial local.'
+              : 'Repair and restore damaged PDF files with structural reconstruction 100% locally.'}
+          </p>
 
-          <button className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-3 rounded-full font-sans text-xs font-semibold transition-all shadow-md cursor-pointer">
-            <FilePlus className="w-4 h-4 text-black" />
+          <button
+            type="button"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-black" />
             {isEs ? 'Seleccionar PDF Dañado' : 'Select Corrupted PDF'}
           </button>
+
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-white" />
+            <span>
+              {isEs
+                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
+                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+            </span>
+          </div>
         </motion.div>
       ) : completedResult ? (
         /* PANTALLA DE ÉXITO Y DESCARGA */

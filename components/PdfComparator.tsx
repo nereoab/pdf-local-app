@@ -26,6 +26,7 @@ import {
   FileDown,
   SlidersHorizontal,
   ArrowLeft,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -720,20 +721,21 @@ export default function PdfComparator() {
         onChange={handleFile2}
       />
 
-      {/* CABECERA */}
+      {/* HEADER SUPERIOR UNIFICADO */}
       <div
         ref={topHeaderRef}
-        className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl font-mono"
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden"
       >
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
-            href="/#herramientas"
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-white/10"
+            href="/optimizar"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-3.5 h-3.5 text-white" />
             <span>{isEs ? 'Volver' : 'Back'}</span>
           </Link>
-          <div className="hidden sm:block h-5 w-px bg-white/10" />
+          <div className="hidden sm:block h-5 w-px bg-zinc-700" />
           <div>
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
               004 / COMPARACIÓN Y CONTROL DE DIFERENCIAS EN PDF
@@ -750,16 +752,16 @@ export default function PdfComparator() {
         </div>
         {(file1 || file2) && (
           <div className="flex items-center gap-2 font-mono">
-            <div className="bg-zinc-900 border border-white/10 px-3 py-2 rounded-xl text-xs text-white">
-              <FileText className="w-3.5 h-3.5 inline mr-1.5 text-zinc-400" />
+            <div className="bg-zinc-900 border border-zinc-700 px-3 py-2 rounded-xl text-xs text-white">
+              <FileText className="w-3.5 h-3.5 inline mr-1.5 text-zinc-300" />
               <span className="font-bold">{file1 && file2 ? '2 docs' : '1 doc'}</span>
             </div>
             <button
               onClick={reset}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-white/10 rounded-xl transition-all cursor-pointer"
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Reiniciar' : 'Reset'}
             >
-              <X className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -768,16 +770,16 @@ export default function PdfComparator() {
       {!file1 || !file2 ? (
         <div className="w-full flex flex-col items-center gap-8">
           <div className="text-center flex flex-col items-center gap-3">
-            <div className="bg-zinc-900 p-4 rounded-2xl border border-white/10 shadow-2xl">
+            <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-700 shadow-2xl">
               <GitCompare className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-white">
-              {isEs ? 'Comparar PDFs' : 'Compare PDFs'}
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-sans uppercase">
+              {isEs ? 'Comparar y Detectar Diferencias' : 'Compare and Detect Differences'}
             </h2>
-            <p className="text-zinc-400 text-xs max-w-md font-mono">
+            <p className="text-zinc-400 text-xs sm:text-sm max-w-md font-mono">
               {isEs
-                ? 'Sube dos PDFs para detectar diferencias.'
-                : 'Upload two PDFs to detect differences.'}
+                ? 'Sube dos versiones de un PDF para detectar automáticamente texto modificado, añadido o eliminado.'
+                : 'Upload two versions of a PDF to detect changes.'}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
@@ -786,40 +788,49 @@ export default function PdfComparator() {
               onDragOver={(e) => hdrOver(e, 1)}
               onDragLeave={(e) => hdrLeave(e, 1)}
               onDrop={(e) => hdrDrop(e, 1)}
-              className={`bg-[#09090b] border-2 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all min-h-[260px] group shadow-2xl ${dragOver1 ? 'border-red-400 border-solid bg-red-500/5 scale-[1.02]' : file1 ? 'border-white' : 'border-dashed border-white/10 hover:border-white/30'}`}
+              className={`bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border-2 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all min-h-[280px] group shadow-2xl relative overflow-hidden ${dragOver1 ? 'border-white bg-zinc-900 scale-[1.02]' : file1 ? 'border-zinc-500' : 'border-zinc-600 hover:border-white'}`}
             >
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               {file1 ? (
                 <div className="flex flex-col items-center gap-3 text-center font-mono">
-                  <FileText className="w-12 h-12 text-white" />
+                  <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-700 text-white">
+                    <FileText className="w-10 h-10 text-white" />
+                  </div>
                   <span className="text-white font-bold text-sm truncate max-w-[220px]">
                     {file1.name}
                   </span>
                   <span className="text-zinc-400 text-[10px]">{fmtSize(file1.size)}</span>
-                  <span className="text-emerald-400 text-xs">Doc A</span>
+                  <span className="text-white font-bold text-xs bg-zinc-800 border border-zinc-600 px-3 py-1 rounded-full">
+                    Doc A (Original)
+                  </span>
                 </div>
               ) : (
                 <>
                   <div
-                    className={`p-4 rounded-xl border transition-all ${dragOver1 ? 'bg-red-500/10 border-red-400 scale-110' : 'bg-zinc-900 border-white/10'}`}
+                    className={`p-4 rounded-2xl border transition-all ${dragOver1 ? 'bg-zinc-800 border-white scale-110' : 'bg-zinc-900 border-zinc-700 group-hover:border-white group-hover:scale-105'}`}
                   >
-                    <UploadCloud
-                      className={`w-8 h-8 ${dragOver1 ? 'text-red-400' : 'text-white'}`}
-                    />
+                    <UploadCloud className="w-10 h-10 text-white" />
                   </div>
-                  <div className="text-center">
-                    <h3 className="text-white font-bold text-base">
-                      {isEs ? 'A. Original' : 'A. Original'}
+                  <div className="text-center font-sans">
+                    <h3 className="text-white font-bold text-lg uppercase">
+                      {isEs ? 'A. Documento Original' : 'A. Original Document'}
                     </h3>
-                    <p className="text-zinc-400 text-xs mt-1">
+                    <p className="text-zinc-400 text-xs font-mono mt-1">
                       {dragOver1
                         ? isEs
-                          ? 'Suelta aqui'
+                          ? 'Suelta aquí'
                           : 'Drop here'
                         : isEs
-                          ? 'Click o arrastra'
-                          : 'Click or drag'}
+                          ? 'Click o arrastra archivo PDF'
+                          : 'Click or drag PDF file'}
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    className="bg-white text-black hover:bg-zinc-100 font-bold px-6 py-2 rounded-full font-sans text-xs transition-all shadow-sm"
+                  >
+                    {isEs ? 'Seleccionar Doc A' : 'Select Doc A'}
+                  </button>
                 </>
               )}
             </div>
@@ -828,47 +839,60 @@ export default function PdfComparator() {
               onDragOver={(e) => hdrOver(e, 2)}
               onDragLeave={(e) => hdrLeave(e, 2)}
               onDrop={(e) => hdrDrop(e, 2)}
-              className={`bg-[#09090b] border-2 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all min-h-[260px] group shadow-2xl ${dragOver2 ? 'border-emerald-400 border-solid bg-emerald-500/5 scale-[1.02]' : file2 ? 'border-white' : 'border-dashed border-white/10 hover:border-white/30'}`}
+              className={`bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border-2 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all min-h-[280px] group shadow-2xl relative overflow-hidden ${dragOver2 ? 'border-white bg-zinc-900 scale-[1.02]' : file2 ? 'border-zinc-500' : 'border-zinc-600 hover:border-white'}`}
             >
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               {file2 ? (
                 <div className="flex flex-col items-center gap-3 text-center font-mono">
-                  <FileText className="w-12 h-12 text-white" />
+                  <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-700 text-white">
+                    <FileText className="w-10 h-10 text-white" />
+                  </div>
                   <span className="text-white font-bold text-sm truncate max-w-[220px]">
                     {file2.name}
                   </span>
                   <span className="text-zinc-400 text-[10px]">{fmtSize(file2.size)}</span>
-                  <span className="text-emerald-400 text-xs">Doc B</span>
+                  <span className="text-white font-bold text-xs bg-zinc-800 border border-zinc-600 px-3 py-1 rounded-full">
+                    Doc B (Modificado)
+                  </span>
                 </div>
               ) : (
                 <>
                   <div
-                    className={`p-4 rounded-xl border transition-all ${dragOver2 ? 'bg-emerald-500/10 border-emerald-400 scale-110' : 'bg-zinc-900 border-white/10'}`}
+                    className={`p-4 rounded-2xl border transition-all ${dragOver2 ? 'bg-zinc-800 border-white scale-110' : 'bg-zinc-900 border-zinc-700 group-hover:border-white group-hover:scale-105'}`}
                   >
-                    <UploadCloud
-                      className={`w-8 h-8 ${dragOver2 ? 'text-emerald-400' : 'text-white'}`}
-                    />
+                    <UploadCloud className="w-10 h-10 text-white" />
                   </div>
-                  <div className="text-center">
-                    <h3 className="text-white font-bold text-base">
-                      {isEs ? 'B. Modificado' : 'B. Modified'}
+                  <div className="text-center font-sans">
+                    <h3 className="text-white font-bold text-lg uppercase">
+                      {isEs ? 'B. Documento Modificado' : 'B. Modified Document'}
                     </h3>
-                    <p className="text-zinc-400 text-xs mt-1">
+                    <p className="text-zinc-400 text-xs font-mono mt-1">
                       {dragOver2
                         ? isEs
-                          ? 'Suelta aqui'
+                          ? 'Suelta aquí'
                           : 'Drop here'
                         : isEs
-                          ? 'Click o arrastra'
-                          : 'Click or drag'}
+                          ? 'Click o arrastra archivo PDF'
+                          : 'Click or drag PDF file'}
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    className="bg-white text-black hover:bg-zinc-100 font-bold px-6 py-2 rounded-full font-sans text-xs transition-all shadow-sm"
+                  >
+                    {isEs ? 'Seleccionar Doc B' : 'Select Doc B'}
+                  </button>
                 </>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-emerald-400 text-[11px] font-mono rounded-full">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{isEs ? '100% LOCAL' : '100% LOCAL'}</span>
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-white" />
+            <span>
+              {isEs
+                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
+                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+            </span>
           </div>
         </div>
       ) : completedResult ? (

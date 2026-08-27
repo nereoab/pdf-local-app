@@ -255,65 +255,8 @@ function ConvertirContent() {
             })}
           </div>
 
-          {/* SECCIÓN: 3 PASOS PARA CONVERTIR PDF */}
-          <div className="w-full mt-14 pt-10 border-t border-zinc-800 flex flex-col items-center font-mono">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-zinc-200 text-xs font-bold rounded-full mb-4 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-              {isEs ? '000 / PASOS DE CONVERSIÓN' : '000 / CONVERSION STEPS'}
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-8 font-sans">
-              {isEs ? 'Solo 3 pasos para convertir tu PDF' : 'Only 3 steps to convert your PDF'}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-              {/* PASO 1 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  1
-                </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '1. Elige el formato' : '1. Choose the format'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
-                  {isEs
-                    ? 'Selecciona la conversión que necesitas (Word, Excel, PowerPoint, JPG, HTML o Texto).'
-                    : 'Select the conversion you need (Word, Excel, PowerPoint, JPG, HTML, or Text).'}
-                </p>
-              </SpotlightCard>
-
-              {/* PASO 2 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  2
-                </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '2. Procesa en tu equipo' : '2. Process on your device'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
-                  {isEs
-                    ? 'El motor analiza las tablas, textos e imágenes localmente en la memoria RAM.'
-                    : 'The engine parses tables, text, and images locally in RAM memory.'}
-                </p>
-              </SpotlightCard>
-
-              {/* PASO 3 */}
-              <SpotlightCard className="flex flex-col items-start p-6 sm:p-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-300 rounded-3xl transition-all shadow-xl font-mono">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-500 text-white font-bold text-sm flex items-center justify-center mb-4 shadow-md">
-                  3
-                </div>
-                <h4 className="text-sm font-bold text-white mb-2 font-sans">
-                  {isEs ? '3. Descarga inmediata' : '3. Instant download'}
-                </h4>
-                <p className="text-xs text-zinc-300 font-sans leading-relaxed font-normal">
-                  {isEs
-                    ? 'Obtén tu archivo editable o imagen final con la máxima resolución y fidelidad.'
-                    : 'Get your editable file or final image with maximum resolution and fidelity.'}
-                </p>
-              </SpotlightCard>
-            </div>
-          </div>
-
           {/* SECCIÓN DE 4 PUNTOS ESTANDARIZADA MONOCROMÁTICA */}
-          <div className="w-full mt-12 space-y-8 font-sans">
+          <div className="w-full mt-4 space-y-8 font-sans">
             {/* 1. CÓMO FUNCIONA PASO A PASO */}
             <SpotlightCard className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl">
               <div className="flex items-center gap-3.5 mb-6 border-b border-zinc-700/80 pb-4">

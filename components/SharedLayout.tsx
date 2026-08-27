@@ -93,7 +93,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                       : isEs
                         ? 'Editar Texto e Imágenes'
                         : 'Edit Text & Images',
-                    path: '/editar?tool=texto',
+                    path: '/editar/texto',
                   },
                   {
                     label: isZh
@@ -101,19 +101,19 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                       : isEs
                         ? 'Poner Números a Páginas (Foliado)'
                         : 'Add Page Numbers',
-                    path: '/editar?tool=foliado',
+                    path: '/editar/foliar',
                   },
                   {
                     label: isZh ? '添加水印' : isEs ? 'Poner Sello de Agua' : 'Add Watermark',
-                    path: '/editar?tool=poner-marca-agua',
+                    path: '/editar/marca-agua',
                   },
                   {
                     label: isZh ? '移除水印' : isEs ? 'Quitar Sello de Agua' : 'Remove Watermark',
-                    path: '/editar?tool=quitar-marca-agua',
+                    path: '/editar/quitar-marca-agua',
                   },
                   {
                     label: isZh ? 'PDF 签名' : isEs ? 'Firmar PDF' : 'Sign PDF',
-                    path: '/editar?tool=firmar',
+                    path: '/editar/firmar',
                   },
                   {
                     label: isZh
@@ -121,7 +121,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                       : isEs
                         ? 'OCR PDF (Texto Seleccionable)'
                         : 'OCR PDF (Searchable Text)',
-                    path: '/editar?tool=ocr',
+                    path: '/editar/ocr',
                   },
                 ]}
               />
@@ -131,27 +131,27 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 items={[
                   {
                     label: isZh ? '合并 PDF' : isEs ? 'Unir PDF' : 'Merge PDF',
-                    path: '/organizar?tool=unir',
+                    path: '/organizar/unir',
                   },
                   {
                     label: isZh ? '拆分 PDF' : isEs ? 'Dividir PDF' : 'Split PDF',
-                    path: '/organizar?tool=dividir',
+                    path: '/organizar/dividir',
                   },
                   {
                     label: isZh ? '删除页面' : isEs ? 'Eliminar Páginas' : 'Delete Pages',
-                    path: '/organizar?tool=eliminar',
+                    path: '/organizar/eliminar',
                   },
                   {
                     label: isZh ? '重新排序' : isEs ? 'Ordenar PDF' : 'Reorder PDF',
-                    path: '/organizar?tool=reordenar',
+                    path: '/organizar/reordenar',
                   },
                   {
                     label: isZh ? '旋转 PDF' : isEs ? 'Rotar PDF' : 'Rotate PDF',
-                    path: '/organizar?tool=rotar',
+                    path: '/organizar/rotar',
                   },
                   {
                     label: isZh ? '裁剪 PDF' : isEs ? 'Recortar PDF' : 'Crop PDF',
-                    path: '/organizar?tool=recortar',
+                    path: '/organizar/recortar',
                   },
                 ]}
               />
@@ -159,21 +159,21 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 title={isZh ? '03 / 转换' : isEs ? '03 / CONVERTIR' : '03 / CONVERT'}
                 basePath="/convertir"
                 items={[
-                  { label: 'PDF ↔ Word', path: '/convertir?tool=pdf-word' },
-                  { label: 'PDF ↔ Excel', path: '/convertir?tool=pdf-excel' },
-                  { label: 'PDF ↔ PowerPoint', path: '/convertir?tool=pdf-powerpoint' },
+                  { label: 'PDF ↔ Word', path: '/convertir/pdf-word' },
+                  { label: 'PDF ↔ Excel', path: '/convertir/pdf-excel' },
+                  { label: 'PDF ↔ PowerPoint', path: '/convertir/pdf-powerpoint' },
                   {
                     label: isZh
                       ? 'PDF ↔ JPG / 图片'
                       : isEs
                         ? 'PDF ↔ JPG / Imagen'
                         : 'PDF ↔ JPG / Image',
-                    path: '/convertir?tool=pdf-jpg',
+                    path: '/convertir/pdf-jpg',
                   },
-                  { label: 'PDF ↔ HTML', path: '/convertir?tool=pdf-html' },
+                  { label: 'PDF ↔ HTML', path: '/convertir/pdf-html' },
                   {
                     label: isZh ? 'PDF ↔ 纯文本' : isEs ? 'PDF ↔ Texto' : 'PDF ↔ Text',
-                    path: '/convertir?tool=pdf-texto',
+                    path: '/convertir/pdf-texto',
                   },
                 ]}
               />
@@ -183,27 +183,27 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 items={[
                   {
                     label: isZh ? '压缩 PDF' : isEs ? 'Comprimir PDF' : 'Compress PDF',
-                    path: '/optimizar?tool=comprimir',
+                    path: '/optimizar/comprimir',
                   },
                   {
                     label: isZh ? '修复 PDF' : isEs ? 'Reparar PDF' : 'Repair PDF',
-                    path: '/optimizar?tool=reparar',
+                    path: '/optimizar/reparar',
                   },
                   {
                     label: isZh ? '解密 PDF' : isEs ? 'Desbloquear PDF' : 'Unlock PDF',
-                    path: '/optimizar?tool=desbloquear',
+                    path: '/optimizar/desbloquear',
                   },
                   {
                     label: isZh ? '加密 PDF' : isEs ? 'Proteger PDF' : 'Protect PDF',
-                    path: '/optimizar?tool=proteger',
+                    path: '/optimizar/proteger',
                   },
                   {
                     label: isZh ? '涂黑遮蔽' : isEs ? 'Censurar PDF' : 'Redact PDF',
-                    path: '/optimizar?tool=censurar',
+                    path: '/optimizar/censurar',
                   },
                   {
                     label: isZh ? '对比 PDF' : isEs ? 'Comparar PDF' : 'Compare PDF',
-                    path: '/optimizar?tool=comparar',
+                    path: '/optimizar/comparar',
                   },
                 ]}
               />

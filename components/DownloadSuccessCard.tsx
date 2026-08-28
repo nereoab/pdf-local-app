@@ -326,30 +326,89 @@ export default function DownloadSuccessCard({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {recommendedTools.map((tool) => {
+            {recommendedTools.map((tool, idx) => {
               const IconComp = tool.icon;
+              const totalTools = recommendedTools.length || 6;
+              const cycleDuration = 3.6;
+              const delay = idx * (cycleDuration / totalTools);
+
               return (
-                <button
+                <motion.button
                   key={tool.id}
                   onClick={() => handleNavigateToTool(tool.path)}
-                  className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#22222c] hover:to-[#141419] border border-zinc-700/80 hover:border-[#E8DFCF]/50 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-3 transition-all duration-300 group text-left cursor-pointer hover:scale-[1.03] shadow-lg relative overflow-hidden"
+                  animate={{
+                    borderColor: [
+                      'rgba(63, 63, 70, 0.8)',
+                      'rgba(232, 223, 207, 0.95)',
+                      'rgba(63, 63, 70, 0.8)',
+                    ],
+                    boxShadow: [
+                      '0 0 0px rgba(250, 246, 238, 0)',
+                      '0 0 20px rgba(250, 246, 238, 0.45)',
+                      '0 0 0px rgba(250, 246, 238, 0)',
+                    ],
+                    scale: [1, 1.035, 1],
+                  }}
+                  transition={{
+                    duration: cycleDuration,
+                    repeat: Infinity,
+                    delay: delay,
+                    times: [0, 0.15, 0.3],
+                    ease: 'easeInOut',
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#22222c] hover:to-[#141419] border border-zinc-700/80 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-3 transition-colors duration-300 group text-left cursor-pointer shadow-lg relative overflow-hidden"
                 >
-                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
+                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/40 to-transparent pointer-events-none" />
                   <div className="flex items-center justify-between w-full">
-                    <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white group-hover:border-[#E8DFCF]/50 group-hover:text-[#FAF6EE] group-hover:scale-105 transition-all shadow-sm">
+                    <motion.div
+                      animate={{
+                        borderColor: [
+                          'rgba(63, 63, 70, 1)',
+                          'rgba(232, 223, 207, 0.9)',
+                          'rgba(63, 63, 70, 1)',
+                        ],
+                      }}
+                      transition={{
+                        duration: cycleDuration,
+                        repeat: Infinity,
+                        delay: delay,
+                        times: [0, 0.15, 0.3],
+                        ease: 'easeInOut',
+                      }}
+                      className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white group-hover:border-[#E8DFCF]/50 group-hover:text-[#FAF6EE] transition-all shadow-sm"
+                    >
                       <IconComp className="w-4 h-4 text-white group-hover:text-[#FAF6EE]" />
-                    </div>
+                    </motion.div>
                     <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-[#FAF6EE] group-hover:translate-x-1 transition-all" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-white block group-hover:text-[#FAF6EE] transition-colors font-sans">
+                    <motion.span
+                      animate={{
+                        color: ['#FFFFFF', '#FAF6EE', '#FFFFFF'],
+                        textShadow: [
+                          '0 0 0px rgba(250, 246, 238, 0)',
+                          '0 0 12px rgba(250, 246, 238, 0.7)',
+                          '0 0 0px rgba(250, 246, 238, 0)',
+                        ],
+                      }}
+                      transition={{
+                        duration: cycleDuration,
+                        repeat: Infinity,
+                        delay: delay,
+                        times: [0, 0.15, 0.3],
+                        ease: 'easeInOut',
+                      }}
+                      className="text-xs font-bold text-white block font-sans"
+                    >
                       {isEs ? tool.titleEs : tool.titleEn}
-                    </span>
+                    </motion.span>
                     <span className="text-[10px] text-zinc-400 font-mono block leading-tight mt-1">
                       {isEs ? tool.descEs : tool.descEn}
                     </span>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>

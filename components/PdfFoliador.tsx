@@ -30,6 +30,7 @@ import {
   Position9,
 } from '@/workers/pdf-number.worker';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
 export default function PdfFoliador() {
   const { lang } = useLanguage();
@@ -438,14 +439,14 @@ export default function PdfFoliador() {
         >
           {/* BANNER DE RESULTADO Y MÉTRICAS DE FOLIADO (ESTILO PÁGINA DE INICIO) */}
           <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <Hash className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
+                  <Hash className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DEL FOLIADO DE DOCUMENTO' : 'DOCUMENT NUMBERING RESULT'}
                   </span>
                   <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
@@ -453,12 +454,12 @@ export default function PdfFoliador() {
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
+                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
@@ -470,8 +471,10 @@ export default function PdfFoliador() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Foliadas' : 'Numbered Pages'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {Math.max(1, endPage - startPage + 1 - (skipFirstPage ? 1 : 0))}{' '}
+                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
+                  <AnimatedNumber
+                    value={Math.max(1, endPage - startPage + 1 - (skipFirstPage ? 1 : 0))}
+                  />{' '}
                   {isEs ? 'Páginas' : 'Pages'}
                 </span>
               </div>
@@ -479,8 +482,8 @@ export default function PdfFoliador() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Total del Documento' : 'Document Total'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {totalPages} {isEs ? 'Páginas' : 'Pages'}
+                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
+                  <AnimatedNumber value={totalPages} /> {isEs ? 'Páginas' : 'Pages'}
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">

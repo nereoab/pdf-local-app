@@ -34,6 +34,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
+import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
 import type { ProtectProgress, ProtectResult, ProtectError } from '../workers/pdf-protect.worker';
 
@@ -622,15 +623,15 @@ export default function PdfProtector() {
         >
           {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
           <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <Lock className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
+                  <Lock className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA PROTECCIÓN' : 'PROTECTION RESULT'}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
@@ -643,8 +644,8 @@ export default function PdfProtector() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
-                <ShieldCheck className="w-4 h-4" />
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-[#E8DFCF]/30 rounded-2xl text-xs text-[#E8DFCF] shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-[#FAF6EE]" />
                 <span>{isEs ? 'Cifrado AES-256 Activo' : 'AES-256 Encrypted'}</span>
               </div>
             </div>
@@ -663,7 +664,7 @@ export default function PdfProtector() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Protegido' : 'Protected Size'}
                 </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.protectedSize)}
                 </span>
               </div>
@@ -671,16 +672,16 @@ export default function PdfProtector() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas' : 'Pages'}
                 </span>
-                <span className="text-white font-bold text-base font-mono mt-0.5">
-                  {completedResult.pageCount}
+                <span className="text-[#FAF6EE] font-bold text-base font-mono mt-0.5">
+                  <AnimatedNumber value={completedResult.pageCount} />
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Restricciones' : 'Restrictions'}
                 </span>
-                <span className="text-amber-400 font-bold text-base font-mono mt-0.5">
-                  {completedResult.restrictions.length}
+                <span className="text-[#FAF6EE] font-bold text-base font-mono mt-0.5">
+                  <AnimatedNumber value={completedResult.restrictions.length} />
                 </span>
               </div>
             </div>

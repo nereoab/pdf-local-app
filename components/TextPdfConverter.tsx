@@ -36,6 +36,7 @@ import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
 
 type ConversionDirection = 'pdf-to-text' | 'text-to-pdf';
@@ -760,14 +761,14 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
         >
           {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
           <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <TextIcon className="w-7 h-7 text-white rounded-sm drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
+                  <TextIcon className="w-7 h-7 text-[#FAF6EE] rounded-sm drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA CONVERSIÓN' : 'CONVERSION RESULT'}
                   </span>
                   <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
@@ -777,12 +778,12 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
+                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
@@ -795,7 +796,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Formato de Salida' : 'Output Format'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5 uppercase">
+                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5 uppercase">
                   {completedResult.outputFormat}
                 </span>
               </div>
@@ -811,8 +812,9 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
                 </span>
-                <span className="text-zinc-300 font-bold text-sm font-mono mt-0.5">
-                  {completedResult.itemCount} {isEs ? 'págs' : 'pages'}
+                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
+                  <AnimatedNumber value={completedResult.itemCount || 1} />{' '}
+                  {isEs ? 'págs' : 'pages'}
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">

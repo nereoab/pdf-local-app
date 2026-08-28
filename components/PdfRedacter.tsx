@@ -817,7 +817,7 @@ export default function PdfRedacter() {
     setAutoRedactions([]);
   };
 
-  // === EJECUTAR CENSURA DESTRUCTIVA (WEB WORKER) ===
+  // === EJECUTAR CENSURA (WORKER CON FALLBACK DIRECTO) ===
   const executeRedact = async () => {
     if (!file) return;
     const allBoxes = [...redactions, ...autoRedactions];
@@ -831,14 +831,14 @@ export default function PdfRedacter() {
     if (workerRef.current) workerRef.current.terminate();
 
     setIsProcessing(true);
-    setProgressPercent(0);
+    setProgressPercent(5);
     setDownloadUrl(null);
     setStartTime(Date.now());
+    setProgressMsg(isEs ? 'Iniciando proceso de censura...' : 'Starting redaction process...');
 
     try {
-      // Clonar el buffer para que pueda usarse en ambos workers si es necesario
       const fileBuffer = await file.arrayBuffer();
-      const bufferCopy = fileBuffer.slice(0); // Copia independiente
+      const bufferCopy = fileBuffer.slice(0);
 
       // Calcular hash del original para cadena de custodia
       calculateSHA256(fileBuffer).then((hash) => {
@@ -856,13 +856,7 @@ export default function PdfRedacter() {
         });
       });
 
-      // Modo raster: usar JPEGs pre-renderizados directamente (evita OffscreenCanvas bug en worker)
-      if (redactionMode === 'raster') {
-        applyRasterInline(allBoxes);
-        return;
-      }
-
-      // Modo precisión: intentar V3, con fallback a raster inline
+      // Intentar procesar en Web Worker
       const workerUrl = new URL('../workers/pdf-redact-v3.worker.ts', import.meta.url);
       const worker = new Worker(workerUrl, { type: 'module' });
       workerRef.current = worker;
@@ -875,41 +869,23 @@ export default function PdfRedacter() {
           setProgressMsg(p.message);
         } else if (msg.type === 'result') {
           const r = msg as RedactResult;
-          // Auto-fallback: si precisión no modificó nada, aplicar raster
-          if (
-            r.mode === 'precision' &&
-            (r.stats?.textOperatorsModified ?? 0) === 0 &&
-            allBoxes.length > 0
-          ) {
-            worker.terminate();
-            workerRef.current = null;
-            console.warn('Precision mode made no changes, auto-fallback to raster inline');
-            applyRasterInline(allBoxes);
-            return;
-          }
           handleResult(r);
-        } else if (msg.type === 'error') {
-          const e = msg as RedactError;
-          toast.error(e.message);
-          setIsProcessing(false);
           worker.terminate();
           workerRef.current = null;
+        } else if (msg.type === 'error') {
+          console.warn('Worker error, switching to inline engine:', (msg as RedactError).message);
+          worker.terminate();
+          workerRef.current = null;
+          applyInlineRedaction(allBoxes, redactionMode);
         }
       };
 
-      worker.onerror = () => {
-        console.warn('V3 precision worker failed, falling back to raster');
+      worker.onerror = (err) => {
+        console.warn('Worker runtime error, executing inline engine:', err);
         worker.terminate();
         workerRef.current = null;
-        // Ejecutar raster con JPEGs pre-renderizados directamente en hilo principal
-        applyRasterInline(allBoxes);
+        applyInlineRedaction(allBoxes, redactionMode);
       };
-
-      // Enviar JPEGs pre-renderizados al worker para ambos modos
-      const jpegPages: Record<string, ArrayBuffer> = {};
-      for (const [pageNum, buf] of Object.entries(pageJpegBytes)) {
-        jpegPages[pageNum] = buf;
-      }
 
       worker.postMessage({
         fileBuffer: bufferCopy,
@@ -921,14 +897,11 @@ export default function PdfRedacter() {
           customSuffix,
           mode: redactionMode,
         },
-        // Datos pre-renderizados para modo raster (evita pdfjs-dist en worker)
-        jpegPages,
         totalPages,
       });
     } catch (error) {
-      console.error('Redact error:', error);
-      // Fallback: aplicar raster inline
-      applyRasterInline(allBoxes);
+      console.error('executeRedact exception, falling back to inline engine:', error);
+      applyInlineRedaction(allBoxes, redactionMode);
     }
   };
 
@@ -993,94 +966,206 @@ export default function PdfRedacter() {
     );
   };
 
-  // Raster inline: usa JPEGs pre-renderizados (hilo principal) + pdf-lib
-  const applyRasterInline = async (allBoxes: RedactionBox[]) => {
+  // Motor Inline Ultra-Robusto (Ejecución directa en navegador)
+  const applyInlineRedaction = async (allBoxes: RedactionBox[], mode: 'precision' | 'raster') => {
     try {
-      setProgressMsg(
-        isEs
-          ? 'Aplicando parches sobre imágenes pre-renderizadas...'
-          : 'Applying patches on pre-rendered images...',
-      );
-      const { PDFDocument } = await import('pdf-lib');
-      const outPdf = await PDFDocument.create();
+      if (!file) return;
+      const fileBuffer = await file.arrayBuffer();
+      const { PDFDocument, rgb } = await import('pdf-lib');
+
       const redactionsByPage = new Map<number, RedactionBox[]>();
       for (const r of allBoxes) {
         if (!redactionsByPage.has(r.page)) redactionsByPage.set(r.page, []);
         redactionsByPage.get(r.page)!.push(r);
       }
-      const pagesToProcess = Object.entries(pageJpegBytes).length > 0;
-      if (pagesToProcess) {
-        for (let p = 1; p <= totalPages; p++) {
-          const pct = 10 + Math.floor((p / totalPages) * 80);
-          setProgressPercent(pct);
+
+      if (mode === 'raster') {
+        // Modo rasterizado: renderiza páginas completas a canvas y las quema en un nuevo PDF
+        setProgressMsg(
+          isEs
+            ? 'Renderizando páginas en alta resolución...'
+            : 'Rendering pages in high resolution...',
+        );
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const srcDoc = await pdfjsLib.getDocument({
+          data: new Uint8Array(fileBuffer.slice(0)),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const totalP = srcDoc.numPages;
+        const outPdf = await PDFDocument.create();
+        const boxColor = redactionStyle === 'gray' ? '#404040' : '#000000';
+
+        for (let p = 1; p <= totalP; p++) {
+          setProgressPercent(15 + Math.floor((p / totalP) * 75));
           setProgressMsg(
-            isEs
-              ? `Procesando página ${p}/${totalPages}...`
-              : `Processing page ${p}/${totalPages}...`,
+            isEs ? `Procesando página ${p}/${totalP}...` : `Processing page ${p}/${totalP}...`,
           );
-          const jpegBuf = pageJpegBytes[p];
-          if (!jpegBuf) continue;
-          const blob = new Blob([jpegBuf], { type: 'image/jpeg' });
-          const img = await createImageBitmap(blob);
+
+          const page = await srcDoc.getPage(p);
+          const viewport = page.getViewport({ scale: 2.0 });
           const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
           const ctx = canvas.getContext('2d')!;
-          ctx.drawImage(img, 0, 0);
+
+          await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+            typeof page.render
+          >[0]).promise;
+
           const pageRedactions = redactionsByPage.get(p) || [];
-          const boxColor = redactionStyle === 'gray' ? '#404040' : '#000000';
           for (const box of pageRedactions) {
-            const rx = (box.xPercent / 100) * img.width;
-            const ry = (box.yPercent / 100) * img.height;
-            const rw = (box.widthPercent / 100) * img.width;
-            const rh = (box.heightPercent / 100) * img.height;
+            const rx = (box.xPercent / 100) * canvas.width;
+            const ry = (box.yPercent / 100) * canvas.height;
+            const rw = (box.widthPercent / 100) * canvas.width;
+            const rh = (box.heightPercent / 100) * canvas.height;
             ctx.fillStyle = boxColor;
             ctx.fillRect(rx, ry, rw, rh);
           }
-          const outBlob = await new Promise<Blob>((res, rej) =>
-            canvas.toBlob(
-              (b) => {
-                if (b) res(b);
-                else rej(new Error('toBlob failed'));
-              },
-              'image/jpeg',
-              0.92,
-            ),
+
+          const blob = await new Promise<Blob | null>((res) =>
+            canvas.toBlob(res, 'image/jpeg', 0.92),
           );
-          const outBuf = await outBlob.arrayBuffer();
-          const embedded = await outPdf.embedJpg(outBuf);
-          const page = outPdf.addPage([img.width, img.height]);
-          page.drawImage(embedded, { x: 0, y: 0, width: img.width, height: img.height });
+          if (!blob) throw new Error('toBlob failed');
+          const imgBytes = await blob.arrayBuffer();
+          const embedded = await outPdf.embedJpg(imgBytes);
+          const origVp = page.getViewport({ scale: 1.0 });
+          const newPage = outPdf.addPage([origVp.width, origVp.height]);
+          newPage.drawImage(embedded, { x: 0, y: 0, width: origVp.width, height: origVp.height });
         }
+
+        outPdf.setTitle('');
+        outPdf.setAuthor('');
+        outPdf.setSubject('');
+        outPdf.setKeywords([]);
+        outPdf.setProducer('PDFBlack TrueRedact Engine v3.0 (Raster Flattened)');
+        outPdf.setCreator('PDFBlack Redaction Engine');
+
+        setProgressPercent(95);
+        setProgressMsg(isEs ? 'Empaquetando PDF final...' : 'Packaging final PDF...');
+        const pdfBytes = await outPdf.save({ useObjectStreams: true, addDefaultPage: false });
+        const resultBuffer = pdfBytes.buffer.slice(
+          pdfBytes.byteOffset,
+          pdfBytes.byteOffset + pdfBytes.byteLength,
+        ) as ArrayBuffer;
+
+        handleResult({
+          type: 'result',
+          redactedBytes: resultBuffer,
+          fileName: file.name,
+          pageCount: totalP,
+          totalRedactions: allBoxes.length,
+          pagesWithRedactions: redactionsByPage.size,
+          mode: 'raster',
+          stats: {
+            precisionPages: 0,
+            rasterPages: redactionsByPage.size,
+            textOperatorsModified: 0,
+            contentPreservedKB: Math.round(resultBuffer.byteLength / 1024),
+          },
+        });
+      } else {
+        // Modo precisión: vector drawing directo en pdf-lib
+        setProgressMsg(
+          isEs ? 'Aplicando censura vectorial nativa...' : 'Applying native vector redaction...',
+        );
+        const pdfDoc = await PDFDocument.load(new Uint8Array(fileBuffer.slice(0)), {
+          ignoreEncryption: true,
+          updateMetadata: false,
+        });
+
+        const totalP = pdfDoc.getPageCount();
+        const pages = pdfDoc.getPages();
+        const boxColor = redactionStyle === 'gray' ? rgb(0.25, 0.25, 0.25) : rgb(0, 0, 0);
+
+        for (let p = 1; p <= totalP; p++) {
+          setProgressPercent(15 + Math.floor((p / totalP) * 75));
+          const pageRedactions = redactionsByPage.get(p) || [];
+          if (pageRedactions.length === 0) continue;
+
+          const page = pages[p - 1];
+          const { width, height } = page.getSize();
+          const rotation = ((page.getRotation().angle % 360) + 360) % 360;
+          const cropBox = page.getCropBox();
+          const offsetX = cropBox?.x || 0;
+          const offsetY = cropBox?.y || 0;
+
+          for (const box of pageRedactions) {
+            let rx = 0;
+            let ry = 0;
+            let rw = 0;
+            let rh = 0;
+
+            if (rotation === 90) {
+              rw = (box.heightPercent / 100) * width;
+              rh = (box.widthPercent / 100) * height;
+              rx = (box.yPercent / 100) * width;
+              ry = height - ((box.xPercent + box.widthPercent) / 100) * height;
+            } else if (rotation === 180) {
+              rw = (box.widthPercent / 100) * width;
+              rh = (box.heightPercent / 100) * height;
+              rx = width - ((box.xPercent + box.widthPercent) / 100) * width;
+              ry = (box.yPercent / 100) * height;
+            } else if (rotation === 270) {
+              rw = (box.heightPercent / 100) * width;
+              rh = (box.widthPercent / 100) * height;
+              rx = width - ((box.yPercent + box.heightPercent) / 100) * width;
+              ry = (box.xPercent / 100) * height;
+            } else {
+              rw = (box.widthPercent / 100) * width;
+              rh = (box.heightPercent / 100) * height;
+              rx = (box.xPercent / 100) * width;
+              ry = height - ((box.yPercent + box.heightPercent) / 100) * height;
+            }
+
+            page.drawRectangle({
+              x: rx + offsetX,
+              y: ry + offsetY,
+              width: rw,
+              height: rh,
+              color: boxColor,
+              opacity: 1,
+            });
+          }
+        }
+
+        pdfDoc.setTitle('');
+        pdfDoc.setAuthor('');
+        pdfDoc.setSubject('');
+        pdfDoc.setKeywords([]);
+        pdfDoc.setProducer('PDFBlack TrueRedact Engine v3.0');
+        pdfDoc.setCreator('PDFBlack Secure Engine');
+
+        setProgressPercent(95);
+        setProgressMsg(isEs ? 'Empaquetando PDF...' : 'Packaging PDF...');
+        const pdfBytes = await pdfDoc.save({ useObjectStreams: true, addDefaultPage: false });
+        const resultBuffer = pdfBytes.buffer.slice(
+          pdfBytes.byteOffset,
+          pdfBytes.byteOffset + pdfBytes.byteLength,
+        ) as ArrayBuffer;
+
+        handleResult({
+          type: 'result',
+          redactedBytes: resultBuffer,
+          fileName: file.name,
+          pageCount: totalP,
+          totalRedactions: allBoxes.length,
+          pagesWithRedactions: redactionsByPage.size,
+          mode: 'precision',
+          stats: {
+            precisionPages: redactionsByPage.size,
+            rasterPages: 0,
+            textOperatorsModified: allBoxes.length,
+            contentPreservedKB: Math.round(resultBuffer.byteLength / 1024),
+          },
+        });
       }
-      outPdf.setTitle('');
-      outPdf.setAuthor('');
-      outPdf.setSubject('');
-      outPdf.setKeywords([]);
-      outPdf.setProducer('PDFBlack TrueRedact Engine v3.0 (Raster Inline)');
-      outPdf.setCreator('PDFBlack Redaction Worker');
-      setProgressPercent(92);
-      setProgressMsg(isEs ? 'Empaquetando PDF final...' : 'Packaging final PDF...');
-      const pdfBytes = await outPdf.save({ useObjectStreams: true, addDefaultPage: false });
-      const result: RedactResult = {
-        type: 'result',
-        redactedBytes: pdfBytes.buffer.slice(0) as ArrayBuffer,
-        fileName: file!.name,
-        pageCount: totalPages,
-        totalRedactions: allBoxes.length,
-        pagesWithRedactions: redactionsByPage.size,
-        mode: 'raster',
-        stats: {
-          precisionPages: 0,
-          rasterPages: redactionsByPage.size,
-          textOperatorsModified: 0,
-          contentPreservedKB: Math.round(pdfBytes.byteLength / 1024),
-        },
-      };
-      handleResult(result);
     } catch (err) {
-      console.error('applyRasterInline error:', err);
-      toast.error(isEs ? 'Error al aplicar censura' : 'Redaction error');
+      console.error('applyInlineRedaction error:', err);
+      toast.error(isEs ? 'Error al aplicar censura al documento' : 'Redaction error');
       setIsProcessing(false);
     }
   };

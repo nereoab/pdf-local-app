@@ -34,6 +34,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
+import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type { CompareResult, CompareProgress, StructuralDiff } from '../workers/pdf-compare.worker';
 
 export default function PdfComparator() {
@@ -936,7 +937,7 @@ export default function PdfComparator() {
                   {isEs ? 'Similitud Global' : 'Global Similarity'}
                 </span>
                 <span className="text-white font-bold text-xl font-mono mt-0.5">
-                  {completedResult.globalSimilarityPercent}%
+                  <AnimatedNumber value={completedResult.globalSimilarityPercent} suffix="%" />
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
@@ -944,7 +945,7 @@ export default function PdfComparator() {
                   {isEs ? 'Palabras Eliminadas' : 'Words Removed'}
                 </span>
                 <span className="text-zinc-200 font-bold text-xl font-mono mt-0.5">
-                  -{completedResult.totalRemovals}
+                  <AnimatedNumber value={completedResult.totalRemovals} prefix="-" />
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
@@ -952,7 +953,7 @@ export default function PdfComparator() {
                   {isEs ? 'Palabras Añadidas' : 'Words Added'}
                 </span>
                 <span className="text-white font-bold text-xl font-mono mt-0.5">
-                  +{completedResult.totalAdditions}
+                  <AnimatedNumber value={completedResult.totalAdditions} prefix="+" />
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
@@ -960,7 +961,7 @@ export default function PdfComparator() {
                   {isEs ? 'Sin Cambios' : 'Unchanged'}
                 </span>
                 <span className="text-zinc-300 font-bold text-xl font-mono mt-0.5">
-                  {completedResult.totalUnchanged}
+                  <AnimatedNumber value={completedResult.totalUnchanged} />
                 </span>
               </div>
             </div>

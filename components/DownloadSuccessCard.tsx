@@ -23,6 +23,7 @@ import {
   Copy,
   EyeOff,
 } from 'lucide-react';
+import { AnimatedCheckmark } from '@/components/ui/AnimatedSuccessCheck';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import { useRouter } from 'next/navigation';
@@ -187,8 +188,8 @@ export default function DownloadSuccessCard({
       {/* TOP HEADER: ANUNCIO DE ÉXITO */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5 relative z-10">
         <div className="flex items-center gap-4">
-          <div className="bg-zinc-800 p-4 rounded-2xl border border-zinc-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)] flex-shrink-0">
-            <CheckCircle2 className="w-8 h-8 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]" />
+          <div className="bg-zinc-800 p-3.5 rounded-2xl border border-zinc-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)] flex-shrink-0 flex items-center justify-center">
+            <AnimatedCheckmark size={34} />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -197,7 +198,11 @@ export default function DownloadSuccessCard({
                 {isEs ? 'PROCESO COMPLETADO' : 'PROCESS COMPLETED'}
               </span>
               <span className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-xs font-mono shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" /> 100% Local • Privado
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                {isEs ? '100% Local • Privado' : '100% Local • Private'}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight font-sans uppercase">

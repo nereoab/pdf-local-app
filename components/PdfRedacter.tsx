@@ -33,11 +33,12 @@ import {
   Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
-import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
+import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import {
   getEnabledPatterns,
   patternToRegex,
@@ -1326,7 +1327,7 @@ export default function PdfRedacter() {
                   {isEs ? 'Parches' : 'Patches'}
                 </span>
                 <span className="text-white font-bold text-base font-mono mt-0.5">
-                  {completedResult.totalRedactions}
+                  <AnimatedNumber value={completedResult.totalRedactions} />
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
@@ -1334,7 +1335,7 @@ export default function PdfRedacter() {
                   {isEs ? 'Páginas Afectadas' : 'Affected Pages'}
                 </span>
                 <span className="text-white font-bold text-base font-mono mt-0.5">
-                  {completedResult.pagesWithRedactions}
+                  <AnimatedNumber value={completedResult.pagesWithRedactions} />
                 </span>
               </div>
             </div>

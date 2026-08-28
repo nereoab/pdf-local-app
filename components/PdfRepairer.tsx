@@ -43,6 +43,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
+import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type {
   RepairOptions,
   DiagnosticResult,
@@ -819,7 +820,7 @@ export default function PdfRepairer() {
                   {isEs ? 'Páginas Recuperadas' : 'Pages Recovered'}
                 </span>
                 <span className="text-white font-bold text-base font-mono mt-0.5">
-                  {completedResult.pagesRecovered}
+                  <AnimatedNumber value={completedResult.pagesRecovered} />
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
@@ -827,7 +828,7 @@ export default function PdfRepairer() {
                   {isEs ? 'Páginas Perdidas' : 'Pages Lost'}
                 </span>
                 <span className="font-bold text-base font-mono mt-0.5 text-zinc-300">
-                  {completedResult.pagesLost}
+                  <AnimatedNumber value={completedResult.pagesLost} />
                 </span>
               </div>
             </div>

@@ -36,6 +36,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
+import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
 type PageScope = 'todas' | 'rango';
 
@@ -933,7 +934,7 @@ export default function PdfUnlocker() {
                   {isEs ? 'Páginas' : 'Pages'}
                 </span>
                 <span className="text-white font-bold text-base font-mono mt-0.5">
-                  {completedResult.pageCount}
+                  <AnimatedNumber value={completedResult.pageCount} />
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">

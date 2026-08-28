@@ -18,27 +18,27 @@ export function AnimatedCheckmark({
       className={`relative flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
     >
-      {/* Radar ripple pulses */}
+      {/* Radar ripple pulses dorados */}
       <motion.div
-        initial={{ scale: 0.8, opacity: 0.8 }}
+        initial={{ scale: 0.8, opacity: 0.9 }}
         animate={{ scale: 1.7, opacity: 0 }}
         transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-        className="absolute inset-0 rounded-full border border-white/40 pointer-events-none"
+        className="absolute inset-0 rounded-full border border-amber-400/60 pointer-events-none"
       />
       <motion.div
-        initial={{ scale: 0.8, opacity: 0.5 }}
+        initial={{ scale: 0.8, opacity: 0.6 }}
         animate={{ scale: 2.2, opacity: 0 }}
         transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut', delay: 0.4 }}
-        className="absolute inset-0 rounded-full border border-white/20 pointer-events-none"
+        className="absolute inset-0 rounded-full border border-yellow-300/40 pointer-events-none"
       />
 
-      {/* SVG drawing circle & check */}
+      {/* SVG drawing circle & check en oro brillante */}
       <svg
         width={size}
         height={size}
         viewBox="0 0 52 52"
         fill="none"
-        className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]"
+        className="text-amber-400 drop-shadow-[0_0_14px_rgba(245,158,11,0.6)]"
       >
         <motion.circle
           cx="26"
@@ -122,52 +122,52 @@ export function AnimatedNumber({
 }
 
 /**
- * Disparador de confeti monocromático y plateado de ultra-lujo (Apple / Vercel style)
+ * Disparador de confeti dorado y champagne de ultra-lujo (Gold Edition)
  */
 export async function triggerLuxuryConfetti() {
   if (typeof window === 'undefined') return;
   try {
     const confetti = (await import('canvas-confetti')).default;
 
-    // Ráfaga 1: Cañón izquierdo
+    // Ráfaga 1: Cañón izquierdo dorado
     confetti({
-      particleCount: 35,
+      particleCount: 40,
       angle: 60,
-      spread: 55,
+      spread: 60,
       origin: { x: 0.15, y: 0.75 },
-      colors: ['#FFFFFF', '#F4F4F5', '#E4E4E7', '#D4D4D8', '#A1A1AA'],
+      colors: ['#F59E0B', '#FBBF24', '#FCD34D', '#FEF3C7', '#D97706', '#FFFFFF'],
       shapes: ['square', 'circle'],
-      scalar: 0.85,
+      scalar: 0.9,
       ticks: 160,
       gravity: 0.9,
       decay: 0.91,
       zIndex: 9999,
     });
 
-    // Ráfaga 2: Cañón derecho
+    // Ráfaga 2: Cañón derecho dorado
     confetti({
-      particleCount: 35,
+      particleCount: 40,
       angle: 120,
-      spread: 55,
+      spread: 60,
       origin: { x: 0.85, y: 0.75 },
-      colors: ['#FFFFFF', '#F4F4F5', '#E4E4E7', '#D4D4D8', '#A1A1AA'],
+      colors: ['#F59E0B', '#FBBF24', '#FCD34D', '#FEF3C7', '#D97706', '#FFFFFF'],
       shapes: ['square', 'circle'],
-      scalar: 0.85,
+      scalar: 0.9,
       ticks: 160,
       gravity: 0.9,
       decay: 0.91,
       zIndex: 9999,
     });
 
-    // Ráfaga 3: Destello central
+    // Ráfaga 3: Destello central oro champagne
     setTimeout(() => {
       confetti({
-        particleCount: 40,
-        spread: 80,
+        particleCount: 45,
+        spread: 85,
         origin: { y: 0.6 },
-        colors: ['#FFFFFF', '#E4E4E7', '#D4D4D8', '#71717A'],
+        colors: ['#F59E0B', '#FBBF24', '#FDE68A', '#FFFFFF', '#B45309'],
         shapes: ['circle', 'square'],
-        scalar: 0.95,
+        scalar: 1.0,
         ticks: 180,
         gravity: 0.85,
         decay: 0.92,
@@ -180,7 +180,7 @@ export async function triggerLuxuryConfetti() {
 }
 
 /**
- * Micro-explosión de chispas plateadas al pulsar el botón de descarga
+ * Micro-explosión de chispas doradas al pulsar el botón de descarga
  */
 export async function triggerButtonSparkles(event?: React.MouseEvent) {
   if (typeof window === 'undefined') return;
@@ -194,12 +194,12 @@ export async function triggerButtonSparkles(event?: React.MouseEvent) {
       };
     }
     confetti({
-      particleCount: 30,
-      spread: 60,
+      particleCount: 35,
+      spread: 70,
       origin,
-      colors: ['#FFFFFF', '#FAFAFA', '#E4E4E7', '#D4D4D8', '#A1A1AA'],
+      colors: ['#F59E0B', '#FBBF24', '#FDE68A', '#FEF3C7', '#FFFFFF', '#D97706'],
       shapes: ['circle', 'square'],
-      scalar: 0.8,
+      scalar: 0.85,
       ticks: 120,
       gravity: 1.1,
       decay: 0.9,

@@ -1277,15 +1277,15 @@ export default function PdfRedacter() {
         >
           {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
           <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-amber-400/30 to-transparent pointer-events-none" />
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
               <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <EyeOff className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+                <div className="p-4 bg-zinc-900 border border-amber-500/40 rounded-2xl text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                  <EyeOff className="w-7 h-7 text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.4)]" />
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                  <span className="text-[10px] text-amber-400/80 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA CENSURA' : 'REDACTION RESULT'}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
@@ -1298,8 +1298,8 @@ export default function PdfRedacter() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-zinc-300 shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-zinc-400" />
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-amber-500/30 rounded-2xl text-xs text-amber-200 shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
                 <span>{isEs ? 'True Redaction Aplicado' : 'True Redaction Applied'}</span>
               </div>
             </div>
@@ -1318,7 +1318,7 @@ export default function PdfRedacter() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Censurado' : 'Redacted Size'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                <span className="text-amber-400 font-bold text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.redactedSize)}
                 </span>
               </div>
@@ -1326,7 +1326,7 @@ export default function PdfRedacter() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Parches' : 'Patches'}
                 </span>
-                <span className="text-white font-bold text-base font-mono mt-0.5">
+                <span className="text-amber-400 font-bold text-base font-mono mt-0.5">
                   <AnimatedNumber value={completedResult.totalRedactions} />
                 </span>
               </div>
@@ -1334,7 +1334,7 @@ export default function PdfRedacter() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Afectadas' : 'Affected Pages'}
                 </span>
-                <span className="text-white font-bold text-base font-mono mt-0.5">
+                <span className="text-amber-400 font-bold text-base font-mono mt-0.5">
                   <AnimatedNumber value={completedResult.pagesWithRedactions} />
                 </span>
               </div>

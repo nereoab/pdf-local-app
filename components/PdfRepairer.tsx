@@ -790,8 +790,8 @@ export default function PdfRepairer() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
-                <ShieldCheck className="w-4 h-4" />
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-zinc-300 shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-zinc-400" />
                 <span>{isEs ? 'Estructura Reconstruida' : 'Structure Rebuilt'}</span>
               </div>
             </div>
@@ -810,7 +810,7 @@ export default function PdfRepairer() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Reparado' : 'Repaired Size'}
                 </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.repairedSize)}
                 </span>
               </div>
@@ -826,9 +826,7 @@ export default function PdfRepairer() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Perdidas' : 'Pages Lost'}
                 </span>
-                <span
-                  className={`font-bold text-base font-mono mt-0.5 ${completedResult.pagesLost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}
-                >
+                <span className="font-bold text-base font-mono mt-0.5 text-zinc-300">
                   {completedResult.pagesLost}
                 </span>
               </div>

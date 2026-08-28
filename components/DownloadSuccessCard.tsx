@@ -196,8 +196,8 @@ export default function DownloadSuccessCard({
                 <Sparkles className="w-3.5 h-3.5 text-white" />
                 {isEs ? 'PROCESO COMPLETADO' : 'PROCESS COMPLETED'}
               </span>
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-xs font-mono">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local • Privado
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-xs font-mono shadow-sm">
+                <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" /> 100% Local • Privado
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight font-sans uppercase">
@@ -249,30 +249,28 @@ export default function DownloadSuccessCard({
                 {outputFormat}
               </span>
               {fileSize && <span>• {fileSize}</span>}
-              <span className="text-emerald-400 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-zinc-300 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
                 {isEs ? 'Sin carga a servidor' : 'Zero server upload'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* BOTÓN PRINCIPAL DE DESCARGA (ESTILO PÁGINA DE INICIO) */}
+        {/* BOTÓN PRINCIPAL DE DESCARGA (ESTILO PÁGINA DE INICIO MONOCROMÁTICO) */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleManualDownload}
           className={`relative overflow-hidden flex items-center justify-center gap-3 px-8 py-4 rounded-full font-sans font-bold text-sm sm:text-base transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer flex-shrink-0 group ${
             downloaded
-              ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-[0_0_25px_rgba(16,185,129,0.35)]'
+              ? 'bg-zinc-100 text-black hover:bg-white border border-zinc-300 shadow-[0_0_25px_rgba(255,255,255,0.3)]'
               : 'bg-white text-black hover:bg-zinc-100 hover:shadow-[0_0_25px_rgba(255,255,255,0.3)]'
           }`}
         >
-          {!downloaded && (
-            <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
-          )}
+          <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
           {downloaded ? (
-            <CheckCircle2 className="w-5 h-5 text-white animate-bounce" />
+            <CheckCircle2 className="w-5 h-5 text-black" />
           ) : (
             <Download className="w-5 h-5 text-black group-hover:translate-y-0.5 transition-transform" />
           )}

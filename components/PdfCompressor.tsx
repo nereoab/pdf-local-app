@@ -636,12 +636,12 @@ export default function PdfCompressor() {
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Ahorro de espacio' : 'Space saved'}
                   </div>
-                  <div className="text-emerald-400 font-extrabold text-base flex items-center justify-end gap-1">
+                  <div className="text-white font-extrabold text-base flex items-center justify-end gap-1">
                     <span>↓ {completedResult.overallReduction}%</span>
                   </div>
                   <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-1.5 overflow-hidden">
                     <div
-                      className="bg-emerald-400 h-full rounded-full transition-all duration-700"
+                      className="bg-white h-full rounded-full transition-all duration-700"
                       style={{
                         width: `${Math.min(Math.max(completedResult.overallReduction, 6), 100)}%`,
                       }}
@@ -665,11 +665,11 @@ export default function PdfCompressor() {
                   <span className="text-zinc-400 text-[10px] uppercase font-bold">
                     {isEs ? 'Tamaño Comprimido' : 'Compressed Size'}
                   </span>
-                  <span className="text-[9px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded font-mono font-bold">
+                  <span className="text-[9px] px-2 py-0.5 bg-zinc-800 border border-zinc-700 text-white rounded font-mono font-bold">
                     -{completedResult.overallReduction}%
                   </span>
                 </div>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.totalCompressedSize)}
                 </span>
               </div>
@@ -705,7 +705,7 @@ export default function PdfCompressor() {
                       <div className="flex items-center gap-3">
                         <span className="text-zinc-400 font-mono text-[11px]">
                           {formatFileSize(item.originalSize)} →{' '}
-                          <strong className="text-emerald-400">
+                          <strong className="text-white">
                             {formatFileSize(item.compressedSize)}
                           </strong>
                         </span>

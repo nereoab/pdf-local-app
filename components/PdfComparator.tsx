@@ -924,8 +924,8 @@ export default function PdfComparator() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
-                <ShieldCheck className="w-4 h-4" />
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-zinc-300 shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-zinc-400" />
                 <span>{isEs ? 'Reporte Listo' : 'Report Ready'}</span>
               </div>
             </div>
@@ -943,7 +943,7 @@ export default function PdfComparator() {
                 <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Palabras Eliminadas' : 'Words Removed'}
                 </span>
-                <span className="text-red-400 font-bold text-xl font-mono mt-0.5">
+                <span className="text-zinc-200 font-bold text-xl font-mono mt-0.5">
                   -{completedResult.totalRemovals}
                 </span>
               </div>
@@ -951,7 +951,7 @@ export default function PdfComparator() {
                 <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Palabras Añadidas' : 'Words Added'}
                 </span>
-                <span className="text-emerald-400 font-bold text-xl font-mono mt-0.5">
+                <span className="text-white font-bold text-xl font-mono mt-0.5">
                   +{completedResult.totalAdditions}
                 </span>
               </div>

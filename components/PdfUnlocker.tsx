@@ -904,8 +904,8 @@ export default function PdfUnlocker() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
-                <ShieldCheck className="w-4 h-4" />
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-zinc-300 shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-zinc-400" />
                 <span>{isEs ? 'Restricciones Eliminadas' : 'Restrictions Removed'}</span>
               </div>
             </div>
@@ -924,7 +924,7 @@ export default function PdfUnlocker() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Desbloqueado' : 'Unlocked Size'}
                 </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.unlockedSize)}
                 </span>
               </div>
@@ -938,7 +938,7 @@ export default function PdfUnlocker() {
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">SHA-256</span>
-                <span className="text-emerald-400 font-bold text-[10px] font-mono mt-0.5 truncate">
+                <span className="text-zinc-300 font-bold text-[10px] font-mono mt-0.5 truncate">
                   {completedResult.checksumSha256?.substring(0, 16)}...
                 </span>
               </div>

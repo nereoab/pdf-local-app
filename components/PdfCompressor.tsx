@@ -636,12 +636,12 @@ export default function PdfCompressor() {
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Ahorro de espacio' : 'Space saved'}
                   </div>
-                  <div className="text-amber-400 font-extrabold text-base flex items-center justify-end gap-1">
+                  <div className="text-[#FAF6EE] font-extrabold text-base flex items-center justify-end gap-1">
                     <span>↓ {completedResult.overallReduction}%</span>
                   </div>
                   <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-1.5 overflow-hidden">
                     <div
-                      className="bg-amber-400 h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                      className="bg-[#FAF6EE] h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(250,246,238,0.5)]"
                       style={{
                         width: `${Math.min(Math.max(completedResult.overallReduction, 6), 100)}%`,
                       }}
@@ -665,11 +665,11 @@ export default function PdfCompressor() {
                   <span className="text-zinc-400 text-[10px] uppercase font-bold">
                     {isEs ? 'Tamaño Comprimido' : 'Compressed Size'}
                   </span>
-                  <span className="text-[9px] px-2 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-300 rounded font-mono font-bold">
+                  <span className="text-[9px] px-2 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] rounded font-mono font-bold">
                     -{completedResult.overallReduction}%
                   </span>
                 </div>
-                <span className="text-amber-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.totalCompressedSize)}
                 </span>
               </div>
@@ -677,7 +677,7 @@ export default function PdfCompressor() {
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Espacio Reducido' : 'Space Reduced'}
                 </span>
-                <span className="text-amber-400 font-bold text-sm font-mono mt-0.5">
+                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
                   {formatFileSize(
                     completedResult.totalOriginalSize - completedResult.totalCompressedSize,
                   )}
@@ -705,14 +705,14 @@ export default function PdfCompressor() {
                       <div className="flex items-center gap-3">
                         <span className="text-zinc-400 font-mono text-[11px]">
                           {formatFileSize(item.originalSize)} →{' '}
-                          <strong className="text-amber-400">
+                          <strong className="text-[#FAF6EE]">
                             {formatFileSize(item.compressedSize)}
                           </strong>
                         </span>
                         <a
                           href={item.downloadUrl}
                           download={`${item.fileName.replace(/\.[^/.]+$/, '')}${customSuffix}.pdf`}
-                          className="px-3.5 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 text-black hover:from-amber-300 hover:to-yellow-400 font-bold rounded-lg text-[11px] transition-all flex items-center gap-1 cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.25)]"
+                          className="px-3.5 py-1.5 bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black hover:opacity-90 font-bold rounded-lg text-[11px] transition-all flex items-center gap-1 cursor-pointer shadow-[0_0_10px_rgba(232,223,207,0.25)]"
                         >
                           <FileDown className="w-3 h-3" />
                           <span>{isEs ? 'Descargar' : 'Download'}</span>

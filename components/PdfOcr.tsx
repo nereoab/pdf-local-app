@@ -533,30 +533,31 @@ export default function PdfOcr() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE MÉTRICAS DE OCR */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          {/* BANNER DE MÉTRICAS DE OCR (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
-                  <ScanText className="w-6 h-6" />
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <ScanText className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DEL RECONOCIMIENTO ÓPTICO (OCR)' : 'OCR RECOGNITION RESULT'}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs
                       ? '¡Documento procesado e indexado con éxito!'
                       : 'Document processed & indexed successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Capa de Texto' : 'Text Layer'}
                   </div>
-                  <div className="text-emerald-400 font-extrabold text-sm flex items-center justify-end gap-1.5">
+                  <div className="text-emerald-400 font-extrabold text-sm flex items-center justify-end gap-1.5 font-sans">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     <span>{isEs ? '100% Seleccionable' : '100% Searchable'}</span>
                   </div>
@@ -564,8 +565,8 @@ export default function PdfOcr() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
                 </span>
@@ -573,7 +574,7 @@ export default function PdfOcr() {
                   {completedResult.processedPagesCount || totalPages} {isEs ? 'Páginas' : 'Pages'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Idioma de Reconocimiento' : 'OCR Language'}
                 </span>
@@ -581,7 +582,7 @@ export default function PdfOcr() {
                   {completedResult.ocrLanguageName || 'Español'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Formato Resultante' : 'Resulting Format'}
                 </span>
@@ -616,11 +617,12 @@ export default function PdfOcr() {
           {/* ════ PANEL IZQUIERDO: VISOR DE DOCUMENTO ESCANEADO (COL-SPAN-7) ════ */}
           <div
             style={previewHeight > 0 ? { height: `${previewHeight}px` } : undefined}
-            className="lg:col-span-7 xl:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between min-h-0 relative overflow-hidden"
+            className="lg:col-span-7 xl:col-span-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between min-h-0 relative overflow-hidden"
           >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             {/* CABECERA CON BARRA DE NAVEGACIÓN INTELIGENTE */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold w-full">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold w-full">
+              <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
                 <ScanText className="w-4 h-4 text-white" />
                 <span>
                   {isEs ? `001 / VISOR DE DOCUMENTO ESCANEADO` : `001 / SCANNED DOCUMENT VIEWER`}
@@ -628,13 +630,13 @@ export default function PdfOcr() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {totalPages > 1 && (
-                  <div className="flex items-center gap-1 bg-zinc-900 border border-white/10 px-1.5 py-1 rounded-lg text-xs font-mono text-white shadow-sm">
+                  <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-700 px-2 py-1 rounded-xl text-xs font-mono text-white shadow-sm">
                     {/* BOTÓN PRIMERA PÁGINA */}
                     <button
                       type="button"
                       disabled={currentViewPage <= 1}
                       onClick={() => setCurrentViewPage(1)}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={isEs ? 'Ir a la primera página' : 'First page'}
                     >
                       <ChevronsLeft className="w-3.5 h-3.5" />
@@ -644,7 +646,7 @@ export default function PdfOcr() {
                       type="button"
                       disabled={currentViewPage <= 1}
                       onClick={() => setCurrentViewPage((p) => Math.max(1, p - 1))}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={isEs ? 'Página anterior' : 'Previous page'}
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
@@ -679,7 +681,7 @@ export default function PdfOcr() {
                             }
                           }
                         }}
-                        className="w-10 bg-zinc-950 border border-white/20 rounded px-1 py-0.5 text-center text-xs text-white font-mono font-bold outline-none focus:border-white"
+                        className="w-10 bg-zinc-950 border border-zinc-700 rounded-lg px-1 py-0.5 text-center text-xs text-white font-mono font-bold outline-none focus:border-white"
                       />
                       <span className="text-[11px] text-zinc-400 font-mono">/ {totalPages}</span>
                     </div>
@@ -689,7 +691,7 @@ export default function PdfOcr() {
                       type="button"
                       disabled={currentViewPage >= totalPages}
                       onClick={() => setCurrentViewPage((p) => Math.min(totalPages, p + 1))}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={isEs ? 'Página siguiente' : 'Next page'}
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -700,15 +702,15 @@ export default function PdfOcr() {
                       type="button"
                       disabled={currentViewPage >= totalPages}
                       onClick={() => setCurrentViewPage(totalPages)}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={isEs ? 'Ir a la última página' : 'Last page'}
                     >
                       <ChevronsRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" /> 100% Local
                 </div>
               </div>
             </div>
@@ -810,18 +812,18 @@ export default function PdfOcr() {
 
             {/* VISTA PREVIA DEL TEXTO RECONOCIDO EN VIVO */}
             {extractedText && (
-              <div className="mt-3 pt-3 border-t border-white/10 font-mono">
+              <div className="mt-3 pt-3 border-t border-zinc-800 font-mono">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-white flex items-center gap-2">
-                    <FileSearch className="w-4 h-4 text-emerald-400" />{' '}
+                    <FileSearch className="w-4 h-4 text-white" />{' '}
                     {isEs ? 'Texto Reconocido por el Motor OCR:' : 'Recognized Text:'}
                   </span>
                   <button
                     onClick={handleCopyText}
-                    className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shadow-sm"
                   >
                     {copied ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <Check className="w-3.5 h-3.5 text-white" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
@@ -833,15 +835,15 @@ export default function PdfOcr() {
                 <textarea
                   readOnly
                   value={extractedText}
-                  className="w-full h-24 p-2.5 bg-zinc-950 border border-white/10 rounded-xl text-xs font-mono text-zinc-300 outline-none resize-none shadow-inner"
+                  className="w-full h-24 p-2.5 bg-[#121217] border border-zinc-700/80 rounded-2xl text-xs font-mono text-zinc-300 outline-none resize-none shadow-inner"
                 />
               </div>
             )}
 
             {/* PIE DE VISTA PREVIA CON ESTADO Y ALCANCE */}
-            <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between gap-2 text-[10px] text-zinc-400 font-mono w-full">
+            <div className="mt-2 pt-2 border-t border-zinc-800 flex items-center justify-between gap-2 text-[10px] text-zinc-400 font-mono w-full">
               <div className="flex items-center gap-1.5 text-zinc-300">
-                <span className="px-2 py-0.5 bg-zinc-900 border border-white/10 rounded text-emerald-400 font-bold">
+                <span className="px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded-lg text-zinc-200 font-bold shadow-sm">
                   {selectedPagesSet.has(currentViewPage)
                     ? isEs
                       ? `✓ Esta página será procesada con OCR`
@@ -851,7 +853,7 @@ export default function PdfOcr() {
                       : `✗ This page is excluded from scope`}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-zinc-400">
+              <div className="flex items-center gap-1.5 text-zinc-400 font-bold">
                 <span>
                   {isEs
                     ? `Idioma: ${LANG_LABELS[ocrLang]?.es || ocrLang}`
@@ -861,13 +863,14 @@ export default function PdfOcr() {
             </div>
           </div>
 
-          {/* ════ PANEL DERECHO: PANEL DE CONTROL (COL-SPAN-5, INTACTO) ════ */}
+          {/* ════ PANEL DERECHO: PANEL DE CONTROL ════ */}
           <div
             ref={controlPanelRef}
-            className="lg:col-span-5 xl:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-5"
+            className="lg:col-span-5 xl:col-span-5 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden"
           >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             {/* Panel title */}
-            <div className="pb-3 border-b border-white/10">
+            <div className="pb-3 border-b border-zinc-800">
               <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                 {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
               </span>

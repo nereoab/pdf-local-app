@@ -935,36 +935,37 @@ export default function PdfSplitter() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE DIVISIÓN */}
-          <div className="bg-[#09090b] border border-white/20 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE DIVISIÓN (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
-                  <Scissors className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <Scissors className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA DIVISIÓN DE PDF' : 'PDF SPLIT RESULT'}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs ? '¡Documento dividido con éxito!' : 'Document split successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1">
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-zinc-800 text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Archivos Generados' : 'Generated Files'}
                 </span>
@@ -972,7 +973,7 @@ export default function PdfSplitter() {
                   {completedResult.createdCount} {isEs ? 'Partes' : 'Parts'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Formato de Salida' : 'Output Format'}
                 </span>
@@ -986,7 +987,7 @@ export default function PdfSplitter() {
                       : 'PDF extracted'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
                 </span>
@@ -1052,10 +1053,12 @@ export default function PdfSplitter() {
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
         >
           {/* LADO IZQUIERDO: REJILLA DE MINIATURAS REALES Y RANGOS DE HOJAS */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col h-[750px] lg:h-[820px] max-h-[850px] overflow-hidden">
+          <div className="lg:col-span-7 xl:col-span-8 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col h-[750px] lg:h-[820px] max-h-[850px] overflow-hidden relative">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
             {/* CABECERA DE LA VISTA PREVIA CON CONTADOR Y DENSIDAD */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
+              <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
                 <span>
                   {isEs
@@ -1066,19 +1069,19 @@ export default function PdfSplitter() {
 
               <div className="flex items-center gap-3">
                 {/* BADGE DE PÁGINAS SELECCIONADAS */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 border border-white/15 rounded-lg text-white font-mono text-[11px]">
-                  <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-xl text-white font-mono text-[11px] shadow-sm">
+                  <CheckSquare className="w-3.5 h-3.5 text-white" />
                   <span>
                     {selectedCount} / {totalPages} {isEs ? 'activas' : 'active'}
                   </span>
                 </div>
 
                 {/* SELECTOR DE DENSIDAD DE CUADRÍCULA */}
-                <div className="hidden sm:flex items-center bg-zinc-900 border border-white/10 rounded-lg p-0.5 gap-0.5">
+                <div className="hidden sm:flex items-center bg-zinc-900 border border-zinc-700 rounded-xl p-0.5 gap-0.5 shadow-inner">
                   <button
                     type="button"
                     onClick={() => setGridDensity('compact')}
-                    className={`px-2 py-1 rounded text-[10px] font-mono transition-all ${gridDensity === 'compact' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all ${gridDensity === 'compact' ? 'bg-white text-black font-bold shadow' : 'text-zinc-400 hover:text-white'}`}
                     title={isEs ? 'Vista Compacta' : 'Compact View'}
                   >
                     {isEs ? 'Compacto' : 'Compact'}
@@ -1086,7 +1089,7 @@ export default function PdfSplitter() {
                   <button
                     type="button"
                     onClick={() => setGridDensity('standard')}
-                    className={`px-2 py-1 rounded text-[10px] font-mono transition-all ${gridDensity === 'standard' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all ${gridDensity === 'standard' ? 'bg-white text-black font-bold shadow' : 'text-zinc-400 hover:text-white'}`}
                     title={isEs ? 'Vista Estándar' : 'Standard View'}
                   >
                     {isEs ? 'Estándar' : 'Standard'}
@@ -1094,24 +1097,24 @@ export default function PdfSplitter() {
                   <button
                     type="button"
                     onClick={() => setGridDensity('large')}
-                    className={`px-2 py-1 rounded text-[10px] font-mono transition-all ${gridDensity === 'large' ? 'bg-white text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all ${gridDensity === 'large' ? 'bg-white text-black font-bold shadow' : 'text-zinc-400 hover:text-white'}`}
                     title={isEs ? 'Vista Grande' : 'Large View'}
                   >
                     {isEs ? 'Grande' : 'Large'}
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" /> 100% Local
                 </div>
               </div>
             </div>
 
             {/* DETALLES DEL ARCHIVO CARGADO Y WIDGET DE CONTRASEÑA */}
-            <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl mb-3 font-mono text-xs space-y-3">
+            <div className="bg-[#121217] border border-zinc-700/80 p-3.5 rounded-2xl mb-3 font-mono text-xs space-y-3 shadow-inner">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <FileText className="w-5 h-5 text-rose-400 flex-shrink-0" />
+                  <FileText className="w-5 h-5 text-zinc-300 flex-shrink-0" />
                   <div className="truncate">
                     <span className="text-white font-bold block truncate">{file.name}</span>
                     <span className="text-[10px] text-zinc-400">
@@ -1123,13 +1126,13 @@ export default function PdfSplitter() {
 
                 <div className="flex items-center gap-2">
                   {isUnlocked && (
-                    <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2.5 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1">
-                      <Unlock className="w-3 h-3" /> {isEs ? 'Desbloqueado' : 'Unlocked'}
+                    <span className="bg-zinc-800 text-zinc-200 text-[10px] px-2.5 py-1 rounded-xl border border-zinc-600 flex items-center gap-1 shadow-sm font-bold">
+                      <Unlock className="w-3 h-3 text-white" /> {isEs ? 'Desbloqueado' : 'Unlocked'}
                     </span>
                   )}
                   <button
                     onClick={removeFile}
-                    className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-lg border border-white/10 transition-colors"
+                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-700 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1274,10 +1277,10 @@ export default function PdfSplitter() {
 
                             {/* CHECK DE INCLUSIÓN */}
                             <div
-                              className={`p-1 rounded-md border ${p.included ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}
+                              className={`p-1 rounded-lg border transition-all ${p.included ? 'bg-white text-black border-white shadow-sm' : 'bg-zinc-900 text-zinc-600 border-zinc-800'}`}
                             >
                               {p.included ? (
-                                <Check className="w-3 h-3" />
+                                <Check className="w-3 h-3 stroke-[3]" />
                               ) : (
                                 <X className="w-3 h-3" />
                               )}
@@ -1309,10 +1312,11 @@ export default function PdfSplitter() {
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL (ALTURA NATURAL SIN SCROLL) */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-5 xl:col-span-4 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="space-y-4">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-4 pb-3 border-b border-white/10">
+              <div className="mb-4 pb-3 border-b border-zinc-800">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>
@@ -1323,10 +1327,10 @@ export default function PdfSplitter() {
               </div>
 
               {/* TABS SUPERIORES [0-0] RANGO, PÁGINAS, TAMAÑO */}
-              <div className="grid grid-cols-3 border border-white/10 bg-zinc-950 rounded-xl overflow-hidden mb-5 p-1 gap-1 font-mono">
+              <div className="grid grid-cols-3 border border-zinc-800 bg-[#121217] rounded-2xl overflow-hidden mb-5 p-1 gap-1 font-mono shadow-inner">
                 <button
                   onClick={() => setMainTab('rango')}
-                  className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer relative ${
+                  className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer relative ${
                     mainTab === 'rango'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-400 hover:text-white'
@@ -1779,10 +1783,10 @@ export default function PdfSplitter() {
             </div>
 
             {/* TARJETA DE RESUMEN EN VIVO & BOTÓN PRINCIPAL */}
-            <div className="pt-4 border-t border-white/10 space-y-3">
+            <div className="pt-4 border-t border-zinc-800 space-y-3">
               {/* TARJETA DE RESUMEN DINÁMICO EN VIVO */}
               {liveSummary && (
-                <div className="bg-zinc-950 border border-emerald-500/25 rounded-xl p-3 font-mono text-xs flex items-center justify-between shadow-inner">
+                <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 font-mono text-xs flex items-center justify-between shadow-inner">
                   <div className="space-y-0.5">
                     <span className="text-[10px] text-zinc-400 uppercase font-bold block">
                       {isEs ? 'Resumen de corte' : 'Split summary'}
@@ -1792,7 +1796,7 @@ export default function PdfSplitter() {
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+                    <span className="text-[10px] text-zinc-200 bg-zinc-800 border border-zinc-600 px-2.5 py-1 rounded-xl font-bold shadow-sm">
                       {liveSummary.partsCount} {liveSummary.partsCount === 1 ? 'parte' : 'partes'}
                     </span>
                   </div>

@@ -903,35 +903,35 @@ export default function PdfComparator() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE MÉTRICAS DE COMPARACIÓN */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            {/* Glow background accent */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE COMPARACIÓN (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
-                  <CheckCircle className="w-7 h-7 text-emerald-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <CheckCircle2 className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
-                    {isEs
-                      ? '¡Reporte de Comparación Generado con Éxito!'
-                      : 'Comparison Report Generated Successfully!'}
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA COMPARACIÓN' : 'COMPARISON RESULT'}
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
+                    {isEs ? '¡Reporte de Comparación Generado!' : 'Comparison Report Generated!'}
                   </h2>
                   <p className="text-xs text-zinc-400 font-mono mt-0.5">
                     {completedResult.summary}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{isEs ? 'Reporte Listo' : 'Report Ready'}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Similitud Global' : 'Global Similarity'}
                 </span>
@@ -939,7 +939,7 @@ export default function PdfComparator() {
                   {completedResult.globalSimilarityPercent}%
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Palabras Eliminadas' : 'Words Removed'}
                 </span>
@@ -947,7 +947,7 @@ export default function PdfComparator() {
                   -{completedResult.totalRemovals}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Palabras Añadidas' : 'Words Added'}
                 </span>
@@ -955,7 +955,7 @@ export default function PdfComparator() {
                   +{completedResult.totalAdditions}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Sin Cambios' : 'Unchanged'}
                 </span>
@@ -1024,21 +1024,22 @@ export default function PdfComparator() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             <div className="lg:col-span-8 flex flex-col gap-4">
               {/* TOOLBAR */}
-              <div className="w-full bg-[#09090b] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 font-mono">
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 font-mono shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <button
                     onClick={() => file1InputRef.current?.click()}
-                    className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-xl text-white transition-all cursor-pointer"
+                    className="flex items-center gap-2 bg-[#121217] hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-500 px-3.5 py-2 rounded-2xl text-white transition-all cursor-pointer shadow-inner"
                   >
-                    <FileText className="w-4 h-4 text-red-400" />
+                    <FileText className="w-4 h-4 text-white" />
                     <span className="font-bold truncate max-w-[140px]">{file1?.name}</span>
                   </button>
                   <span className="text-zinc-500 font-bold">VS</span>
                   <button
                     onClick={() => file2InputRef.current?.click()}
-                    className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 px-3 py-1.5 rounded-xl text-white transition-all cursor-pointer"
+                    className="flex items-center gap-2 bg-[#121217] hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-500 px-3.5 py-2 rounded-2xl text-white transition-all cursor-pointer shadow-inner"
                   >
-                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <FileText className="w-4 h-4 text-white" />
                     <span className="font-bold truncate max-w-[140px]">{file2?.name}</span>
                   </button>
                 </div>
@@ -1385,8 +1386,9 @@ export default function PdfComparator() {
             </div>
             {/* SIDEBAR */}
             <div className="lg:col-span-4 flex flex-col">
-              <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col shadow-2xl min-h-[400px]">
-                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+              <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 flex flex-col shadow-2xl min-h-[400px] relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3">
                   <div>
                     <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase block mb-1">
                       002 / REPORT
@@ -1395,7 +1397,7 @@ export default function PdfComparator() {
                       {isEs ? 'RESULTADOS' : 'RESULTS'}
                     </h2>
                   </div>
-                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
                     <GitCompare className="w-5 h-5 text-white" />
                   </div>
                 </div>
@@ -1404,9 +1406,9 @@ export default function PdfComparator() {
                   <>
                     <div className="mb-3 flex flex-col gap-1.5">
                       <div className="flex items-center gap-1.5 text-[9px] font-mono">
-                        <Hash className="w-3 h-3 text-red-400" />
+                        <Hash className="w-3 h-3 text-zinc-400" />
                         <span className="text-zinc-500">A:</span>
-                        <span className="text-red-400 font-bold">
+                        <span className="text-zinc-300 font-bold">
                           {compareResult.checksum1.slice(0, 12)}...
                         </span>
                         <button
@@ -1420,9 +1422,9 @@ export default function PdfComparator() {
                         </button>
                       </div>
                       <div className="flex items-center gap-1.5 text-[9px] font-mono">
-                        <Hash className="w-3 h-3 text-emerald-400" />
+                        <Hash className="w-3 h-3 text-zinc-400" />
                         <span className="text-zinc-500">B:</span>
-                        <span className="text-emerald-400 font-bold">
+                        <span className="text-zinc-300 font-bold">
                           {compareResult.checksum2.slice(0, 12)}...
                         </span>
                         <button
@@ -1437,42 +1439,38 @@ export default function PdfComparator() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mb-4 text-xs font-mono">
-                      <div
-                        className={`rounded-lg p-2.5 text-center border ${compareResult.globalSimilarityPercent >= 95 ? 'bg-emerald-500/10 border-emerald-500/20' : compareResult.globalSimilarityPercent >= 70 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-red-500/10 border-red-500/20'}`}
-                      >
-                        <span
-                          className={`font-bold text-lg block ${compareResult.globalSimilarityPercent >= 95 ? 'text-emerald-400' : compareResult.globalSimilarityPercent >= 70 ? 'text-amber-400' : 'text-red-400'}`}
-                        >
+                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                        <span className="font-bold text-lg block text-white">
                           {compareResult.globalSimilarityPercent}%
                         </span>
                         <span className="text-zinc-400 text-[10px]">
                           {isEs ? 'Similitud' : 'Similarity'}
                         </span>
                       </div>
-                      <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2.5 text-center">
-                        <span className="text-red-400 font-bold text-lg block">
+                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                        <span className="text-white font-bold text-lg block">
                           {compareResult.totalRemovals + compareResult.totalAdditions}
                         </span>
-                        <span className="text-red-300 text-[10px]">
+                        <span className="text-zinc-400 text-[10px]">
                           {isEs ? 'Cambios' : 'Changes'}
                         </span>
                       </div>
-                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-center">
-                        <span className="text-emerald-400 font-bold text-lg block">
+                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                        <span className="text-white font-bold text-lg block">
                           {
                             compareResult.pageDiffs.filter((p) => p.removedCount + p.addedCount > 0)
                               .length
                           }
                         </span>
-                        <span className="text-emerald-300 text-[10px]">
+                        <span className="text-zinc-400 text-[10px]">
                           {isEs ? 'Pags Modif' : 'Mod Pages'}
                         </span>
                       </div>
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5 text-center">
-                        <span className="text-blue-400 font-bold text-lg block">
+                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                        <span className="text-white font-bold text-lg block">
                           {compareResult.pagesWithVisualChanges || 0}
                         </span>
-                        <span className="text-blue-300 text-[10px]">
+                        <span className="text-zinc-400 text-[10px]">
                           {isEs ? 'Cambios Visuales' : 'Visual Changes'}
                         </span>
                       </div>
@@ -1481,10 +1479,10 @@ export default function PdfComparator() {
                       <div className="mb-4">
                         <button
                           onClick={() => setShowStructuralDiffs(!showStructuralDiffs)}
-                          className="w-full flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 text-xs font-mono text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer"
+                          className="w-full flex items-center justify-between bg-[#121217] border border-zinc-700/80 rounded-2xl px-3.5 py-2.5 text-xs font-mono text-zinc-300 hover:text-white hover:border-zinc-500 transition-all cursor-pointer shadow-inner"
                         >
                           <span className="flex items-center gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <AlertTriangle className="w-3.5 h-3.5 text-zinc-400" />
                             {isEs ? 'Cambios Estructurales' : 'Structural Changes'} (
                             {compareResult.structuralDiffs.length})
                           </span>
@@ -1504,13 +1502,9 @@ export default function PdfComparator() {
                                 {compareResult.structuralDiffs.map((sd, i) => (
                                   <div
                                     key={i}
-                                    className="text-[9px] font-mono text-zinc-300 bg-zinc-950/60 border border-white/5 rounded px-2 py-1"
+                                    className="text-[9px] font-mono text-zinc-300 bg-zinc-950/60 border border-zinc-800 rounded-xl px-2.5 py-1.5"
                                   >
-                                    <span
-                                      className={`font-bold ${sd.category === 'fonts' ? 'text-purple-400' : sd.category === 'images' ? 'text-blue-400' : sd.category === 'pages' ? 'text-amber-400' : 'text-zinc-400'}`}
-                                    >
-                                      [{sd.category}]
-                                    </span>{' '}
+                                    <span className="font-bold text-white">[{sd.category}]</span>{' '}
                                     {sd.description}
                                   </div>
                                 ))}
@@ -1522,9 +1516,9 @@ export default function PdfComparator() {
                     )}
 
                     {/* OPCIONES AVANZADAS DE COMPARACIÓN (SIEMPRE VISIBLES DEBAJO DE CAMBIOS ESTRUCTURALES) */}
-                    <div className="mb-4 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 font-sans space-y-3.5">
-                      <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                    <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 font-sans space-y-3.5 shadow-inner">
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-zinc-800 pb-2 uppercase">
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-white" />
                         <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
                       </div>
 

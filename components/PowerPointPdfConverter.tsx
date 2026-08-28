@@ -874,30 +874,31 @@ export default function PowerPointPdfConverter({
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS */}
-          <div className="bg-[#09090b] border border-white/20 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
-                  <PowerPointIcon className="w-6 h-6 rounded-sm" />
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <PowerPointIcon className="w-7 h-7 rounded-sm" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA CONVERSIÓN' : 'CONVERSION RESULT'}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs
                       ? '¡Conversión de presentación completada con éxito!'
                       : 'Presentation conversion completed successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1">
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
@@ -905,8 +906,8 @@ export default function PowerPointPdfConverter({
             </div>
 
             {/* MÉTRICAS DE LA CONVERSIÓN */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs border-t border-zinc-800 mt-4">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs border-t border-zinc-800 mt-5">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Diapositivas Creadas' : 'Slides Created'}
                 </span>
@@ -914,7 +915,7 @@ export default function PowerPointPdfConverter({
                   {completedResult.itemCount} {isEs ? 'diapos' : 'slides'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Resultante' : 'Result Size'}
                 </span>
@@ -922,7 +923,7 @@ export default function PowerPointPdfConverter({
                   {completedResult.fileSize}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Formato de Salida' : 'Output Format'}
                 </span>
@@ -930,7 +931,7 @@ export default function PowerPointPdfConverter({
                   {completedResult.outputFormat}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Procesamiento' : 'Processing'}
                 </span>
@@ -1052,25 +1053,26 @@ export default function PowerPointPdfConverter({
               className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
             >
               {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col lg:h-[780px] lg:max-h-[780px]">
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
-                  <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
+                  <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
                     <Presentation className="w-4 h-4 text-white" />
                     <span>
                       {isEs ? '001 / VISOR Y SELECCIÓN VISUAL' : '001 / VIEWER & VISUAL SELECTION'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
                     <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
                     {totalPages} {isEs ? 'a PPTX' : 'to PPTX'}
                   </div>
                 </div>
 
                 {/* CONTENEDOR PRINCIPAL SPLIT: COLUMNA IZQUIERDA (MINIATURAS 1 COL) + COSTADO DERECHO (VISOR NORMAL) */}
-                <div className="w-full flex-1 bg-[#121215] rounded-xl overflow-hidden relative border border-white/5 font-mono min-h-0 flex">
+                <div className="w-full flex-1 bg-[#121217] rounded-2xl overflow-hidden relative border border-zinc-700/80 font-mono min-h-0 flex shadow-inner">
                   {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  <div className="w-32 sm:w-36 flex-shrink-0 bg-zinc-950/90 border-r border-white/10 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                  <div className="w-32 sm:w-36 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
                       <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
                         {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
                       </span>
@@ -1079,7 +1081,7 @@ export default function PowerPointPdfConverter({
                         onClick={
                           targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
                         }
-                        className="text-[9px] text-orange-400 hover:text-orange-300 font-bold cursor-pointer"
+                        className="text-[9px] text-zinc-300 hover:text-white font-bold cursor-pointer"
                         title={
                           targetPages.length === totalPages
                             ? isEs
@@ -1114,22 +1116,22 @@ export default function PowerPointPdfConverter({
                           <div
                             key={pageNum}
                             onClick={() => setActivePage(pageNum)}
-                            className={`w-full bg-zinc-900 border rounded-lg p-1.5 flex flex-col items-center relative transition-all cursor-pointer group ${
+                            className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
                               isActive
                                 ? 'border-white ring-2 ring-white/40 bg-zinc-800'
                                 : isIncluded
-                                  ? 'border-orange-500/50 hover:border-orange-400 bg-zinc-900'
-                                  : 'border-white/5 opacity-50 grayscale hover:opacity-80 hover:border-white/20'
+                                  ? 'border-zinc-600 hover:border-zinc-400 bg-zinc-900'
+                                  : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
                             }`}
                           >
                             {/* Checkbox selector */}
                             <button
                               type="button"
                               onClick={(e) => togglePageSelection(pageNum, e)}
-                              className={`absolute top-2 left-2 z-10 p-0.5 rounded transition-all cursor-pointer ${
+                              className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
                                 isIncluded
-                                  ? 'bg-orange-500 text-white shadow-md'
-                                  : 'bg-black/70 text-zinc-500 hover:text-white border border-white/20'
+                                  ? 'bg-white text-black shadow-md'
+                                  : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
                               }`}
                               title={
                                 isIncluded
@@ -1142,7 +1144,7 @@ export default function PowerPointPdfConverter({
                               }
                             >
                               {isIncluded ? (
-                                <Check className="w-3 h-3 stroke-[3]" />
+                                <Check className="w-3 h-3 stroke-[3] text-black" />
                               ) : (
                                 <div className="w-3 h-3" />
                               )}
@@ -1255,10 +1257,11 @@ export default function PowerPointPdfConverter({
               </div>
 
               {/* LADO DERECHO: PANEL DE CONTROL CON SELECCIÓN DE PÁGINAS Y OPCIONES */}
-              <div className="lg:col-span-6 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-5 lg:h-[780px] lg:max-h-[780px]">
+              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-5 lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
                 <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
                   {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-                  <div className="mb-2 pb-2 border-b border-white/10">
+                  <div className="mb-2 pb-2 border-b border-zinc-800">
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
                       {isEs
                         ? '002 / CONFIGURACIÓN Y SELECCIÓN DE PÁGINAS'
@@ -1272,17 +1275,17 @@ export default function PowerPointPdfConverter({
 
                   {/* SECCIÓN DE SELECCIÓN DE PÁGINAS (SOLO MODO PDF A POWERPOINT) */}
                   {mode === 'pdf-to-powerpoint' && (
-                    <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-3 font-mono text-xs">
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
                       <div className="flex items-center justify-between">
-                        <label className="text-zinc-300 font-bold flex items-center gap-1.5">
-                          <ListChecks className="w-4 h-4 text-orange-400" />
+                        <label className="text-zinc-200 font-bold flex items-center gap-1.5">
+                          <ListChecks className="w-4 h-4 text-white" />
                           <span>
                             {isEs
                               ? 'Páginas a Convertir a PowerPoint'
                               : 'Pages to Convert to PowerPoint'}
                           </span>
                         </label>
-                        <span className="text-[11px] font-bold px-2 py-0.5 bg-orange-500/20 border border-orange-500/40 text-orange-400 rounded-md">
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
                           {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
                         </span>
                       </div>
@@ -1292,10 +1295,10 @@ export default function PowerPointPdfConverter({
                         <button
                           type="button"
                           onClick={() => setPageSelectionMode('all')}
-                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                             pageSelectionMode === 'all'
                               ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                           }`}
                         >
                           {isEs ? 'Todas' : 'All'}
@@ -1303,10 +1306,10 @@ export default function PowerPointPdfConverter({
                         <button
                           type="button"
                           onClick={() => setPageSelectionMode('range')}
-                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                             pageSelectionMode === 'range'
                               ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                           }`}
                         >
                           {isEs ? 'Rango' : 'Range'}
@@ -1314,10 +1317,10 @@ export default function PowerPointPdfConverter({
                         <button
                           type="button"
                           onClick={() => setPageSelectionMode('odd')}
-                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                             pageSelectionMode === 'odd'
                               ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                           }`}
                         >
                           {isEs ? 'Impares' : 'Odd'}
@@ -1325,10 +1328,10 @@ export default function PowerPointPdfConverter({
                         <button
                           type="button"
                           onClick={() => setPageSelectionMode('even')}
-                          className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                             pageSelectionMode === 'even'
                               ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                           }`}
                         >
                           {isEs ? 'Pares' : 'Even'}

@@ -765,36 +765,37 @@ export default function PdfMerger() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE FUSIÓN */}
-          <div className="bg-[#09090b] border border-white/20 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE FUSIÓN (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
-                  <Merge className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <Merge className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA FUSIÓN DE DOCUMENTOS' : 'DOCUMENT MERGE RESULT'}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs ? '¡Documentos combinados con éxito!' : 'Documents merged successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1">
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-zinc-800 text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Archivos Unidos' : 'Merged Files'}
                 </span>
@@ -802,7 +803,7 @@ export default function PdfMerger() {
                   {completedResult.filesCount} {isEs ? 'Documentos' : 'Documents'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Totales' : 'Total Pages'}
                 </span>
@@ -810,7 +811,7 @@ export default function PdfMerger() {
                   {completedResult.totalPages} {isEs ? 'Páginas' : 'Pages'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
                 </span>
@@ -887,13 +888,14 @@ export default function PdfMerger() {
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
           {/* LADO IZQUIERDO: REJILLA DE ARCHIVOS Y MINIATURAS DE UNIÓN (ALTURA SIMÉTRICA) */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px]">
+          <div className="lg:col-span-7 xl:col-span-8 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px] relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             {/* BARRA SUPERIOR DE HERRAMIENTAS Y ORDENAMIENTO */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400">
-              <div className="flex items-center gap-2 text-zinc-300 font-bold">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400">
+              <div className="flex items-center gap-2 text-zinc-200 font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
                 <span>{isEs ? `001 / ARCHIVOS A UNIR` : `001 / FILES TO MERGE`}</span>
-                <span className="bg-white/10 text-white text-[11px] px-2 py-0.5 rounded-full border border-white/10 font-mono">
+                <span className="bg-zinc-800 text-white text-[11px] px-2.5 py-0.5 rounded-full border border-zinc-600 font-mono shadow-sm">
                   {files.length} {isEs ? 'Archivos' : 'Files'} • ~{totalMergedPages}{' '}
                   {isEs ? 'Páginas' : 'Pages'}
                 </span>
@@ -901,7 +903,7 @@ export default function PdfMerger() {
 
               <div className="flex items-center gap-2">
                 {/* BOTONES DE ORDENAMIENTO RÁPIDO */}
-                <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-white/10">
+                <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-700 shadow-inner">
                   <button
                     type="button"
                     onClick={sortFilesAz}
@@ -1008,15 +1010,15 @@ export default function PdfMerger() {
                               >
                                 <GripVertical className="w-3.5 h-3.5" />
                               </span>
-                              <span className="bg-white/10 text-white font-mono font-bold text-xs px-2 py-0.5 rounded-lg border border-white/10">
+                              <span className="bg-zinc-800 text-white font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg border border-zinc-600 shadow-sm">
                                 #{index + 1}
                               </span>
                               {item.password && (
                                 <span
-                                  className="bg-emerald-500/20 text-emerald-400 font-mono text-[9px] px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1"
+                                  className="bg-zinc-800 text-zinc-200 font-mono text-[9px] px-2 py-0.5 rounded-md border border-zinc-600 flex items-center gap-1 shadow-sm font-bold"
                                   title={isEs ? 'PDF desbloqueado' : 'PDF unlocked'}
                                 >
-                                  <Unlock className="w-2.5 h-2.5" />{' '}
+                                  <Unlock className="w-2.5 h-2.5 text-white" />{' '}
                                   {isEs ? 'Desbloqueado' : 'Unlocked'}
                                 </span>
                               )}
@@ -1135,7 +1137,7 @@ export default function PdfMerger() {
                                 <Eye className="w-3 h-3 text-zinc-400" />
                                 <span>{isEs ? 'Páginas' : 'Pages'}</span>
                                 {item.pagesDetail && (
-                                  <span className="ml-1 px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 rounded-full text-[9px] font-bold">
+                                  <span className="ml-1 px-2 py-0.5 bg-zinc-800 text-zinc-200 border border-zinc-600 rounded-full text-[9px] font-bold shadow-sm">
                                     {item.pagesDetail.filter((p) => p.included).length}/
                                     {item.pagesDetail.length}
                                   </span>
@@ -1303,11 +1305,12 @@ export default function PdfMerger() {
           {/* LADO DERECHO: PANEL DE CONTROL DE UNIÓN */}
           <div
             ref={controlPanelRef}
-            className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px]"
+            className="lg:col-span-5 xl:col-span-4 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px] relative overflow-hidden"
           >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
               {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-4 pb-3 border-b border-white/10">
+              <div className="mb-4 pb-3 border-b border-zinc-800">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>
@@ -1531,19 +1534,20 @@ export default function PdfMerger() {
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full max-w-4xl max-h-[85vh] bg-[#09090b] border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col justify-between overflow-hidden"
+                  className="w-full max-w-4xl max-h-[85vh] bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 rounded-3xl p-6 shadow-2xl flex flex-col justify-between overflow-hidden relative"
                 >
+                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
                   {/* MODAL HEADER */}
-                  <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                  <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
                     <div className="flex items-center gap-3">
-                      <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                      <div className="bg-zinc-800 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
                         <Eye className="w-5 h-5 text-white" />
                       </div>
                       <div>
                         <h3 className="text-base font-extrabold text-white truncate max-w-md font-sans">
                           {activeItem.file.name}
                         </h3>
-                        <p className="text-xs text-zinc-400">
+                        <p className="text-xs text-zinc-400 font-mono">
                           {isEs
                             ? `Organizando páginas (${includedCount} de ${activeItem.pageCount} incluidas)`
                             : `Organizing pages (${includedCount} of ${activeItem.pageCount} included)`}
@@ -1555,21 +1559,21 @@ export default function PdfMerger() {
                       <button
                         type="button"
                         onClick={() => toggleAllPages(activeItem.id, true)}
-                        className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs rounded-xl border border-white/10 transition-colors cursor-pointer"
+                        className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs rounded-xl border border-zinc-700 transition-colors cursor-pointer font-bold"
                       >
                         {isEs ? 'Incluir todas' : 'Include all'}
                       </button>
                       <button
                         type="button"
                         onClick={() => toggleAllPages(activeItem.id, false)}
-                        className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs rounded-xl border border-white/10 transition-colors cursor-pointer"
+                        className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs rounded-xl border border-zinc-700 transition-colors cursor-pointer font-bold"
                       >
                         {isEs ? 'Excluir todas' : 'Exclude all'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setInspectingFileId(null)}
-                        className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-white/10 transition-colors cursor-pointer"
+                        className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-700 transition-colors cursor-pointer"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -1577,7 +1581,7 @@ export default function PdfMerger() {
                   </div>
 
                   {/* MODAL BODY: PAGE THUMBNAILS GRID */}
-                  <div className="flex-1 overflow-y-auto py-6 my-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pr-1">
+                  <div className="flex-1 overflow-y-auto py-6 my-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pr-1 custom-scrollbar">
                     {isLoadingInspectorPages ? (
                       <div className="col-span-full py-16 flex flex-col items-center justify-center gap-3 text-zinc-400">
                         <Loader2 className="w-8 h-8 animate-spin text-white" />
@@ -1591,17 +1595,17 @@ export default function PdfMerger() {
                       details.map((page) => (
                         <div
                           key={page.pageIndex}
-                          className={`relative bg-zinc-950 border ${page.included ? 'border-white/15' : 'border-red-500/30 opacity-40'} rounded-2xl p-3 flex flex-col justify-between transition-all`}
+                          className={`relative bg-[#121217] border ${page.included ? 'border-zinc-600' : 'border-zinc-800 opacity-40'} rounded-2xl p-3 flex flex-col justify-between transition-all shadow-inner`}
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-white/10 px-2 py-0.5 rounded-md">
+                            <span className="text-[10px] font-bold text-zinc-300 bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-md">
                               #{page.pageIndex + 1}
                             </span>
                             <div className="flex items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => rotatePageClockwise(activeItem.id, page.pageIndex)}
-                                className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md border border-white/10 transition-colors cursor-pointer"
+                                className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md border border-zinc-700 transition-colors cursor-pointer"
                                 title={isEs ? 'Rotar 90°' : 'Rotate 90°'}
                               >
                                 <RotateCw className="w-3 h-3 text-white" />
@@ -1609,7 +1613,7 @@ export default function PdfMerger() {
                               <button
                                 type="button"
                                 onClick={() => togglePageIncluded(activeItem.id, page.pageIndex)}
-                                className={`p-1 ${page.included ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'} rounded-md border transition-colors cursor-pointer`}
+                                className={`p-1 ${page.included ? 'bg-white text-black border-white shadow-sm' : 'bg-zinc-900 text-zinc-600 border-zinc-800'} rounded-md border transition-colors cursor-pointer`}
                                 title={
                                   page.included
                                     ? isEs
@@ -1621,7 +1625,7 @@ export default function PdfMerger() {
                                 }
                               >
                                 {page.included ? (
-                                  <CheckSquare className="w-3 h-3" />
+                                  <CheckSquare className="w-3 h-3 text-black" />
                                 ) : (
                                   <Square className="w-3 h-3" />
                                 )}

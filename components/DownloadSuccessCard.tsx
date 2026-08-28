@@ -1,9 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  Download, CheckCircle2, ShieldCheck, Sparkles, ArrowRight, RotateCcw,
-  Zap, Lock, PenTool, ScanText, RefreshCw, FolderOpen, Trash2, FileText, FileCode, FileSearch, Layers, Eraser, Copy, EyeOff
+import {
+  Download,
+  CheckCircle2,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+  RotateCcw,
+  Zap,
+  Lock,
+  PenTool,
+  ScanText,
+  RefreshCw,
+  FolderOpen,
+  Trash2,
+  FileText,
+  FileCode,
+  FileSearch,
+  Layers,
+  Eraser,
+  Copy,
+  EyeOff,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
@@ -33,7 +51,7 @@ export default function DownloadSuccessCard({
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const router = useRouter();
-  const setGlobalFile = useFileStore(s => s.setGlobalFile);
+  const setGlobalFile = useFileStore((s) => s.setGlobalFile);
 
   const [downloaded, setDownloaded] = useState(false);
 
@@ -63,7 +81,11 @@ export default function DownloadSuccessCard({
           fileToPass = new File([], filename, { type: 'application/pdf' });
         }
         setGlobalFile(fileToPass);
-        toast.info(isEs ? `Cargando ${filename} en la siguiente herramienta...` : `Loading ${filename} into next tool...`);
+        toast.info(
+          isEs
+            ? `Cargando ${filename} en la siguiente herramienta...`
+            : `Loading ${filename} into next tool...`,
+        );
       }
       router.push(targetPath);
     } catch (err) {
@@ -148,35 +170,38 @@ export default function DownloadSuccessCard({
   ];
 
   const recommendedTools = allTools
-    .filter(tool => !currentToolId || tool.id !== currentToolId)
+    .filter((tool) => !currentToolId || tool.id !== currentToolId)
     .slice(0, 6);
-
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 15 }} 
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 font-sans relative overflow-hidden"
+      className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-zinc-500 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 font-sans relative overflow-hidden transition-all duration-300"
     >
-      {/* Glow background accent */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Glow perimetral ambiental de fondo estilo Home Page */}
+      <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-white/10 via-zinc-400/20 to-white/10 opacity-30 blur-xl pointer-events-none" />
 
-      {/* TOP HEADER: SUCCESS ANNOUNCEMENT */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
-        <div className="flex items-center gap-3.5">
-          <div className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-2xl">
-            <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+      {/* Línea de brillo superior tipo haz de luz */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+      {/* TOP HEADER: ANUNCIO DE ÉXITO */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className="bg-zinc-800 p-4 rounded-2xl border border-zinc-500 shadow-[0_4px_20px_rgba(0,0,0,0.5)] flex-shrink-0">
+            <CheckCircle2 className="w-8 h-8 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.35)]" />
           </div>
           <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold rounded-full uppercase tracking-wider">
-                {isEs ? '✓ PROCESO COMPLETADO' : '✓ PROCESS COMPLETED'}
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-white" />
+                {isEs ? 'PROCESO COMPLETADO' : 'PROCESS COMPLETED'}
               </span>
-              <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" /> 100% Local
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-xs font-mono">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local • Privado
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-              {isEs ? '¡Tu archivo está listo para descargar!' : 'Your file is ready for download!'}
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight font-sans uppercase">
+              {isEs ? '¡Tu archivo está listo para descargar!' : 'Your file is ready to download!'}
             </h2>
           </div>
         </div>
@@ -184,26 +209,28 @@ export default function DownloadSuccessCard({
         {onReset && (
           <button
             onClick={onReset}
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono border border-white/10 transition-all cursor-pointer"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-4 py-2.5 rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm flex-shrink-0"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5 text-white" />
             <span>{isEs ? 'Procesar otro archivo' : 'Process another file'}</span>
           </button>
         )}
       </div>
 
-      {/* FILE INFO CARD + MANUAL DOWNLOAD BUTTON */}
-      <div className="bg-zinc-950/80 border border-white/10 rounded-xl p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 overflow-hidden">
-          <div className="bg-zinc-900 border border-white/10 p-3 rounded-xl flex-shrink-0">
-            {outputFormat === 'pdf' && <FileText className="w-6 h-6 text-white" />}
-            {outputFormat === 'txt' && <FileSearch className="w-6 h-6 text-white" />}
-            {outputFormat === 'json' && <FileCode className="w-6 h-6 text-white" />}
-            {outputFormat !== 'pdf' && outputFormat !== 'txt' && outputFormat !== 'json' && <Layers className="w-6 h-6 text-white" />}
+      {/* FILE INFO CARD + BOTÓN PRINCIPAL DE DESCARGA */}
+      <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-5 relative z-10 overflow-hidden shadow-inner">
+        <div className="flex items-center gap-4 overflow-hidden min-w-0">
+          <div className="bg-zinc-800 border border-zinc-600 p-3.5 rounded-2xl flex-shrink-0 shadow-md">
+            {outputFormat === 'pdf' && <FileText className="w-7 h-7 text-white" />}
+            {outputFormat === 'txt' && <FileSearch className="w-7 h-7 text-white" />}
+            {outputFormat === 'json' && <FileCode className="w-7 h-7 text-white" />}
+            {outputFormat !== 'pdf' && outputFormat !== 'txt' && outputFormat !== 'json' && (
+              <Layers className="w-7 h-7 text-white" />
+            )}
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-white font-bold text-sm truncate max-w-[260px] sm:max-w-[380px] font-mono">
+              <span className="text-white font-bold text-sm sm:text-base truncate max-w-[240px] sm:max-w-[400px] font-mono">
                 {filename}
               </span>
               <button
@@ -211,32 +238,34 @@ export default function DownloadSuccessCard({
                   navigator.clipboard.writeText(filename);
                   toast.success(isEs ? 'Nombre copiado' : 'Filename copied');
                 }}
-                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
                 title={isEs ? 'Copiar nombre' : 'Copy filename'}
               >
                 <Copy className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex items-center gap-3 text-xs text-zinc-400 font-mono mt-1">
-              <span>{outputFormat.toUpperCase()}</span>
+            <div className="flex items-center gap-2.5 text-xs text-zinc-400 font-mono mt-1.5 flex-wrap">
+              <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-200 font-bold uppercase">
+                {outputFormat}
+              </span>
               {fileSize && <span>• {fileSize}</span>}
               <span className="text-emerald-400 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 {isEs ? 'Sin carga a servidor' : 'Zero server upload'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* PRIMARY DOWNLOAD BUTTON */}
+        {/* BOTÓN PRINCIPAL DE DESCARGA (ESTILO PÁGINA DE INICIO) */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleManualDownload}
-          className={`relative overflow-hidden flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl font-sans font-bold text-sm transition-all shadow-xl cursor-pointer flex-shrink-0 group ${
+          className={`relative overflow-hidden flex items-center justify-center gap-3 px-8 py-4 rounded-full font-sans font-bold text-sm sm:text-base transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer flex-shrink-0 group ${
             downloaded
-              ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20'
-              : 'bg-white text-black hover:bg-zinc-100 shadow-white/10 ring-2 ring-emerald-500/30'
+              ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-[0_0_25px_rgba(16,185,129,0.35)]'
+              : 'bg-white text-black hover:bg-zinc-100 hover:shadow-[0_0_25px_rgba(255,255,255,0.3)]'
           }`}
         >
           {!downloaded && (
@@ -249,44 +278,53 @@ export default function DownloadSuccessCard({
           )}
           <span>
             {downloaded
-              ? (isEs ? '¡Descargado! Descargar de nuevo' : 'Downloaded! Download again')
-              : (isEs ? 'Descargar Archivo Listo ↓' : 'Download Ready File ↓')}
+              ? isEs
+                ? '¡Descargado! Descargar de nuevo'
+                : 'Downloaded! Download again'
+              : isEs
+                ? 'Descargar Archivo Listo'
+                : 'Download Ready File'}
           </span>
         </motion.button>
       </div>
 
-      {/* RECOMMENDED NEXT TOOLS SECTION */}
-      <div className="pt-2 border-t border-white/10 space-y-3 font-mono">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-zinc-300" />
-            {isEs ? '¿DESEAS CONTINUAR EDITANDO ESTE DOCUMENTO?' : 'WANT TO KEEP EDITING THIS DOCUMENT?'}
+      {/* SECCIÓN DE ENCADENAMIENTO DE HERRAMIENTAS RECOMENDADAS */}
+      <div className="pt-3 border-t border-zinc-800 space-y-3 font-mono relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <span className="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider font-sans">
+            <Sparkles className="w-4 h-4 text-white" />
+            {isEs
+              ? '002 / ¿DESEAS CONTINUAR EDITANDO ESTE DOCUMENTO?'
+              : '002 / WANT TO KEEP EDITING THIS DOCUMENT?'}
           </span>
-          <span className="text-[10px] text-zinc-400 hidden sm:inline-block">
-            {isEs ? 'Selecciona una herramienta para encadenar acciones:' : 'Select a tool to chain actions:'}
+          <span className="text-[10px] text-zinc-400 font-mono">
+            {isEs
+              ? 'Encadena otra acción sin recargar el archivo:'
+              : 'Chain another action without reloading:'}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {recommendedTools.map(tool => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {recommendedTools.map((tool) => {
             const IconComp = tool.icon;
             return (
               <button
                 key={tool.id}
                 onClick={() => handleNavigateToTool(tool.path)}
-                className="bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/30 rounded-xl p-3 flex flex-col items-start justify-between gap-2.5 transition-all group text-left cursor-pointer hover:scale-[1.02]"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#22222c] hover:to-[#141419] border border-zinc-700/80 hover:border-white/60 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-3 transition-all duration-300 group text-left cursor-pointer hover:scale-[1.03] shadow-lg relative overflow-hidden"
               >
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
                 <div className="flex items-center justify-between w-full">
-                  <div className="p-1.5 bg-zinc-950 rounded-lg border border-white/10 group-hover:border-white/30 transition-colors">
+                  <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white group-hover:border-white/50 group-hover:scale-105 transition-all shadow-sm">
                     <IconComp className="w-4 h-4 text-white" />
                   </div>
-                  <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                  <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-white block group-hover:text-white transition-colors">
+                  <span className="text-xs font-bold text-white block group-hover:text-white transition-colors font-sans">
                     {isEs ? tool.titleEs : tool.titleEn}
                   </span>
-                  <span className="text-[9px] text-zinc-400 font-sans block leading-tight mt-0.5">
+                  <span className="text-[10px] text-zinc-400 font-mono block leading-tight mt-1">
                     {isEs ? tool.descEs : tool.descEn}
                   </span>
                 </div>

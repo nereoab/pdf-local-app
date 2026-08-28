@@ -35,6 +35,7 @@ import {
   ShieldCheck,
   Trash2,
   Plus,
+  Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -766,18 +767,20 @@ export default function PdfRepairer() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE MÉTRICAS DE REPARACIÓN */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            {/* Glow background accent */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
-                  <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <Wrench className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA REPARACIÓN' : 'REPAIR RESULT'}
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
                     {isEs ? '¡Documento Reparado con Éxito!' : 'Document Repaired Successfully!'}
                   </h2>
                   <p className="text-xs text-zinc-400 font-mono mt-0.5">
@@ -787,15 +790,15 @@ export default function PdfRepairer() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{isEs ? 'Estructura Reconstruida' : 'Structure Rebuilt'}</span>
               </div>
             </div>
 
             {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
@@ -803,7 +806,7 @@ export default function PdfRepairer() {
                   {formatFileSize(completedResult.originalSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Reparado' : 'Repaired Size'}
                 </span>
@@ -811,20 +814,20 @@ export default function PdfRepairer() {
                   {formatFileSize(completedResult.repairedSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Recuperadas' : 'Pages Recovered'}
                 </span>
-                <span className="text-white font-bold text-lg font-mono mt-0.5">
+                <span className="text-white font-bold text-base font-mono mt-0.5">
                   {completedResult.pagesRecovered}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Perdidas' : 'Pages Lost'}
                 </span>
                 <span
-                  className={`font-bold text-lg font-mono mt-0.5 ${completedResult.pagesLost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}
+                  className={`font-bold text-base font-mono mt-0.5 ${completedResult.pagesLost > 0 ? 'text-amber-400' : 'text-emerald-400'}`}
                 >
                   {completedResult.pagesLost}
                 </span>
@@ -866,17 +869,18 @@ export default function PdfRepairer() {
           >
             {/* PREVIEW CON GRILLA DE MINIATURAS */}
             <div
-              className="bg-[#09090b] border border-white/10 rounded-2xl p-5 flex flex-col shadow-2xl overflow-hidden"
+              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 flex flex-col shadow-2xl overflow-hidden relative"
               style={{
                 height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 minHeight: '300px',
               }}
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4 font-mono flex-shrink-0">
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-4 mb-4 font-mono flex-shrink-0">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 flex-shrink-0">
-                    <Activity className="w-4 h-4 text-emerald-400" />
+                  <div className="bg-zinc-800 p-2 rounded-2xl border border-zinc-700 flex-shrink-0 text-white shadow-sm">
+                    <Activity className="w-4 h-4 text-white" />
                   </div>
                   <div className="overflow-hidden">
                     <span className="text-white font-bold text-xs truncate block max-w-[180px] sm:max-w-[240px]">
@@ -885,15 +889,7 @@ export default function PdfRepairer() {
                     <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5">
                       <span>{formatFileSize(file.size)}</span>
                       <span className="text-zinc-600">•</span>
-                      <span
-                        className={
-                          diagnostic?.severity === 'critical'
-                            ? 'text-red-400 font-bold'
-                            : diagnostic?.severity === 'warning'
-                              ? 'text-amber-400 font-bold'
-                              : 'text-emerald-400 font-bold'
-                        }
-                      >
+                      <span className="text-zinc-300 font-bold">
                         {diagnostic
                           ? isEs
                             ? 'Diagnóstico listo'
@@ -906,16 +902,18 @@ export default function PdfRepairer() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
-                  <div className="bg-zinc-950 border border-white/10 p-0.5 rounded-full flex items-center gap-1">
+                  <div className="bg-zinc-900 border border-zinc-700 p-0.5 rounded-full flex items-center gap-1 shadow-sm">
                     <button
                       onClick={() => setPreviewTab('thumbnails')}
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
                         previewTab === 'thumbnails'
-                          ? 'bg-zinc-800 text-white shadow-sm'
+                          ? 'bg-white text-black shadow-sm'
                           : 'text-zinc-400 hover:text-white'
                       }`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${previewTab === 'thumbnails' ? 'bg-black' : 'bg-white'}`}
+                      />
                       <span>
                         {isEs ? `Miniaturas (${totalPages})` : `Thumbnails (${totalPages})`}
                       </span>
@@ -927,23 +925,15 @@ export default function PdfRepairer() {
                       }}
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
                         previewTab === 'diagnostic'
-                          ? 'bg-zinc-800 text-white shadow-sm'
+                          ? 'bg-white text-black shadow-sm'
                           : 'text-zinc-400 hover:text-white'
                       }`}
                     >
-                      <Activity className="w-3 h-3 text-emerald-400" />
+                      <Activity
+                        className={`w-3 h-3 ${previewTab === 'diagnostic' ? 'text-black' : 'text-zinc-400'}`}
+                      />
                       <span>{isEs ? 'Diagnóstico' : 'Diagnosis'}</span>
-                      {diagnostic && (
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            diagnostic.severity === 'critical'
-                              ? 'bg-red-400'
-                              : diagnostic.severity === 'warning'
-                                ? 'bg-amber-400'
-                                : 'bg-emerald-400'
-                          }`}
-                        />
-                      )}
+                      {diagnostic && <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />}
                     </button>
                   </div>
                   <button
@@ -1230,11 +1220,12 @@ export default function PdfRepairer() {
           <div className="lg:col-span-7 flex flex-col">
             <div
               ref={controlPanelRef}
-              className="bg-[#09090b] border border-white ring-2 ring-white/20 rounded-2xl p-4 sm:p-5 transition-all duration-300 flex flex-col justify-between shadow-2xl font-sans"
+              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between shadow-2xl font-sans relative overflow-hidden"
             >
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               <div>
                 {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
+                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3 font-sans">
                   <div>
                     <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
                       002 / CONFIGURACIÓN
@@ -1243,7 +1234,7 @@ export default function PdfRepairer() {
                       PANEL DE CONTROL
                     </h2>
                   </div>
-                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
                     <Activity className="w-5 h-5 text-white" />
                   </div>
                 </div>
@@ -1252,19 +1243,17 @@ export default function PdfRepairer() {
                 <button
                   onClick={runPreliminaryDiagnosis}
                   disabled={isProcessing}
-                  className="w-full mb-3 flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/20 text-zinc-300 hover:text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer disabled:opacity-40 font-mono shadow-sm"
+                  className="w-full mb-3 flex items-center justify-center gap-2 bg-[#121217] hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-500 text-zinc-300 hover:text-white font-bold py-2.5 px-4 rounded-2xl text-xs transition-all cursor-pointer disabled:opacity-40 font-mono shadow-sm"
                 >
-                  <FileWarning className="w-3.5 h-3.5 text-amber-400" />
+                  <FileWarning className="w-3.5 h-3.5 text-zinc-400" />
                   {isEs ? 'EJECUTAR DIAGNÓSTICO PREVIO' : 'RUN PRELIMINARY DIAGNOSIS'}
                 </button>
 
                 {/* RESUMEN DEL DIAGNÓSTICO (INMEDIATO EN PANEL DERECHO) */}
                 {diagnostic && (
-                  <div
-                    className={`p-3 rounded-xl border mb-4 font-mono text-xs ${severityColor(diagnostic.severity)} flex flex-col gap-1.5 animate-fadeIn`}
-                  >
+                  <div className="p-3.5 rounded-2xl border border-zinc-700/80 bg-[#121217] mb-4 font-mono text-xs text-zinc-300 flex flex-col gap-1.5 animate-fadeIn shadow-inner">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold">{diagnostic.summary}</span>
+                      <span className="font-bold text-white">{diagnostic.summary}</span>
                       <button
                         type="button"
                         onClick={() => setPreviewTab('diagnostic')}
@@ -1273,7 +1262,7 @@ export default function PdfRepairer() {
                         {isEs ? 'Ver en visor →' : 'View in canvas →'}
                       </button>
                     </div>
-                    <p className="text-[10px] opacity-80">
+                    <p className="text-[10px] opacity-80 text-zinc-400">
                       {diagnostic.issues.length}{' '}
                       {isEs
                         ? 'componentes analizados. Resultados visibles en el visor izquierdo.'
@@ -1290,15 +1279,15 @@ export default function PdfRepairer() {
                   <div className="grid grid-cols-2 gap-2">
                     <div
                       onClick={() => setRepairMode('smart')}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${repairMode === 'smart' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-white/10 bg-zinc-900/80 text-zinc-400 hover:text-white'}`}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${repairMode === 'smart' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'}`}
                     >
                       <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
                         <span className="flex items-center gap-1.5">
-                          <Zap className="w-3 h-3 text-emerald-400" />
+                          <Zap className="w-3 h-3 text-white" />
                           Smart Repair
                         </span>
                         <div
-                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'smart' ? 'border-white bg-white' : 'border-zinc-500'}`}
+                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'smart' ? 'border-white bg-white' : 'border-zinc-600'}`}
                         >
                           {repairMode === 'smart' && (
                             <div className="w-1.5 h-1.5 rounded-full bg-black" />
@@ -1308,21 +1297,21 @@ export default function PdfRepairer() {
                       <p className="text-[10px] text-zinc-400 leading-tight">
                         {isEs ? 'XRef + metadatos' : 'XRef + metadata'}
                       </p>
-                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-emerald-900/60 text-emerald-400 px-1.5 py-0.5 rounded">
+                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-lg border border-zinc-700">
                         Estructural
                       </span>
                     </div>
                     <div
                       onClick={() => setRepairMode('deep')}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${repairMode === 'deep' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-white/10 bg-zinc-900/80 text-zinc-400 hover:text-white'}`}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${repairMode === 'deep' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'}`}
                     >
                       <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
                         <span className="flex items-center gap-1.5">
-                          <Activity className="w-3 h-3 text-blue-400" />
+                          <Activity className="w-3 h-3 text-white" />
                           Deep Rebuild
                         </span>
                         <div
-                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'deep' ? 'border-white bg-white' : 'border-zinc-500'}`}
+                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'deep' ? 'border-white bg-white' : 'border-zinc-600'}`}
                         >
                           {repairMode === 'deep' && (
                             <div className="w-1.5 h-1.5 rounded-full bg-black" />
@@ -1332,7 +1321,7 @@ export default function PdfRepairer() {
                       <p className="text-[10px] text-zinc-400 leading-tight">
                         {isEs ? 'Render visual avanzado' : 'Advanced visual render'}
                       </p>
-                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-blue-900/60 text-blue-400 px-1.5 py-0.5 rounded">
+                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-lg border border-zinc-700">
                         Visual
                       </span>
                     </div>

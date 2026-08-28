@@ -793,38 +793,39 @@ export default function PdfOrganizer() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE REORDENAMIENTO */}
-          <div className="bg-[#09090b] border border-white/20 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE REORDENAMIENTO (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
-                  <LayoutGrid className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <LayoutGrid className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DEL REORDENAMIENTO DE PÁGINAS' : 'PAGE REORDER RESULT'}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs
                       ? '¡Documento reorganizado con éxito!'
                       : 'Document reordered successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1">
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-zinc-800 text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
@@ -832,7 +833,7 @@ export default function PdfOrganizer() {
                   {completedResult.originalSize}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Totales' : 'Total Pages'}
                 </span>
@@ -840,7 +841,7 @@ export default function PdfOrganizer() {
                   {completedResult.totalPages} {isEs ? 'Páginas' : 'Pages'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
                 </span>
@@ -956,9 +957,10 @@ export default function PdfOrganizer() {
           className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
           {/* LADO IZQUIERDO: MESA DE MONTAJE Y REORDENAMIENTO */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col min-h-[580px] lg:h-[700px]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+          <div className="lg:col-span-7 xl:col-span-8 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col min-h-[580px] lg:h-[700px] relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
+              <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
                 <LayoutGrid className="w-4 h-4 text-white" />
                 <span>
                   {isEs
@@ -972,7 +974,7 @@ export default function PdfOrganizer() {
                   type="button"
                   onClick={handleUndo}
                   disabled={historyLength === 0}
-                  className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-zinc-900 text-zinc-300 hover:text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/10 transition-colors cursor-pointer disabled:cursor-not-allowed font-mono"
+                  className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 text-zinc-200 hover:text-white text-[11px] font-bold px-3 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer disabled:cursor-not-allowed font-mono shadow-sm"
                   title={isEs ? 'Deshacer último cambio (Ctrl+Z)' : 'Undo last action (Ctrl+Z)'}
                 >
                   <Undo2 className="w-3 h-3" />
@@ -980,12 +982,14 @@ export default function PdfOrganizer() {
                 </button>
 
                 {/* SELECTOR DE ZOOM DE CUADRÍCULA */}
-                <div className="flex items-center bg-zinc-900 border border-white/10 rounded-lg p-0.5 text-[10px] font-mono">
+                <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-xl p-0.5 text-[10px] font-mono shadow-inner">
                   <button
                     type="button"
                     onClick={() => setGridZoom('sm')}
-                    className={`px-2 py-0.5 rounded transition-all font-bold ${
-                      gridZoom === 'sm' ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                    className={`px-2.5 py-0.5 rounded-lg transition-all font-bold ${
+                      gridZoom === 'sm'
+                        ? 'bg-white text-black shadow'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                     title={isEs ? 'Vista Compacta (Miniaturas pequeñas)' : 'Compact View'}
                   >
@@ -994,8 +998,10 @@ export default function PdfOrganizer() {
                   <button
                     type="button"
                     onClick={() => setGridZoom('md')}
-                    className={`px-2 py-0.5 rounded transition-all font-bold ${
-                      gridZoom === 'md' ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                    className={`px-2.5 py-0.5 rounded-lg transition-all font-bold ${
+                      gridZoom === 'md'
+                        ? 'bg-white text-black shadow'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                     title={isEs ? 'Vista Estándar' : 'Standard View'}
                   >
@@ -1004,8 +1010,10 @@ export default function PdfOrganizer() {
                   <button
                     type="button"
                     onClick={() => setGridZoom('lg')}
-                    className={`px-2 py-0.5 rounded transition-all font-bold ${
-                      gridZoom === 'lg' ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                    className={`px-2.5 py-0.5 rounded-lg transition-all font-bold ${
+                      gridZoom === 'lg'
+                        ? 'bg-white text-black shadow'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                     title={isEs ? 'Vista Detalle (Miniaturas grandes)' : 'Large View'}
                   >
@@ -1016,14 +1024,14 @@ export default function PdfOrganizer() {
                 <button
                   type="button"
                   onClick={() => addMoreInputRef.current?.click()}
-                  className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-white/10 transition-colors cursor-pointer font-mono"
+                  className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer font-mono shadow-sm"
                 >
                   <Plus className="w-3 h-3 text-white" />
                   {isEs ? 'Añadir más' : 'Add more'}
                 </button>
 
-                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[10px]">
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" /> 100% Local
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[10px] shadow-sm">
+                  <ShieldCheck className="w-3 h-3 text-zinc-400" /> 100% Local
                 </div>
               </div>
             </div>
@@ -1203,10 +1211,11 @@ export default function PdfOrganizer() {
           </div>
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-[#09090b] border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between min-h-[580px] lg:h-[700px]">
+          <div className="lg:col-span-5 xl:col-span-4 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between min-h-[580px] lg:h-[700px] relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="space-y-2.5 font-mono">
               {/* TÍTULO PRINCIPAL CON MÉTRICAS EN VIVO */}
-              <div className="pb-2 border-b border-white/10 flex items-center justify-between">
+              <div className="pb-2 border-b border-zinc-800 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
                     {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
@@ -1219,7 +1228,7 @@ export default function PdfOrganizer() {
                   <div className="text-[10px] text-zinc-400 font-mono">
                     <span className="text-white font-bold">{pages.length}</span>{' '}
                     {isEs ? 'págs' : 'pgs'} •{' '}
-                    <span className="text-amber-400 font-bold">
+                    <span className="text-zinc-300 font-bold">
                       {pages.filter((p) => p.rotation !== 0).length}
                     </span>{' '}
                     {isEs ? 'rot.' : 'rot.'}
@@ -1238,7 +1247,7 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={handleInvertOrder}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
                     title={isEs ? 'Invertir orden de todas las páginas' : 'Reverse all pages'}
                   >
                     <ArrowLeftRight className="w-3 h-3 text-white" />
@@ -1249,7 +1258,7 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={() => handleGroupEvensOdds(true)}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
                     title={isEs ? 'Agrupar páginas impares primero' : 'Odds first'}
                   >
                     <ListOrdered className="w-3 h-3 text-white" />
@@ -1260,7 +1269,7 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={() => handleGroupEvensOdds(false)}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
                     title={isEs ? 'Agrupar páginas pares primero' : 'Evens first'}
                   >
                     <ListOrdered className="w-3 h-3 text-white" />
@@ -1271,14 +1280,14 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={() => handleDuplexInterleave(true)}
                     disabled={pages.length < 2}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
                     title={
                       isEs
                         ? 'Intercalar escaneo dúplex (impares + pares invertidos)'
                         : 'Interleave duplex scan'
                     }
                   >
-                    <RefreshCw className="w-3 h-3 text-emerald-400" />
+                    <RefreshCw className="w-3 h-3 text-white" />
                     <span>{isEs ? 'Dúplex' : 'Duplex'}</span>
                   </button>
 

@@ -539,16 +539,19 @@ export default function PdfEditor() {
           className="w-full flex flex-col"
         >
           {/* BARRA SUPERIOR DE ACCIONES */}
-          <div className="w-full mb-4 flex justify-between items-center bg-[#09090b] border border-white/10 p-4 rounded-2xl shadow-2xl font-mono">
+          <div className="w-full mb-4 flex justify-between items-center bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 rounded-3xl p-4 sm:p-5 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex items-center gap-3 font-bold text-xs text-white">
-              <FileText className="w-4 h-4 text-white" />
+              <div className="p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-white shadow-sm">
+                <FileText className="w-4 h-4 text-white" />
+              </div>
               <span className="truncate max-w-[200px] sm:max-w-md">{file?.name}</span>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 onClick={handleStartOver}
-                className="flex items-center gap-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-300 hover:text-red-400 border border-white/10 px-3.5 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer"
+                className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 px-4 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm"
               >
                 <X className="w-3.5 h-3.5" /> <span>{isEs ? 'Cancelar' : 'Cancel'}</span>
               </button>
@@ -556,7 +559,7 @@ export default function PdfEditor() {
               <button
                 onClick={handleFinishEditing}
                 disabled={!isLoaded || isProcessing}
-                className="flex items-center gap-2 bg-white text-black hover:bg-zinc-200 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-sans font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-sans font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
               >
                 {isProcessing ? (
                   <Loader2 className="w-4 h-4 animate-spin text-black" />
@@ -575,7 +578,7 @@ export default function PdfEditor() {
           </div>
 
           {/* CONTENEDOR DEL VISOR WEBVIEWER */}
-          <div className="w-full h-[80vh] min-h-[650px] border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative bg-[#09090b]">
+          <div className="w-full h-[80vh] min-h-[650px] border border-zinc-700/80 rounded-3xl overflow-hidden shadow-2xl relative bg-[#09090b]">
             {!isLoaded && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#09090b] z-10 font-mono gap-3">
                 <Loader2 className="w-10 h-10 animate-spin text-white" />
@@ -595,7 +598,8 @@ export default function PdfEditor() {
           </div>
 
           {/* OPCIONES AVANZADAS PERMANENTEMENTE VISIBLES */}
-          <div className="w-full bg-[#09090b] border border-white/10 p-4 rounded-2xl mt-4 font-mono text-xs space-y-3">
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 p-6 rounded-3xl mt-4 font-mono text-xs space-y-4 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
               <Sliders className="w-4 h-4 text-white" />
               <span>
@@ -607,7 +611,7 @@ export default function PdfEditor() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1 font-bold">
                   {isEs ? 'Prefijo del Archivo Resultante:' : 'Output File Prefix:'}
                 </label>
                 <input
@@ -615,12 +619,12 @@ export default function PdfEditor() {
                   value={filePrefix}
                   onChange={(e) => setFilePrefix(e.target.value)}
                   placeholder="Documento_Editado"
-                  className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                  className="w-full p-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono shadow-inner"
                 />
               </div>
 
               <div className="flex items-center">
-                <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer bg-zinc-950 p-2.5 rounded-xl border border-white/10 w-full">
+                <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer bg-[#121217] p-3 rounded-2xl border border-zinc-700/80 w-full shadow-inner">
                   <input
                     type="checkbox"
                     checked={renumberPages}
@@ -637,7 +641,7 @@ export default function PdfEditor() {
             </div>
 
             {/* METADATOS DEL DOCUMENTO RESULTANTE */}
-            <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
+            <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono shadow-inner">
               <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">
                 {isEs ? 'METADATOS DEL PDF EDITADO' : 'EDITED PDF METADATA'}
               </label>
@@ -696,36 +700,37 @@ export default function PdfEditor() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE EDICIÓN */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE EDICIÓN (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
-                  <Type className="w-6 h-6" />
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <Type className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA EDICIÓN DE TEXTO' : 'TEXT EDITING RESULT'}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs ? '¡Documento modificado con éxito!' : 'Document edited successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-emerald-400 font-extrabold text-sm sm:text-base flex items-center gap-1">
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/10 text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
@@ -733,7 +738,7 @@ export default function PdfEditor() {
                   {file ? formatFileSize(file.size) : '—'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Editado' : 'Edited Size'}
                 </span>
@@ -741,7 +746,7 @@ export default function PdfEditor() {
                   {editedBlob ? formatFileSize(editedBlob.size) : '—'}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
                 </span>

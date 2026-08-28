@@ -113,11 +113,6 @@ export default function PdfSigner() {
   const [signerLocation, setSignerLocation] = useState<string>('');
   const [includeHash, setIncludeHash] = useState<boolean>(true);
 
-  // METADATOS PERSONALIZADOS
-  const [docTitle, setDocTitle] = useState<string>('');
-  const [docAuthor, setDocAuthor] = useState<string>('');
-  const [docSubject, setDocSubject] = useState<string>('');
-
   // EMPRESARIAL: Certificado digital
   const [certFile, setCertFile] = useState<File | null>(null);
   const [certPassword, setCertPassword] = useState<string>('');
@@ -137,14 +132,14 @@ export default function PdfSigner() {
   const controlPanelRef = useRef<HTMLDivElement>(null);
   const topContainerRef = useRef<HTMLDivElement>(null);
   const successContainerRef = useRef<HTMLDivElement>(null);
-  const [previewHeight, setPreviewHeight] = useState<number>(0);
+  const [sampleHash] = useState(() => Math.random().toString(36).substring(2, 10).toUpperCase());
   const pageCacheRef = useRef<Map<number, string>>(new Map());
   const [pageInput, setPageInput] = useState<string>('1');
   const [isRenderingPage, setIsRenderingPage] = useState<boolean>(false);
 
   // Scroll automático suave e inmediato hacia el inicio de la herramienta (debajo del Navbar global)
   useEffect(() => {
-    if (completedResult) {
+    if (file || completedResult) {
       const timer = setTimeout(() => {
         if (topContainerRef.current) {
           topContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -152,21 +147,7 @@ export default function PdfSigner() {
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [completedResult]);
-
-  // Sincronizar dinámicamente la altura de la vista previa con el panel de control
-  useEffect(() => {
-    if (!controlPanelRef.current) return;
-    const updateHeight = () => {
-      if (controlPanelRef.current) {
-        setPreviewHeight(controlPanelRef.current.offsetHeight);
-      }
-    };
-    updateHeight();
-    const resizeObserver = new ResizeObserver(updateHeight);
-    resizeObserver.observe(controlPanelRef.current);
-    return () => resizeObserver.disconnect();
-  }, [file, isEncrypted, isUnlocked, creationTab, isBatchMode, enterpriseMode]);
+  }, [file, completedResult]);
 
   // Ajustar showPrintedName automáticamente según la pestaña de creación
   const handleTabChange = (tab: CreationTab) => {
@@ -714,11 +695,6 @@ export default function PdfSigner() {
             showPrintedName,
             includeDate,
             includeHash,
-            metadata: {
-              title: docTitle.trim() || undefined,
-              author: docAuthor.trim() || undefined,
-              subject: docSubject.trim() || undefined,
-            },
           },
         };
 
@@ -834,7 +810,9 @@ export default function PdfSigner() {
       />
 
       {/* HEADER */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden">
+      <div
+        className={`w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#0d0d12] border border-zinc-700 ${file ? 'px-4 py-2.5 mb-3 rounded-xl' : 'px-6 py-4 mb-6 rounded-2xl'} shadow-2xl font-mono relative overflow-hidden`}
+      >
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex items-center gap-4">
           <Link
@@ -903,28 +881,29 @@ export default function PdfSigner() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE FIRMA */}
-          <div className="bg-[#09090b] border border-white/20 rounded-2xl p-6 shadow-2xl font-mono relative overflow-hidden">
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE FIRMA (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
-                  <PenTool className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <PenTool className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA FIRMA DIGITAL' : 'DIGITAL SIGNATURE RESULT'}
                   </span>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-white font-sans">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs ? '¡Documento firmado con éxito!' : 'Document signed successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-xl">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] text-zinc-400 font-bold">
                     {isEs ? 'Seguridad y Validación' : 'Security & Validation'}
                   </div>
-                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1">
+                  <div className="text-white font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
                     ✓{' '}
                     {enterpriseMode
                       ? isEs
@@ -938,8 +917,8 @@ export default function PdfSigner() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-zinc-800 text-xs">
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Firmante' : 'Signer'}
                 </span>
@@ -950,7 +929,7 @@ export default function PdfSigner() {
                   {fullName || (isEs ? 'Firma Gráfica' : 'Graphic Signature')}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Firmadas' : 'Signed Pages'}
                 </span>
@@ -962,7 +941,7 @@ export default function PdfSigner() {
                       : customPageRange}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-3.5 rounded-xl border border-zinc-800 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Estilo de Firma' : 'Signature Style'}
                 </span>
@@ -1034,16 +1013,14 @@ export default function PdfSigner() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
         >
           {/* LADO IZQUIERDO: VISOR ENFOCADO DE ALTA RESOLUCIÓN (COL-SPAN-7) */}
-          <div
-            style={previewHeight > 0 ? { height: `${previewHeight}px` } : undefined}
-            className="lg:col-span-7 xl:col-span-7 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between min-h-0 relative overflow-hidden"
-          >
+          <div className="lg:col-span-7 xl:col-span-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between h-full min-h-0 relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             {/* CABECERA SUPERIOR CON NAVEGACIÓN INTELIGENTE Y SALTOS RÁPIDOS */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10 font-mono text-xs text-zinc-400 font-bold w-full">
-              <div className="flex items-center gap-2 text-zinc-300 text-xs font-bold">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2 pb-2.5 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold w-full">
+              <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
                 <PenTool className="w-4 h-4 text-white" />
                 <span>
                   {isEs
@@ -1053,13 +1030,13 @@ export default function PdfSigner() {
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {totalPages > 1 && (
-                  <div className="flex items-center gap-1 bg-zinc-900 border border-white/10 px-1.5 py-1 rounded-lg text-xs font-mono text-white shadow-sm">
+                  <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-700 px-2 py-1 rounded-xl text-xs font-mono text-white shadow-sm">
                     {/* BOTÓN PRIMERA PÁGINA */}
                     <button
                       type="button"
                       disabled={targetPage <= 1}
                       onClick={() => setTargetPage(1)}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={isEs ? 'Ir a la primera página (Pág. 1)' : 'First page (Page 1)'}
                     >
                       <ChevronsLeft className="w-3.5 h-3.5" />
@@ -1069,7 +1046,7 @@ export default function PdfSigner() {
                       type="button"
                       disabled={targetPage <= 1}
                       onClick={() => setTargetPage((prev) => Math.max(1, prev - 1))}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={isEs ? 'Página anterior' : 'Previous page'}
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
@@ -1104,7 +1081,7 @@ export default function PdfSigner() {
                             }
                           }
                         }}
-                        className="w-10 bg-zinc-950 border border-white/20 rounded px-1 py-0.5 text-center text-xs text-white font-mono font-bold outline-none focus:border-white"
+                        className="w-10 bg-zinc-950 border border-zinc-700 rounded-lg px-1 py-0.5 text-center text-xs text-white font-mono font-bold outline-none focus:border-white"
                       />
                       <span className="text-[11px] text-zinc-400 font-mono">/ {totalPages}</span>
                     </div>
@@ -1114,7 +1091,7 @@ export default function PdfSigner() {
                       type="button"
                       disabled={targetPage >= totalPages}
                       onClick={() => setTargetPage((prev) => Math.min(totalPages, prev + 1))}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={isEs ? 'Página siguiente' : 'Next page'}
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -1125,7 +1102,7 @@ export default function PdfSigner() {
                       type="button"
                       disabled={targetPage >= totalPages}
                       onClick={() => setTargetPage(totalPages)}
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
+                      className="p-1 hover:bg-zinc-800 rounded-lg disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-all"
                       title={
                         isEs
                           ? `Ir a la última página (Pág. ${totalPages} - Línea de firma)`
@@ -1136,8 +1113,8 @@ export default function PdfSigner() {
                     </button>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-emerald-400 text-[11px]">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" /> 100% Local
                 </div>
               </div>
             </div>
@@ -1199,68 +1176,77 @@ export default function PdfSigner() {
                       : `Page ${targetPage} of ${totalPages}`}
                   </div>
 
-                  {/* DRAG & DROP OVERLAY DE LA FIRMA */}
+                  {/* DRAG & DROP OVERLAY DE LA FIRMA (VISTA FIEL WYSIWYG AL PDF FINAL) */}
                   <div
                     ref={sigOverlayRef}
                     className={`absolute z-30 cursor-grab ${isDraggingSig ? 'cursor-grabbing' : ''}`}
                     style={{
                       left: `${freeX}%`,
                       top: `${freeY}%`,
-                      transform: 'translate(-50%, -50%)',
+                      transform: `translate(-50%, -50%) scale(${scale / 100})`,
+                      transformOrigin: 'center center',
                       transition: isDraggingSig ? 'none' : 'left 0.15s ease, top 0.15s ease',
                     }}
                     onMouseDown={handleSigDragStart}
                     onTouchStart={handleSigDragStart}
                   >
-                    <div className="border-2 border-dashed border-emerald-400 ring-2 ring-emerald-500/30 bg-zinc-950/90 backdrop-blur-md p-3 rounded-xl shadow-2xl flex flex-col items-center justify-center min-w-[180px] max-w-[240px] font-mono text-center select-none">
+                    <div className="relative group border-2 border-dashed border-blue-500/60 hover:border-blue-600 bg-white/20 hover:bg-white/40 p-2 rounded-lg transition-all flex flex-col items-center justify-center min-w-[170px] max-w-[240px] select-none shadow-sm">
+                      {/* Tooltip flotante al pasar el cursor */}
+                      <div className="opacity-0 group-hover:opacity-100 absolute -top-6 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[9px] font-mono font-bold px-2 py-0.5 rounded shadow pointer-events-none transition-opacity flex items-center gap-1 whitespace-nowrap z-40">
+                        <Move className="w-2.5 h-2.5" />
+                        <span>{isEs ? 'Mover firma' : 'Move signature'}</span>
+                      </div>
+
                       {/* 1. Imagen / Trazo manuscrito */}
                       {signatureDataUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={signatureDataUrl}
                           alt="Firma"
-                          className="max-h-[55px] object-contain mb-1 pointer-events-none"
+                          className="max-h-[50px] w-auto object-contain mb-1 pointer-events-none"
                         />
                       ) : (
-                        <span className="font-serif italic font-bold text-white text-base mb-1">
-                          {fullName}
+                        <span
+                          className="font-serif italic font-bold text-base mb-1"
+                          style={{ color: strokeColor }}
+                        >
+                          {fullName || (isEs ? 'Firma Digital' : 'Digital Signature')}
                         </span>
                       )}
 
-                      {/* 2. Línea divisoria elegante */}
-                      <div className="w-full h-px bg-white/20 my-1" />
+                      {/* 2. Línea divisoria elegante estilo sello */}
+                      <div className="w-full h-[1.5px] bg-zinc-800 my-1" />
 
-                      {/* 3. Nombre impreso solo si showPrintedName es true */}
-                      {showPrintedName && (
-                        <span className="font-bold text-white text-xs block font-sans uppercase tracking-tight mb-0.5">
-                          {fullName || 'Firmante'}
-                        </span>
-                      )}
+                      {/* 3. Textos formateados fielmente como quedarán en el PDF */}
+                      <div className="w-full text-left font-sans space-y-0.5 mt-0.5">
+                        {showPrintedName && (
+                          <span className="font-bold text-zinc-900 text-[11px] block font-sans uppercase tracking-tight leading-tight">
+                            {fullName || (isEs ? 'FIRMANTE' : 'SIGNER')}
+                          </span>
+                        )}
 
-                      {/* 4. Cargo / Razón social */}
-                      {signerRole && (
-                        <span className="text-[10px] text-zinc-300 font-bold uppercase block">
-                          {signerRole}
-                        </span>
-                      )}
+                        {signerRole && (
+                          <span className="text-[9.5px] text-zinc-700 font-semibold uppercase block leading-tight font-sans">
+                            {signerRole}
+                          </span>
+                        )}
 
-                      {/* 5. Fecha y Hora */}
-                      {includeDate && (
-                        <span className="text-[9px] text-zinc-400 mt-0.5 block">
-                          {new Date().toLocaleDateString('es-ES')} •{' '}
-                          {new Date().toLocaleTimeString('es-ES', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      )}
+                        {includeDate && (
+                          <span className="text-[8.5px] text-zinc-600 block leading-tight font-mono">
+                            Firmado: {new Date().toLocaleDateString('es-ES')}{' '}
+                            {new Date().toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        )}
 
-                      {/* 6. Hash de verificación */}
-                      {includeHash && (
-                        <span className="text-[8px] text-emerald-400 mt-0.5 block font-mono font-bold">
-                          HASH: {Math.random().toString(36).substring(2, 10).toUpperCase()}
-                        </span>
-                      )}
+                        {includeHash && (
+                          <span className="text-[7.5px] text-emerald-700 block font-mono font-bold leading-tight">
+                            HASH: {sampleHash}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1268,7 +1254,7 @@ export default function PdfSigner() {
             </div>
 
             {/* PIE DE VISTA PREVIA CON ESTADO Y AYUDA */}
-            <div className="mt-2 pt-2 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-zinc-400 font-mono w-full">
+            <div className="mt-auto pt-2 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-zinc-400 font-mono w-full">
               <div className="flex items-center gap-1.5 text-zinc-300">
                 <span className="px-2 py-0.5 bg-zinc-900 border border-white/10 rounded text-emerald-400 font-bold">
                   {pageScope === 'all'
@@ -1298,10 +1284,11 @@ export default function PdfSigner() {
           {/* LADO DERECHO: PANEL DE CONTROL (AMPLIADO A COL-SPAN-5) */}
           <div
             ref={controlPanelRef}
-            className="lg:col-span-5 xl:col-span-5 bg-[#09090b] border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-6"
+            className="lg:col-span-5 xl:col-span-5 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between space-y-4 h-full relative overflow-hidden"
           >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div>
-              <div className="mb-5 pb-3 border-b border-white/10">
+              <div className="mb-5 pb-3 border-b border-zinc-800">
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
                   {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
                 </span>
@@ -1789,51 +1776,6 @@ export default function PdfSigner() {
                       {isEs ? 'Incluir Código Hash de Verificación' : 'Include Verification Hash'}
                     </span>
                   </label>
-                </div>
-
-                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
-                <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">
-                    {isEs ? 'METADATOS DEL PDF FIRMADO' : 'SIGNED PDF METADATA'}
-                  </label>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Título:' : 'Title:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Contrato_Firmado_2026' : 'Ex: Signed_Contract_2026'}
-                      value={docTitle}
-                      onChange={(e) => setDocTitle(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
-                      value={docAuthor}
-                      onChange={(e) => setDocAuthor(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={
-                        isEs ? 'Ej: Firma de acuerdo legal' : 'Ex: Legal agreement signing'
-                      }
-                      value={docSubject}
-                      onChange={(e) => setDocSubject(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
                 </div>
               </div>
             </div>

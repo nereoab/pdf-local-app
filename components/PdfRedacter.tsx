@@ -1189,18 +1189,20 @@ export default function PdfRedacter() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE MÉTRICAS */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            {/* Glow background accent */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
-                  <Check className="w-7 h-7 text-emerald-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <EyeOff className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA CENSURA' : 'REDACTION RESULT'}
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
                     {isEs ? '¡Documento Censurado con Éxito!' : 'Document Redacted Successfully!'}
                   </h2>
                   <p className="text-xs text-zinc-400 font-mono mt-0.5">
@@ -1210,15 +1212,15 @@ export default function PdfRedacter() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{isEs ? 'True Redaction Aplicado' : 'True Redaction Applied'}</span>
               </div>
             </div>
 
             {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
@@ -1226,7 +1228,7 @@ export default function PdfRedacter() {
                   {formatFileSize(completedResult.originalSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Censurado' : 'Redacted Size'}
                 </span>
@@ -1234,19 +1236,19 @@ export default function PdfRedacter() {
                   {formatFileSize(completedResult.redactedSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Parches' : 'Patches'}
                 </span>
-                <span className="text-white font-bold text-lg font-mono mt-0.5">
+                <span className="text-white font-bold text-base font-mono mt-0.5">
                   {completedResult.totalRedactions}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas Afectadas' : 'Affected Pages'}
                 </span>
-                <span className="text-amber-400 font-bold text-lg font-mono mt-0.5">
+                <span className="text-amber-400 font-bold text-base font-mono mt-0.5">
                   {completedResult.pagesWithRedactions}
                 </span>
               </div>
@@ -1281,16 +1283,17 @@ export default function PdfRedacter() {
           {/* LADO IZQUIERDO: VISOR DE PDF (7 COLUMNAS) */}
           <div className="lg:col-span-7 flex flex-col">
             <div
-              className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
+              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
               style={{
                 height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 minHeight: '400px',
               }}
             >
-              <div className="bg-zinc-900 border-b border-white/10 p-3 flex justify-between items-center z-10 flex-shrink-0 font-mono">
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+              <div className="bg-[#121217] border-b border-zinc-800 p-3.5 flex justify-between items-center z-10 flex-shrink-0 font-mono">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="bg-white/10 p-2 rounded-xl border border-white/10 flex-shrink-0">
+                  <div className="bg-zinc-800 p-2 rounded-2xl border border-zinc-700 flex-shrink-0 text-white shadow-sm">
                     <FileText className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex flex-col overflow-hidden">
@@ -1301,9 +1304,7 @@ export default function PdfRedacter() {
                       <span>{formatFileSize(file.size)}</span>
                       <span className="text-zinc-600">•</span>
                       <span
-                        className={
-                          redactions.length > 0 ? 'text-amber-400 font-bold' : 'text-zinc-500'
-                        }
+                        className={redactions.length > 0 ? 'text-white font-bold' : 'text-zinc-500'}
                       >
                         {redactions.length > 0
                           ? `${redactions.length} ${isEs ? 'parche(s) activos' : 'patch(es) active'}`
@@ -1318,7 +1319,7 @@ export default function PdfRedacter() {
                   <button
                     onClick={resetRedacter}
                     disabled={isProcessing}
-                    className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-white/10 rounded-xl transition-all cursor-pointer"
+                    className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-zinc-700 rounded-xl transition-all cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1326,18 +1327,18 @@ export default function PdfRedacter() {
               </div>
 
               {/* Toolbar */}
-              <div className="bg-zinc-900 border-b border-white/10 px-3.5 py-1.5 flex items-center justify-between font-mono text-xs text-zinc-400 flex-shrink-0">
+              <div className="bg-[#18181f] border-b border-zinc-800 px-3.5 py-2 flex items-center justify-between font-mono text-xs text-zinc-400 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setActiveTool('draw')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${activeTool === 'draw' ? 'bg-white text-black border-white font-bold' : 'bg-zinc-800 border-white/10 text-zinc-400 hover:text-white'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition-all cursor-pointer ${activeTool === 'draw' ? 'bg-white text-black border-white font-bold shadow-sm' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'}`}
                   >
                     <Square className="w-3.5 h-3.5" />
                     <span className="text-[10px] font-semibold">{isEs ? 'Dibujar' : 'Draw'}</span>
                   </button>
                   <button
                     onClick={() => setActiveTool('erase')}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${activeTool === 'erase' ? 'bg-red-500 text-white border-red-500 font-bold' : 'bg-zinc-800 border-white/10 text-zinc-400 hover:text-white'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition-all cursor-pointer ${activeTool === 'erase' ? 'bg-zinc-800 text-white border-zinc-500 font-bold shadow-sm' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white'}`}
                   >
                     <Eraser className="w-3.5 h-3.5" />
                     <span className="text-[10px] font-semibold">{isEs ? 'Borrar' : 'Erase'}</span>
@@ -1347,7 +1348,7 @@ export default function PdfRedacter() {
                   <button
                     onClick={handleUndo}
                     disabled={undoStack.length === 0}
-                    className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-white/10 text-zinc-400 disabled:opacity-30 transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 disabled:opacity-30 transition-all cursor-pointer"
                     title={isEs ? 'Deshacer (Ctrl+Z)' : 'Undo (Ctrl+Z)'}
                   >
                     <ArrowLeft className="w-3 h-3" />
@@ -1355,21 +1356,21 @@ export default function PdfRedacter() {
                   <button
                     onClick={handleRedo}
                     disabled={redoStack.length === 0}
-                    className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-white/10 text-zinc-400 disabled:opacity-30 transition-all cursor-pointer"
+                    className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 disabled:opacity-30 transition-all cursor-pointer"
                     title={isEs ? 'Rehacer (Ctrl+Y)' : 'Redo (Ctrl+Y)'}
                   >
                     <ArrowLeft className="w-3 h-3 rotate-180" />
                   </button>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="bg-zinc-800 px-2 py-0.5 rounded text-[11px] font-bold text-white">
+                  <span className="bg-zinc-800 border border-zinc-700 px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-white font-mono shadow-sm">
                     {totalPages} {isEs ? 'Páginas' : 'Pages'}
                   </span>
                   {/* Zoom */}
                   <div className="flex items-center gap-0.5">
                     <button
                       onClick={() => setZoomLevel((z) => Math.max(40, z - 15))}
-                      className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-white/10 text-zinc-400 transition-all cursor-pointer flex-shrink-0"
+                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 transition-all cursor-pointer flex-shrink-0"
                       title={isEs ? 'Alejar' : 'Zoom Out'}
                     >
                       <ZoomOut className="w-3 h-3" />
@@ -1383,7 +1384,7 @@ export default function PdfRedacter() {
                     </button>
                     <button
                       onClick={() => setZoomLevel((z) => Math.min(250, z + 15))}
-                      className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-white/10 text-zinc-400 transition-all cursor-pointer flex-shrink-0"
+                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 transition-all cursor-pointer flex-shrink-0"
                       title={isEs ? 'Acercar' : 'Zoom In'}
                     >
                       <ZoomIn className="w-3 h-3" />
@@ -1524,11 +1525,12 @@ export default function PdfRedacter() {
           <div className="lg:col-span-5 flex flex-col">
             <div
               ref={controlPanelRef}
-              className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans"
+              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 flex flex-col justify-between relative shadow-2xl font-sans overflow-hidden"
             >
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               <div className="flex flex-col gap-3 font-sans">
                 {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-1 border-b border-white/10 pb-3 flex-shrink-0">
+                <div className="flex items-center justify-between mb-1 border-b border-zinc-800 pb-3 flex-shrink-0">
                   <div>
                     <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-0.5">
                       002 / CONFIGURACIÓN
@@ -1537,22 +1539,22 @@ export default function PdfRedacter() {
                       PANEL DE CONTROL
                     </h2>
                   </div>
-                  <div className="bg-zinc-900 p-2 rounded-xl border border-white/10 text-white">
+                  <div className="bg-zinc-900 p-2 rounded-xl border border-zinc-700 text-white shadow-sm">
                     <SlidersHorizontal className="w-4 h-4 text-white" />
                   </div>
                 </div>
 
                 {/* === PANEL DE AUDITORÍA DE DATOS === */}
-                <div className="bg-zinc-950/60 border border-white/8 rounded-xl p-3.5">
+                <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                      <Zap className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-bold text-white font-mono uppercase tracking-wide">
                         {isEs ? 'Auditoría de Datos' : 'Data Audit'}
                       </span>
                     </div>
                     {sensitiveMatches.length > 0 && (
-                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-mono text-white bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-lg shadow-sm">
                         {sensitiveMatches.length} {isEs ? 'detectados' : 'detected'}
                       </span>
                     )}
@@ -1560,16 +1562,14 @@ export default function PdfRedacter() {
 
                   {sensitiveMatches.length > 0 ? (
                     <>
-                      <div className="space-y-1 max-h-[160px] overflow-y-auto mb-2">
+                      <div className="space-y-1 max-h-[160px] overflow-y-auto mb-2 pr-1 custom-scrollbar">
                         {sensitiveMatches.slice(0, 15).map((match) => (
                           <div
                             key={match.id}
-                            className="flex items-center justify-between text-[10px] bg-zinc-900/60 rounded-lg px-2 py-1 border border-white/5"
+                            className="flex items-center justify-between text-[10px] bg-zinc-900/90 rounded-xl px-2.5 py-1.5 border border-zinc-800"
                           >
                             <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
-                              <span
-                                className={`flex-shrink-0 ${match.category === 'card' ? 'text-amber-400' : match.category === 'phone' ? 'text-cyan-400' : match.category === 'email' ? 'text-emerald-400' : 'text-zinc-400'}`}
-                              >
+                              <span className="text-zinc-400 flex-shrink-0">
                                 {match.category === 'card'
                                   ? '💳'
                                   : match.category === 'phone'
@@ -1578,22 +1578,26 @@ export default function PdfRedacter() {
                                       ? '✉️'
                                       : '📝'}
                               </span>
-                              <span className="truncate text-zinc-300">{match.matchedText}</span>
+                              <span className="truncate text-zinc-300 font-mono">
+                                {match.matchedText}
+                              </span>
                             </div>
-                            <span className="text-zinc-500 flex-shrink-0 ml-1">P{match.page}</span>
+                            <span className="text-zinc-500 font-mono flex-shrink-0 ml-1">
+                              P{match.page}
+                            </span>
                           </div>
                         ))}
                         {sensitiveMatches.length > 15 && (
-                          <p className="text-[9px] text-zinc-500 text-center">
+                          <p className="text-[9px] text-zinc-500 text-center font-mono">
                             +{sensitiveMatches.length - 15} {isEs ? 'más' : 'more'}
                           </p>
                         )}
                       </div>
                       <button
                         onClick={censorAllDetected}
-                        className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold text-[10px] py-2 px-3 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 font-mono"
+                        className="w-full bg-white hover:bg-zinc-200 text-black font-bold text-xs py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 font-mono shadow-sm"
                       >
-                        <EyeOff className="w-3 h-3" />
+                        <EyeOff className="w-3.5 h-3.5" />
                         <span>
                           {isEs
                             ? `Censurar todo (${sensitiveMatches.length})`
@@ -1602,7 +1606,7 @@ export default function PdfRedacter() {
                       </button>
                     </>
                   ) : (
-                    <p className="text-[10px] text-zinc-500 text-center py-2">
+                    <p className="text-[10px] text-zinc-500 text-center py-2 font-mono">
                       {isEs
                         ? 'No se detectaron datos sensibles automáticamente'
                         : 'No sensitive data detected automatically'}
@@ -1632,7 +1636,7 @@ export default function PdfRedacter() {
                       }
                     }}
                     placeholder={isEs ? 'Escribe la palabra a cubrir...' : 'Type word to cover...'}
-                    className="w-full bg-zinc-900 border border-white/10 hover:border-white/30 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white transition-colors"
+                    className="w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-500 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white transition-colors"
                   />
                 </div>
 
@@ -1642,7 +1646,7 @@ export default function PdfRedacter() {
                     <button
                       key={preset}
                       onClick={() => setSelectedPreset(preset)}
-                      className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${selectedPreset === preset ? 'bg-zinc-800 border-white text-white font-bold shadow' : 'bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white'}`}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${selectedPreset === preset ? 'bg-zinc-800 border-white text-white font-bold shadow' : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white'}`}
                     >
                       {preset === 'text' ? (
                         <>

@@ -881,18 +881,20 @@ export default function PdfUnlocker() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE MÉTRICAS */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            {/* Glow background accent */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
-                  <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <CheckCircle2 className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DEL DESBLOQUEO' : 'UNLOCK RESULT'}
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
                     {isEs
                       ? '¡Documento Desbloqueado con Éxito!'
                       : 'Document Unlocked Successfully!'}
@@ -902,15 +904,15 @@ export default function PdfUnlocker() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{isEs ? 'Restricciones Eliminadas' : 'Restrictions Removed'}</span>
               </div>
             </div>
 
             {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
@@ -918,7 +920,7 @@ export default function PdfUnlocker() {
                   {formatFileSize(completedResult.originalSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Desbloqueado' : 'Unlocked Size'}
                 </span>
@@ -926,15 +928,15 @@ export default function PdfUnlocker() {
                   {formatFileSize(completedResult.unlockedSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas' : 'Pages'}
                 </span>
-                <span className="text-white font-bold text-lg font-mono mt-0.5">
+                <span className="text-white font-bold text-base font-mono mt-0.5">
                   {completedResult.pageCount}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">SHA-256</span>
                 <span className="text-emerald-400 font-bold text-[10px] font-mono mt-0.5 truncate">
                   {completedResult.checksumSha256?.substring(0, 16)}...
@@ -1037,25 +1039,18 @@ export default function PdfUnlocker() {
 
             {/* VISTA PREVIA CON GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS) */}
             <div
-              className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
+              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
               style={{
                 height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 minHeight: '300px',
               }}
             >
-              <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10 font-sans">
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+              <div className="bg-[#121217] border-b border-zinc-800 p-3.5 flex justify-between items-center z-10 font-sans">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div
-                    className={`p-2 rounded-xl border flex-shrink-0 transition-colors ${
-                      activeDetection?.type === 'encrypted'
-                        ? 'bg-amber-500/20 border-amber-500/30 text-amber-400'
-                        : activeDetection?.type === 'owner-only'
-                          ? 'bg-blue-500/20 border-blue-500/30 text-blue-400'
-                          : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                    }`}
-                  >
-                    <Unlock className="w-4 h-4" />
+                  <div className="p-2 rounded-2xl border border-zinc-700 bg-zinc-800 text-white flex-shrink-0 shadow-sm">
+                    <Unlock className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex flex-col overflow-hidden font-mono">
                     <span className="text-white font-bold text-xs truncate w-28 sm:w-44">
@@ -1064,15 +1059,7 @@ export default function PdfUnlocker() {
                     <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
                       <span>{activeFile ? formatFileSize(activeFile.size) : ''}</span>
                       <span className="text-zinc-600">•</span>
-                      <span
-                        className={
-                          activeDetection?.type === 'encrypted'
-                            ? 'text-amber-400 font-bold'
-                            : activeDetection?.type === 'owner-only'
-                              ? 'text-blue-400 font-bold'
-                              : 'text-emerald-400 font-bold'
-                        }
-                      >
+                      <span className="text-zinc-300 font-bold">
                         {activeDetection?.type === 'encrypted'
                           ? isEs
                             ? 'Clave requerida'
@@ -1090,14 +1077,8 @@ export default function PdfUnlocker() {
                 </div>
 
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="bg-zinc-950 border border-white/10 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        activeDetection?.type === 'encrypted'
-                          ? 'bg-amber-400 animate-pulse'
-                          : 'bg-emerald-400'
-                      }`}
-                    />
+                  <span className="bg-zinc-900 border border-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                     <span>
                       {isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}
                     </span>
@@ -1105,47 +1086,50 @@ export default function PdfUnlocker() {
                 </div>
               </div>
 
-              {/* CONTENEDOR DE MINIATURAS EN GRILLA (3 COLUMNAS X 4 FILAS) */}
-              <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#09090b] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start">
+              {/* GRILLA DE MINIATURAS DE PÁGINAS */}
+              <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#0c0c0f] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start custom-scrollbar">
                 {isLoadingThumbnails ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
+                    <Loader2 className="w-8 h-8 animate-spin text-white" />
                     <span className="text-xs font-mono">
-                      {isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}
+                      {isEs
+                        ? 'Cargando y renderizando páginas...'
+                        : 'Loading and rendering pages...'}
                     </span>
                   </div>
                 ) : thumbnails.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 w-full">
                     {thumbnails.map((thumb) => (
                       <div
                         key={thumb.pageNum}
                         onClick={() => setPreviewPageNum(thumb.pageNum)}
-                        className={`group relative bg-zinc-900/90 rounded-xl p-1.5 sm:p-2 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-1.5 shadow-md ${
+                        className={`group relative bg-[#18181f] rounded-2xl p-2.5 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-2 shadow-sm hover:shadow-md ${
                           previewPageNum === thumb.pageNum
-                            ? 'border-emerald-400 ring-2 ring-emerald-500/30 bg-zinc-800'
-                            : 'border-white/10 hover:border-white/30 hover:bg-zinc-800/80'
+                            ? 'border-white ring-2 ring-white/40 bg-zinc-800 scale-[1.02]'
+                            : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900'
                         }`}
                       >
-                        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white flex items-center justify-center h-[110px] sm:h-[125px] w-full p-1">
+                        <div className="relative overflow-hidden rounded-xl border border-zinc-700/80 bg-white flex items-center justify-center min-h-[110px] max-h-[140px] w-full p-1 shadow-inner">
                           <img
                             src={thumb.dataUrl}
                             alt={`Página ${thumb.pageNum}`}
-                            className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                            className="max-h-[130px] w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
                           />
                         </div>
-                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[9px] sm:text-[10px]">
+                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[10px]">
                           <span
-                            className={`font-bold px-1.5 py-0.5 rounded-full ${
+                            className={`font-bold px-2.5 py-0.5 rounded-lg ${
                               previewPageNum === thumb.pageNum
-                                ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
-                                : 'bg-zinc-800 text-zinc-300 border border-white/10'
+                                ? 'bg-white text-black font-extrabold shadow-sm'
+                                : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
                             }`}
                           >
                             {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
                           </span>
                           {previewPageNum === thumb.pageNum && (
-                            <span className="text-emerald-400 text-[8px] sm:text-[9px] font-bold">
-                              ✓
+                            <span className="text-white text-[9px] font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              {isEs ? 'Seleccionada' : 'Selected'}
                             </span>
                           )}
                         </div>
@@ -1153,7 +1137,7 @@ export default function PdfUnlocker() {
                     ))}
                   </div>
                 ) : (
-                  <div className="w-full h-full min-h-[350px] bg-zinc-900/90 border border-amber-500/30 rounded-xl p-6 flex flex-col items-center justify-center text-center gap-4 my-auto">
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
                     <Lock className="w-10 h-10 text-amber-400" />
                     <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/30 uppercase">
                       {isEs ? 'PDF PROTEGIDO CON CONTRASEÑA' : 'PASSWORD PROTECTED PDF'}
@@ -1176,11 +1160,12 @@ export default function PdfUnlocker() {
           <div className="lg:col-span-7 flex flex-col">
             <div
               ref={controlPanelRef}
-              className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans"
+              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans"
             >
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               <div>
                 {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
+                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3 font-sans">
                   <div>
                     <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
                       002 / CONFIGURACIÓN DE DESBLOQUEO
@@ -1189,32 +1174,26 @@ export default function PdfUnlocker() {
                       {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
                     </h2>
                   </div>
-                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
                     <Unlock className="w-5 h-5 text-white" />
                   </div>
                 </div>
 
                 {/* DETECCIÓN DINÁMICA DE ESTADO */}
                 {activeDetection && (
-                  <div
-                    className={`mb-4 p-3.5 rounded-xl border ${
-                      activeDetection.type === 'encrypted'
-                        ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
-                        : activeDetection.type === 'owner-only'
-                          ? 'text-blue-400 border-blue-500/30 bg-blue-500/10'
-                          : 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
-                    }`}
-                  >
+                  <div className="mb-4 p-4 rounded-2xl border border-zinc-700/80 bg-[#121217] text-zinc-300 shadow-inner">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <Info className="w-4 h-4" />
-                      <span className="text-xs font-bold font-mono uppercase tracking-wider">
+                      <Info className="w-4 h-4 text-white" />
+                      <span className="text-xs font-bold font-mono uppercase tracking-wider text-white">
                         {isEs ? 'DIAGNÓSTICO DE SEGURIDAD' : 'SECURITY DIAGNOSIS'}
                       </span>
                     </div>
-                    <p className="text-xs font-semibold leading-tight mb-1">
+                    <p className="text-xs font-semibold leading-tight mb-1 text-zinc-200">
                       {activeDetection.message}
                     </p>
-                    <p className="text-[10px] opacity-70">{activeDetection.details}</p>
+                    <p className="text-[10px] opacity-70 font-mono text-zinc-400">
+                      {activeDetection.details}
+                    </p>
                   </div>
                 )}
 

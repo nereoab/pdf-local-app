@@ -620,36 +620,38 @@ export default function PdfProtector() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE MÉTRICAS */}
-          <div className="bg-[#09090b] border border-emerald-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            {/* Glow background accent */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/30">
-                  <Check className="w-7 h-7 text-emerald-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
+                  <Lock className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                    {isEs ? 'RESULTADO DE LA PROTECCIÓN' : 'PROTECTION RESULT'}
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
                     {isEs ? '¡PDF Protegido con Éxito!' : 'PDF Protected Successfully!'}
                   </h2>
                   <p className="text-xs text-zinc-400 font-mono mt-0.5">
                     {isEs
-                      ? `Cifrado AES-256 · ${completedResult.restrictions.length} restricciones`
-                      : `AES-256 Encryption · ${completedResult.restrictions.length} restrictions`}
+                      ? `Cifrado AES-256 · ${completedResult.restrictions.length} restricciones activas`
+                      : `AES-256 Encryption · ${completedResult.restrictions.length} active restrictions`}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs text-emerald-400">
+              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-emerald-400 shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
                 <span>{isEs ? 'Cifrado AES-256 Activo' : 'AES-256 Encrypted'}</span>
               </div>
             </div>
 
             {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
@@ -657,7 +659,7 @@ export default function PdfProtector() {
                   {formatFileSize(completedResult.originalSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Tamaño Protegido' : 'Protected Size'}
                 </span>
@@ -665,19 +667,19 @@ export default function PdfProtector() {
                   {formatFileSize(completedResult.protectedSize)}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Páginas' : 'Pages'}
                 </span>
-                <span className="text-white font-bold text-lg font-mono mt-0.5">
+                <span className="text-white font-bold text-base font-mono mt-0.5">
                   {completedResult.pageCount}
                 </span>
               </div>
-              <div className="bg-zinc-950/80 p-4 rounded-xl border border-white/5 flex flex-col">
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
                   {isEs ? 'Restricciones' : 'Restrictions'}
                 </span>
-                <span className="text-amber-400 font-bold text-lg font-mono mt-0.5">
+                <span className="text-amber-400 font-bold text-base font-mono mt-0.5">
                   {completedResult.restrictions.length}
                 </span>
               </div>
@@ -749,23 +751,18 @@ export default function PdfProtector() {
 
             {/* VISTA PREVIA CON GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS) */}
             <div
-              className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
+              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
               style={{
                 height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 minHeight: '300px',
               }}
             >
-              <div className="bg-zinc-900 border-b border-white/10 p-3.5 flex justify-between items-center z-10 font-sans">
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+              <div className="bg-[#121217] border-b border-zinc-800 p-3.5 flex justify-between items-center z-10 font-sans">
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div
-                    className={`p-2 rounded-xl border flex-shrink-0 transition-colors ${
-                      userPassword || ownerPassword
-                        ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                        : 'bg-zinc-800 border-white/10 text-zinc-400'
-                    }`}
-                  >
-                    <ShieldCheck className="w-4 h-4" />
+                  <div className="p-2 rounded-2xl border border-zinc-700 bg-zinc-800 text-white flex-shrink-0 shadow-sm">
+                    <ShieldCheck className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex flex-col overflow-hidden font-mono">
                     <span className="text-white font-bold text-xs truncate w-28 sm:w-44">
@@ -774,13 +771,7 @@ export default function PdfProtector() {
                     <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
                       <span>{activeFile ? formatFileSize(activeFile.size) : ''}</span>
                       <span className="text-zinc-600">•</span>
-                      <span
-                        className={
-                          userPassword || ownerPassword
-                            ? 'text-emerald-400 font-bold'
-                            : 'text-zinc-500'
-                        }
-                      >
+                      <span className="text-zinc-300 font-bold">
                         {userPassword || ownerPassword
                           ? isEs
                             ? 'AES-256 Configurado'
@@ -794,9 +785,9 @@ export default function PdfProtector() {
                 </div>
 
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="bg-zinc-950 border border-white/10 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                  <span className="bg-zinc-900 border border-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
                     <span
-                      className={`w-2 h-2 rounded-full ${userPassword || ownerPassword ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`}
+                      className={`w-2 h-2 rounded-full ${userPassword || ownerPassword ? 'bg-white animate-pulse' : 'bg-zinc-500'}`}
                     />
                     <span>
                       {isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}
@@ -805,47 +796,48 @@ export default function PdfProtector() {
                 </div>
               </div>
 
-              {/* CONTENEDOR DE MINIATURAS EN GRILLA (3 COLUMNAS X 4 FILAS) */}
-              <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#09090b] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start">
+              {/* GRILLA DE MINIATURAS */}
+              <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#0c0c0f] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start custom-scrollbar">
                 {isLoadingThumbnails ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
+                    <Loader2 className="w-8 h-8 animate-spin text-white" />
                     <span className="text-xs font-mono">
                       {isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}
                     </span>
                   </div>
                 ) : thumbnails.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 w-full">
                     {thumbnails.map((thumb) => (
                       <div
                         key={thumb.pageNum}
                         onClick={() => setPreviewPageNum(thumb.pageNum)}
-                        className={`group relative bg-zinc-900/90 rounded-xl p-1.5 sm:p-2 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-1.5 shadow-md ${
+                        className={`group relative bg-[#18181f] rounded-2xl p-2.5 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-2 shadow-sm hover:shadow-md ${
                           previewPageNum === thumb.pageNum
-                            ? 'border-emerald-400 ring-2 ring-emerald-500/30 bg-zinc-800'
-                            : 'border-white/10 hover:border-white/30 hover:bg-zinc-800/80'
+                            ? 'border-white ring-2 ring-white/40 bg-zinc-800 scale-[1.02]'
+                            : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900'
                         }`}
                       >
-                        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white flex items-center justify-center h-[110px] sm:h-[125px] w-full p-1">
+                        <div className="relative overflow-hidden rounded-xl border border-zinc-700/80 bg-white flex items-center justify-center min-h-[110px] max-h-[140px] w-full p-1 shadow-inner">
                           <img
                             src={thumb.dataUrl}
                             alt={`Página ${thumb.pageNum}`}
-                            className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                            className="max-h-[130px] w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
                           />
                         </div>
-                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[9px] sm:text-[10px]">
+                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[10px]">
                           <span
-                            className={`font-bold px-1.5 py-0.5 rounded-full ${
+                            className={`font-bold px-2.5 py-0.5 rounded-lg ${
                               previewPageNum === thumb.pageNum
-                                ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
-                                : 'bg-zinc-800 text-zinc-300 border border-white/10'
+                                ? 'bg-white text-black font-extrabold shadow-sm'
+                                : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
                             }`}
                           >
                             {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
                           </span>
                           {previewPageNum === thumb.pageNum && (
-                            <span className="text-emerald-400 text-[8px] sm:text-[9px] font-bold">
-                              ✓
+                            <span className="text-white text-[9px] font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              {isEs ? 'Seleccionada' : 'Selected'}
                             </span>
                           )}
                         </div>
@@ -853,7 +845,7 @@ export default function PdfProtector() {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
+                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
                     <FileText className="w-10 h-10 text-zinc-600" />
                     <span className="text-xs font-mono">
                       {isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}
@@ -868,11 +860,12 @@ export default function PdfProtector() {
           <div className="lg:col-span-7 flex flex-col">
             <div
               ref={controlPanelRef}
-              className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 lg:p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans"
+              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans"
             >
+              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               <div>
                 {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3 font-sans">
+                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3 font-sans">
                   <div>
                     <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
                       002 / CONFIGURACIÓN DE SEGURIDAD
@@ -881,13 +874,13 @@ export default function PdfProtector() {
                       {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
                     </h2>
                   </div>
-                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-white/10 text-white">
+                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
                     <Lock className="w-5 h-5 text-white" />
                   </div>
                 </div>
 
                 {/* === CONTRASEÑA DE APERTURA (User Password) === */}
-                <div className="mb-5 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
+                <div className="mb-5 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
                       <KeyRound className="w-4 h-4 text-white" />
@@ -898,14 +891,14 @@ export default function PdfProtector() {
                     <button
                       type="button"
                       onClick={generateStrongPassword}
-                      className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-mono transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl text-[11px] font-mono transition-all cursor-pointer shadow-sm"
                       title={
                         isEs
                           ? 'Generar y copiar contraseña segura aleatoria'
                           : 'Generate and copy random strong password'
                       }
                     >
-                      <Sparkles className="w-3 h-3" />
+                      <Sparkles className="w-3 h-3 text-black" />
                       <span>{isEs ? 'Generar Clave' : 'Generate'}</span>
                     </button>
                   </div>
@@ -921,7 +914,7 @@ export default function PdfProtector() {
                         value={userPassword}
                         onChange={(e) => setUserPassword(e.target.value)}
                         placeholder={isEs ? 'Contraseña de apertura' : 'User password'}
-                        className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
                       />
                       <button
                         type="button"
@@ -940,7 +933,7 @@ export default function PdfProtector() {
                       value={confirmUserPassword}
                       onChange={(e) => setConfirmUserPassword(e.target.value)}
                       placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
-                      className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
                     />
                   </div>
                   {userPassword && (
@@ -956,7 +949,7 @@ export default function PdfProtector() {
                           {userPwdStrength.label}
                         </span>
                       </div>
-                      <p className="text-[9px] text-zinc-500 mt-1">
+                      <p className="text-[9px] text-zinc-500 mt-1 font-mono">
                         {isEs
                           ? 'Usa 8+ caracteres con mayúsculas, números y símbolos'
                           : 'Use 8+ chars with uppercase, numbers & symbols'}
@@ -966,9 +959,9 @@ export default function PdfProtector() {
                 </div>
 
                 {/* === CONTRASEÑA DE PROPIETARIO (Owner Password) === */}
-                <div className="mb-5 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
+                <div className="mb-5 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
                   <div className="flex items-center gap-2 mb-3">
-                    <Shield className="w-4 h-4 text-amber-400" />
+                    <Shield className="w-4 h-4 text-white" />
                     <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
                       {isEs ? 'Contraseña de Propietario' : 'Owner Password (Permissions)'}
                     </span>
@@ -987,7 +980,7 @@ export default function PdfProtector() {
                         placeholder={
                           isEs ? 'Contraseña maestra (opcional)' : 'Owner password (optional)'
                         }
-                        className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
                       />
                       <button
                         type="button"
@@ -1006,13 +999,13 @@ export default function PdfProtector() {
                       value={confirmOwnerPassword}
                       onChange={(e) => setConfirmOwnerPassword(e.target.value)}
                       placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
-                      className="w-full bg-zinc-900 border border-white/10 focus:border-white/30 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
                     />
                   </div>
                 </div>
 
                 {/* === PANEL DE POLÍTICAS DE SEGURIDAD (PERMISOS GRANULARES) === */}
-                <div className="mb-5 bg-zinc-950/60 border border-white/8 rounded-xl p-4">
+                <div className="mb-5 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <SlidersHorizontal className="w-4 h-4 text-white" />
@@ -1023,13 +1016,13 @@ export default function PdfProtector() {
                     <div className="flex gap-1.5">
                       <button
                         onClick={applyReadOnly}
-                        className="text-[9px] font-bold px-2 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 transition-all font-mono cursor-pointer"
+                        className="text-[9px] font-bold px-2.5 py-1 rounded-xl bg-zinc-800 text-white border border-zinc-600 hover:bg-zinc-700 transition-all font-mono cursor-pointer shadow-sm"
                       >
                         {isEs ? 'Solo lectura' : 'Read-only'}
                       </button>
                       <button
                         onClick={applyMaxProtection}
-                        className="text-[9px] font-bold px-2 py-1 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30 transition-all font-mono cursor-pointer"
+                        className="text-[9px] font-bold px-2.5 py-1 rounded-xl bg-zinc-800 text-white border border-zinc-600 hover:bg-zinc-700 transition-all font-mono cursor-pointer shadow-sm"
                       >
                         {isEs ? 'Máxima protección' : 'Max protection'}
                       </button>

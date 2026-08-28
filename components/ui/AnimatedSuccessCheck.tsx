@@ -120,3 +120,92 @@ export function AnimatedNumber({
     </span>
   );
 }
+
+/**
+ * Disparador de confeti monocromático y plateado de ultra-lujo (Apple / Vercel style)
+ */
+export async function triggerLuxuryConfetti() {
+  if (typeof window === 'undefined') return;
+  try {
+    const confetti = (await import('canvas-confetti')).default;
+
+    // Ráfaga 1: Cañón izquierdo
+    confetti({
+      particleCount: 35,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0.15, y: 0.75 },
+      colors: ['#FFFFFF', '#F4F4F5', '#E4E4E7', '#D4D4D8', '#A1A1AA'],
+      shapes: ['square', 'circle'],
+      scalar: 0.85,
+      ticks: 160,
+      gravity: 0.9,
+      decay: 0.91,
+      zIndex: 9999,
+    });
+
+    // Ráfaga 2: Cañón derecho
+    confetti({
+      particleCount: 35,
+      angle: 120,
+      spread: 55,
+      origin: { x: 0.85, y: 0.75 },
+      colors: ['#FFFFFF', '#F4F4F5', '#E4E4E7', '#D4D4D8', '#A1A1AA'],
+      shapes: ['square', 'circle'],
+      scalar: 0.85,
+      ticks: 160,
+      gravity: 0.9,
+      decay: 0.91,
+      zIndex: 9999,
+    });
+
+    // Ráfaga 3: Destello central
+    setTimeout(() => {
+      confetti({
+        particleCount: 40,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#FFFFFF', '#E4E4E7', '#D4D4D8', '#71717A'],
+        shapes: ['circle', 'square'],
+        scalar: 0.95,
+        ticks: 180,
+        gravity: 0.85,
+        decay: 0.92,
+        zIndex: 9999,
+      });
+    }, 200);
+  } catch (err) {
+    console.debug('Confetti disabled or failed:', err);
+  }
+}
+
+/**
+ * Micro-explosión de chispas plateadas al pulsar el botón de descarga
+ */
+export async function triggerButtonSparkles(event?: React.MouseEvent) {
+  if (typeof window === 'undefined') return;
+  try {
+    const confetti = (await import('canvas-confetti')).default;
+    let origin = { x: 0.5, y: 0.5 };
+    if (event) {
+      origin = {
+        x: event.clientX / window.innerWidth,
+        y: event.clientY / window.innerHeight,
+      };
+    }
+    confetti({
+      particleCount: 30,
+      spread: 60,
+      origin,
+      colors: ['#FFFFFF', '#FAFAFA', '#E4E4E7', '#D4D4D8', '#A1A1AA'],
+      shapes: ['circle', 'square'],
+      scalar: 0.8,
+      ticks: 120,
+      gravity: 1.1,
+      decay: 0.9,
+      zIndex: 9999,
+    });
+  } catch (err) {
+    console.debug('Sparkles disabled or failed:', err);
+  }
+}

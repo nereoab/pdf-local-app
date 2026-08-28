@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Download,
   CheckCircle2,
@@ -23,7 +23,11 @@ import {
   Copy,
   EyeOff,
 } from 'lucide-react';
-import { AnimatedCheckmark } from '@/components/ui/AnimatedSuccessCheck';
+import {
+  AnimatedCheckmark,
+  triggerLuxuryConfetti,
+  triggerButtonSparkles,
+} from '@/components/ui/AnimatedSuccessCheck';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import { useRouter } from 'next/navigation';
@@ -56,8 +60,14 @@ export default function DownloadSuccessCard({
 
   const [downloaded, setDownloaded] = useState(false);
 
-  const handleManualDownload = () => {
+  useEffect(() => {
+    // Celebración monocromática elegante al montarse la pantalla de éxito
+    triggerLuxuryConfetti();
+  }, []);
+
+  const handleManualDownload = (e?: React.MouseEvent) => {
     if (!downloadUrl) return;
+    triggerButtonSparkles(e);
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = filename;
@@ -266,7 +276,7 @@ export default function DownloadSuccessCard({
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleManualDownload}
+          onClick={(e) => handleManualDownload(e)}
           className={`relative overflow-hidden flex items-center justify-center gap-3 px-8 py-4 rounded-full font-sans font-bold text-sm sm:text-base transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer flex-shrink-0 group ${
             downloaded
               ? 'bg-zinc-100 text-black hover:bg-white border border-zinc-300 shadow-[0_0_25px_rgba(255,255,255,0.3)]'

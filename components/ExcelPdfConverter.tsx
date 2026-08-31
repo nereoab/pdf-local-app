@@ -40,6 +40,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
+import PdfPageViewer from '@/components/PdfPageViewer';
+import { convertWithApi } from '@/lib/adobe-api-client';
 
 type ConversionDirection = 'excel-to-pdf' | 'pdf-to-excel';
 type PageSelectionMode = 'all' | 'range' | 'custom' | 'even' | 'odd';
@@ -61,6 +63,13 @@ interface CompletedResult {
   outputFormat: string;
   originalSize?: string;
   itemCount?: number;
+}
+
+interface ParsedSheet {
+  name: string;
+  rowCount: number;
+  colCount: number;
+  rows: (string | number | null)[][];
 }
 
 function parseRangeString(numPages: number, rangeStr: string): Set<number> {
@@ -137,10 +146,19 @@ export default function ExcelPdfConverter({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadFilename, setDownloadFilename] = useState<string>('');
 
+  // ESTADO DE HOJAS EXCEL (EXCEL -> PDF)
+  const [excelSheets, setExcelSheets] = useState<ParsedSheet[]>([]);
+  const [activeSheetIndex, setActiveSheetIndex] = useState<number>(0);
+
   // SELECCIÓN DE PÁGINAS (PDF -> EXCEL)
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
   const [pageRangeInput, setPageRangeInput] = useState<string>('1-10');
   const [selectedPageSet, setSelectedPageSet] = useState<Set<number>>(new Set());
+
+  // MOTOR DE CONVERSIÓN
+  const [conversionEngine, setConversionEngine] = useState<
+    'adobe' | 'cloudconvert' | 'local' | 'smart'
+  >('adobe');
 
   // Opciones Avanzadas - Excel a PDF
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
@@ -192,18 +210,66 @@ export default function ExcelPdfConverter({
 
   const parseXlsxContent = async (excelFile: File): Promise<number> => {
     try {
+      setIsRendering(true);
       const buffer = await excelFile.arrayBuffer();
       const wb = XLSX.read(buffer, { type: 'array' });
       let cellCount = 0;
-      wb.SheetNames.forEach((name) => {
-        const sheet = wb.Sheets[name];
-        if (sheet && sheet['!ref']) {
-          const range = XLSX.utils.decode_range(sheet['!ref']);
-          cellCount += (range.e.r - range.s.r + 1) * (range.e.c - range.s.c + 1);
+      const parsed: ParsedSheet[] = [];
+
+      wb.SheetNames.forEach((sheetName) => {
+        const ws = wb.Sheets[sheetName];
+        if (ws && ws['!ref']) {
+          const range = XLSX.utils.decode_range(ws['!ref']);
+          const rowsInSheet = range.e.r - range.s.r + 1;
+          const colsInSheet = range.e.c - range.s.c + 1;
+          const sheetCellCount = rowsInSheet * colsInSheet;
+          cellCount += sheetCellCount;
+
+          const rawData = XLSX.utils.sheet_to_json<(string | number | null)[]>(ws, {
+            header: 1,
+            defval: '',
+            blankrows: true,
+          });
+
+          const formattedRows: (string | number | null)[][] = [];
+          const maxRows = Math.min(Math.max(rawData.length, rowsInSheet), 100);
+          const maxCols = Math.min(Math.max(colsInSheet || 1, 1), 26);
+
+          for (let r = 0; r < maxRows; r++) {
+            const row = rawData[r] || [];
+            const cleanRow: (string | number | null)[] = [];
+            for (let c = 0; c < maxCols; c++) {
+              cleanRow.push(row[c] !== undefined && row[c] !== null ? String(row[c]) : '');
+            }
+            formattedRows.push(cleanRow);
+          }
+
+          parsed.push({
+            name: sheetName,
+            rowCount: rowsInSheet,
+            colCount: colsInSheet,
+            rows: formattedRows,
+          });
+        } else {
+          parsed.push({
+            name: sheetName,
+            rowCount: 0,
+            colCount: 0,
+            rows: [],
+          });
         }
       });
+
+      setExcelSheets(parsed);
+      setActiveSheetIndex(0);
+      setExtractedCellCount(cellCount || 24);
+      setTotalPages(parsed.length);
+      setSelectedPageSet(new Set(Array.from({ length: parsed.length }, (_, i) => i + 1)));
+      setIsRendering(false);
       return cellCount || 24;
-    } catch {
+    } catch (err) {
+      console.error('Error parsing Excel file:', err);
+      setIsRendering(false);
       return 24;
     }
   };
@@ -213,6 +279,8 @@ export default function ExcelPdfConverter({
       setPageDataUrls({});
       setTotalPages(0);
       setSelectedPageSet(new Set());
+      setExcelSheets([]);
+      setActiveSheetIndex(0);
       return;
     }
     if (
@@ -220,7 +288,7 @@ export default function ExcelPdfConverter({
       file.name.toLowerCase().endsWith('.xls') ||
       file.name.toLowerCase().endsWith('.csv')
     ) {
-      parseXlsxContent(file).then((count) => setExtractedCellCount(count));
+      parseXlsxContent(file);
     } else if (file.name.toLowerCase().endsWith('.pdf')) {
       cargarMiniaturasPdfUltraFast(file);
     }
@@ -372,6 +440,8 @@ export default function ExcelPdfConverter({
     setDownloadFilename('');
     setCompletedResult(null);
     setHeaderHidden(false);
+    setExcelSheets([]);
+    setActiveSheetIndex(0);
   };
 
   const handleRemoveFile = () => {
@@ -382,6 +452,8 @@ export default function ExcelPdfConverter({
     setDownloadFilename('');
     setCompletedResult(null);
     setHeaderHidden(false);
+    setExcelSheets([]);
+    setActiveSheetIndex(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -440,13 +512,28 @@ export default function ExcelPdfConverter({
       if (mode === 'excel-to-pdf') {
         setProgressMsg(
           isEs
-            ? 'Compilando celdas en documento PDF vectorial...'
-            : 'Compiling cells into vector PDF document...',
+            ? 'Procesando Excel a PDF con el motor seleccionado...'
+            : 'Processing Excel to PDF with selected engine...',
         );
-        await new Promise((r) => setTimeout(r, 60));
-        setProgressPercent(40);
 
-        if (API_SECRET && orientation === 'landscape' && pageSize === 'a4') {
+        if (conversionEngine === 'adobe' || conversionEngine === 'cloudconvert') {
+          try {
+            resultBlob = await convertWithApi(
+              '/api/convert/excel-to-pdf',
+              file,
+              { engine: conversionEngine },
+              (pct, msg) => {
+                setProgressPercent(pct);
+                setProgressMsg(msg);
+              },
+            );
+            localUrl = URL.createObjectURL(resultBlob);
+          } catch (apiErr) {
+            console.warn('API conversion error, attempting fallback:', apiErr);
+          }
+        }
+
+        if (!localUrl && API_SECRET && orientation === 'landscape' && pageSize === 'a4') {
           try {
             const formData = new FormData();
             formData.append('File', file);
@@ -497,66 +584,78 @@ export default function ExcelPdfConverter({
             height = orientation === 'landscape' ? 612 : 1008;
           }
 
-          const page = pdfDoc.addPage([width, height]);
-          const docTitle = file.name.replace(/\.[^/.]+$/, '');
+          const sheetsToRender =
+            excelSheets.length > 0
+              ? excelSheets.filter((_, idx) => targetPageSet.has(idx + 1))
+              : [{ name: 'Hoja 1', rowCount: 1, colCount: 1, rows: [['Sin datos']] }];
 
-          // Encabezado decorativo Excel
-          page.drawRectangle({
-            x: 40,
-            y: height - 60,
-            width: width - 80,
-            height: 35,
-            color: tableTheme === 'emerald' ? rgb(0.06, 0.45, 0.28) : rgb(0.12, 0.12, 0.15),
-          });
+          const activeSheets = sheetsToRender.length > 0 ? sheetsToRender : excelSheets;
 
-          page.drawText(docTitle, {
-            x: 50,
-            y: height - 48,
-            size: 14,
-            font: boldFont,
-            color: rgb(1, 1, 1),
-          });
+          for (let sIdx = 0; sIdx < activeSheets.length; sIdx++) {
+            const currentSheet = activeSheets[sIdx];
+            const page = pdfDoc.addPage([width, height]);
+            const docTitle = `${file.name.replace(/\.[^/.]+$/, '')} - ${currentSheet.name}`;
 
-          // Cuadrícula simulada
-          let yPos = height - 100;
-          const sampleRows = [
-            ['Página/Hoja', 'Columna A', 'Columna B', 'Columna C', 'Valor Numérico'],
-            ['Hoja 1', 'Registro de Datos 01', 'Categoría Principal', 'Aprobado', '$14,500.00'],
-            ['Hoja 1', 'Registro de Datos 02', 'Operaciones', 'En Proceso', '$8,250.50'],
-            ['Hoja 1', 'Registro de Datos 03', 'Auditoría', 'Completado', '$22,100.00'],
-            ['Hoja 1', 'Registro de Datos 04', 'Planificación', 'Aprobado', '$5,400.00'],
-          ];
-
-          sampleRows.forEach((row, rIdx) => {
-            if (showGridlines) {
-              page.drawRectangle({
-                x: 40,
-                y: yPos - 5,
-                width: width - 80,
-                height: 22,
-                color:
-                  rIdx === 0
-                    ? rgb(0.92, 0.94, 0.96)
-                    : rIdx % 2 === 0
-                      ? rgb(0.97, 0.98, 0.99)
-                      : rgb(1, 1, 1),
-                borderColor: rgb(0.8, 0.85, 0.9),
-                borderWidth: 0.5,
-              });
-            }
-
-            row.forEach((cell, cIdx) => {
-              const colWidth = (width - 80) / row.length;
-              page.drawText(cell, {
-                x: 50 + cIdx * colWidth,
-                y: yPos,
-                size: 9,
-                font: rIdx === 0 ? boldFont : font,
-                color: rIdx === 0 ? rgb(0.1, 0.1, 0.1) : rgb(0.2, 0.2, 0.2),
-              });
+            // Encabezado decorativo Excel
+            page.drawRectangle({
+              x: 40,
+              y: height - 60,
+              width: width - 80,
+              height: 35,
+              color: rgb(0.06, 0.45, 0.28),
             });
-            yPos -= 22;
-          });
+
+            page.drawText(docTitle, {
+              x: 50,
+              y: height - 48,
+              size: 13,
+              font: boldFont,
+              color: rgb(1, 1, 1),
+            });
+
+            let yPos = height - 90;
+            const rowsToDraw = currentSheet.rows.slice(0, 35);
+            const colsCount = Math.max(1, Math.min(currentSheet.colCount || 1, 8));
+            const colWidth = (width - 80) / colsCount;
+
+            rowsToDraw.forEach((row, rIdx) => {
+              if (yPos < 40) return;
+
+              if (showGridlines) {
+                page.drawRectangle({
+                  x: 40,
+                  y: yPos - 5,
+                  width: width - 80,
+                  height: 20,
+                  color:
+                    rIdx === 0
+                      ? rgb(0.92, 0.94, 0.96)
+                      : rIdx % 2 === 0
+                        ? rgb(0.97, 0.98, 0.99)
+                        : rgb(1, 1, 1),
+                  borderColor: rgb(0.8, 0.85, 0.9),
+                  borderWidth: 0.5,
+                });
+              }
+
+              for (let cIdx = 0; cIdx < colsCount; cIdx++) {
+                const cellText =
+                  row[cIdx] !== undefined && row[cIdx] !== null
+                    ? String(row[cIdx]).substring(0, 30)
+                    : '';
+                if (cellText) {
+                  page.drawText(cellText, {
+                    x: 45 + cIdx * colWidth,
+                    y: yPos,
+                    size: 8,
+                    font: rIdx === 0 ? boldFont : font,
+                    color: rIdx === 0 ? rgb(0.1, 0.1, 0.1) : rgb(0.2, 0.2, 0.2),
+                  });
+                }
+              }
+              yPos -= 20;
+            });
+          }
 
           const pdfBytes = await pdfDoc.save();
           resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
@@ -585,215 +684,240 @@ export default function ExcelPdfConverter({
           isEs ? '¡Excel convertido a PDF con éxito!' : 'Excel converted to PDF successfully!',
         );
       } else {
-        // MODO PDF A EXCEL (PDF -> XLSX / CSV) CON MOTOR BINARIO SHEETJS (XLSX) REAL
+        // MODO PDF A EXCEL (PDF -> XLSX / CSV)
         const totalToConvert = targetPages.length;
         setProgressMsg(
           isEs
-            ? `Analizando grilla y tablas de ${totalToConvert} páginas...`
-            : `Analyzing grid & tables of ${totalToConvert} pages...`,
+            ? 'Extrayendo tablas con el motor seleccionado...'
+            : 'Extracting tables with selected engine...',
         );
-        await new Promise((r) => setTimeout(r, 60));
-        setProgressPercent(15);
 
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({
-          data: arrayBuffer.slice(0),
-          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-          cMapPacked: true,
-        }).promise;
-
-        const pagesData: Array<{ pageNum: number; rows: Array<Array<string | number>> }> = [];
-
-        for (let idx = 0; idx < totalToConvert; idx++) {
-          const pageNum = targetPages[idx];
-          setProgressMsg(
-            isEs
-              ? `Extrayendo tablas de pág. ${idx + 1} de ${totalToConvert} (Pág. ${pageNum})...`
-              : `Extracting tables from page ${idx + 1} of ${totalToConvert} (Page ${pageNum})...`,
-          );
-          setProgressPercent(15 + Math.round(((idx + 1) / totalToConvert) * 65));
-
-          const page = await pdf.getPage(pageNum);
-          const textContent = await page.getTextContent();
-
-          const pageRows: Array<Array<string | number>> = [];
-
-          if (extractionStrategy === 'smart') {
-            // Agrupar items por coordenadas Y con tolerancia
-            const rowsMap: { [yKey: number]: PdfTextItem[] } = {};
-            (textContent.items as PdfTextItem[]).forEach((item) => {
-              if (item.str && item.str.trim() && item.transform) {
-                const y = Math.round(item.transform[5] / 10) * 10;
-                if (!rowsMap[y]) rowsMap[y] = [];
-                rowsMap[y].push(item);
-              }
-            });
-
-            const sortedYKeys = Object.keys(rowsMap)
-              .map(Number)
-              .sort((a, b) => b - a);
-
-            sortedYKeys.forEach((yKey) => {
-              const rowItems = rowsMap[yKey].sort(
-                (a, b) => (a.transform?.[4] || 0) - (b.transform?.[4] || 0),
-              );
-              const rowCells = rowItems
-                .map((i) => {
-                  const text = sanitizeCellString(i.str || '');
-                  if (autoFormatNumbers) {
-                    const cleanedNum = text.replace(/,/g, '').replace(/\$/g, '').trim();
-                    if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
-                      return Number(cleanedNum);
-                    }
-                  }
-                  return text;
-                })
-                .filter((cell) => cell !== '');
-
-              if (trimEmptyRows && rowCells.length === 0) return;
-              if (rowCells.length > 0) {
-                pageRows.push(rowCells);
-              }
-            });
-          } else {
-            (textContent.items as PdfTextItem[]).forEach((item) => {
-              if (item.str && item.str.trim()) {
-                const text = sanitizeCellString(item.str);
-                if (text) {
-                  if (autoFormatNumbers) {
-                    const cleanedNum = text.replace(/,/g, '').replace(/\$/g, '').trim();
-                    if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
-                      pageRows.push([Number(cleanedNum)]);
-                      return;
-                    }
-                  }
-                  pageRows.push([text]);
-                }
-              }
-            });
+        if (conversionEngine === 'adobe' || conversionEngine === 'cloudconvert') {
+          try {
+            resultBlob = await convertWithApi(
+              '/api/convert/pdf-to-excel',
+              file,
+              { engine: conversionEngine },
+              (pct, msg) => {
+                setProgressPercent(pct);
+                setProgressMsg(msg);
+              },
+            );
+            localUrl = URL.createObjectURL(resultBlob);
+          } catch (apiErr) {
+            console.warn('API error fallback to local SheetJS extractor:', apiErr);
           }
-
-          pagesData.push({
-            pageNum,
-            rows:
-              pageRows.length > 0
-                ? pageRows
-                : [
-                    [
-                      isEs
-                        ? `[Página ${pageNum} sin celdas de datos]`
-                        : `[Page ${pageNum} without data cells]`,
-                    ],
-                  ],
-          });
-
-          await new Promise((r) => setTimeout(r, 10));
         }
 
-        setProgressMsg(
-          isEs
-            ? 'Construyendo libro de Microsoft Excel (.xlsx)...'
-            : 'Building Microsoft Excel workbook (.xlsx)...',
-        );
-        setProgressPercent(85);
+        if (!resultBlob) {
+          setProgressMsg(
+            isEs
+              ? `Analizando grilla y tablas de ${totalToConvert} páginas...`
+              : `Analyzing grid & tables of ${totalToConvert} pages...`,
+          );
+          await new Promise((r) => setTimeout(r, 60));
+          setProgressPercent(15);
 
-        if (outputFormat === 'xlsx') {
-          // CREACIÓN DE LIBRO OPENXML BINARIO NATIVO (.xlsx) CON SHEETJS
-          const wb = XLSX.utils.book_new();
+          const pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-          if (sheetStructure === 'per_page') {
-            // UNA HOJA POR CADA PÁGINA DEL PDF
-            pagesData.forEach((pData) => {
-              const sheetData: Array<Array<string | number>> = [];
-              if (includeHeaders) {
-                sheetData.push([
-                  'Fila',
-                  'Columna A',
-                  'Columna B',
-                  'Columna C',
-                  'Columna D',
-                  'Columna E',
-                ]);
-              }
-              pData.rows.forEach((row, rIdx) => {
-                sheetData.push([rIdx + 1, ...row]);
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({
+            data: arrayBuffer.slice(0),
+            cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+            cMapPacked: true,
+          }).promise;
+
+          const pagesData: Array<{ pageNum: number; rows: Array<Array<string | number>> }> = [];
+
+          for (let idx = 0; idx < totalToConvert; idx++) {
+            const pageNum = targetPages[idx];
+            setProgressMsg(
+              isEs
+                ? `Extrayendo tablas de pág. ${idx + 1} de ${totalToConvert} (Pág. ${pageNum})...`
+                : `Extracting tables from page ${idx + 1} of ${totalToConvert} (Page ${pageNum})...`,
+            );
+            setProgressPercent(15 + Math.round(((idx + 1) / totalToConvert) * 65));
+
+            const page = await pdf.getPage(pageNum);
+            const textContent = await page.getTextContent();
+
+            const pageRows: Array<Array<string | number>> = [];
+
+            if (extractionStrategy === 'smart') {
+              // Agrupar items por coordenadas Y con tolerancia
+              const rowsMap: { [yKey: number]: PdfTextItem[] } = {};
+              (textContent.items as PdfTextItem[]).forEach((item) => {
+                if (item.str && item.str.trim() && item.transform) {
+                  const y = Math.round(item.transform[5] / 10) * 10;
+                  if (!rowsMap[y]) rowsMap[y] = [];
+                  rowsMap[y].push(item);
+                }
               });
 
-              const ws = XLSX.utils.aoa_to_sheet(sheetData);
-              // Auto-ajustar anchos de columnas
+              const sortedYKeys = Object.keys(rowsMap)
+                .map(Number)
+                .sort((a, b) => b - a);
+
+              sortedYKeys.forEach((yKey) => {
+                const rowItems = rowsMap[yKey].sort(
+                  (a, b) => (a.transform?.[4] || 0) - (b.transform?.[4] || 0),
+                );
+                const rowCells = rowItems
+                  .map((i) => {
+                    const text = sanitizeCellString(i.str || '');
+                    if (autoFormatNumbers) {
+                      const cleanedNum = text.replace(/,/g, '').replace(/\$/g, '').trim();
+                      if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
+                        return Number(cleanedNum);
+                      }
+                    }
+                    return text;
+                  })
+                  .filter((cell) => cell !== '');
+
+                if (trimEmptyRows && rowCells.length === 0) return;
+                if (rowCells.length > 0) {
+                  pageRows.push(rowCells);
+                }
+              });
+            } else {
+              (textContent.items as PdfTextItem[]).forEach((item) => {
+                if (item.str && item.str.trim()) {
+                  const text = sanitizeCellString(item.str);
+                  if (text) {
+                    if (autoFormatNumbers) {
+                      const cleanedNum = text.replace(/,/g, '').replace(/\$/g, '').trim();
+                      if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
+                        pageRows.push([Number(cleanedNum)]);
+                        return;
+                      }
+                    }
+                    pageRows.push([text]);
+                  }
+                }
+              });
+            }
+
+            pagesData.push({
+              pageNum,
+              rows:
+                pageRows.length > 0
+                  ? pageRows
+                  : [
+                      [
+                        isEs
+                          ? `[Página ${pageNum} sin celdas de datos]`
+                          : `[Page ${pageNum} without data cells]`,
+                      ],
+                    ],
+            });
+
+            await new Promise((r) => setTimeout(r, 10));
+          }
+
+          setProgressMsg(
+            isEs
+              ? 'Construyendo libro de Microsoft Excel (.xlsx)...'
+              : 'Building Microsoft Excel workbook (.xlsx)...',
+          );
+          setProgressPercent(85);
+
+          if (outputFormat === 'xlsx') {
+            // CREACIÓN DE LIBRO OPENXML BINARIO NATIVO (.xlsx) CON SHEETJS
+            const wb = XLSX.utils.book_new();
+
+            if (sheetStructure === 'per_page') {
+              // UNA HOJA POR CADA PÁGINA DEL PDF
+              pagesData.forEach((pData) => {
+                const sheetData: Array<Array<string | number>> = [];
+                if (includeHeaders) {
+                  sheetData.push([
+                    'Fila',
+                    'Columna A',
+                    'Columna B',
+                    'Columna C',
+                    'Columna D',
+                    'Columna E',
+                  ]);
+                }
+                pData.rows.forEach((row, rIdx) => {
+                  sheetData.push([rIdx + 1, ...row]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                // Auto-ajustar anchos de columnas
+                ws['!cols'] = [
+                  { wch: 8 },
+                  { wch: 25 },
+                  { wch: 25 },
+                  { wch: 20 },
+                  { wch: 20 },
+                  { wch: 20 },
+                ];
+                XLSX.utils.book_append_sheet(wb, ws, `Pág ${pData.pageNum}`);
+              });
+            } else {
+              // UNA SOLA HOJA CONSOLIDADA
+              const consolidatedData: Array<Array<string | number>> = [];
+              if (includeHeaders) {
+                consolidatedData.push([
+                  'Página PDF',
+                  'Fila',
+                  'Dato 1',
+                  'Dato 2',
+                  'Dato 3',
+                  'Dato 4',
+                  'Dato 5',
+                ]);
+              }
+              pagesData.forEach((pData) => {
+                pData.rows.forEach((row, rIdx) => {
+                  consolidatedData.push([`Pág ${pData.pageNum}`, rIdx + 1, ...row]);
+                });
+              });
+
+              const ws = XLSX.utils.aoa_to_sheet(consolidatedData);
               ws['!cols'] = [
+                { wch: 12 },
                 { wch: 8 },
-                { wch: 25 },
+                { wch: 30 },
                 { wch: 25 },
                 { wch: 20 },
                 { wch: 20 },
                 { wch: 20 },
               ];
-              XLSX.utils.book_append_sheet(wb, ws, `Pág ${pData.pageNum}`);
-            });
-          } else {
-            // UNA SOLA HOJA CONSOLIDADA
-            const consolidatedData: Array<Array<string | number>> = [];
-            if (includeHeaders) {
-              consolidatedData.push([
-                'Página PDF',
-                'Fila',
-                'Dato 1',
-                'Dato 2',
-                'Dato 3',
-                'Dato 4',
-                'Dato 5',
-              ]);
+              XLSX.utils.book_append_sheet(wb, ws, 'Datos Extraídos');
             }
+
+            // Generar buffer binario OpenXML
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            resultBlob = new Blob([wbout], {
+              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            localUrl = URL.createObjectURL(resultBlob);
+          } else {
+            // FORMATO CSV (COMAS O PUNTO Y COMA)
+            const delimiter = outputFormat === 'csv_semicolon' ? ';' : ',';
+            let csvContent = '\uFEFF'; // BOM para UTF-8 en Excel
+
+            if (includeHeaders) {
+              csvContent += `Pagina_PDF${delimiter}Fila${delimiter}Dato_1${delimiter}Dato_2${delimiter}Dato_3\n`;
+            }
+
             pagesData.forEach((pData) => {
               pData.rows.forEach((row, rIdx) => {
-                consolidatedData.push([`Pág ${pData.pageNum}`, rIdx + 1, ...row]);
+                const formattedCells = row.map((cell) => {
+                  const str = String(cell).replace(/"/g, '""');
+                  return `"${str}"`;
+                });
+                csvContent += `"${pData.pageNum}"${delimiter}${rIdx + 1}${delimiter}${formattedCells.join(delimiter)}\n`;
               });
             });
 
-            const ws = XLSX.utils.aoa_to_sheet(consolidatedData);
-            ws['!cols'] = [
-              { wch: 12 },
-              { wch: 8 },
-              { wch: 30 },
-              { wch: 25 },
-              { wch: 20 },
-              { wch: 20 },
-              { wch: 20 },
-            ];
-            XLSX.utils.book_append_sheet(wb, ws, 'Datos Extraídos');
+            resultBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            localUrl = URL.createObjectURL(resultBlob);
           }
-
-          // Generar buffer binario OpenXML
-          const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-          resultBlob = new Blob([wbout], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          });
-          localUrl = URL.createObjectURL(resultBlob);
-        } else {
-          // FORMATO CSV (COMAS O PUNTO Y COMA)
-          const delimiter = outputFormat === 'csv_semicolon' ? ';' : ',';
-          let csvContent = '\uFEFF'; // BOM para UTF-8 en Excel
-
-          if (includeHeaders) {
-            csvContent += `Pagina_PDF${delimiter}Fila${delimiter}Dato_1${delimiter}Dato_2${delimiter}Dato_3\n`;
-          }
-
-          pagesData.forEach((pData) => {
-            pData.rows.forEach((row, rIdx) => {
-              const formattedCells = row.map((cell) => {
-                const str = String(cell).replace(/"/g, '""');
-                return `"${str}"`;
-              });
-              csvContent += `"${pData.pageNum}"${delimiter}${rIdx + 1}${delimiter}${formattedCells.join(delimiter)}\n`;
-            });
-          });
-
-          resultBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-          localUrl = URL.createObjectURL(resultBlob);
         }
 
         const ext = outputFormat === 'xlsx' ? 'xlsx' : 'csv';
@@ -803,7 +927,7 @@ export default function ExcelPdfConverter({
 
         if (resultBlob) {
           setCompletedResult({
-            downloadUrl: localUrl,
+            downloadUrl: localUrl || '',
             filename: outName,
             fileSize: formatFileSize(resultBlob.size),
             rawBlob: resultBlob,
@@ -1082,33 +1206,50 @@ export default function ExcelPdfConverter({
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+              className="flex flex-col gap-6 w-full items-center"
             >
-              {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+              {/* SECCIÓN 1: VISOR SUPERIOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden h-[540px] max-h-[540px]">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
-                  <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
-                    <Table className="w-4 h-4 text-white" />
-                    <span>
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
                       {isEs
                         ? '001 / VISOR Y SELECCIÓN TABULAR'
-                        : '001 / VIEWER & TABULAR SELECTION'}
+                        : '001 / TABULAR VIEWER & SELECTION'}
+                    </span>
+                    <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
+                    <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
+                      {file?.name}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
                     <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
-                    {totalPages} {isEs ? 'a Excel' : 'to Excel'}
+                    {totalPages}{' '}
+                    {mode === 'excel-to-pdf'
+                      ? isEs
+                        ? 'Hojas a PDF'
+                        : 'Sheets to PDF'
+                      : isEs
+                        ? 'a Excel'
+                        : 'to Excel'}
                   </div>
                 </div>
 
                 {/* CONTENEDOR PRINCIPAL SPLIT */}
-                <div className="w-full flex-1 bg-[#121217] rounded-2xl overflow-hidden relative border border-zinc-700/80 font-mono min-h-0 flex shadow-inner">
+                <div className="flex-1 flex flex-row gap-4 min-h-0 overflow-hidden bg-[#121217] rounded-2xl border border-zinc-700/80 shadow-inner">
                   {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  <div className="w-32 sm:w-36 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                  <div className="w-32 sm:w-40 md:w-48 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
                     <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
                       <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
-                        {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
+                        {mode === 'excel-to-pdf'
+                          ? isEs
+                            ? 'HOJAS'
+                            : 'SHEETS'
+                          : isEs
+                            ? 'PÁGS'
+                            : 'PAGES'}{' '}
+                        ({totalPages})
                       </span>
                       <button
                         type="button"
@@ -1141,6 +1282,69 @@ export default function ExcelPdfConverter({
                         <Loader2 className="w-5 h-5 animate-spin text-white" />
                         <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
                       </div>
+                    ) : mode === 'excel-to-pdf' && excelSheets.length > 0 ? (
+                      excelSheets.map((sheet, sIdx) => {
+                        const isIncluded = targetPageSet.has(sIdx + 1);
+                        const isActive = activeSheetIndex === sIdx;
+
+                        return (
+                          <div
+                            key={sIdx}
+                            onClick={() => setActiveSheetIndex(sIdx)}
+                            className={`w-full bg-[#18181f] border rounded-xl p-2.5 flex flex-col gap-1.5 relative transition-all cursor-pointer group shadow-sm ${
+                              isActive
+                                ? 'border-emerald-400 ring-2 ring-emerald-400/40 bg-emerald-950/30'
+                                : isIncluded
+                                  ? 'border-zinc-600 hover:border-zinc-400 bg-zinc-900'
+                                  : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                <span
+                                  className="font-bold font-mono text-[11px] text-white truncate"
+                                  title={sheet.name}
+                                >
+                                  {sheet.name}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => togglePageSelection(sIdx + 1, e)}
+                                className={`p-0.5 rounded transition-all cursor-pointer shrink-0 ${
+                                  isIncluded
+                                    ? 'bg-emerald-400 text-black shadow-sm'
+                                    : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
+                                }`}
+                                title={
+                                  isIncluded
+                                    ? isEs
+                                      ? 'Quitar hoja del PDF'
+                                      : 'Exclude sheet from PDF'
+                                    : isEs
+                                      ? 'Incluir hoja en PDF'
+                                      : 'Include sheet in PDF'
+                                }
+                              >
+                                {isIncluded ? (
+                                  <Check className="w-2.5 h-2.5 stroke-[3] text-black" />
+                                ) : (
+                                  <div className="w-2.5 h-2.5" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between text-[9px] text-zinc-400 font-mono pt-1 border-t border-zinc-800/60">
+                              <span>
+                                {sheet.rowCount} {isEs ? 'filas' : 'r'}
+                              </span>
+                              <span>
+                                {sheet.colCount} {isEs ? 'cols' : 'c'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
                     ) : totalPages > 0 ? (
                       Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
                         const isIncluded = targetPageSet.has(pageNum);
@@ -1211,14 +1415,143 @@ export default function ExcelPdfConverter({
                     )}
                   </div>
 
-                  {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL */}
+                  {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL O CUADRÍCULA EXCEL EN VIVO */}
                   <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
-                    {pdfUrl ? (
-                      <iframe
-                        src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                        className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
-                        title="Visor PDF Tamaño Normal"
+                    {mode === 'pdf-to-excel' ||
+                    (file && file.name.toLowerCase().endsWith('.pdf')) ? (
+                      <PdfPageViewer
+                        file={file}
+                        activePage={activePage}
+                        totalPages={totalPages}
+                        onPageChange={(p) => setActivePage(p)}
+                        pageDataUrls={pageDataUrls}
+                        title={file?.name}
+                        accentColor="emerald"
                       />
+                    ) : excelSheets.length > 0 && excelSheets[activeSheetIndex] ? (
+                      <div className="w-full h-full bg-[#0d0d11] rounded-xl flex flex-col overflow-hidden border border-zinc-800 shadow-2xl">
+                        {/* BARRA SUPERIOR DE LA HOJA EXCEL */}
+                        <div className="flex items-center justify-between px-3 py-2 bg-[#14141a] border-b border-zinc-800 shrink-0 gap-2">
+                          {/* PESTAÑAS DE HOJAS */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pr-2">
+                            {excelSheets.map((sheet, sIdx) => (
+                              <button
+                                key={sIdx}
+                                type="button"
+                                onClick={() => setActiveSheetIndex(sIdx)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                                  activeSheetIndex === sIdx
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                                    : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-white'
+                                }`}
+                              >
+                                <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
+                                <span>{sheet.name}</span>
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* STATS DE LA HOJA */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-mono font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-700">
+                              {excelSheets[activeSheetIndex].rowCount} {isEs ? 'filas' : 'rows'} ×{' '}
+                              {excelSheets[activeSheetIndex].colCount} {isEs ? 'cols' : 'cols'}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-500/30">
+                              ✓{' '}
+                              {excelSheets[activeSheetIndex].rowCount *
+                                excelSheets[activeSheetIndex].colCount}{' '}
+                              {isEs ? 'celdas' : 'cells'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* CUADRÍCULA DE CELDAS EXCEL INTERACTIVA */}
+                        <div className="flex-1 overflow-auto bg-[#0a0a0d] custom-scrollbar relative">
+                          <table className="w-full border-collapse font-mono text-xs text-left">
+                            <thead className="sticky top-0 z-10 bg-[#16161d] shadow-sm">
+                              <tr>
+                                <th className="sticky left-0 z-20 w-10 min-w-[40px] p-1.5 text-[10px] font-bold text-zinc-500 bg-[#16161d] border-b border-r border-zinc-700/80 text-center select-none">
+                                  #
+                                </th>
+                                {Array.from(
+                                  {
+                                    length: Math.max(
+                                      1,
+                                      Math.min(excelSheets[activeSheetIndex].colCount || 1, 26),
+                                    ),
+                                  },
+                                  (_, c) => (
+                                    <th
+                                      key={c}
+                                      className="p-1.5 min-w-[100px] text-[11px] font-bold text-zinc-300 border-b border-r border-zinc-700/80 text-center select-none"
+                                    >
+                                      {String.fromCharCode(65 + c)}
+                                    </th>
+                                  ),
+                                )}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {excelSheets[activeSheetIndex].rows.length > 0 ? (
+                                excelSheets[activeSheetIndex].rows.map((row, rIdx) => (
+                                  <tr
+                                    key={rIdx}
+                                    className="hover:bg-emerald-950/20 transition-colors border-b border-zinc-800/80"
+                                  >
+                                    <td className="sticky left-0 z-10 p-1.5 text-[10px] font-bold text-zinc-500 bg-[#121217] border-r border-zinc-700/80 text-center select-none">
+                                      {rIdx + 1}
+                                    </td>
+                                    {Array.from(
+                                      {
+                                        length: Math.max(
+                                          1,
+                                          Math.min(excelSheets[activeSheetIndex].colCount || 1, 26),
+                                        ),
+                                      },
+                                      (_, cIdx) => (
+                                        <td
+                                          key={cIdx}
+                                          className="p-1.5 text-[11px] text-zinc-200 border-r border-zinc-800/60 max-w-[220px] truncate whitespace-nowrap"
+                                          title={row[cIdx] ? String(row[cIdx]) : ''}
+                                        >
+                                          {row[cIdx] !== undefined &&
+                                          row[cIdx] !== null &&
+                                          String(row[cIdx]) !== '' ? (
+                                            <span className="text-zinc-100">
+                                              {String(row[cIdx])}
+                                            </span>
+                                          ) : (
+                                            <span className="text-zinc-700 font-mono text-[9px] select-none">
+                                              -
+                                            </span>
+                                          )}
+                                        </td>
+                                      ),
+                                    )}
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td
+                                    colSpan={
+                                      Math.max(
+                                        1,
+                                        Math.min(excelSheets[activeSheetIndex].colCount || 1, 26),
+                                      ) + 1
+                                    }
+                                    className="p-8 text-center text-zinc-500 font-mono text-xs"
+                                  >
+                                    {isEs
+                                      ? 'Hoja vacía o sin datos detectados'
+                                      : 'Empty sheet or no data detected'}
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
                         <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
@@ -1234,120 +1567,245 @@ export default function ExcelPdfConverter({
                 </div>
               </div>
 
-              {/* LADO DERECHO: PANEL DE CONTROL CON SELECCIÓN DE PÁGINAS Y OPCIONES AVANZADAS */}
-              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-5 lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+              {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO EN CUADRÍCULA HORIZONTAL */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
-                  {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-                  <div className="mb-2 pb-2 border-b border-zinc-800">
+
+                {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                  <div>
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
                       {isEs
                         ? '002 / CONFIGURACIÓN Y SELECCIÓN DE PÁGINAS'
                         : '002 / CONFIGURATION & PAGE SELECTION'}
                     </span>
-                    <h2 className="text-lg font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                    <h2 className="text-lg font-black text-white flex items-center gap-2 font-sans uppercase tracking-tight">
                       <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
-                      <Sliders className="w-4 h-4 text-white" />
                     </h2>
                   </div>
+                  <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white shadow-sm">
+                    <Sliders className="w-4 h-4 text-white" />
+                  </div>
+                </div>
 
-                  {/* SECCIÓN DE SELECCIÓN DE PÁGINAS (MODO PDF A EXCEL) */}
-                  {mode === 'pdf-to-excel' && (
-                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
-                      <div className="flex items-center justify-between">
-                        <label className="text-zinc-200 font-bold flex items-center gap-1.5">
-                          <ListChecks className="w-4 h-4 text-white" />
-                          <span>
-                            {isEs ? 'Páginas a Convertir a Excel' : 'Pages to Convert to Excel'}
-                          </span>
-                        </label>
-                        <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
-                          {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                {/* SELECTOR VISUAL DE MOTOR DE CONVERSIÓN EN 2X2 */}
+                <div className="bg-[#121217] p-3.5 sm:p-4 rounded-2xl border border-zinc-700/80 space-y-2.5 font-mono text-xs shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <label className="text-zinc-200 font-bold flex items-center gap-1.5 text-xs">
+                      <Cpu className="w-4 h-4 text-emerald-400" />
+                      <span>
+                        {isEs ? 'Motor de Conversión de Tablas' : 'Table Conversion Engine'}
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      {isEs ? '4 Motores Disponibles' : '4 Engines Available'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('adobe')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'adobe'
+                          ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>🏆 Adobe Acrobat Pro (Nube)</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                          {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
                         </span>
                       </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Máxima precisión en fórmulas, tablas estructuradas y rangos de datos oficiales de Microsoft Excel.'
+                          : 'Official Excel fidelity for formulas, structured tables & ranges.'}
+                      </p>
+                    </button>
 
-                      {/* MODOS DE SELECCIÓN */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('all')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'all'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Todas' : 'All'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('range')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'range'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Rango' : 'Range'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('odd')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'odd'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Impares' : 'Odd'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('even')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'even'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Pares' : 'Even'}
-                        </button>
+                    {/* OPCIÓN 2: CLOUDCONVERT API */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('cloudconvert')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'cloudconvert'
+                          ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>🌐 CloudConvert (Nube)</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                          {isEs ? 'Procesamiento Cloud' : 'Cloud Engine'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Motor en la nube de alto rendimiento. Convierte hojas de cálculo complejas en formato XLSX nativo.'
+                          : 'High-performance cloud engine. Converts complex spreadsheets to native XLSX.'}
+                      </p>
+                    </button>
+
+                    {/* OPCIÓN 3: MOTOR LOCAL SHEETJS */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('local')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'local'
+                          ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>⚡ Motor Local SheetJS</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          {isEs ? 'Instantáneo (~0.5s)' : 'Instant (~0.5s)'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Procesamiento 100% privado en memoria. Convierte tablas y celdas sin enviar datos a servidores externos.'
+                          : '100% private in-memory processing. Converts cells without sending data externally.'}
+                      </p>
+                    </button>
+
+                    {/* OPCIÓN 4: MOTOR TABULAR INTELIGENTE */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('smart')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'smart'
+                          ? 'bg-purple-950/50 border-purple-400 ring-1 ring-purple-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>📊 Grilla Inteligente (Smart)</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                          {isEs ? 'Grilla Exacta' : 'Exact Grid'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Detección geométrica espacial de filas y columnas para balances contables y cuadros financieros.'
+                          : 'Spatial geometric detection for accounting statements & financial reports.'}
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* CONTENIDO DEL PANEL DE CONTROL EN 3 COLUMNAS MODULARES */}
+                {mode === 'pdf-to-excel' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+                    {/* COL 1: SELECCIÓN DE PÁGINAS */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-zinc-200 font-bold flex items-center gap-1.5">
+                            <ListChecks className="w-4 h-4 text-white" />
+                            <span>
+                              {isEs ? 'Páginas a Convertir a Excel' : 'Pages to Convert to Excel'}
+                            </span>
+                          </label>
+                          <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
+                            {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                          </span>
+                        </div>
+
+                        {/* MODOS DE SELECCIÓN */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('all')}
+                            className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'all'
+                                ? 'bg-white text-black border-white shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Todas' : 'All'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('range')}
+                            className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'range'
+                                ? 'bg-white text-black border-white shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Rango' : 'Range'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('odd')}
+                            className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'odd'
+                                ? 'bg-white text-black border-white shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Impares' : 'Odd'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('even')}
+                            className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'even'
+                                ? 'bg-white text-black border-white shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Pares' : 'Even'}
+                          </button>
+                        </div>
+
+                        {/* INPUT DE RANGO */}
+                        {pageSelectionMode === 'range' && (
+                          <div className="space-y-2 pt-1 border-t border-white/5">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={pageRangeInput}
+                                onChange={(e) => setPageRangeInput(e.target.value)}
+                                placeholder={isEs ? 'Ej: 1-5, 8, 11-20' : 'E.g: 1-5, 8, 11-20'}
+                                className="flex-1 bg-zinc-900 border border-white/20 focus:border-emerald-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-1 text-[10px]">
+                              {[
+                                { label: isEs ? 'Primeras 5' : 'First 5', range: '1-5' },
+                                { label: isEs ? 'Primeras 10' : 'First 10', range: '1-10' },
+                                { label: isEs ? 'Primeras 20' : 'First 20', range: '1-20' },
+                                { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
+                              ].map((chip, cIdx) => (
+                                <button
+                                  key={cIdx}
+                                  type="button"
+                                  onClick={() => setPageRangeInput(chip.range)}
+                                  className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded text-zinc-300 text-[10px] cursor-pointer"
+                                >
+                                  {chip.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* INPUT DE RANGO */}
-                      {pageSelectionMode === 'range' && (
-                        <div className="space-y-2 pt-1 border-t border-white/5">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={pageRangeInput}
-                              onChange={(e) => setPageRangeInput(e.target.value)}
-                              placeholder={isEs ? 'Ej: 1-5, 8, 11-20' : 'E.g: 1-5, 8, 11-20'}
-                              className="flex-1 bg-zinc-900 border border-white/20 focus:border-emerald-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
-                            />
-                          </div>
-                          <div className="flex flex-wrap gap-1 text-[10px]">
-                            {[
-                              { label: isEs ? 'Primeras 5' : 'First 5', range: '1-5' },
-                              { label: isEs ? 'Primeras 10' : 'First 10', range: '1-10' },
-                              { label: isEs ? 'Primeras 20' : 'First 20', range: '1-20' },
-                              { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
-                            ].map((chip, cIdx) => (
-                              <button
-                                key={cIdx}
-                                type="button"
-                                onClick={() => setPageRangeInput(chip.range)}
-                                className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded text-zinc-300 text-[10px] cursor-pointer"
-                              >
-                                {chip.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                       {/* ACCIONES RÁPIDAS */}
-                      <div className="flex items-center justify-between text-[11px] pt-1 text-zinc-400">
+                      <div className="flex items-center justify-between text-[11px] pt-2 border-t border-zinc-800 text-zinc-400">
                         <span>{isEs ? 'Acciones rápidas:' : 'Quick actions:'}</span>
                         <div className="flex gap-2 font-bold">
                           <button
@@ -1374,15 +1832,13 @@ export default function ExcelPdfConverter({
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  {/* OPCIONES DE FORMATO Y EXTRACCIÓN XLSX */}
-                  {mode === 'pdf-to-excel' ? (
-                    <div className="space-y-3 font-mono text-xs">
+                    {/* COL 2: FORMATO, ESTRUCTURA Y ESTRATEGIA */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
                       {/* FORMATO Y ESTRUCTURA DE HOJAS */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                      <div className="space-y-3">
+                        <div className="bg-zinc-950 p-3 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
                             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                             {isEs ? 'Formato de Salida' : 'Output Format'}
                           </label>
@@ -1393,18 +1849,16 @@ export default function ExcelPdfConverter({
                                 e.target.value as 'xlsx' | 'csv_comma' | 'csv_semicolon',
                               )
                             }
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2.5 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
                           >
                             <option value="xlsx">Excel (.xlsx) - OpenXML Nativo</option>
-                            <option value="csv_comma">CSV (.csv - Delimitado por comas)</option>
-                            <option value="csv_semicolon">
-                              CSV (.csv - Delimitado por punto y coma)
-                            </option>
+                            <option value="csv_comma">CSV (.csv - Coma)</option>
+                            <option value="csv_semicolon">CSV (.csv - Punto y coma)</option>
                           </select>
                         </div>
 
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                        <div className="bg-zinc-950 p-3 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
                             <Layout className="w-4 h-4 text-emerald-400" />
                             {isEs ? 'Organización de Hojas' : 'Sheet Organization'}
                           </label>
@@ -1433,58 +1887,45 @@ export default function ExcelPdfConverter({
                             </button>
                           </div>
                         </div>
-                      </div>
 
-                      {/* ESTRATEGIA DE DETECCIÓN Y PARSEO */}
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                        <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                          <Grid className="w-4 h-4 text-emerald-400" />
-                          {isEs ? 'Estrategia de Detección de Tablas' : 'Table Detection Strategy'}
-                        </label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setExtractionStrategy('smart')}
-                            className={`p-2 rounded-lg text-left border transition-all cursor-pointer ${
-                              extractionStrategy === 'smart'
-                                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500/30'
-                                : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                            }`}
-                          >
-                            <span className="font-bold block text-xs">
-                              {isEs ? 'Grilla Inteligente (Smart)' : 'Smart Grid'}
-                            </span>
-                            <span className="text-[10px] text-zinc-400">
-                              {isEs
-                                ? 'Detecta celdas y columnas alineadas'
-                                : 'Detects aligned cells & columns'}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setExtractionStrategy('lineByLine')}
-                            className={`p-2 rounded-lg text-left border transition-all cursor-pointer ${
-                              extractionStrategy === 'lineByLine'
-                                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500/30'
-                                : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                            }`}
-                          >
-                            <span className="font-bold block text-xs">
-                              {isEs ? 'Línea por Línea (Lineal)' : 'Line by Line'}
-                            </span>
-                            <span className="text-[10px] text-zinc-400">
-                              {isEs
-                                ? 'Extrae filas directas sin agrupar'
-                                : 'Direct rows without grouping'}
-                            </span>
-                          </button>
+                        <div className="bg-zinc-950 p-3 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                            <Grid className="w-4 h-4 text-emerald-400" />
+                            {isEs ? 'Estrategia de Detección' : 'Detection Strategy'}
+                          </label>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setExtractionStrategy('smart')}
+                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                extractionStrategy === 'smart'
+                                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500/30'
+                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Smart Grid' : 'Smart Grid'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setExtractionStrategy('lineByLine')}
+                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                extractionStrategy === 'lineByLine'
+                                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500/30'
+                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Lineal' : 'Linear'}
+                            </button>
+                          </div>
                         </div>
                       </div>
+                    </div>
 
+                    {/* COL 3: CHECKBOXES DE AJUSTES E INFO COMPATIBILIDAD */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
                       {/* CHECKBOXES DE AJUSTES */}
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-2.5">
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                      <div className="bg-zinc-950 p-3 rounded-xl border border-white/10 space-y-2.5">
+                        <label className="flex items-center gap-2 cursor-pointer text-[11px] text-zinc-300">
                           <input
                             type="checkbox"
                             checked={autoFormatNumbers}
@@ -1493,11 +1934,11 @@ export default function ExcelPdfConverter({
                           />
                           <span>
                             {isEs
-                              ? 'Convertir texto numérico a números reales de Excel (=SUMA, fórmulas)'
-                              : 'Convert numerical text to real Excel numbers (allows formulas)'}
+                              ? 'Convertir texto numérico a números reales'
+                              : 'Convert numeric text to real numbers'}
                           </span>
                         </label>
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                        <label className="flex items-center gap-2 cursor-pointer text-[11px] text-zinc-300">
                           <input
                             type="checkbox"
                             checked={includeHeaders}
@@ -1506,11 +1947,11 @@ export default function ExcelPdfConverter({
                           />
                           <span>
                             {isEs
-                              ? 'Incluir fila de encabezados con nombres de columnas'
+                              ? 'Incluir fila de encabezados con nombres'
                               : 'Include header row with column labels'}
                           </span>
                         </label>
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
+                        <label className="flex items-center gap-2 cursor-pointer text-[11px] text-zinc-300">
                           <input
                             type="checkbox"
                             checked={trimEmptyRows}
@@ -1519,99 +1960,93 @@ export default function ExcelPdfConverter({
                           />
                           <span>
                             {isEs
-                              ? 'Omitir filas y espacios en blanco sin datos'
-                              : 'Omit empty rows and blank spaces without data'}
+                              ? 'Omitir filas y espacios en blanco'
+                              : 'Omit empty rows and blank spaces'}
                           </span>
                         </label>
                       </div>
 
                       {/* INFO BOX COMPATIBILIDAD */}
-                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3.5 text-xs text-emerald-400 space-y-1">
-                        <span className="font-bold flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4" />
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-xs text-emerald-400 space-y-1">
+                        <span className="font-bold flex items-center gap-1.5 text-[11px]">
+                          <ShieldCheck className="w-3.5 h-3.5" />
                           {isEs
                             ? 'Exportación Binaria OpenXML (.xlsx) Nativa'
                             : 'Native OpenXML Binary (.xlsx) Export'}
                         </span>
-                        <p className="text-[11px] text-zinc-400">
+                        <p className="text-[10px] text-zinc-400 leading-relaxed">
                           {isEs
-                            ? 'El archivo descargado abre limpiamente en Microsoft Excel (Windows/Mac/Web), Google Sheets, LibreOffice Calc y Apple Numbers sin advertencias.'
-                            : 'Downloaded file opens cleanly in Excel, Google Sheets, LibreOffice Calc, and Numbers.'}
+                            ? 'Compatible al 100% con Microsoft Excel, Google Sheets, LibreOffice Calc y Apple Numbers sin advertencias.'
+                            : '100% compatible with Microsoft Excel, Google Sheets, LibreOffice Calc and Numbers.'}
                         </p>
                       </div>
                     </div>
-                  ) : (
-                    /* OPCIONES MODO EXCEL A PDF */
-                    <div className="space-y-4 font-mono text-xs">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Layout className="w-4 h-4 text-emerald-400" />
-                            {isEs ? 'Orientación del Reporte' : 'Report Orientation'}
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setOrientation('landscape')}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'landscape'
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Horizontal' : 'Landscape'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setOrientation('portrait')}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'portrait'
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Vertical' : 'Portrait'}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Sliders className="w-4 h-4 text-emerald-400" />
-                            {isEs ? 'Tamaño de Papel' : 'Paper Size'}
-                          </label>
-                          <select
-                            value={pageSize}
-                            onChange={(e) =>
-                              setPageSize(e.target.value as 'a4' | 'letter' | 'legal')
-                            }
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
-                          >
-                            <option value="a4">A4 (Estándar)</option>
-                            <option value="letter">Carta / Letter</option>
-                            <option value="legal">Oficio / Legal</option>
-                          </select>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 sm:col-span-2 space-y-2.5">
-                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                            <input
-                              type="checkbox"
-                              checked={showGridlines}
-                              onChange={(e) => setShowGridlines(e.target.checked)}
-                              className="accent-emerald-400 w-4 h-4 rounded cursor-pointer"
-                            />
-                            <span>
-                              {isEs
-                                ? 'Dibujar líneas de cuadrícula y bordes de celdas'
-                                : 'Draw gridlines and cell borders'}
-                            </span>
-                          </label>
-                        </div>
+                  </div>
+                ) : (
+                  /* MODO EXCEL A PDF */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
+                      <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                        <Layout className="w-4 h-4 text-emerald-400" />
+                        {isEs ? 'Orientación del Reporte' : 'Report Orientation'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOrientation('landscape')}
+                          className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            orientation === 'landscape'
+                              ? 'bg-white text-black border-white'
+                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Horizontal' : 'Landscape'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOrientation('portrait')}
+                          className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            orientation === 'portrait'
+                              ? 'bg-white text-black border-white'
+                              : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Vertical' : 'Portrait'}
+                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
+                      <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                        <Sliders className="w-4 h-4 text-emerald-400" />
+                        {isEs ? 'Tamaño de Papel' : 'Paper Size'}
+                      </label>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => setPageSize(e.target.value as 'a4' | 'letter' | 'legal')}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="a4">A4 (Estándar)</option>
+                        <option value="letter">Carta / Letter</option>
+                        <option value="legal">Oficio / Legal</option>
+                      </select>
+
+                      <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300 pt-2">
+                        <input
+                          type="checkbox"
+                          checked={showGridlines}
+                          onChange={(e) => setShowGridlines(e.target.checked)}
+                          className="accent-emerald-400 w-4 h-4 rounded cursor-pointer"
+                        />
+                        <span>
+                          {isEs
+                            ? 'Dibujar líneas de cuadrícula y bordes de celdas'
+                            : 'Draw gridlines and cell borders'}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
                 <div className="pt-3 border-t border-white/10 font-sans">

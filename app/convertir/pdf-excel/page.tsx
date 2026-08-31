@@ -2,6 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
+import ConverterSeoSection from '@/components/ConverterSeoSection';
+import { CONVERTER_SEO_DATA } from '@/lib/converter-seo-data';
 
 const ExcelPdfConverter = dynamic(() => import('@/components/ExcelPdfConverter'), {
   ssr: false,
@@ -14,10 +16,13 @@ const ExcelPdfConverter = dynamic(() => import('@/components/ExcelPdfConverter')
 });
 
 export default function PdfExcelPage() {
+  const seoData = CONVERTER_SEO_DATA['pdf-excel'];
+
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center justify-start min-h-[calc(100vh-100px)] bg-[#09090b]">
-      <div className="w-full max-w-7xl">
+      <div className="w-full max-w-7xl flex flex-col items-center">
         <ExcelPdfConverter defaultMode="pdf-to-excel" />
+        {seoData && <ConverterSeoSection {...seoData} />}
       </div>
     </main>
   );

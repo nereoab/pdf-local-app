@@ -42,6 +42,16 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     return currentUser.email.substring(0, 2).toUpperCase();
   };
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+      return;
+    }
+    if (pathname === '/') {
+      e.preventDefault();
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col selection:bg-white/20 selection:text-white relative overflow-x-hidden font-sans text-white bg-[#09090b]">
       <Toaster position="bottom-right" richColors closeButton theme="dark" />
@@ -56,6 +66,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             {/* LOGO TECHNICAL - AS DE ESPADAS */}
             <Link
               href="/"
+              onClick={handleLogoClick}
               className="flex-shrink-0"
               aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
             >
@@ -344,10 +355,15 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
         role="contentinfo"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs">
-          <div className="flex items-center gap-2">
+          <Link
+            href="/"
+            onClick={handleLogoClick}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+            aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
+          >
             <Spade className="w-4 h-4 text-white" fill="currentColor" aria-hidden="true" />
             <span className="text-zinc-400 font-medium">PDFBLACK © {new Date().getFullYear()}</span>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[11px]">
             <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />

@@ -10,21 +10,12 @@
 describe('pdf-compress-worker — Utilidades de compresión', () => {
   // ─── parseSelectedPages ──────────────────────────
   describe('parseSelectedPages', () => {
-    function parseSelectedPages(
-      numPages: number,
-      pageScope: string,
-      pageRange?: string
-    ): number[] {
-      if (pageScope === 'todas')
-        return Array.from({ length: numPages }, (_, i) => i + 1);
+    function parseSelectedPages(numPages: number, pageScope: string, pageRange?: string): number[] {
+      if (pageScope === 'todas') return Array.from({ length: numPages }, (_, i) => i + 1);
       if (pageScope === 'pares')
-        return Array.from({ length: numPages }, (_, i) => i + 1).filter(
-          (p) => p % 2 === 0
-        );
+        return Array.from({ length: numPages }, (_, i) => i + 1).filter((p) => p % 2 === 0);
       if (pageScope === 'impares')
-        return Array.from({ length: numPages }, (_, i) => i + 1).filter(
-          (p) => p % 2 !== 0
-        );
+        return Array.from({ length: numPages }, (_, i) => i + 1).filter((p) => p % 2 !== 0);
       if (pageScope === 'rango' && pageRange?.trim()) {
         const selected = new Set<number>();
         const parts = pageRange.split(',');
@@ -42,8 +33,7 @@ describe('pdf-compress-worker — Utilidades de compresión', () => {
             if (!isNaN(p) && p >= 1 && p <= numPages) selected.add(p);
           }
         }
-        if (selected.size > 0)
-          return Array.from(selected).sort((a, b) => a - b);
+        if (selected.size > 0) return Array.from(selected).sort((a, b) => a - b);
       }
       return Array.from({ length: numPages }, (_, i) => i + 1);
     }
@@ -73,55 +63,55 @@ describe('pdf-compress-worker — Utilidades de compresión', () => {
   describe('getCompressionParams', () => {
     function getCompressionParams(
       level: 'low' | 'medium' | 'high',
-      dpiMode: 'auto' | '72' | '96' | '150'
+      dpiMode: 'auto' | '72' | '96' | '150',
     ): { scale: number; jpegQuality: number } {
-      if (dpiMode === '72') return { scale: 0.5, jpegQuality: 0.4 };
-      if (dpiMode === '96') return { scale: 0.67, jpegQuality: 0.5 };
-      if (dpiMode === '150') return { scale: 1.04, jpegQuality: 0.7 };
+      if (dpiMode === '72') return { scale: 1.0, jpegQuality: 0.6 };
+      if (dpiMode === '96') return { scale: 1.33, jpegQuality: 0.68 };
+      if (dpiMode === '150') return { scale: 2.08, jpegQuality: 0.78 };
       switch (level) {
         case 'low':
-          return { scale: 1.0, jpegQuality: 0.85 };
+          return { scale: 2.0, jpegQuality: 0.82 };
         case 'medium':
-          return { scale: 0.75, jpegQuality: 0.55 };
+          return { scale: 1.5, jpegQuality: 0.7 };
         case 'high':
-          return { scale: 0.5, jpegQuality: 0.35 };
+          return { scale: 1.33, jpegQuality: 0.62 };
       }
     }
 
-    it('nivel bajo preserva calidad máxima', () => {
+    it('nivel bajo preserva calidad máxima (150 DPI)', () => {
       const params = getCompressionParams('low', 'auto');
-      expect(params.scale).toBe(1.0);
-      expect(params.jpegQuality).toBe(0.85);
+      expect(params.scale).toBe(2.0);
+      expect(params.jpegQuality).toBe(0.82);
     });
 
-    it('nivel medio reduce al 75%', () => {
+    it('nivel medio equilibra escala y compresión (110 DPI)', () => {
       const params = getCompressionParams('medium', 'auto');
-      expect(params.scale).toBe(0.75);
-      expect(params.jpegQuality).toBe(0.55);
+      expect(params.scale).toBe(1.5);
+      expect(params.jpegQuality).toBe(0.7);
     });
 
-    it('nivel alto reduce al 50%', () => {
+    it('nivel alto mantiene nitidez y alta compresión (96 DPI)', () => {
       const params = getCompressionParams('high', 'auto');
-      expect(params.scale).toBe(0.5);
-      expect(params.jpegQuality).toBe(0.35);
+      expect(params.scale).toBe(1.33);
+      expect(params.jpegQuality).toBe(0.62);
     });
 
     it('DPI 72 tiene prioridad sobre nivel', () => {
       const params = getCompressionParams('low', '72');
-      expect(params.scale).toBe(0.5);
-      expect(params.jpegQuality).toBe(0.4);
+      expect(params.scale).toBe(1.0);
+      expect(params.jpegQuality).toBe(0.6);
     });
 
     it('DPI 96 tiene prioridad sobre nivel', () => {
       const params = getCompressionParams('high', '96');
-      expect(params.scale).toBe(0.67);
-      expect(params.jpegQuality).toBe(0.5);
+      expect(params.scale).toBe(1.33);
+      expect(params.jpegQuality).toBe(0.68);
     });
 
     it('DPI 150 tiene prioridad sobre nivel', () => {
       const params = getCompressionParams('low', '150');
-      expect(params.scale).toBe(1.04);
-      expect(params.jpegQuality).toBe(0.7);
+      expect(params.scale).toBe(2.08);
+      expect(params.jpegQuality).toBe(0.78);
     });
   });
 
@@ -132,9 +122,7 @@ describe('pdf-compress-worker — Utilidades de compresión', () => {
       const k = 1024;
       const sizes = ['Bytes', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return (
-        parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-      );
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
     it('0 bytes retorna "0 KB"', () => {

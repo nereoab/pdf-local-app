@@ -19,6 +19,7 @@
     "prepare": "husky || true"
   },
   "dependencies": {
+    "@adobe/pdfservices-node-sdk": "^4.1.0",
     "@next/bundle-analyzer": "^15.4.8",
     "@pdfsmaller/pdf-encrypt": "^1.0.2",
     "@pdftron/webviewer": "^12.0.1",
@@ -28,10 +29,12 @@
     "canvas-confetti": "^1.9.4",
     "comlink": "^4.4.2",
     "docx": "^9.7.1",
+    "docx-preview": "^0.4.0",
     "firebase": "^12.17.0",
     "framer-motion": "^12.42.2",
     "jszip": "^3.10.1",
     "lucide-react": "^1.24.0",
+    "mammoth": "^1.12.2",
     "next": "16.2.10",
     "next-themes": "^0.4.6",
     "node-forge": "^1.4.0",

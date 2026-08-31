@@ -14,12 +14,35 @@ import {
   UploadCloud,
   ShieldCheck,
   Sparkles,
+  Zap,
+  RotateCcw,
+  Layout,
+  Table as TableIcon,
+  Maximize2,
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
-import { Document, Packer, Paragraph, TextRun, PageBreak } from 'docx';
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  ImageRun,
+  PageBreak,
+  PageOrientation,
+  ExternalHyperlink,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  BorderStyle,
+} from 'docx';
+import { PDFDocument, PDFName, PDFDict, PDFRef, PDFRawStream } from 'pdf-lib';
+import DownloadSuccessCard from './DownloadSuccessCard';
+import { convertPdfToUltraDocx } from '@/lib/high-fidelity-docx-engine';
+import { convertPdfToWordWithApi } from '@/lib/pdf2docx-api-client';
 
 export default function PdfToWord() {
   const { lang } = useLanguage();
@@ -31,17 +54,20 @@ export default function PdfToWord() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [completedBlob, setCompletedBlob] = useState<Blob | null>(null);
+  const [outFilename, setOutFilename] = useState<string>('');
+  const [outFileSize, setOutFileSize] = useState<string>('');
   const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState<number>(0);
   const [progressMsg, setProgressMsg] = useState('');
+  const [progressPct, setProgressPct] = useState<number>(0);
 
-  // Opciones avanzadas (Siempre visibles)
+  // Opciones de conversión
   const [layoutMode, setLayoutMode] = useState<'flowing' | 'exact'>('flowing');
   const [includeImages, setIncludeImages] = useState<boolean>(true);
+  const [detectTables, setDetectTables] = useState<boolean>(true);
   const [docFormat, setDocFormat] = useState<'docx' | 'rtf'>('docx');
   const [customSuffix, setCustomSuffix] = useState<string>('_Convertido');
-
-  const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
   useEffect(() => {
     if (file) {
@@ -59,11 +85,11 @@ export default function PdfToWord() {
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
 
       const pdfDoc = await pdfjsLib.getDocument({
         data: arrayBuffer.slice(0),
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
         cMapPacked: true,
       }).promise;
 
@@ -71,13 +97,14 @@ export default function PdfToWord() {
       setTotalPages(count);
 
       const urls: Record<number, string> = {};
-      for (let p = 1; p <= count; p++) {
+      const maxThumbnails = Math.min(count, 30);
+      for (let p = 1; p <= maxThumbnails; p++) {
         try {
           const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 1.5 });
+          const viewport = page.getViewport({ scale: 0.5 });
           const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+          canvas.width = Math.ceil(viewport.width);
+          canvas.height = Math.ceil(viewport.height);
           const ctx = canvas.getContext('2d');
           if (ctx) {
             await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
@@ -108,6 +135,7 @@ export default function PdfToWord() {
         setFile(selectedFile);
         setGlobalFile(selectedFile);
         setDownloadUrl(null);
+        setCompletedBlob(null);
         toast.success(isEs ? 'Archivo cargado correctamente' : 'File loaded successfully');
       } else {
         toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
@@ -116,192 +144,61 @@ export default function PdfToWord() {
     e.target.value = '';
   };
 
-  // Construcción nativa de archivo DOCX mediante docx
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 KB';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const buildLocalDocx = async (fileToConvert: File): Promise<Blob> => {
-    const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-    const arrayBuffer = await fileToConvert.arrayBuffer();
-    const pdfDoc = await pdfjsLib.getDocument({
-      data: arrayBuffer.slice(0),
-      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-      cMapPacked: true,
-    }).promise;
-
-    const sanitize = (text: string) =>
-      text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g, '').trim();
-
-    const docChildren: Paragraph[] = [];
-    const docTitle = fileToConvert.name.replace(/\.[^/.]+$/, '');
-
-    docChildren.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: sanitize(docTitle),
-            bold: true,
-            size: 28,
-            font: 'Calibri',
-            color: '1E395B',
-          }),
-        ],
-        spacing: { after: 240 },
-      }),
-    );
-
-    for (let p = 1; p <= pdfDoc.numPages; p++) {
-      const page = await pdfDoc.getPage(p);
-      const textContent = await page.getTextContent();
-
-      if (p > 1) {
-        docChildren.push(new Paragraph({ children: [new PageBreak()] }));
-      }
-
-      if (pdfDoc.numPages > 1) {
-        docChildren.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `--- Página ${p} ---`,
-                italics: true,
-                size: 18,
-                font: 'Calibri',
-                color: '777777',
-              }),
-            ],
-            spacing: { before: 160, after: 80 },
-          }),
-        );
-      }
-
-      const linesMap: Map<number, string[]> = new Map();
-      for (const item of textContent.items) {
-        if ('str' in item && typeof item.str === 'string' && item.str.trim().length > 0) {
-          const y = Math.round(item.transform[5]);
-          const existing = linesMap.get(y) || [];
-          existing.push(item.str);
-          linesMap.set(y, existing);
-        }
-      }
-
-      const sortedYs = Array.from(linesMap.keys()).sort((a, b) => b - a);
-
-      if (sortedYs.length === 0) {
-        docChildren.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `[Página ${p} sin texto extraíble]`,
-                size: 22,
-                font: 'Calibri',
-              }),
-            ],
-          }),
-        );
-      } else {
-        for (const y of sortedYs) {
-          const lineText = sanitize(linesMap.get(y)?.join(' ') || '');
-          if (lineText) {
-            docChildren.push(
-              new Paragraph({
-                children: [
-                  new TextRun({
-                    text: lineText,
-                    size: 22,
-                    font: 'Calibri',
-                    color: '222222',
-                  }),
-                ],
-                spacing: { after: 80, line: 240 },
-              }),
-            );
-          }
-        }
-      }
-    }
-
-    const doc = new Document({
-      creator: 'PDFBlack Suite',
-      title: sanitize(docTitle),
-      description: 'Convertido con PDFBlack',
-      sections: [
-        {
-          properties: {
-            page: {
-              margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-            },
-          },
-          children: docChildren,
+    try {
+      return await convertPdfToWordWithApi(fileToConvert, {
+        onProgress: (pct, msg) => {
+          setProgressPct(pct);
+          setProgressMsg(msg);
         },
-      ],
-    });
-
-    return await Packer.toBlob(doc);
+      });
+    } catch (err) {
+      console.warn('API error, fallback to local ultra engine:', err);
+      return await convertPdfToUltraDocx(fileToConvert, {
+        layoutMode: 'exact',
+        includeImages,
+        detectTables: true,
+        onProgress: (pct, msg) => {
+          setProgressPct(pct);
+          setProgressMsg(msg);
+        },
+      });
+    }
   };
 
   const executeConversion = async () => {
     if (!file) return;
 
     setIsProcessing(true);
-    toast.info(
-      isEs ? 'Procesando conversión nativa a Word...' : 'Processing native conversion to Word...',
-    );
+    setProgressPct(5);
+    setProgressMsg(isEs ? 'Iniciando conversión a Word...' : 'Starting Word conversion...');
 
     try {
-      let resultBlob: Blob | null = null;
-
-      if (API_SECRET) {
-        try {
-          const formData = new FormData();
-          formData.append('File', file);
-          formData.append('StoreFile', 'false');
-
-          const response = await fetch(
-            `https://v2.convertapi.com/convert/pdf/to/docx?Secret=${API_SECRET}`,
-            {
-              method: 'POST',
-              body: formData,
-            },
-          );
-
-          const data = await response.json();
-          if (data.Files && data.Files.length > 0) {
-            const base64Data = data.Files[0].FileData;
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            resultBlob = new Blob([byteArray], {
-              type:
-                docFormat === 'rtf'
-                  ? 'application/rtf'
-                  : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            });
-          }
-        } catch (err) {
-          console.warn('ConvertAPI error, usando motor local nativo JSZip', err);
-        }
-      }
-
-      if (!resultBlob) {
-        resultBlob = await buildLocalDocx(file);
-      }
+      const resultBlob = await buildLocalDocx(file);
 
       const localUrl = URL.createObjectURL(resultBlob);
-      setDownloadUrl(localUrl);
-
       const cleanName = file.name.replace(/\.[^/.]+$/, '');
       const outSuffix = customSuffix.trim() || '_Convertido';
-      const link = document.createElement('a');
-      link.href = localUrl;
-      link.download = `${cleanName}${outSuffix}.${docFormat}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const finalFilename = `${cleanName}${outSuffix}.${docFormat}`;
 
-      toast.success(isEs ? '¡Documento Word listo para editar!' : 'Word document ready to edit!');
+      setDownloadUrl(localUrl);
+      setCompletedBlob(resultBlob);
+      setOutFilename(finalFilename);
+      setOutFileSize(formatBytes(resultBlob.size));
+
+      toast.success(
+        isEs
+          ? '¡Documento Word generado con texto, tablas e imágenes!'
+          : 'Word document generated with text, tables & images!',
+      );
     } catch (error) {
       console.error('Error al convertir PDF a Word:', error);
       toast.error(isEs ? 'Ocurrió un error en la conversión' : 'Conversion error occurred');
@@ -314,8 +211,11 @@ export default function PdfToWord() {
     setFile(null);
     setGlobalFile(null);
     setDownloadUrl(null);
+    setCompletedBlob(null);
     setPageDataUrls({});
     setTotalPages(0);
+    setProgressPct(0);
+    setProgressMsg('');
   };
 
   return (
@@ -344,8 +244,8 @@ export default function PdfToWord() {
             </h2>
             <p className="text-zinc-400 text-xs sm:text-sm font-mono">
               {isEs
-                ? 'Extrae párrafos, estructura y contenido totalmente editable'
-                : 'Extract paragraphs, structure and fully editable content'}
+                ? 'Extrae párrafos, tablas, orientación 16:9/A4 y todas las imágenes con preservación total'
+                : 'Extract paragraphs, tables, 16:9/A4 orientation and all images with complete preservation'}
             </p>
           </div>
           <button className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all shadow-md cursor-pointer">
@@ -356,10 +256,23 @@ export default function PdfToWord() {
             <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
             <span>
               {isEs
-                ? 'PARSER JSZIP NATIVO • DICCIONARIO XML OPENXML • 100% LOCAL'
-                : 'NATIVE JSZIP PARSER • OPENXML DICTIONARY • 100% LOCAL'}
+                ? 'TEXTO + TABLAS + IMÁGENES + 16:9 • DICCIONARIO OPENXML • 100% LOCAL'
+                : 'TEXT + TABLES + IMAGES + 16:9 • OPENXML DICTIONARY • 100% LOCAL'}
             </span>
           </div>
+        </div>
+      ) : downloadUrl && completedBlob ? (
+        /* TARJETA DE ÉXITO Y DESCARGA */
+        <div className="w-full max-w-4xl mx-auto my-6 space-y-4 font-sans">
+          <DownloadSuccessCard
+            downloadUrl={downloadUrl}
+            filename={outFilename}
+            fileSize={outFileSize}
+            outputFormat={docFormat}
+            rawBlob={completedBlob}
+            currentToolId="pdf-word"
+            onReset={resetConverter}
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
@@ -389,7 +302,7 @@ export default function PdfToWord() {
                 </button>
               </div>
 
-              {/* GRILLA DE MINIATURAS EN 3 COLUMNAS X 4 FILAS */}
+              {/* GRILLA DE MINIATURAS EN 3 COLUMNAS */}
               <div className="bg-[#121215] p-4 h-[580px] max-h-[600px] overflow-y-auto [ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {isRendering ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-zinc-400 font-mono text-xs">
@@ -427,7 +340,7 @@ export default function PdfToWord() {
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL (5 COLUMNAS - OPCIONES SIEMPRE VISIBLES) */}
+          {/* LADO DERECHO: PANEL DE CONTROL */}
           <div className="lg:col-span-5 flex flex-col">
             <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans min-h-[580px]">
               <div className="flex flex-col gap-4">
@@ -446,11 +359,11 @@ export default function PdfToWord() {
                   </div>
                 </div>
 
-                {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES) */}
+                {/* OPCIONES AVANZADAS */}
                 <div className="space-y-3.5 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 font-sans">
                   <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
                     <SlidersHorizontal className="w-3.5 h-3.5 text-blue-400" />
-                    <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
+                    <span>{isEs ? 'OPCIONES DE CONVERSIÓN' : 'CONVERSION OPTIONS'}</span>
                   </div>
 
                   {/* Modo de Maquetación */}
@@ -511,14 +424,48 @@ export default function PdfToWord() {
                         {isEs ? 'Extraer e incluir imágenes' : 'Extract & include images'}
                       </p>
                       <p className="text-[10px] text-zinc-500 font-mono">
-                        {isEs ? 'Preserva gráficos embedded' : 'Preserve embedded graphics'}
+                        {isEs
+                          ? 'Preserva fotos y gráficos incrustados'
+                          : 'Preserves photos & embedded graphics'}
                       </p>
                     </div>
                     <div
-                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${includeImages ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${
+                        includeImages ? 'bg-blue-500' : 'bg-zinc-700'
+                      }`}
                     >
                       <div
-                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${includeImages ? 'left-4' : 'left-0.5'}`}
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                          includeImages ? 'left-4' : 'left-0.5'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle Detectar Tablas */}
+                  <div
+                    onClick={() => setDetectTables((v) => !v)}
+                    className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                  >
+                    <div>
+                      <p className="text-[11px] font-bold text-white">
+                        {isEs ? 'Detección inteligente de tablas' : 'Smart table detection'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 font-mono">
+                        {isEs
+                          ? 'Convierte horarios y precios en tablas'
+                          : 'Converts schedules & prices to tables'}
+                      </p>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${
+                        detectTables ? 'bg-blue-500' : 'bg-zinc-700'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                          detectTables ? 'left-4' : 'left-0.5'
+                        }`}
                       />
                     </div>
                   </div>
@@ -540,35 +487,31 @@ export default function PdfToWord() {
 
               {/* Botón de Procesamiento */}
               <div className="pt-4 border-t border-white/10 mt-4">
-                {!downloadUrl ? (
+                {isProcessing ? (
+                  <div className="w-full bg-zinc-950/80 border border-white/15 rounded-2xl p-4 flex flex-col gap-2 font-mono">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white font-bold flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                        {progressMsg || (isEs ? 'Convirtiendo...' : 'Converting...')}
+                      </span>
+                      <span className="text-blue-400 font-bold">{progressPct}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full transition-all duration-300 rounded-full"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <button
                     onClick={executeConversion}
                     disabled={isProcessing || isRendering}
                     className="w-full bg-white hover:bg-zinc-200 text-black font-extrabold text-sm py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-40"
                   >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-black" />
-                        <span>{isEs ? 'Generando Word Nativo...' : 'Building Native Word...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 text-blue-600 fill-blue-600" />
-                        <span>
-                          {isEs ? 'Convertir a Word Editable' : 'Convert to Editable Word'}
-                        </span>
-                      </>
-                    )}
+                    <Sparkles className="w-4 h-4 text-blue-600 fill-blue-600" />
+                    <span>{isEs ? 'Convertir a Word Editable' : 'Convert to Editable Word'}</span>
                   </button>
-                ) : (
-                  <a
-                    href={downloadUrl}
-                    download
-                    className="w-full bg-blue-500 hover:bg-blue-400 text-slate-950 font-extrabold text-sm py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl"
-                  >
-                    <FileDown className="w-5 h-5 text-slate-950" />
-                    <span>{isEs ? 'Descargar Documento Word' : 'Download Word Document'}</span>
-                  </a>
                 )}
               </div>
             </div>

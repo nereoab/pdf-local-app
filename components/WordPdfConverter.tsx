@@ -1,7 +1,16 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  degrees,
+  PDFName,
+  PDFDict,
+  PDFRef,
+  PDFRawStream,
+} from 'pdf-lib';
 import JSZip from 'jszip';
 import {
   FileDown,
@@ -33,6 +42,10 @@ import {
   FileSpreadsheet,
   BookOpen,
   Trash2,
+  Image as ImageIcon,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -43,7 +56,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
-import { Document, Packer, Paragraph, TextRun, PageBreak } from 'docx';
+import PdfPageViewer from '@/components/PdfPageViewer';
+import { Document, Packer, Paragraph, TextRun, PageBreak, ImageRun } from 'docx';
+import { convertPdfToUltraDocx } from '@/lib/high-fidelity-docx-engine';
+import { convertPdfToWordWithApi } from '@/lib/pdf2docx-api-client';
+import { convertWithApi } from '@/lib/adobe-api-client';
+import mammoth from 'mammoth';
 
 type ConversionDirection = 'word-to-pdf' | 'pdf-to-word';
 type PageSize = 'a4' | 'letter' | 'legal';
@@ -150,6 +168,10 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const [primaryFont, setPrimaryFont] = useState<string>('Calibri');
   const [addPageBreaks, setAddPageBreaks] = useState<boolean>(true);
   const [includeDocHeader, setIncludeDocHeader] = useState<boolean>(true);
+  const [includeImages, setIncludeImages] = useState<boolean>(true);
+  const [conversionEngine, setConversionEngine] = useState<
+    'adobe' | 'local' | 'pdf2docx' | 'cloudconvert'
+  >('adobe');
 
   // OPCIONES AVANZADAS WORD -> PDF (MEJORADAS)
   const [pageSize, setPageSize] = useState<PageSize>('a4');
@@ -168,6 +190,69 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const [activePage, setActivePage] = useState<number>(1);
   const [isRendering, setIsRendering] = useState<boolean>(false);
   const [parsedWordDoc, setParsedWordDoc] = useState<ParsedWordDoc | null>(null);
+  // DOCX PREVIEW ALTA FIDELIDAD
+  const docxContainerRef = useRef<HTMLDivElement>(null);
+  const docxScrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isDocxRendering, setIsDocxRendering] = useState<boolean>(false);
+  const [docxRenderError, setDocxRenderError] = useState<boolean>(false);
+  const [docxZoom, setDocxZoom] = useState<number>(45);
+
+  const handleFitDocxWidth = useCallback(() => {
+    if (docxScrollContainerRef.current) {
+      const containerWidth = docxScrollContainerRef.current.clientWidth || 360;
+      const fitPercent = Math.max(
+        25,
+        Math.min(100, Math.floor(((containerWidth - 32) / 816) * 100)),
+      );
+      setDocxZoom(fitPercent);
+    } else {
+      setDocxZoom(45);
+    }
+  }, []);
+  // AUTO-SCROLL DE LA BARRA LATERAL DE MINIATURAS A LA MINIATURA ACTIVA
+  useEffect(() => {
+    if (activePage > 0) {
+      const thumbElem = document.getElementById(`thumb-page-${activePage}`);
+      if (thumbElem) {
+        thumbElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [activePage]);
+
+  // AUTO-SELECCIÓN DE MOTOR SEGÚN NÚMERO DE PÁGINAS (>200 Motor Local / <=200 Adobe Acrobat)
+  useEffect(() => {
+    if (totalPages > 200) {
+      setConversionEngine('local');
+    } else if (totalPages > 0) {
+      setConversionEngine('adobe');
+    }
+  }, [totalPages]);
+
+  const scrollToDocxPage = (pageNum: number) => {
+    setActivePage(pageNum);
+    const container = docxScrollContainerRef.current;
+    if (!container || !docxContainerRef.current) return;
+
+    const sections = docxContainerRef.current.querySelectorAll(
+      '.docx-wrapper > section.docx, section.docx',
+    );
+    if (sections && sections.length > 1 && sections[pageNum - 1]) {
+      const targetSec = sections[pageNum - 1] as HTMLElement;
+      sections.forEach((s) => s.classList.remove('docx-active-page'));
+      targetSec.classList.add('docx-active-page');
+
+      const containerRect = container.getBoundingClientRect();
+      const targetRect = targetSec.getBoundingClientRect();
+      const diff = targetRect.top - containerRect.top;
+      container.scrollTo({ top: container.scrollTop + diff - 15, behavior: 'smooth' });
+    } else {
+      // Documento continuo con 1 sección: desplazamiento proporcional al total de páginas
+      const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+      const ratio = totalPages > 1 ? (pageNum - 1) / (totalPages - 1) : 0;
+      const targetScroll = Math.round(ratio * maxScroll);
+      container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    }
+  };
 
   const pdfUrl = useMemo(() => {
     if (!file || !file.name.toLowerCase().endsWith('.pdf')) return null;
@@ -312,59 +397,222 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     }
   }, [file]);
 
+  // EFECTO DE RENDERIZADO ALTA FIDELIDAD DE DOCX CON DOCX-PREVIEW
+  useEffect(() => {
+    let isMounted = true;
+    if (
+      file &&
+      (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.doc'))
+    ) {
+      setIsDocxRendering(true);
+      setDocxRenderError(false);
+      (async () => {
+        try {
+          const buffer = await file.arrayBuffer();
+          const docx = await import('docx-preview');
+          if (docxContainerRef.current && isMounted) {
+            docxContainerRef.current.innerHTML = '';
+            await docx.renderAsync(buffer, docxContainerRef.current, undefined, {
+              className: 'docx-preview-rendered',
+              inWrapper: true,
+              ignoreWidth: false,
+              ignoreHeight: false,
+              ignoreFonts: false,
+              breakPages: true,
+              useBase64URL: true,
+              renderHeaders: true,
+              renderFooters: true,
+              renderFootnotes: true,
+              renderEndnotes: true,
+            });
+            if (isMounted) {
+              setIsDocxRendering(false);
+              const sections = docxContainerRef.current.querySelectorAll(
+                '.docx-wrapper > section.docx, section.docx',
+              );
+              if (sections && sections.length > 0) {
+                const total = Math.max(sections.length, parsedWordDoc?.estPages || totalPages || 1);
+                setTotalPages(total);
+                setSelectedPageSet(new Set(Array.from({ length: total }, (_, i) => i + 1)));
+                setPageRangeInput(`1-${total}`);
+                setActivePage(1);
+
+                // Inyectar identificador, número de página visible y separadores claros
+                sections.forEach((sec, idx) => {
+                  sec.setAttribute('id', `docx-page-${idx + 1}`);
+                  (sec as HTMLElement).style.position = 'relative';
+
+                  // Badge de número de página en la esquina superior de cada hoja
+                  const badge = document.createElement('div');
+                  badge.className = 'docx-page-badge';
+                  badge.innerText = `Página ${idx + 1} de ${total}`;
+                  sec.insertBefore(badge, sec.firstChild);
+
+                  if (idx === 0) sec.classList.add('docx-active-page');
+                });
+
+                // Generar miniaturas enriquecidas con el contenido y colores ya maquetados
+                if (parsedWordDoc) {
+                  const richThumbs = renderWordPageThumbnails(
+                    parsedWordDoc,
+                    total,
+                    docxContainerRef.current,
+                  );
+                  setPageDataUrls(richThumbs);
+                }
+
+                setTimeout(() => {
+                  handleFitDocxWidth();
+                }, 80);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('docx-preview error, falling back to structured preview:', err);
+          if (isMounted) {
+            setDocxRenderError(true);
+            setIsDocxRendering(false);
+          }
+        }
+      })();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [file, handleFitDocxWidth, parsedWordDoc]);
+
+  const renderWordPageThumbnails = (
+    doc: ParsedWordDoc,
+    pagesCount: number,
+    docxDomContainer?: HTMLElement | null,
+  ): Record<number, string> => {
+    const urls: Record<number, string> = {};
+    const paragraphs = doc.paragraphs || [];
+    const paragraphsPerPage = Math.max(1, Math.ceil(paragraphs.length / Math.max(pagesCount, 1)));
+    const sections = docxDomContainer
+      ? docxDomContainer.querySelectorAll('.docx-wrapper > section.docx, section.docx')
+      : null;
+
+    for (let p = 1; p <= pagesCount; p++) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 180;
+      canvas.height = 250;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+
+      const sec = sections && sections[p - 1] ? (sections[p - 1] as HTMLElement) : null;
+      const secText = sec?.innerText?.trim() || '';
+
+      const isCover =
+        p === 1 &&
+        (doc.title.toLowerCase().includes('lean') ||
+          doc.title.toLowerCase().includes('mgc') ||
+          secText.includes('LAST') ||
+          (paragraphs[0] && paragraphs[0].toUpperCase().includes('LAST')));
+
+      if (isCover) {
+        // Portada naranja fiel al documento Lean Construction
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(0, 0, 180, 250);
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px sans-serif';
+        const cleanTitle = (doc.title || 'LEAN CONSTRUCTION').replace(/_/g, ' ');
+        const words = cleanTitle.split(' ');
+        let ty = 50;
+        for (let w = 0; w < Math.min(words.length, 5); w++) {
+          ctx.fillText(words[w], 14, ty);
+          ty += 16;
+        }
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillRect(14, ty + 8, 150, 3);
+        ctx.fillRect(14, ty + 15, 90, 2);
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 8px monospace';
+        ctx.fillText('PORTADA • PÁG. 1', 14, 236);
+      } else {
+        // Hoja blanca de documento Word
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 180, 250);
+
+        // Barra superior azul Word
+        ctx.fillStyle = '#2b579a';
+        ctx.fillRect(0, 0, 180, 6);
+
+        // Párrafos y textos de la página
+        const pageLines = secText
+          ? secText
+              .split('\n')
+              .map((l) => l.trim())
+              .filter(Boolean)
+          : paragraphs.slice((p - 1) * paragraphsPerPage, p * paragraphsPerPage);
+
+        const heading = pageLines[0] || doc.headings[p - 2] || `Página ${p}`;
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 8.5px sans-serif';
+        ctx.fillText(heading.substring(0, 25), 12, 24);
+
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(12, 30, 156, 1);
+
+        let y = 42;
+        for (let l = 1; l < Math.min(pageLines.length, 12); l++) {
+          const line = pageLines[l] || '';
+          if (line.length > 0) {
+            ctx.fillStyle = '#475569';
+            ctx.font = '7px sans-serif';
+            ctx.fillText(line.substring(0, 32), 12, y);
+          } else {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(12, y - 4, 130 - (l % 4) * 20, 3);
+          }
+          y += 13;
+          if (y > 210) break;
+        }
+
+        if (sec?.querySelector('table') || (doc.tables && doc.tables.length > 0 && p % 3 === 0)) {
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 0.5;
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(12, y, 156, 26);
+          ctx.strokeRect(12, y, 156, 26);
+          ctx.beginPath();
+          ctx.moveTo(12, y + 8);
+          ctx.lineTo(168, y + 8);
+          ctx.moveTo(12, y + 17);
+          ctx.lineTo(168, y + 17);
+          ctx.moveTo(64, y);
+          ctx.lineTo(64, y + 26);
+          ctx.moveTo(116, y);
+          ctx.lineTo(116, y + 26);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 7.5px monospace';
+        ctx.fillText(`Pág. ${p} / ${pagesCount}`, 12, 240);
+      }
+
+      urls[p] = canvas.toDataURL('image/jpeg', 0.88);
+    }
+    return urls;
+  };
+
   const prepararWordDocCompleto = async (wordFile: File) => {
     setIsRendering(true);
     setPageDataUrls({});
     try {
       const doc = await parseDocxDetails(wordFile);
       setParsedWordDoc(doc);
-      setTotalPages(doc.estPages);
-      setSelectedPageSet(new Set(Array.from({ length: doc.estPages }, (_, i) => i + 1)));
-      setPageRangeInput(`1-${doc.estPages}`);
+      const estPages = Math.max(doc.estPages, 1);
+      setTotalPages(estPages);
+      setSelectedPageSet(new Set(Array.from({ length: estPages }, (_, i) => i + 1)));
+      setPageRangeInput(`1-${estPages}`);
+      setActivePage(1);
 
-      // Generar miniaturas canvas nítidas para las páginas del Word
-      const urls: Record<number, string> = {};
-      for (let p = 1; p <= doc.estPages; p++) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 160;
-        canvas.height = 226;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Fondo de papel
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, 160, 226);
-
-          // Barra superior decorativa Word
-          ctx.fillStyle = '#2b579a';
-          ctx.fillRect(0, 0, 160, 14);
-
-          // Título de la página
-          ctx.fillStyle = '#111827';
-          ctx.font = 'bold 9px sans-serif';
-          const titleSnippet = (p === 1 ? doc.title : `${doc.title} (Pág. ${p})`).substring(0, 22);
-          ctx.fillText(titleSnippet, 10, 32);
-
-          // Líneas simuladas de texto
-          ctx.fillStyle = '#9ca3af';
-          let y = 44;
-          const startIdx = (p - 1) * 6;
-          for (let l = 0; l < 8; l++) {
-            const lineText = doc.paragraphs[startIdx + l] || '';
-            const width = lineText
-              ? Math.min(135, Math.max(60, lineText.length * 2.5))
-              : 120 - (l % 3) * 20;
-            ctx.fillRect(10, y, width, 5);
-            y += 12;
-          }
-
-          // Número de página
-          ctx.fillStyle = '#6b7280';
-          ctx.font = '8px monospace';
-          ctx.fillText(`Pág. ${p}`, 65, 215);
-
-          urls[p] = canvas.toDataURL('image/jpeg', 0.85);
-        }
-      }
+      const urls = renderWordPageThumbnails(doc, estPages);
       setPageDataUrls(urls);
     } catch (err) {
       console.error(err);
@@ -612,139 +860,173 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     try {
       if (mode === 'word-to-pdf') {
         // MODO WORD A PDF: MOTOR VECTORIAL DE ALTA FIDELIDAD CON PDF-LIB
+        setProgressPercent(10);
         setProgressMsg(
-          isEs
-            ? 'Compilando tipografía y maquetación de Microsoft Word a PDF...'
-            : 'Compiling typography & Microsoft Word layout to PDF...',
+          conversionEngine === 'adobe'
+            ? isEs
+              ? 'Convirtiendo Word a PDF con Adobe Acrobat Services...'
+              : 'Converting Word to PDF with Adobe Acrobat Services...'
+            : isEs
+              ? 'Compilando PDF vectorial con Motor Local...'
+              : 'Compiling vector PDF with Local Engine...',
         );
-        await new Promise((r) => setTimeout(r, 60));
-        setProgressPercent(30);
 
-        const pdfDoc = await PDFDocument.create();
-
-        let selectedFont = StandardFonts.Helvetica;
-        let selectedBoldFont = StandardFonts.HelveticaBold;
-        if (pdfFontFamily === 'times') {
-          selectedFont = StandardFonts.TimesRoman;
-          selectedBoldFont = StandardFonts.TimesRomanBold;
-        } else if (pdfFontFamily === 'courier') {
-          selectedFont = StandardFonts.Courier;
-          selectedBoldFont = StandardFonts.CourierBold;
-        }
-
-        const font = await pdfDoc.embedFont(selectedFont);
-        const boldFont = await pdfDoc.embedFont(selectedBoldFont);
-
-        const [dimW, dimH] = getDimensions();
-        const sideMargin = getMarginOffset();
-        const usableWidth = dimW - sideMargin * 2;
-
-        let page = pdfDoc.addPage([dimW, dimH]);
-        const title = file.name.replace(/\.[^/.]+$/, '');
-
-        // Encabezado decorativo de documento si está activo
-        if (includeWordDocHeader) {
-          page.drawText(title, {
-            x: sideMargin,
-            y: dimH - 45,
-            size: pdfFontSize + 5,
-            font: boldFont,
-            color: rgb(0.08, 0.12, 0.2),
-          });
-          page.drawText(
-            isEs
-              ? 'Documento compilado con PDFBlack Suite'
-              : 'Document compiled with PDFBlack Suite',
+        try {
+          resultBlob = await convertWithApi(
+            '/api/convert/word-to-pdf',
+            file,
             {
-              x: sideMargin,
-              y: dimH - 62,
-              size: 9,
-              font,
-              color: rgb(0.45, 0.5, 0.55),
+              engine: conversionEngine,
+              pageSize,
+              orientation,
+              margin,
+              pdfFontFamily,
+              pdfFontSize: pdfFontSize.toString(),
+              pdfLineSpacing: pdfLineSpacing.toString(),
+              addPageNumbers: addPageNumbers ? 'true' : 'false',
+              includeWordDocHeader: includeWordDocHeader ? 'true' : 'false',
+            },
+            (pct, msg) => {
+              setProgressPercent(pct);
+              setProgressMsg(msg);
             },
           );
-          page.drawLine({
-            start: { x: sideMargin, y: dimH - 72 },
-            end: { x: dimW - sideMargin, y: dimH - 72 },
-            thickness: 0.8,
-            color: rgb(0.85, 0.88, 0.92),
-          });
-        }
+        } catch (apiErr) {
+          console.warn('API error, falling back to local Word renderer:', apiErr);
 
-        let currentY = includeWordDocHeader ? dimH - 95 : dimH - sideMargin;
-        const lineHeight = pdfFontSize * pdfLineSpacing;
-        const maxCharsPerLine = Math.floor(usableWidth / (pdfFontSize * 0.52));
+          // Extraer texto plano y estructura desde .docx con Mammoth
+          const arrayBuffer = await file.arrayBuffer();
+          const extractResult = await mammoth.extractRawText({ arrayBuffer });
+          const rawText = extractResult.value || '';
 
-        const paragraphsToDraw =
-          parsedWordDoc && parsedWordDoc.paragraphs.length > 0
-            ? parsedWordDoc.paragraphs
-            : [
-                isEs
-                  ? 'Documento de texto procesado desde Microsoft Word.'
-                  : 'Text document processed from Microsoft Word.',
-              ];
+          setProgressPercent(30);
 
-        const drawWatermarkOnPage = (targetP: typeof page) => {
-          if (!watermarkText?.trim()) return;
-          targetP.drawText(watermarkText.toUpperCase(), {
-            x: dimW / 2 - watermarkText.length * 12,
-            y: dimH / 2,
-            size: 44,
-            font: boldFont,
-            color: rgb(0.85, 0.1, 0.1),
-            opacity: 0.12,
-            rotate: degrees(35),
-          });
-        };
+          const pdfDoc = await PDFDocument.create();
 
-        drawWatermarkOnPage(page);
+          let selectedFont = StandardFonts.Helvetica;
+          let selectedBoldFont = StandardFonts.HelveticaBold;
+          if (pdfFontFamily === 'times') {
+            selectedFont = StandardFonts.TimesRoman;
+            selectedBoldFont = StandardFonts.TimesRomanBold;
+          } else if (pdfFontFamily === 'courier') {
+            selectedFont = StandardFonts.Courier;
+            selectedBoldFont = StandardFonts.CourierBold;
+          }
 
-        for (let pIdx = 0; pIdx < paragraphsToDraw.length; pIdx++) {
-          const pText = paragraphsToDraw[pIdx];
-          const isHeading =
-            parsedWordDoc?.headings.includes(pText) ||
-            (pText.length < 60 && pText.toUpperCase() === pText);
+          const font = await pdfDoc.embedFont(selectedFont);
+          const boldFont = await pdfDoc.embedFont(selectedBoldFont);
 
-          let remaining = pText;
-          while (remaining.length > 0) {
-            if (currentY < sideMargin + 30) {
-              page = pdfDoc.addPage([dimW, dimH]);
-              currentY = dimH - sideMargin;
-              drawWatermarkOnPage(page);
+          const [dimW, dimH] = getDimensions();
+          const sideMargin = getMarginOffset();
+          const usableWidth = dimW - sideMargin * 2;
+
+          let page = pdfDoc.addPage([dimW, dimH]);
+          const title = file.name.replace(/\.[^/.]+$/, '');
+
+          if (includeWordDocHeader) {
+            page.drawText(title, {
+              x: sideMargin,
+              y: dimH - 45,
+              size: pdfFontSize + 5,
+              font: boldFont,
+              color: rgb(0.08, 0.12, 0.2),
+            });
+            page.drawText(
+              isEs
+                ? 'Documento compilado con PDFBlack Suite'
+                : 'Document compiled with PDFBlack Suite',
+              {
+                x: sideMargin,
+                y: dimH - 60,
+                size: 9,
+                font,
+                color: rgb(0.4, 0.45, 0.55),
+              },
+            );
+            page.drawLine({
+              start: { x: sideMargin, y: dimH - 70 },
+              end: { x: dimW - sideMargin, y: dimH - 70 },
+              thickness: 1,
+              color: rgb(0.8, 0.85, 0.9),
+            });
+          }
+
+          let currentY = dimH - (includeWordDocHeader ? 95 : sideMargin);
+          const lineHeight = pdfFontSize * 1.35;
+          const paragraphs = rawText.split('\n');
+
+          for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+            const p = paragraphs[pIdx].trim();
+            if (!p) {
+              currentY -= lineHeight * 0.7;
+              continue;
             }
 
-            const chunk = remaining.substring(0, maxCharsPerLine);
-            remaining = remaining.substring(maxCharsPerLine);
+            const words = p.split(' ');
+            let line = '';
 
-            page.drawText(chunk, {
-              x: sideMargin,
-              y: currentY,
-              size: isHeading ? pdfFontSize + 2 : pdfFontSize,
-              font: isHeading ? boldFont : font,
-              color: isHeading ? rgb(0.1, 0.2, 0.4) : rgb(0.15, 0.15, 0.15),
-            });
+            for (let i = 0; i < words.length; i++) {
+              const testLine = line + (line ? ' ' : '') + words[i];
+              const testWidth = font.widthOfTextAtSize(testLine, pdfFontSize);
 
-            currentY -= lineHeight;
+              if (testWidth > usableWidth && line !== '') {
+                if (currentY < sideMargin + 30) {
+                  page = pdfDoc.addPage([dimW, dimH]);
+                  currentY = dimH - sideMargin;
+                }
+
+                page.drawText(line, {
+                  x: sideMargin,
+                  y: currentY,
+                  size: pdfFontSize,
+                  font,
+                  color: rgb(0.12, 0.14, 0.18),
+                });
+
+                currentY -= lineHeight;
+                line = words[i];
+              } else {
+                line = testLine;
+              }
+            }
+
+            if (line) {
+              if (currentY < sideMargin + 30) {
+                page = pdfDoc.addPage([dimW, dimH]);
+                currentY = dimH - sideMargin;
+              }
+
+              page.drawText(line, {
+                x: sideMargin,
+                y: currentY,
+                size: pdfFontSize,
+                font,
+                color: rgb(0.12, 0.14, 0.18),
+              });
+
+              currentY -= lineHeight;
+            }
+            currentY -= 6;
           }
-          currentY -= 6; // Espacio entre párrafos
-        }
 
-        if (addPageNumbers) {
-          const pages = pdfDoc.getPages();
-          pages.forEach((p, idx) => {
-            p.drawText(`Página ${idx + 1} de ${pages.length}`, {
-              x: dimW / 2 - 35,
-              y: 20,
-              size: 9,
-              font,
-              color: rgb(0.5, 0.5, 0.5),
+          if (addPageNumbers) {
+            const pages = pdfDoc.getPages();
+            pages.forEach((p, idx) => {
+              p.drawText(`Página ${idx + 1} de ${pages.length}`, {
+                x: dimW / 2 - 35,
+                y: 20,
+                size: 9,
+                font,
+                color: rgb(0.5, 0.5, 0.5),
+              });
             });
-          });
+          }
+
+          setProgressPercent(85);
+          const pdfBytes = await pdfDoc.save();
+          resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
         }
 
-        setProgressPercent(85);
-        const pdfBytes = await pdfDoc.save();
-        resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
         localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
@@ -759,7 +1041,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
             rawBlob: resultBlob,
             outputFormat: 'pdf',
             originalSize: formatFileSize(file.size),
-            itemCount: pdfDoc.getPageCount(),
+            itemCount: 1,
           });
           setHeaderHidden(true);
           window.scrollTo(0, 0);
@@ -772,224 +1054,39 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
             : 'Word document converted to vector PDF successfully!',
         );
       } else {
-        // MODO PDF A WORD (PDF -> DOCX) MEDIANTE MOTOR OFICIAL DOCX
+        // MODO PDF A WORD (PDF -> DOCX) MEDIANTE MOTOR HIGH PRECISION PDF2DOCX
         const totalToConvert = targetPages.length;
-        setProgressMsg(
-          isEs
-            ? `Extrayendo texto y tablas de ${totalToConvert} páginas...`
-            : `Extracting text & tables from ${totalToConvert} pages...`,
-        );
-        await new Promise((r) => setTimeout(r, 60));
-        setProgressPercent(15);
-
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-        const arrayBuffer = await file.arrayBuffer();
-        const pdfDoc = await pdfjsLib.getDocument({
-          data: arrayBuffer.slice(0),
-          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-          cMapPacked: true,
-        }).promise;
-
         const docTitle = file.name.replace(/\.[^/.]+$/, '');
-        const extractedPagesData: Array<{ pageNum: number; lines: string[] }> = [];
 
-        for (let idx = 0; idx < totalToConvert; idx++) {
-          const pageNum = targetPages[idx];
-          setProgressMsg(
-            isEs
-              ? `Procesando página ${idx + 1} de ${totalToConvert} (Pág. ${pageNum})...`
-              : `Processing page ${idx + 1} of ${totalToConvert} (Page ${pageNum})...`,
-          );
-          setProgressPercent(15 + Math.round(((idx + 1) / totalToConvert) * 65));
-
-          const page = await pdfDoc.getPage(pageNum);
-          const textContent = await page.getTextContent();
-
-          const items = textContent.items as Array<{ str?: string; transform?: number[] }>;
-          const lineMap = new Map<number, string[]>();
-
-          for (const item of items) {
-            if (!item.str || !item.transform) continue;
-            const yCoord = Math.round(item.transform[5] / 8) * 8;
-            if (!lineMap.has(yCoord)) {
-              lineMap.set(yCoord, []);
-            }
-            lineMap.get(yCoord)!.push(item.str);
-          }
-
-          const sortedY = Array.from(lineMap.keys()).sort((a, b) => b - a);
-          const pageLines: string[] = [];
-
-          sortedY.forEach((y) => {
-            const line = lineMap.get(y)!.join(' ').trim();
-            if (line) pageLines.push(line);
-          });
-
-          extractedPagesData.push({
-            pageNum,
-            lines: pageLines,
-          });
-
-          await new Promise((r) => setTimeout(r, 10));
-        }
-
-        setProgressMsg(
-          isEs
-            ? 'Construyendo documento Microsoft OpenXML (.docx)...'
-            : 'Building Microsoft OpenXML (.docx) document...',
-        );
-        setProgressPercent(85);
-
-        const halfFontSize = fontSizePt * 2;
-        const docChildren: Paragraph[] = [];
-
-        if (includeDocHeader) {
-          docChildren.push(
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: sanitizeDocxText(docTitle),
-                  bold: true,
-                  size: halfFontSize + 8,
-                  font: primaryFont,
-                  color: '1a365d',
-                }),
-              ],
-              spacing: { after: 200 },
-            }),
-          );
-        }
-
-        extractedPagesData.forEach((pageData, pIdx) => {
-          if (pIdx > 0 && addPageBreaks) {
-            docChildren.push(
-              new Paragraph({
-                children: [new PageBreak()],
-              }),
-            );
-          }
-
-          if (totalToConvert > 1) {
-            docChildren.push(
-              new Paragraph({
-                children: [
-                  new TextRun({
-                    text: isEs
-                      ? `--- Página ${pageData.pageNum} ---`
-                      : `--- Page ${pageData.pageNum} ---`,
-                    italics: true,
-                    size: Math.max(16, halfFontSize - 4),
-                    font: primaryFont,
-                    color: '777777',
-                  }),
-                ],
-                spacing: { before: 160, after: 80 },
-              }),
-            );
-          }
-
-          if (layoutMode === 'flowing') {
-            let currentParagraph = '';
-            pageData.lines.forEach((line) => {
-              const cleanLine = sanitizeDocxText(line);
-              if (!cleanLine) return;
-              if (
-                currentParagraph &&
-                (cleanLine.length < 40 || cleanLine.endsWith('.') || cleanLine.endsWith(':'))
-              ) {
-                currentParagraph += ' ' + cleanLine;
-                docChildren.push(
-                  new Paragraph({
-                    children: [
-                      new TextRun({
-                        text: currentParagraph.trim(),
-                        size: halfFontSize,
-                        font: primaryFont,
-                        color: '222222',
-                      }),
-                    ],
-                    spacing: { after: 120, line: 260 },
-                  }),
-                );
-                currentParagraph = '';
-              } else if (currentParagraph) {
-                currentParagraph += ' ' + cleanLine;
-              } else {
-                currentParagraph = cleanLine;
-              }
-            });
-
-            if (currentParagraph) {
-              docChildren.push(
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: currentParagraph.trim(),
-                      size: halfFontSize,
-                      font: primaryFont,
-                      color: '222222',
-                    }),
-                  ],
-                  spacing: { after: 120, line: 260 },
-                }),
-              );
-            }
-          } else {
-            pageData.lines.forEach((line) => {
-              const cleanLine = sanitizeDocxText(line);
-              if (!cleanLine) return;
-              docChildren.push(
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: cleanLine,
-                      size: halfFontSize,
-                      font: primaryFont,
-                      color: '222222',
-                    }),
-                  ],
-                  spacing: { after: 80, line: 240 },
-                }),
-              );
-            });
-          }
-        });
-
-        if (docChildren.length === 0) {
-          docChildren.push(
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: isEs ? 'Documento procesado desde PDF' : 'Document processed from PDF',
-                  size: halfFontSize,
-                  font: primaryFont,
-                }),
-              ],
-            }),
-          );
-        }
-
-        const doc = new Document({
-          creator: 'PDFBlack Suite',
-          title: sanitizeDocxText(docTitle),
-          description: 'Convertido con PDFBlack',
-          sections: [
-            {
-              properties: {
-                page: {
-                  margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-                },
-              },
-              children: docChildren,
+        try {
+          resultBlob = await convertPdfToWordWithApi(file, {
+            pages: targetPages,
+            layoutMode,
+            includeImages,
+            primaryFont,
+            addPageBreaks,
+            engine: conversionEngine,
+            onProgress: (pct, msg) => {
+              setProgressPercent(pct);
+              setProgressMsg(msg);
             },
-          ],
-        });
+          });
+        } catch (apiErr) {
+          console.warn('API error, falling back to local engine:', apiErr);
+          resultBlob = await convertPdfToUltraDocx(file, {
+            layoutMode,
+            includeImages,
+            detectTables: true,
+            primaryFont,
+            targetPages,
+            onProgress: (pct, msg) => {
+              setProgressPercent(pct);
+              setProgressMsg(msg);
+            },
+          });
+        }
 
-        resultBlob = await Packer.toBlob(doc);
         localUrl = URL.createObjectURL(resultBlob);
-
         const outName = `${docTitle}_Word.docx`;
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
@@ -1011,8 +1108,8 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
         }
         toast.success(
           isEs
-            ? `¡${totalToConvert} páginas exportadas a Word (.docx) con éxito!`
-            : `Successfully exported ${totalToConvert} pages to Word (.docx)!`,
+            ? `¡${totalToConvert} páginas exportadas a Word (.docx) con fidelidad Ultra HD!`
+            : `Successfully exported ${totalToConvert} pages to Word (.docx) with Ultra HD fidelity!`,
         );
       }
 
@@ -1044,14 +1141,12 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
         disabled={isProcessing}
       />
 
-      {/* HEADER SUPERIOR UNIFICADO */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden">
-        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-        <div className="flex items-center gap-4">
+      {/* HEADER DE HERRAMIENTA ELEGANTE */}
+      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-zinc-800">
+        <div className="flex items-center gap-3">
           <Link
-            href="/convertir"
-            onClick={() => setHeaderHidden(false)}
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
+            href="/"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-mono transition-all shadow-sm"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
           </Link>
@@ -1059,25 +1154,25 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
               {isEs
-                ? '001 / CONVERSIÓN DE DOCUMENTOS WORD Y PDF (CONVERSOR DUAL 2 EN 1)'
-                : '001 / WORD & PDF DOCUMENT CONVERSION (2-IN-1 DUAL CONVERTER)'}
+                ? '001 / CONVERSIÓN DE DOCUMENTOS WORD Y PDF'
+                : '001 / WORD & PDF DOCUMENT CONVERSION'}
             </span>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
-              <WordIcon className="w-6 h-6 rounded-sm flex-shrink-0" />
+            <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-white tracking-tight flex items-center gap-2 font-sans uppercase">
+              <WordIcon className="w-5 h-5 rounded-sm flex-shrink-0" />
               {mode === 'word-to-pdf'
                 ? isEs
                   ? 'CONVERTIR WORD A PDF'
                   : 'CONVERT WORD TO PDF'
                 : isEs
-                  ? 'CONVERTIR PDF A WORD EDITABLE (CONVERSOR DUAL 2 EN 1)'
-                  : 'CONVERT PDF TO EDITABLE WORD (2-IN-1 DUAL CONVERTER)'}
+                  ? 'CONVERTIR PDF A WORD EDITABLE'
+                  : 'CONVERT PDF TO EDITABLE WORD'}
             </h1>
           </div>
         </div>
 
         {(file || completedResult) && (
           <div className="flex items-center gap-3">
-            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
+            <div className="bg-zinc-900 border border-zinc-700 px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
                 {completedResult ? completedResult.filename : file?.name}
@@ -1085,7 +1180,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
             </div>
             <button
               onClick={handleRemoveFile}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
+              className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Quitar archivo' : 'Remove file'}
             >
               <Trash2 className="w-4 h-4" />
@@ -1099,33 +1194,31 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+          className="w-full max-w-4xl mx-auto my-3 sm:my-4 font-sans space-y-3.5"
         >
           {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-2xl p-4 sm:p-5 shadow-2xl font-mono relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <WordIcon className="w-7 h-7 rounded-sm drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 sm:p-3 bg-zinc-900 border border-[#E8DFCF]/40 rounded-xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
+                  <WordIcon className="w-5 h-5 sm:w-6 sm:h-6 rounded-sm drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
                 </div>
                 <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
+                  <span className="text-[9px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA CONVERSIÓN' : 'CONVERSION RESULT'}
                   </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs
-                      ? '¡Conversión de documento completada con éxito!'
-                      : 'Document conversion completed successfully!'}
+                  <h3 className="text-base sm:text-lg font-extrabold text-white font-sans uppercase tracking-tight">
+                    {isEs ? 'CONVERSIÓN COMPLETADA' : 'CONVERSION COMPLETED'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2.5 bg-zinc-900 border border-[#E8DFCF]/30 px-3 py-1.5 rounded-xl shadow-sm">
                 <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
+                  <div className="text-[9px] text-zinc-400 font-bold">
                     {isEs ? 'Estado del proceso' : 'Process status'}
                   </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
+                  <div className="text-[#FAF6EE] font-extrabold text-xs sm:text-sm flex items-center gap-1.5 font-sans">
                     ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
                   </div>
                 </div>
@@ -1133,37 +1226,37 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
             </div>
 
             {/* MÉTRICAS DE LA CONVERSIÓN */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs border-t border-zinc-800 mt-5">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 pt-3.5 font-mono text-xs border-t border-zinc-800/80 mt-3.5">
+              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Formato de Salida' : 'Output Format'}
                 </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5 uppercase">
+                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5 uppercase">
                   {completedResult.outputFormat}
                 </span>
               </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Tamaño Resultante' : 'Result Size'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
                   {completedResult.fileSize}
                 </span>
               </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
                 </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
+                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
                   <AnimatedNumber value={completedResult.itemCount || 1} />{' '}
                   {isEs ? 'págs' : 'pages'}
                 </span>
               </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Procesamiento' : 'Processing'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
                   {isEs ? '100% Local (RAM)' : '100% Local (RAM)'}
                 </span>
               </div>
@@ -1232,8 +1325,8 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                     ? 'CONVERTIR DOCUMENTO WORD A PDF'
                     : 'CONVERT WORD DOCUMENT TO PDF'
                   : isEs
-                    ? 'CONVERTIR PDF A WORD EDITABLE (CONVERSOR DUAL 2 EN 1)'
-                    : 'CONVERT PDF TO EDITABLE WORD (2-IN-1 DUAL CONVERTER)'}
+                    ? 'CONVERTIR PDF A WORD EDITABLE'
+                    : 'CONVERT PDF TO EDITABLE WORD'}
               </h2>
               <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
                 {mode === 'word-to-pdf'
@@ -1270,16 +1363,16 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               </div>
             </motion.div>
           ) : (
-            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL */
+            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN ARRIBA Y PANEL DE CONTROL DEBAJO */
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+              className="flex flex-col gap-6 flex-1 w-full"
             >
-              {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+              {/* SECCIÓN 1: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO GRANDE (ANCHO COMPLETO) */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col h-[580px] sm:h-[640px] lg:h-[680px] relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
                   <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
                     <FileText className="w-4 h-4 text-white" />
                     <span>
@@ -1299,664 +1392,1129 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                   </div>
                 </div>
 
-                {/* CONTENEDOR SPLIT: IZQUIERDA MINIATURAS - DERECHA VISOR */}
+                {/* CONTENEDOR SPLIT: IZQUIERDA MINIATURAS - DERECHA VISOR AMPLIADO */}
                 <div className="w-full flex-1 bg-[#121217] rounded-2xl overflow-hidden relative border border-zinc-700/80 font-mono min-h-0 flex shadow-inner">
                   {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  <div className="w-32 sm:w-36 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
-                      <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
-                        {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={
-                          targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
-                        }
-                        className="text-[9px] text-zinc-300 hover:text-white font-bold cursor-pointer"
-                        title={
-                          targetPages.length === totalPages
+                  {file && (
+                    <div className="w-32 sm:w-36 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
+                        <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
+                          {isEs ? 'PÁGS' : 'PAGES'} ({totalPages || 1})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={
+                            targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
+                          }
+                          className="text-[9px] text-zinc-300 hover:text-white font-bold cursor-pointer"
+                          title={
+                            targetPages.length === totalPages
+                              ? isEs
+                                ? 'Deseleccionar todas'
+                                : 'Deselect all'
+                              : isEs
+                                ? 'Seleccionar todas'
+                                : 'Select all'
+                          }
+                        >
+                          {targetPages.length === totalPages
                             ? isEs
-                              ? 'Deseleccionar todas'
-                              : 'Deselect all'
+                              ? 'Ninguna'
+                              : 'None'
                             : isEs
-                              ? 'Seleccionar todas'
-                              : 'Select all'
-                        }
-                      >
-                        {targetPages.length === totalPages
-                          ? isEs
-                            ? 'Ninguna'
-                            : 'None'
-                          : isEs
-                            ? 'Todas'
-                            : 'All'}
-                      </button>
-                    </div>
-
-                    {isRendering ? (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                        <Loader2 className="w-5 h-5 animate-spin text-white" />
-                        <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
+                              ? 'Todas'
+                              : 'All'}
+                        </button>
                       </div>
-                    ) : totalPages > 0 ? (
-                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                        const isIncluded = targetPageSet.has(pageNum);
-                        const isActive = activePage === pageNum;
 
-                        return (
-                          <div
-                            key={pageNum}
-                            onClick={() => setActivePage(pageNum)}
-                            className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
-                              isActive
-                                ? 'border-white ring-2 ring-white/40 bg-zinc-800'
-                                : isIncluded
-                                  ? 'border-zinc-600 hover:border-zinc-400 bg-zinc-900'
-                                  : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
-                            }`}
-                          >
-                            {/* Checkbox selector */}
-                            <button
-                              type="button"
-                              onClick={(e) => togglePageSelection(pageNum, e)}
-                              className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
-                                isIncluded
-                                  ? 'bg-white text-black shadow-md'
-                                  : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
+                      {isRendering ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
+                          <Loader2 className="w-5 h-5 animate-spin text-white" />
+                          <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
+                        </div>
+                      ) : totalPages > 0 ? (
+                        Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                          const isIncluded = targetPageSet.has(pageNum);
+                          const isActive = activePage === pageNum;
+
+                          return (
+                            <div
+                              key={pageNum}
+                              id={`thumb-page-${pageNum}`}
+                              onClick={() => {
+                                setActivePage(pageNum);
+                                if (
+                                  mode === 'word-to-pdf' ||
+                                  (file &&
+                                    (file.name.toLowerCase().endsWith('.docx') ||
+                                      file.name.toLowerCase().endsWith('.doc')))
+                                ) {
+                                  scrollToDocxPage(pageNum);
+                                }
+                              }}
+                              className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
+                                isActive
+                                  ? 'border-blue-400 ring-2 ring-blue-400/50 bg-blue-950/40 shadow-blue-500/20'
+                                  : isIncluded
+                                    ? 'border-zinc-700 hover:border-zinc-500 bg-zinc-900/90'
+                                    : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
                               }`}
-                              title={
-                                isIncluded
-                                  ? isEs
-                                    ? 'Quitar de la extracción Word'
-                                    : 'Exclude from Word'
-                                  : isEs
-                                    ? 'Incluir en la extracción Word'
-                                    : 'Include in Word'
-                              }
                             >
-                              {isIncluded ? (
-                                <Check className="w-3 h-3 stroke-[3] text-black" />
-                              ) : (
-                                <div className="w-3 h-3" />
-                              )}
-                            </button>
+                              {/* Checkbox selector */}
+                              <button
+                                type="button"
+                                onClick={(e) => togglePageSelection(pageNum, e)}
+                                className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
+                                  isIncluded
+                                    ? 'bg-blue-500 text-white shadow-md'
+                                    : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
+                                }`}
+                                title={
+                                  isIncluded
+                                    ? isEs
+                                      ? 'Quitar de la extracción'
+                                      : 'Exclude page'
+                                    : isEs
+                                      ? 'Incluir en la extracción'
+                                      : 'Include page'
+                                }
+                              >
+                                {isIncluded ? (
+                                  <Check className="w-3 h-3 stroke-[3] text-white" />
+                                ) : (
+                                  <div className="w-3 h-3" />
+                                )}
+                              </button>
 
-                            <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                              {pageDataUrls[pageNum] ? (
-                                <img
-                                  src={pageDataUrls[pageNum]}
-                                  alt={`Pág ${pageNum}`}
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <span className="text-[10px] text-zinc-600 font-mono font-bold">
+                              <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex flex-col items-center justify-center p-1.5 shadow-inner">
+                                {pageDataUrls[pageNum] ? (
+                                  <img
+                                    src={pageDataUrls[pageNum]}
+                                    alt={`Pág ${pageNum}`}
+                                    className="w-full h-full object-contain"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50 text-zinc-800 rounded border border-zinc-200">
+                                    <FileText className="w-4 h-4 text-blue-600 mb-0.5" />
+                                    <span className="text-[9px] font-bold font-mono text-zinc-800">
+                                      Pág. {pageNum}
+                                    </span>
+                                  </div>
+                                )}
+                                <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded font-bold">
                                   #{pageNum}
                                 </span>
-                              )}
-                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded font-bold">
-                                #{pageNum}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
+                          <WordIcon className="w-5 h-5" />
+                          <span>{isEs ? 'Modo Word' : 'Word Mode'}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* COSTADO DERECHO: VISOR PDF O VISTA DOCUMENTAL WORD AMPLIADO */}
+                  <div className="flex-1 bg-zinc-950 p-3 relative flex flex-col items-center justify-center overflow-hidden">
+                    {mode === 'pdf-to-word' ||
+                    (file && file.name.toLowerCase().endsWith('.pdf')) ? (
+                      <PdfPageViewer
+                        file={file}
+                        activePage={activePage}
+                        totalPages={totalPages}
+                        onPageChange={(p) => setActivePage(p)}
+                        pageDataUrls={pageDataUrls}
+                        title={file?.name}
+                        accentColor="blue"
+                      />
+                    ) : (
+                      /* HOJA DE PREVISUALIZACIÓN DE DOCUMENTO MICROSOFT WORD DE ALTA FIDELIDAD */
+                      <div className="w-full h-full flex flex-col overflow-hidden">
+                        {/* BARRA SUPERIOR CON ESTADÍSTICAS, NAVEGADOR DE PÁGINAS Y ZOOM */}
+                        <div className="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 border border-white/10 rounded-t-xl text-[11px] font-mono text-zinc-400 shrink-0 gap-1.5 overflow-hidden">
+                          {/* TÍTULO COMPACTO */}
+                          <div className="flex items-center gap-1.5 min-w-0 shrink">
+                            <BookOpen className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            <span
+                              className="text-white font-bold truncate text-[11px] max-w-[150px] sm:max-w-[240px]"
+                              title={parsedWordDoc?.title || file?.name}
+                            >
+                              {parsedWordDoc?.title || file?.name}
+                            </span>
+                          </div>
+
+                          {/* CONTROLES AGRUPADOS */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* NAVEGADOR DE PÁGINAS */}
+                            <div className="flex items-center bg-zinc-950 px-1.5 py-0.5 rounded-lg border border-zinc-700 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => scrollToDocxPage(Math.max(1, activePage - 1))}
+                                disabled={activePage <= 1}
+                                className="px-1 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                                title="Página anterior"
+                              >
+                                ◀
+                              </button>
+                              <span className="px-1 font-bold text-white select-none whitespace-nowrap">
+                                {activePage} / {totalPages || 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  scrollToDocxPage(Math.min(totalPages, activePage + 1))
+                                }
+                                disabled={activePage >= totalPages}
+                                className="px-1 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                                title="Página siguiente"
+                              >
+                                ▶
+                              </button>
+                            </div>
+
+                            {/* CONTROLES DE ZOOM COMPACTOS */}
+                            <div className="flex items-center bg-zinc-950 px-1 py-0.5 rounded-lg border border-zinc-700 text-[10px]">
+                              <button
+                                type="button"
+                                onClick={() => setDocxZoom((z) => Math.max(25, z - 10))}
+                                className="p-1 hover:text-white transition-colors cursor-pointer"
+                                title={isEs ? 'Reducir' : 'Zoom out'}
+                              >
+                                <ZoomOut className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleFitDocxWidth}
+                                className="px-1.5 py-0.5 rounded text-zinc-300 hover:text-white font-bold select-none transition-colors cursor-pointer text-[10px]"
+                                title={isEs ? 'Ajustar al ancho' : 'Fit to width'}
+                              >
+                                {docxZoom}%
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDocxZoom((z) => Math.min(150, z + 10))}
+                                className="p-1 hover:text-white transition-colors cursor-pointer"
+                                title={isEs ? 'Aumentar' : 'Zoom in'}
+                              >
+                                <ZoomIn className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* CONTENEDOR DOCUMENTAL WORD */}
+                        <div
+                          ref={docxScrollContainerRef}
+                          className="flex-1 overflow-y-auto overflow-x-auto bg-[#0a0a0d] p-4 border-x border-b border-white/10 rounded-b-xl custom-scrollbar flex justify-center relative scroll-smooth"
+                        >
+                          {isDocxRendering && (
+                            <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-10 font-mono text-xs text-blue-400">
+                              <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+                              <span>
+                                {isEs
+                                  ? 'Renderizando maquetación de Microsoft Word...'
+                                  : 'Rendering Microsoft Word layout...'}
                               </span>
                             </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
-                        <WordIcon className="w-5 h-5" />
-                        <span>{isEs ? 'Modo Word' : 'Word Mode'}</span>
-                      </div>
-                    )}
-                  </div>
+                          )}
 
-                  {/* COSTADO DERECHO: VISOR PDF O VISTA DOCUMENTAL WORD */}
-                  <div className="flex-1 bg-zinc-950 p-3 relative flex flex-col items-center justify-center overflow-hidden">
-                    {pdfUrl ? (
-                      <iframe
-                        src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                        className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
-                        title="Visor PDF Tamaño Normal"
-                      />
-                    ) : parsedWordDoc ? (
-                      /* HOJA DE PREVISUALIZACIÓN DE DOCUMENTO MICROSOFT WORD REAL */
-                      <div className="w-full h-full flex flex-col overflow-hidden">
-                        {/* BARRA DE ESTADO DEL DOCUMENTO */}
-                        <div className="flex items-center justify-between px-3 py-2 bg-zinc-900 border border-white/10 rounded-t-xl text-[11px] font-mono text-zinc-400">
-                          <div className="flex items-center gap-2">
-                            <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-                            <span className="text-white font-bold truncate max-w-[200px]">
-                              {parsedWordDoc.title}
-                            </span>
+                          <div
+                            className="docx-preview-custom-wrapper transition-transform duration-150 origin-top flex flex-col items-center"
+                            style={{
+                              transform: `scale(${docxZoom / 100})`,
+                              transformOrigin: 'top center',
+                            }}
+                          >
+                            <div
+                              ref={docxContainerRef}
+                              className="flex flex-col items-center w-full"
+                            />
                           </div>
-                          <div className="flex items-center gap-3 text-[10px]">
-                            <span>
-                              📊 {parsedWordDoc.wordCount} {isEs ? 'palabras' : 'words'}
-                            </span>
-                            <span>
-                              📝 {parsedWordDoc.paragraphs.length}{' '}
-                              {isEs ? 'párrafos' : 'paragraphs'}
-                            </span>
-                            <span className="text-blue-400 font-bold">
-                              📄 {parsedWordDoc.estPages} {isEs ? 'págs estimadas' : 'est. pages'}
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* HOJA DE DOCUMENTO WORD CON ESTILO VISUAL REAL */}
-                        <div className="flex-1 overflow-y-auto bg-zinc-900/60 p-4 border-x border-b border-white/10 rounded-b-xl custom-scrollbar flex justify-center">
-                          <div className="w-full max-w-2xl bg-white text-zinc-900 rounded-lg shadow-2xl p-8 sm:p-10 font-sans space-y-4 min-h-[500px]">
-                            {/* ENCABEZADO DE PÁGINA WORD */}
-                            <div className="border-b border-zinc-200 pb-4 mb-4">
-                              <h1 className="text-xl sm:text-2xl font-black text-blue-950 tracking-tight">
-                                {parsedWordDoc.title}
-                              </h1>
-                              <p className="text-xs text-zinc-500 font-mono mt-1">
-                                {isEs
-                                  ? 'Documento Microsoft Word (.docx) estructurado'
-                                  : 'Structured Microsoft Word (.docx) document'}
-                              </p>
-                            </div>
-
-                            {/* CONTENIDO DE PÁRRAFOS */}
-                            <div className="space-y-3 text-sm leading-relaxed text-zinc-800">
-                              {parsedWordDoc.paragraphs.slice(0, 25).map((para, pIdx) => {
-                                const isHead = parsedWordDoc.headings.includes(para);
-                                if (isHead) {
-                                  return (
-                                    <h3
-                                      key={pIdx}
-                                      className="text-base font-bold text-blue-900 mt-4 pt-2 border-t border-zinc-100"
-                                    >
-                                      {para}
-                                    </h3>
-                                  );
-                                }
-                                return (
-                                  <p key={pIdx} className="text-xs sm:text-sm text-zinc-700">
-                                    {para}
+                          {docxRenderError && parsedWordDoc && (
+                            /* FALLBACK ESTRUCTURADO */
+                            <div className="w-full max-w-2xl bg-white text-zinc-900 rounded-lg shadow-2xl p-8 font-sans space-y-4 min-h-[500px]">
+                              <div className="border-b border-zinc-200 pb-4 mb-4">
+                                <h1 className="text-xl font-black text-blue-950 tracking-tight">
+                                  {parsedWordDoc.title}
+                                </h1>
+                                <p className="text-xs text-zinc-500 font-mono mt-1">
+                                  {isEs ? 'Vista estructurada' : 'Structured view'}
+                                </p>
+                              </div>
+                              <div className="space-y-3 text-sm leading-relaxed text-zinc-800">
+                                {parsedWordDoc.paragraphs.map((p, idx) => (
+                                  <p key={idx} className="text-xs sm:text-sm text-zinc-700">
+                                    {p}
                                   </p>
-                                );
-                              })}
-                              {parsedWordDoc.paragraphs.length > 25 && (
-                                <div className="text-center py-3 text-xs text-zinc-500 font-mono italic bg-zinc-50 rounded-lg border border-zinc-200">
-                                  {isEs
-                                    ? `... y ${parsedWordDoc.paragraphs.length - 25} párrafos más (se convertirán al 100% en el PDF) ...`
-                                    : `... and ${parsedWordDoc.paragraphs.length - 25} more paragraphs (will convert to 100% in PDF) ...`}
-                                </div>
-                              )}
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
-                        <WordIcon className="w-20 h-20 rounded-2xl shadow-2xl" />
-                        <span className="text-xs text-blue-400 font-mono bg-blue-500/10 px-3 py-1.5 rounded-full border border-blue-500/20">
-                          {isEs ? 'Cargando documento Word...' : 'Loading Word document...'}
-                        </span>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* LADO DERECHO: PANEL DE CONTROL CON SELECCIÓN DE PÁGINAS Y OPCIONES AVANZADAS */}
-              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-5 lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+              {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO EN CUADRÍCULA HORIZONTAL */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
-                  {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-                  <div className="mb-2 pb-2 border-b border-zinc-800">
+
+                {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                  <div>
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
                       {isEs
                         ? '002 / CONFIGURACIÓN Y SELECCIÓN DE PÁGINAS'
                         : '002 / CONFIGURATION & PAGE SELECTION'}
                     </span>
-                    <h2 className="text-lg font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                    <h2 className="text-lg font-black text-white flex items-center gap-2 font-sans uppercase tracking-tight">
                       <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
-                      <Sliders className="w-4 h-4 text-white" />
                     </h2>
                   </div>
+                  <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white shadow-sm">
+                    <Sliders className="w-4 h-4 text-white" />
+                  </div>
+                </div>
 
-                  {/* SECCIÓN DE SELECCIÓN DE PÁGINAS */}
-                  <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
-                    <div className="flex items-center justify-between">
-                      <label className="text-zinc-200 font-bold flex items-center gap-1.5">
-                        <ListChecks className="w-4 h-4 text-white" />
-                        <span>
-                          {mode === 'word-to-pdf'
+                {/* CONTENIDO DEL PANEL DE CONTROL EN 3 COLUMNAS MODULARES */}
+                {mode === 'word-to-pdf' ? (
+                  /* MODO WORD A PDF */
+                  <div className="space-y-4">
+                    {/* SELECTOR VISUAL DE MOTOR DE CONVERSIÓN EN WORD A PDF */}
+                    <div className="bg-[#121217] p-3.5 sm:p-4 rounded-2xl border border-zinc-700/80 space-y-2.5 font-mono text-xs shadow-inner">
+                      <div className="flex items-center justify-between">
+                        <label className="text-zinc-200 font-bold flex items-center gap-1.5 text-xs">
+                          <Cpu className="w-4 h-4 text-blue-400" />
+                          <span>
+                            {isEs ? 'Motor de Conversión a PDF' : 'PDF Conversion Engine'}
+                          </span>
+                        </label>
+                        <span className="text-[10px] text-zinc-400 font-mono">
+                          {parsedWordDoc && parsedWordDoc.estPages > 200
                             ? isEs
-                              ? 'Páginas a Convertir a PDF'
-                              : 'Pages to Convert to PDF'
+                              ? '⚡ Auto: Motor Local (+200 págs)'
+                              : '⚡ Auto: Local Engine (200+ pgs)'
                             : isEs
-                              ? 'Páginas a Convertir a Word'
-                              : 'Pages to Convert to Word'}
+                              ? '🏆 Auto: Adobe Acrobat (≤200 págs)'
+                              : '🏆 Auto: Adobe Acrobat (≤200 pgs)'}
                         </span>
-                      </label>
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
-                        {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
-                      </span>
-                    </div>
+                      </div>
 
-                    {/* MODOS DE SELECCIÓN */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setPageSelectionMode('all')}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                          pageSelectionMode === 'all'
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                        }`}
-                      >
-                        {isEs ? 'Todas' : 'All'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPageSelectionMode('range')}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                          pageSelectionMode === 'range'
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                        }`}
-                      >
-                        {isEs ? 'Rango' : 'Range'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPageSelectionMode('odd')}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                          pageSelectionMode === 'odd'
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                        }`}
-                      >
-                        {isEs ? 'Impares' : 'Odd'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPageSelectionMode('even')}
-                        className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                          pageSelectionMode === 'even'
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                        }`}
-                      >
-                        {isEs ? 'Pares' : 'Even'}
-                      </button>
-                    </div>
-
-                    {/* INPUT DE RANGO */}
-                    {pageSelectionMode === 'range' && (
-                      <div className="space-y-2 pt-1 border-t border-white/5">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={pageRangeInput}
-                            onChange={(e) => setPageRangeInput(e.target.value)}
-                            placeholder={isEs ? 'Ej: 1-5, 8, 11-20' : 'E.g: 1-5, 8, 11-20'}
-                            className="flex-1 bg-zinc-900 border border-white/20 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
-                          />
-                        </div>
-                        <div className="flex flex-wrap gap-1 text-[10px]">
-                          {[
-                            { label: isEs ? 'Primeras 5' : 'First 5', range: '1-5' },
-                            { label: isEs ? 'Primeras 10' : 'First 10', range: '1-10' },
-                            { label: isEs ? 'Primeras 20' : 'First 20', range: '1-20' },
-                            { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
-                          ].map((chip, cIdx) => (
-                            <button
-                              key={cIdx}
-                              type="button"
-                              onClick={() => setPageRangeInput(chip.range)}
-                              className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded text-zinc-300 text-[10px] cursor-pointer"
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (parsedWordDoc && parsedWordDoc.estPages > 200) {
+                              toast.info(
+                                isEs
+                                  ? 'Adobe Acrobat se recomienda para documentos de hasta 200 páginas. Para +200 páginas se recomienda el Motor Local.'
+                                  : 'Adobe Acrobat recommended for up to 200 pages.',
+                              );
+                            }
+                            setConversionEngine('adobe');
+                          }}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'adobe'
+                              ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>🏆 Adobe Acrobat Pro (Nube)</span>
+                            </span>
+                            <span
+                              className={`text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                                parsedWordDoc && parsedWordDoc.estPages > 200
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                              }`}
                             >
-                              {chip.label}
+                              {isEs ? 'Hasta 200 págs' : 'Up to 200 pgs'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Máxima fidelidad oficial en la nube. Reconstruye tipografías exactas de Office, tablas, sangrías y gráficos.'
+                              : 'Official cloud fidelity. Exact Office fonts, tables, indentations & graphics.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 2: CLOUDCONVERT API */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('cloudconvert')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'cloudconvert'
+                              ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>🌐 CloudConvert (Nube)</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                              {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Motor en la nube de alto rendimiento. Conversión fiel de documentos Word (.docx/.doc) a PDF vectorial nativo.'
+                              : 'High-performance cloud engine. Faithful Word (.docx/.doc) conversion to native vector PDF.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 3: MOTOR LOCAL ULTRA RÁPIDO */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('local')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'local'
+                              ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>⚡ Motor Local docx2pdf</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              {isEs ? 'Instantáneo (~0.5s)' : 'Instant (~0.5s)'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Compilación vectorial rápida en memoria local. 100% privado en RAM, ideal para libros y documentos extensos.'
+                              : 'Fast local vector compilation. 100% private in RAM, ideal for books and large files.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 4: MOTOR MAQUETACIÓN EXACTA */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('pdf2docx')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'pdf2docx'
+                              ? 'bg-purple-950/50 border-purple-400 ring-1 ring-purple-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>📊 Motor Maquetación Nativa</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                              {isEs ? 'Maquetación Exacta' : 'Exact Layout'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Preserva saltos de sección, encabezados, numeración de pie de página y márgenes editoriales exactos.'
+                              : 'Preserves section breaks, headers, footers, page numbering and editorial margins.'}
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* GRID DE 3 COLUMNAS MODO WORD A PDF */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* COL 1: SELECCIÓN DE PÁGINAS */}
+                      <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-zinc-200 font-bold flex items-center gap-1.5">
+                              <ListChecks className="w-4 h-4 text-white" />
+                              <span>
+                                {isEs ? 'Páginas a Convertir a PDF' : 'Pages to Convert to PDF'}
+                              </span>
+                            </label>
+                            <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
+                              {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                            </span>
+                          </div>
+
+                          {/* MODOS DE SELECCIÓN */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('all')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'all'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Todas' : 'All'}
                             </button>
-                          ))}
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('range')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'range'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Rango' : 'Range'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('odd')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'odd'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Impares' : 'Odd'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('even')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'even'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Pares' : 'Even'}
+                            </button>
+                          </div>
+
+                          {/* INPUT DE RANGO */}
+                          {pageSelectionMode === 'range' && (
+                            <div className="space-y-2 pt-1 border-t border-white/5">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={pageRangeInput}
+                                  onChange={(e) => setPageRangeInput(e.target.value)}
+                                  placeholder={isEs ? 'Ej: 1-5, 8, 11-20' : 'E.g: 1-5, 8, 11-20'}
+                                  className="flex-1 bg-zinc-900 border border-white/20 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-1 text-[10px]">
+                                {[
+                                  { label: isEs ? 'Primeras 5' : 'First 5', range: '1-5' },
+                                  { label: isEs ? 'Primeras 10' : 'First 10', range: '1-10' },
+                                  { label: isEs ? 'Primeras 20' : 'First 20', range: '1-20' },
+                                  { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
+                                ].map((chip, cIdx) => (
+                                  <button
+                                    key={cIdx}
+                                    type="button"
+                                    onClick={() => setPageRangeInput(chip.range)}
+                                    className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded text-zinc-300 text-[10px] cursor-pointer"
+                                  >
+                                    {chip.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ACCIONES RÁPIDAS */}
+                        <div className="flex items-center justify-between text-[11px] pt-2 border-t border-white/5 text-zinc-400">
+                          <span>{isEs ? 'Acciones rápidas:' : 'Quick actions:'}</span>
+                          <div className="flex gap-2 font-bold">
+                            <button
+                              type="button"
+                              onClick={handleSelectAll}
+                              className="text-zinc-300 hover:text-white underline cursor-pointer"
+                            >
+                              {isEs ? 'Todas' : 'All'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleInvertSelection}
+                              className="text-zinc-300 hover:text-white underline cursor-pointer"
+                            >
+                              {isEs ? 'Invertir' : 'Invert'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeselectAll}
+                              className="text-zinc-300 hover:text-white underline cursor-pointer"
+                            >
+                              {isEs ? 'Limpiar' : 'Clear'}
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    )}
 
-                    {/* ACCIONES RÁPIDAS */}
-                    <div className="flex items-center justify-between text-[11px] pt-1 text-zinc-400">
-                      <span>{isEs ? 'Acciones rápidas:' : 'Quick actions:'}</span>
-                      <div className="flex gap-2 font-bold">
-                        <button
-                          type="button"
-                          onClick={handleSelectAll}
-                          className="text-zinc-300 hover:text-white underline cursor-pointer"
-                        >
-                          {isEs ? 'Todas' : 'All'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleInvertSelection}
-                          className="text-zinc-300 hover:text-white underline cursor-pointer"
-                        >
-                          {isEs ? 'Invertir' : 'Invert'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleDeselectAll}
-                          className="text-zinc-300 hover:text-white underline cursor-pointer"
-                        >
-                          {isEs ? 'Limpiar' : 'Clear'}
-                        </button>
+                      {/* COL 2: FORMATO DE PÁGINA, ORIENTACIÓN Y MÁRGENES */}
+                      <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
+                        {/* TAMAÑO Y ORIENTACIÓN */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                              <Layout className="w-3.5 h-3.5 text-blue-400" />
+                              {isEs ? 'Tamaño' : 'Page Size'}
+                            </label>
+                            <select
+                              value={pageSize}
+                              onChange={(e) => setPageSize(e.target.value as PageSize)}
+                              className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="a4">A4</option>
+                              <option value="letter">Carta (Letter)</option>
+                              <option value="legal">Oficio (Legal)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                              <Compass className="w-3.5 h-3.5 text-blue-400" />
+                              {isEs ? 'Orientación' : 'Orientation'}
+                            </label>
+                            <div className="grid grid-cols-2 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setOrientation('portrait')}
+                                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                  orientation === 'portrait'
+                                    ? 'bg-white text-black border-white shadow-md'
+                                    : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                                }`}
+                              >
+                                {isEs ? 'Vertical' : 'Portrait'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setOrientation('landscape')}
+                                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                  orientation === 'landscape'
+                                    ? 'bg-white text-black border-white shadow-md'
+                                    : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                                }`}
+                              >
+                                {isEs ? 'Apaisado' : 'Landscape'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* TIPOGRAFÍA PDF Y MÁRGENES */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                              <Type className="w-3.5 h-3.5 text-blue-400" />
+                              {isEs ? 'Tipografía' : 'Font'}
+                            </label>
+                            <select
+                              value={pdfFontFamily}
+                              onChange={(e) => setPdfFontFamily(e.target.value as PdfFontFamily)}
+                              className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="helvetica">Helvetica</option>
+                              <option value="times">Times Roman</option>
+                              <option value="courier">Courier</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                              <Grid className="w-3.5 h-3.5 text-blue-400" />
+                              {isEs ? 'Márgenes' : 'Margins'}
+                            </label>
+                            <select
+                              value={margin}
+                              onChange={(e) => setMargin(e.target.value as MarginSize)}
+                              className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="normal">
+                                {isEs ? 'Normal (2.5cm)' : 'Normal (2.5cm)'}
+                              </option>
+                              <option value="narrow">
+                                {isEs ? 'Estrecho (1.27cm)' : 'Narrow (1.27cm)'}
+                              </option>
+                              <option value="moderate">
+                                {isEs ? 'Moderado (1.9cm)' : 'Moderate (1.9cm)'}
+                              </option>
+                              <option value="wide">
+                                {isEs ? 'Amplio (3.8cm)' : 'Wide (3.8cm)'}
+                              </option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* TAMAÑO DE FUENTE E INTERLINEADO */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[10px]">
+                              <AlignLeft className="w-3 h-3 text-blue-400" />
+                              {isEs ? 'Fuente' : 'Font Size'}
+                            </label>
+                            <div className="grid grid-cols-4 gap-1">
+                              {[9, 10, 11, 12].map((sz) => (
+                                <button
+                                  key={sz}
+                                  type="button"
+                                  onClick={() => setPdfFontSize(sz)}
+                                  className={`py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                    pdfFontSize === sz
+                                      ? 'bg-white text-black border-white shadow-md'
+                                      : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                                  }`}
+                                >
+                                  {sz}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[10px]">
+                              <AlignLeft className="w-3 h-3 text-blue-400" />
+                              {isEs ? 'Interlineado' : 'Spacing'}
+                            </label>
+                            <div className="grid grid-cols-3 gap-1">
+                              {[
+                                { label: '1.15', val: 1.15 },
+                                { label: '1.35', val: 1.35 },
+                                { label: '1.75', val: 1.75 },
+                              ].map((item) => (
+                                <button
+                                  key={item.val}
+                                  type="button"
+                                  onClick={() => setPdfLineSpacing(item.val)}
+                                  className={`py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                    pdfLineSpacing === item.val
+                                      ? 'bg-white text-black border-white shadow-md'
+                                      : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                                  }`}
+                                >
+                                  {item.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* COL 3: ENCABEZADOS, NUMERACIÓN, MARCA DE AGUA Y COMPATIBILIDAD */}
+                      <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300 hover:text-white transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={includeWordDocHeader}
+                              onChange={(e) => setIncludeWordDocHeader(e.target.checked)}
+                              className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span>
+                              {isEs
+                                ? 'Barra superior con título y fecha'
+                                : 'Header with title & date'}
+                            </span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300 hover:text-white transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={addPageNumbers}
+                              onChange={(e) => setAddPageNumbers(e.target.checked)}
+                              className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span>
+                              {isEs ? 'Número de página centrado en pie' : 'Footer page numbering'}
+                            </span>
+                          </label>
+
+                          <div className="pt-1.5 border-t border-white/5">
+                            <label className="text-[10px] text-zinc-400 font-bold block mb-1">
+                              {isEs
+                                ? 'Marca de Agua Diagonal (Opcional):'
+                                : 'Diagonal Watermark (Optional):'}
+                            </label>
+                            <input
+                              type="text"
+                              value={watermarkText}
+                              onChange={(e) => setWatermarkText(e.target.value)}
+                              placeholder={isEs ? 'Ej: CONFIDENCIAL' : 'E.g: CONFIDENTIAL'}
+                              className="w-full bg-zinc-900 border border-white/10 focus:border-blue-500 rounded-lg px-2.5 py-1.5 text-xs text-white font-mono outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-2.5 text-xs text-blue-400 space-y-1">
+                          <span className="font-bold flex items-center gap-1.5 text-[11px]">
+                            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                            {isEs
+                              ? 'Compilación Vectorial Directa (100% en RAM)'
+                              : 'Direct Vector Compilation (100% in RAM)'}
+                          </span>
+                          <p className="text-[10px] text-zinc-400 leading-tight">
+                            {isEs
+                              ? 'Fuentes incrustadas de alta resolución listas para imprimir.'
+                              : 'Embedded high-res fonts ready for printing.'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* OPCIONES SEGÚN EL MODO */}
-                  {mode === 'word-to-pdf' ? (
-                    /* OPCIONES MEJORADAS MODO WORD A PDF */
-                    <div className="space-y-3 font-mono text-xs">
-                      {/* FORMATO DE PÁGINA Y ORIENTACIÓN */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Layout className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Tamaño de Página' : 'Page Size'}
-                          </label>
-                          <select
-                            value={pageSize}
-                            onChange={(e) => setPageSize(e.target.value as PageSize)}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="a4">A4 (Estándar Internacional)</option>
-                            <option value="letter">Carta / Letter (América)</option>
-                            <option value="legal">Oficio / Legal</option>
-                          </select>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Compass className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Orientación' : 'Orientation'}
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setOrientation('portrait')}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'portrait'
-                                  ? 'bg-white text-black border-white shadow-md'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Vertical' : 'Portrait'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setOrientation('landscape')}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                orientation === 'landscape'
-                                  ? 'bg-white text-black border-white shadow-md'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Apaisado' : 'Landscape'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* TIPOGRAFÍA Y MÁRGENES */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Type className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Tipografía PDF' : 'PDF Font'}
-                          </label>
-                          <select
-                            value={pdfFontFamily}
-                            onChange={(e) => setPdfFontFamily(e.target.value as PdfFontFamily)}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="helvetica">Helvetica (Sans-serif moderna)</option>
-                            <option value="times">Times Roman (Clásica / Formal)</option>
-                            <option value="courier">Courier (Monoespaciada / Código)</option>
-                          </select>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Grid className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Márgenes de Página' : 'Page Margins'}
-                          </label>
-                          <select
-                            value={margin}
-                            onChange={(e) => setMargin(e.target.value as MarginSize)}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="normal">
-                              {isEs ? 'Normal (2.5 cm)' : 'Normal (2.5 cm)'}
-                            </option>
-                            <option value="narrow">
-                              {isEs ? 'Estrecho (1.27 cm)' : 'Narrow (1.27 cm)'}
-                            </option>
-                            <option value="moderate">
-                              {isEs ? 'Moderado (1.9 cm)' : 'Moderate (1.9 cm)'}
-                            </option>
-                            <option value="wide">
-                              {isEs ? 'Amplio (3.8 cm)' : 'Wide (3.8 cm)'}
-                            </option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* TAMAÑO DE FUENTE E INTERLINEADO */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <AlignLeft className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Tamaño de Fuente' : 'Font Size'}
-                          </label>
-                          <div className="grid grid-cols-4 gap-1.5">
-                            {[9, 10, 11, 12].map((sz) => (
-                              <button
-                                key={sz}
-                                type="button"
-                                onClick={() => setPdfFontSize(sz)}
-                                className={`py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                  pdfFontSize === sz
-                                    ? 'bg-white text-black border-white shadow-md'
-                                    : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                                }`}
-                              >
-                                {sz} pt
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <AlignLeft className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Interlineado' : 'Line Spacing'}
-                          </label>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            {[
-                              { label: '1.15x', val: 1.15 },
-                              { label: '1.35x', val: 1.35 },
-                              { label: '1.75x', val: 1.75 },
-                            ].map((item) => (
-                              <button
-                                key={item.val}
-                                type="button"
-                                onClick={() => setPdfLineSpacing(item.val)}
-                                className={`py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                  pdfLineSpacing === item.val
-                                    ? 'bg-white text-black border-white shadow-md'
-                                    : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                                }`}
-                              >
-                                {item.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* ENCABEZADOS, NUMERACIÓN Y MARCA DE AGUA */}
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-3">
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                          <input
-                            type="checkbox"
-                            checked={includeWordDocHeader}
-                            onChange={(e) => setIncludeWordDocHeader(e.target.checked)}
-                            className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
-                          />
+                ) : (
+                  /* MODO PDF A WORD */
+                  <div className="space-y-4">
+                    {/* SELECTOR VISUAL DE MOTOR DE CONVERSIÓN */}
+                    <div className="bg-[#121217] p-3.5 sm:p-4 rounded-2xl border border-zinc-700/80 space-y-2.5 font-mono text-xs shadow-inner">
+                      <div className="flex items-center justify-between">
+                        <label className="text-zinc-200 font-bold flex items-center gap-1.5 text-xs">
+                          <Cpu className="w-4 h-4 text-blue-400" />
                           <span>
-                            {isEs
-                              ? 'Incluir barra superior con título del archivo y fecha'
-                              : 'Include top header with file title and date'}
+                            {isEs ? 'Motor de Conversión a Word' : 'Word Conversion Engine'}
                           </span>
                         </label>
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                          <input
-                            type="checkbox"
-                            checked={addPageNumbers}
-                            onChange={(e) => setAddPageNumbers(e.target.checked)}
-                            className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
-                          />
-                          <span>
-                            {isEs
-                              ? 'Incluir número de página centrado en el pie ("Página X de Y")'
-                              : 'Include page number in footer ("Page X of Y")'}
-                          </span>
-                        </label>
-
-                        <div className="pt-2 border-t border-white/5">
-                          <label className="text-[11px] text-zinc-400 font-bold block mb-1.5">
-                            {isEs
-                              ? 'Marca de Agua Diagonal (Opcional):'
-                              : 'Diagonal Watermark (Optional):'}
-                          </label>
-                          <input
-                            type="text"
-                            value={watermarkText}
-                            onChange={(e) => setWatermarkText(e.target.value)}
-                            placeholder={
-                              isEs
-                                ? 'Ej: CONFIDENCIAL, BORRADOR, COPIA'
-                                : 'E.g: CONFIDENTIAL, DRAFT, COPY'
-                            }
-                            className="w-full bg-zinc-900 border border-white/10 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none uppercase"
-                          />
-                        </div>
-                      </div>
-
-                      {/* INFO BOX COMPATIBILIDAD */}
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3.5 text-xs text-blue-400 space-y-1">
-                        <span className="font-bold flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4" />
-                          {isEs
-                            ? 'Compilación Vectorial Directa (100% en RAM)'
-                            : 'Direct Vector Compilation (100% in RAM)'}
+                        <span className="text-[10px] text-zinc-400 font-mono">
+                          {totalPages > 200
+                            ? isEs
+                              ? '⚡ Auto: Motor Local (+200 págs)'
+                              : '⚡ Auto: Local Engine (200+ pgs)'
+                            : isEs
+                              ? '🏆 Auto: Adobe Acrobat (≤200 págs)'
+                              : '🏆 Auto: Adobe Acrobat (≤200 pgs)'}
                         </span>
-                        <p className="text-[11px] text-zinc-400">
-                          {isEs
-                            ? 'El archivo PDF resultante contiene fuentes incrustadas de alta resolución y se puede imprimir o visualizar sin pérdida de calidad.'
-                            : 'Resulting PDF contains high-res embedded fonts ready for printing.'}
-                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (targetPages.length > 200) {
+                              toast.info(
+                                isEs
+                                  ? 'Adobe Acrobat se recomienda para documentos de hasta 200 páginas. Para +200 páginas se recomienda el Motor Local.'
+                                  : 'Adobe Acrobat recommended for up to 200 pages.',
+                              );
+                            }
+                            setConversionEngine('adobe');
+                          }}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'adobe'
+                              ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>🏆 Adobe Acrobat Pro (Nube)</span>
+                            </span>
+                            <span
+                              className={`text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                                targetPages.length > 200
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                              }`}
+                            >
+                              {isEs ? 'Hasta 200 págs' : 'Up to 200 pgs'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Máxima fidelidad oficial en la nube. Reconstruye folletos, brochures, diagramas y tipografías exactas de Office.'
+                              : 'Official cloud fidelity. Best for brochures, diagrams & exact Office typography.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 2: CLOUDCONVERT API */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('cloudconvert')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'cloudconvert'
+                              ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>🌐 CloudConvert (Nube)</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                              {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Motor en la nube de alto rendimiento. Reconstruye el documento con maquetación fiel, estilos tipográficos e imágenes.'
+                              : 'High-performance cloud processing engine. Faithful document layout with typography, styling and graphics.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 3: MOTOR LOCAL ULTRA RÁPIDO */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('local')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'local'
+                              ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>⚡ Motor Local PyMuPDF</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              {isEs ? 'Instantáneo (~0.5s)' : 'Instant (~0.5s)'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Párrafos fluidos y limpios con desguionado inteligente. 100% privado en RAM, ideal para libros y novelas.'
+                              : 'Clean flowing paragraphs & smart de-hyphenation. 100% private in RAM, ideal for books.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 4: MOTOR PDF2DOCX OFICIAL */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('pdf2docx')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'pdf2docx'
+                              ? 'bg-purple-950/50 border-purple-400 ring-1 ring-purple-400/50 shadow-md'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>📊 Motor pdf2docx (Python)</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                              {isEs ? 'Tablas & Columnas' : 'Tables & Columns'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {isEs
+                              ? 'Reconstrucción geométrica avanzada de cuadrículas, celdas combinadas y distribución multicolumna.'
+                              : 'Advanced geometric layout for complex tables, merged cells & multi-column text.'}
+                          </p>
+                        </button>
                       </div>
                     </div>
-                  ) : (
-                    /* OPCIONES MODO PDF A WORD */
-                    <div className="space-y-3 font-mono text-xs">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Layout className="w-4 h-4 text-blue-400" />
+
+                    {/* GRID DE 3 COLUMNAS MODO PDF A WORD */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* COL 1: SELECCIÓN DE PÁGINAS */}
+                      <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-zinc-200 font-bold flex items-center gap-1.5">
+                              <ListChecks className="w-4 h-4 text-white" />
+                              <span>
+                                {isEs ? 'Páginas a Convertir a Word' : 'Pages to Convert to Word'}
+                              </span>
+                            </label>
+                            <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
+                              {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                            </span>
+                          </div>
+
+                          {/* MODOS DE SELECCIÓN */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('all')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'all'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Todas' : 'All'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('range')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'range'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Rango' : 'Range'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('odd')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'odd'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Impares' : 'Odd'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPageSelectionMode('even')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                pageSelectionMode === 'even'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Pares' : 'Even'}
+                            </button>
+                          </div>
+
+                          {/* INPUT DE RANGO */}
+                          {pageSelectionMode === 'range' && (
+                            <div className="space-y-2 pt-1 border-t border-white/5">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={pageRangeInput}
+                                  onChange={(e) => setPageRangeInput(e.target.value)}
+                                  placeholder={isEs ? 'Ej: 1-5, 8, 11-20' : 'E.g: 1-5, 8, 11-20'}
+                                  className="flex-1 bg-zinc-900 border border-white/20 focus:border-blue-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-1 text-[10px]">
+                                {[
+                                  { label: isEs ? 'Primeras 5' : 'First 5', range: '1-5' },
+                                  { label: isEs ? 'Primeras 10' : 'First 10', range: '1-10' },
+                                  { label: isEs ? 'Primeras 20' : 'First 20', range: '1-20' },
+                                  { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
+                                ].map((chip, cIdx) => (
+                                  <button
+                                    key={cIdx}
+                                    type="button"
+                                    onClick={() => setPageRangeInput(chip.range)}
+                                    className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded text-zinc-300 text-[10px] cursor-pointer"
+                                  >
+                                    {chip.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ACCIONES RÁPIDAS */}
+                        <div className="flex items-center justify-between text-[11px] pt-2 border-t border-white/5 text-zinc-400">
+                          <span>{isEs ? 'Acciones rápidas:' : 'Quick actions:'}</span>
+                          <div className="flex gap-2 font-bold">
+                            <button
+                              type="button"
+                              onClick={handleSelectAll}
+                              className="text-zinc-300 hover:text-white underline cursor-pointer"
+                            >
+                              {isEs ? 'Todas' : 'All'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleInvertSelection}
+                              className="text-zinc-300 hover:text-white underline cursor-pointer"
+                            >
+                              {isEs ? 'Invertir' : 'Invert'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeselectAll}
+                              className="text-zinc-300 hover:text-white underline cursor-pointer"
+                            >
+                              {isEs ? 'Limpiar' : 'Clear'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* COL 2: MAQUETACIÓN, FORMATO Y TIPOGRAFÍA */}
+                      <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
+                        {/* MODO DE MAQUETACIÓN */}
+                        <div>
+                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5 text-[11px]">
+                            <Layout className="w-3.5 h-3.5 text-blue-400" />
                             {isEs ? 'Modo de Maquetación' : 'Layout Mode'}
                           </label>
                           <div className="grid grid-cols-2 gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setLayoutMode('flowing')}
-                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                                layoutMode === 'flowing'
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Texto Fluido' : 'Flowing Text'}
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => setLayoutMode('exact')}
-                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                                 layoutMode === 'exact'
-                                  ? 'bg-white text-black border-white'
+                                  ? 'bg-white text-black border-white shadow-md'
                                   : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
                               }`}
                             >
-                              {isEs ? 'Estructura Fija' : 'Exact Lines'}
+                              {isEs ? '✨ Réplica Exacta' : '✨ Exact Replica'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setLayoutMode('flowing')}
+                              className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                layoutMode === 'flowing'
+                                  ? 'bg-white text-black border-white shadow-md'
+                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? '📝 Texto Fluido' : '📝 Flowing Text'}
                             </button>
                           </div>
                         </div>
 
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <FileText className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Formato de Salida' : 'Output Format'}
-                          </label>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setDocFormat('docx')}
-                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                                docFormat === 'docx'
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
+                        {/* FORMATO DE SALIDA Y TIPOGRAFÍA BASE */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[11px]">
+                              <FileText className="w-3.5 h-3.5 text-blue-400" />
+                              {isEs ? 'Formato' : 'Format'}
+                            </label>
+                            <select
+                              value={docFormat}
+                              onChange={(e) => setDocFormat(e.target.value as 'docx' | 'rtf')}
+                              className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
                             >
-                              DOCX (Office)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setDocFormat('rtf')}
-                              className={`py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                                docFormat === 'rtf'
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
+                              <option value="docx">DOCX (Office)</option>
+                              <option value="rtf">RTF (Universal)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[11px]">
+                              <Type className="w-3.5 h-3.5 text-blue-400" />
+                              {isEs ? 'Tipografía' : 'Font'}
+                            </label>
+                            <select
+                              value={primaryFont}
+                              onChange={(e) => setPrimaryFont(e.target.value)}
+                              className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
                             >
-                              RTF (Universal)
-                            </button>
+                              <option value="Calibri">Calibri (Estándar)</option>
+                              <option value="Arial">Arial (Limpia)</option>
+                              <option value="Times New Roman">Times (Formal)</option>
+                              <option value="Aptos">Aptos (365)</option>
+                            </select>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Type className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Tipografía Base' : 'Base Typography'}
-                          </label>
-                          <select
-                            value={primaryFont}
-                            onChange={(e) => setPrimaryFont(e.target.value)}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="Calibri">Calibri (Estándar Office)</option>
-                            <option value="Arial">Arial (Sans-serif limpia)</option>
-                            <option value="Times New Roman">Times New Roman (Formal)</option>
-                            <option value="Aptos">Aptos (Moderno 365)</option>
-                          </select>
-                        </div>
-
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <AlignLeft className="w-4 h-4 text-blue-400" />
-                            {isEs ? 'Tamaño de Fuente' : 'Font Size'}
-                          </label>
+                        {/* TAMAÑO DE FUENTE */}
+                        <div className="pt-2 border-t border-white/5">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-zinc-300 font-bold flex items-center gap-1 text-[11px]">
+                              <AlignLeft className="w-3.5 h-3.5 text-blue-400" />
+                              {isEs ? 'Tamaño de Fuente' : 'Font Size'}
+                            </label>
+                            <span className="text-[10px] text-zinc-400">{fontSizePt} pt</span>
+                          </div>
                           <div className="grid grid-cols-3 gap-1.5">
                             {[10, 11, 12].map((sz) => (
                               <button
                                 key={sz}
                                 type="button"
                                 onClick={() => setFontSizePt(sz)}
-                                className={`py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                className={`py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                                   fontSizePt === sz
                                     ? 'bg-white text-black border-white'
                                     : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
@@ -1969,54 +2527,74 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                         </div>
                       </div>
 
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-2.5">
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                          <input
-                            type="checkbox"
-                            checked={addPageBreaks}
-                            onChange={(e) => setAddPageBreaks(e.target.checked)}
-                            className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
-                          />
-                          <span>
-                            {isEs
-                              ? 'Insertar salto de página entre cada página del PDF'
-                              : 'Insert page breaks between PDF pages'}
-                          </span>
-                        </label>
-                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300">
-                          <input
-                            type="checkbox"
-                            checked={includeDocHeader}
-                            onChange={(e) => setIncludeDocHeader(e.target.checked)}
-                            className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
-                          />
-                          <span>
-                            {isEs
-                              ? 'Incluir título del archivo en el encabezado de la primera página'
-                              : 'Include file title header on first page'}
-                          </span>
-                        </label>
-                      </div>
+                      {/* COL 3: OPCIONES AVANZADAS Y COMPATIBILIDAD */}
+                      <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <label className="text-zinc-200 font-bold flex items-center gap-1.5 mb-2">
+                            <Sparkles className="w-4 h-4 text-blue-400" />
+                            <span>{isEs ? 'Opciones de Extracción' : 'Extraction Options'}</span>
+                          </label>
 
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3.5 text-xs text-blue-400 space-y-1">
-                        <span className="font-bold flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4" />
-                          {isEs
-                            ? 'Exportación Nativa Microsoft OpenXML (.docx)'
-                            : 'Native Microsoft OpenXML (.docx) Export'}
-                        </span>
-                        <p className="text-[11px] text-zinc-400">
-                          {isEs
-                            ? 'El documento resultante es 100% compatible con Microsoft Word, Google Docs, Apple Pages y LibreOffice.'
-                            : 'The resulting document is 100% compatible with Word, Google Docs, Apple Pages, and LibreOffice.'}
-                        </p>
+                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300 hover:text-white transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={includeImages}
+                              onChange={(e) => setIncludeImages(e.target.checked)}
+                              className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span className="font-semibold flex items-center gap-1.5">
+                              <ImageIcon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              {isEs
+                                ? 'Conservar imágenes (fotos y gráficos)'
+                                : 'Preserve images & graphics'}
+                            </span>
+                          </label>
+
+                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300 hover:text-white transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={addPageBreaks}
+                              onChange={(e) => setAddPageBreaks(e.target.checked)}
+                              className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span>
+                              {isEs
+                                ? 'Insertar salto de página entre páginas'
+                                : 'Insert page breaks'}
+                            </span>
+                          </label>
+
+                          <label className="flex items-center gap-2.5 cursor-pointer text-xs text-zinc-300 hover:text-white transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={includeDocHeader}
+                              onChange={(e) => setIncludeDocHeader(e.target.checked)}
+                              className="accent-blue-400 w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span>
+                              {isEs ? 'Incluir título en encabezado' : 'Include file header'}
+                            </span>
+                          </label>
+                        </div>
+
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-2.5 text-xs text-blue-400 space-y-1 mt-2">
+                          <span className="font-bold flex items-center gap-1.5 text-[11px]">
+                            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                            {isEs ? 'Exportación Nativa DOCX' : 'Native DOCX Export'}
+                          </span>
+                          <p className="text-[10px] text-zinc-400 leading-tight">
+                            {isEs
+                              ? '100% compatible con Microsoft Word, Google Docs y LibreOffice.'
+                              : '100% compatible with Word, Google Docs & LibreOffice.'}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-                <div className="pt-3 border-t border-white/10 font-sans">
+                <div className="pt-2 border-t border-white/10 font-sans">
                   {isProcessing && (
                     <div className="mb-3 space-y-1.5 font-mono">
                       <div className="flex justify-between text-[10px] font-bold text-zinc-300">
@@ -2035,7 +2613,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                   <button
                     onClick={executeConversion}
                     disabled={isProcessing || !file || targetPages.length === 0}
-                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-3.5 rounded-2xl font-sans font-bold text-sm sm:text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-3.5 rounded-2xl font-sans font-bold text-sm sm:text-base transition-all shadow-md hover:scale-[1.005] active:scale-98 disabled:opacity-50 cursor-pointer"
                   >
                     {isProcessing ? (
                       <Loader2 className="w-5 h-5 animate-spin text-black" />

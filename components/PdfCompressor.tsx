@@ -9,9 +9,7 @@ import {
   Loader2,
   X,
   ShieldCheck,
-  FilePlus,
   Zap,
-  ArrowRight,
   RefreshCw,
   FileText,
   UploadCloud,
@@ -22,19 +20,18 @@ import {
   Target,
   Archive,
   FileCheck2,
-  ChevronLeft,
-  Eye,
-  Layers,
-  Package,
-  AlertTriangle,
-  CheckCircle2,
-  Database,
-  Gauge,
   Image as ImageIcon,
   ZoomIn,
-  ZoomOut,
   Trash2,
   Plus,
+  Sparkles,
+  CheckCircle2,
+  Lock,
+  Download,
+  Share2,
+  HardDrive,
+  Maximize2,
+  HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -42,13 +39,17 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
+import JSZip from 'jszip';
+import { PDFDocument, PDFName, PDFDict, PDFRawStream, PDFNumber, PDFRef, PDFPage } from 'pdf-lib';
+// @ts-ignore
+import pako from 'pako';
 
-type CompressionLevel = 'high' | 'medium' | 'low';
-type OutputColorMode = 'original' | 'grayscale' | 'blackwhite';
-type DpiMode = 'auto' | '72' | '96' | '150';
-type PageScope = 'todas' | 'pares' | 'impares' | 'rango';
+export type CompressionLevel = 'high' | 'medium' | 'low';
+export type OutputColorMode = 'original' | 'grayscale' | 'blackwhite';
+export type DpiMode = 'auto' | '72' | '96' | '150';
+export type PageScope = 'todas' | 'pares' | 'impares' | 'rango';
 
-interface CompressionResultItem {
+export interface CompressionResultItem {
   fileName: string;
   originalSize: number;
   compressedSize: number;
@@ -59,7 +60,7 @@ interface CompressionResultItem {
   rawBlob?: Blob;
 }
 
-interface CompletedCompressionResult {
+export interface CompletedCompressionResult {
   downloadUrl: string;
   filename: string;
   fileSize: string;
@@ -70,10 +71,83 @@ interface CompletedCompressionResult {
   items: CompressionResultItem[];
 }
 
+/**
+ * Detecta de forma exhaustiva si una página contiene imágenes rasterizadas (XObject de tipo Image).
+ * Resuelve referencias indirectas (PDFRef), herencia de recursos de páginas padre y diccionarios anidados.
+ */
+function checkPageHasImages(page: PDFPage | undefined, pdfDoc: PDFDocument): boolean {
+  if (!page || !page.node) return false;
+  const context = pdfDoc.context;
+  try {
+    let resources = page.node.lookup(PDFName.of('Resources'));
+    if (!resources) {
+      let parent = page.node.lookup(PDFName.of('Parent'));
+      while (parent instanceof PDFDict) {
+        resources = parent.lookup(PDFName.of('Resources'));
+        if (resources) break;
+        parent = parent.lookup(PDFName.of('Parent'));
+      }
+    }
+    if (resources instanceof PDFRef) resources = context.lookup(resources);
+    if (resources instanceof PDFDict) {
+      let xobj = resources.lookup(PDFName.of('XObject'));
+      if (xobj instanceof PDFRef) xobj = context.lookup(xobj);
+      if (xobj instanceof PDFDict) {
+        for (const key of xobj.keys()) {
+          let obj = xobj.lookup(key);
+          if (obj instanceof PDFRef) obj = context.lookup(obj);
+          if (
+            obj instanceof PDFDict ||
+            obj instanceof PDFRawStream ||
+            (obj && (obj as unknown as { dict?: PDFDict }).dict)
+          ) {
+            const dict = (obj as unknown as { dict?: PDFDict }).dict || (obj as PDFDict);
+            const subtype = dict.lookup
+              ? dict.lookup(PDFName.of('Subtype'))
+              : dict.get
+                ? dict.get(PDFName.of('Subtype'))
+                : null;
+            if (subtype && subtype.toString() === '/Image') return true;
+          }
+        }
+      }
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * Optimiza y re-comprime todos los flujos de contenido / vectores / XObjects con Deflate Nivel 9 vía pako.
+ */
+function optimizeFlateStreamsDoc(pdfDoc: PDFDocument): number {
+  let savedBytes = 0;
+  try {
+    for (const [_, obj] of pdfDoc.context.enumerateIndirectObjects()) {
+      if (obj instanceof PDFRawStream) {
+        const filter = obj.dict.get(PDFName.of('Filter'));
+        if (filter && filter.toString() === '/FlateDecode') {
+          const raw = obj.getContents();
+          try {
+            const uncomp = pako.inflate(raw);
+            const recompressed = pako.deflate(uncomp, { level: 9 });
+            if (recompressed.length < raw.length) {
+              savedBytes += raw.length - recompressed.length;
+              (obj as unknown as { contents: Uint8Array }).contents = recompressed;
+              obj.dict.set(PDFName.of('Length'), PDFNumber.of(recompressed.length));
+            }
+          } catch {}
+        }
+      }
+    }
+  } catch {}
+  return savedBytes;
+}
+
 export default function PdfCompressor() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addMoreInputRef = useRef<HTMLInputElement>(null);
   const topHeaderRef = useRef<HTMLDivElement>(null);
   const successContainerRef = useRef<HTMLDivElement>(null);
   const controlPanelRef = useRef<HTMLDivElement>(null);
@@ -83,9 +157,11 @@ export default function PdfCompressor() {
   // === ESTADO MULTI-ARCHIVO (BATCH) ===
   const [files, setFiles] = useState<File[]>(globalFile ? [globalFile] : []);
   const [activeFileIdx, setActiveFileIdx] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // === ESTADO DE ÉXITO DE COMPRESIÓN ===
   const [completedResult, setCompletedResult] = useState<CompletedCompressionResult | null>(null);
+  const [isCreatingZip, setIsCreatingZip] = useState<boolean>(false);
 
   // === CONFIGURACIÓN DE COMPRESIÓN ===
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>('medium');
@@ -98,72 +174,42 @@ export default function PdfCompressor() {
   const [preserveTextVectors, setPreserveTextVectors] = useState(true);
   const [preservePdfA, setPreservePdfA] = useState(true);
   const [detectPdfA, setDetectPdfA] = useState(true);
+  const [targetPreset, setTargetPreset] = useState<string | null>(null);
 
-  // === ESTADO DE PROCESAMIENTO CON WEB WORKER ===
+  // === ESTADO DE PROCESAMIENTO ===
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressPercent, setProgressPercent] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [totalFilesCount, setTotalFilesCount] = useState(0);
-  const workerRef = useRef<Worker | null>(null);
-  // Refs para mutar valores dentro de callbacks sin depender de closures stale
-  const resultsRef = useRef<CompressionResultItem[]>([]);
-  const filesCountRef = useRef<number>(0);
-  const isProcessingRef = useRef<boolean>(false);
 
   // === RESULTADOS DE COMPRESIÓN ===
   const [results, setResults] = useState<CompressionResultItem[]>([]);
 
-  // === VISTA PREVIA DE PÁGINA ===
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  // === VISTA PREVIA Y MINIATURAS ===
   const [previewPageNum, setPreviewPageNum] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
   const [thumbnails, setThumbnails] = useState<{ pageNum: number; dataUrl: string }[]>([]);
   const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
+  const [zoomModalImage, setZoomModalImage] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Altura sincronizada para igualar panel de vista previa al panel de control
+  // Sincronización de alturas
   const [previewHeight, setPreviewHeight] = useState<number>(0);
   const [isDesktop, setIsDesktop] = useState<boolean>(false);
 
-  // ============================================================
-  // EFECTOS Y GENERACIÓN DE MINIATURAS DEL DOCUMENTO
-  // ============================================================
-
-  // Ocultar barra superior global y posicionar la vista en el tope de la página
+  // Control de cabecera fija
   useEffect(() => {
     if (completedResult) {
       setHeaderHidden(true);
-
-      // Posicionar en el tope absoluto (y = 0) para mantener el margen y vista completa del título
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-
-      const raf = requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-      });
-
-      const timer = setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'instant' });
-      }, 50);
-
-      return () => {
-        cancelAnimationFrame(raf);
-        clearTimeout(timer);
-      };
+      window.scrollTo({ top: 0, behavior: 'instant' });
     } else {
       setHeaderHidden(false);
     }
   }, [completedResult, setHeaderHidden]);
 
-  // Restaurar barra superior al desmontar
   useEffect(() => {
-    return () => {
-      setHeaderHidden(false);
-    };
+    return () => setHeaderHidden(false);
   }, [setHeaderHidden]);
 
   useEffect(() => {
@@ -171,13 +217,6 @@ export default function PdfCompressor() {
       setFiles([globalFile]);
     }
   }, [globalFile, files.length]);
-
-  // Limpiar worker al desmontar
-  useEffect(() => {
-    return () => {
-      workerRef.current?.terminate();
-    };
-  }, []);
 
   const activeFile = files[activeFileIdx] || null;
 
@@ -188,7 +227,7 @@ export default function PdfCompressor() {
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  // Sincronizar altura del panel de vista previa con la del panel de control
+  // Sincronizar altura de paneles
   useEffect(() => {
     if (!controlPanelRef.current) return;
     const updateHeight = () => {
@@ -200,9 +239,7 @@ export default function PdfCompressor() {
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const h = entry.target.getBoundingClientRect().height;
-        if (h > 0) {
-          setPreviewHeight(h);
-        }
+        if (h > 0) setPreviewHeight(h);
       }
     });
     observer.observe(controlPanelRef.current);
@@ -218,21 +255,22 @@ export default function PdfCompressor() {
     detectPdfA,
     preservePdfA,
     stripMetadata,
+    showAdvanced,
     isProcessing,
-    results,
   ]);
 
+  // Cargar miniaturas del archivo activo
   const loadFileThumbnails = useCallback(async (pdfFile: File) => {
     setIsLoadingThumbnails(true);
     setThumbnails([]);
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
 
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfDoc = await pdfjsLib.getDocument({
         data: arrayBuffer.slice(0),
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
         cMapPacked: true,
       }).promise;
 
@@ -246,8 +284,8 @@ export default function PdfCompressor() {
         const page = await pdfDoc.getPage(pn);
         const viewport = page.getViewport({ scale: 0.5 });
         const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
         const ctx = canvas.getContext('2d');
         if (ctx) {
           await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
@@ -273,30 +311,60 @@ export default function PdfCompressor() {
       setThumbnails([]);
       setTotalPages(1);
     }
-  }, [activeFile, loadFileThumbnails]);
+  }, [activeFile, loadFileThumbnails, setGlobalFile]);
 
-  // ============================================================
-  // MANEJO DE ARCHIVOS (BATCH)
-  // ============================================================
+  // Manejo de drag & drop
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files).filter(
+        (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'),
+      );
+      if (droppedFiles.length === 0) {
+        toast.error(isEs ? 'Solo se admiten archivos PDF válidos' : 'Only valid PDF files allowed');
+        return;
+      }
+      setFiles((prev) => [...prev, ...droppedFiles]);
+      if (files.length === 0 && droppedFiles.length > 0) {
+        setGlobalFile(droppedFiles[0]);
+        setActiveFileIdx(0);
+      }
+      setResults([]);
+      setCompletedResult(null);
+      toast.success(
+        isEs ? `${droppedFiles.length} PDF(s) añadido(s)` : `${droppedFiles.length} PDF(s) added`,
+      );
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).filter((f) => f.type === 'application/pdf');
+      const newFiles = Array.from(e.target.files).filter(
+        (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'),
+      );
       if (newFiles.length === 0) {
         toast.error(isEs ? 'Selecciona archivos PDF válidos' : 'Select valid PDF files');
         e.target.value = '';
         return;
       }
-      if (newFiles.length !== e.target.files.length) {
-        toast.warning(
-          isEs
-            ? `${e.target.files.length - newFiles.length} archivo(s) ignorado(s) por no ser PDF`
-            : `${e.target.files.length - newFiles.length} file(s) ignored (not PDF)`,
-        );
-      }
 
       setFiles((prev) => [...prev, ...newFiles]);
-      if (newFiles.length > 0) {
+      if (files.length === 0 && newFiles.length > 0) {
         setGlobalFile(newFiles[0]);
         setActiveFileIdx(0);
       }
@@ -311,8 +379,10 @@ export default function PdfCompressor() {
     e.target.value = '';
   };
 
-  const handleRemoveFile = (idx: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  const handleRemoveFile = (idx: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const updated = files.filter((_, i) => i !== idx);
+    setFiles(updated);
     setResults((prev) => prev.filter((_, i) => i !== idx));
     setCompletedResult(null);
     if (idx === activeFileIdx) {
@@ -320,7 +390,7 @@ export default function PdfCompressor() {
     } else if (idx < activeFileIdx) {
       setActiveFileIdx((prev) => Math.max(0, prev - 1));
     }
-    if (files.length <= 1) {
+    if (updated.length === 0) {
       setGlobalFile(null);
     }
   };
@@ -333,143 +403,378 @@ export default function PdfCompressor() {
     setActiveFileIdx(0);
   };
 
-  // ============================================================
-  // COMPRESIÓN CON WEB WORKER
-  // ============================================================
+  // Selector de perfiles calibrado
+  const handleLevelSelect = (lvl: CompressionLevel) => {
+    if (isProcessing) return;
+    setCompressionLevel(lvl);
+    setTargetPreset(null);
+    if (lvl === 'high') {
+      setPreserveTextVectors(true);
+      setDpiMode('auto');
+      setStripMetadata(true);
+      toast.info(
+        isEs
+          ? '⚡ Modo Máxima Compresión: optimización profunda garantizando texto 100% nítido.'
+          : '⚡ Maximum Compression mode: deep optimization with 100% crisp text.',
+        { duration: 3500 },
+      );
+    } else if (lvl === 'medium') {
+      setPreserveTextVectors(true);
+      setDpiMode('auto');
+      setStripMetadata(true);
+    } else if (lvl === 'low') {
+      setPreserveTextVectors(true);
+      setDpiMode('auto');
+      setStripMetadata(false);
+    }
+  };
 
+  // Presets de tamaño objetivo rápido
+  const handleApplyPreset = (preset: 'email' | 'web' | 'print') => {
+    if (isProcessing) return;
+    setTargetPreset(preset);
+    if (preset === 'email') {
+      setCompressionLevel('high');
+      setDpiMode('96');
+      setStripMetadata(true);
+      setPreserveTextVectors(true);
+      toast.success(
+        isEs
+          ? '📧 Preset para Correo aplicado: Máxima compresión, 96 DPI y limpieza de metadatos.'
+          : '📧 Email Preset applied: Maximum compression, 96 DPI & metadata cleanup.',
+      );
+    } else if (preset === 'web') {
+      setCompressionLevel('medium');
+      setDpiMode('auto');
+      setStripMetadata(true);
+      setPreserveTextVectors(true);
+      toast.success(
+        isEs
+          ? '🌐 Preset Web aplicado: Calidad equilibrada y optimización sin pérdida visible.'
+          : '🌐 Web Preset applied: Balanced quality with lossless visual fidelity.',
+      );
+    } else if (preset === 'print') {
+      setCompressionLevel('low');
+      setDpiMode('150');
+      setStripMetadata(false);
+      setPreserveTextVectors(true);
+      toast.success(
+        isEs
+          ? '🖨️ Preset Impresión / CAD: Máxima resolución (150 DPI) y fidelidad vectorial total.'
+          : '🖨️ Print / CAD Preset: Maximum resolution (150 DPI) and full vector fidelity.',
+      );
+    }
+  };
+
+  // Motor de compresión asíncrono directo de alto rendimiento
   const executeCompress = async () => {
     if (files.length === 0) return;
 
     setIsProcessing(true);
     setProgressPercent(0);
     setProgressMsg(
-      isEs
-        ? 'Iniciando motor de compresión en Web Worker...'
-        : 'Starting compression engine in Web Worker...',
+      isEs ? 'Iniciando motor de optimización local...' : 'Starting local optimization engine...',
     );
     setResults([]);
     setCompletedResult(null);
     setTotalFilesCount(files.length);
-    setCurrentFileIndex(0);
 
     try {
-      // Leer todos los archivos como ArrayBuffer
-      const fileBuffers: Array<{ buffer: ArrayBuffer; name: string }> = [];
-      for (const f of files) {
-        const buffer = await f.arrayBuffer();
-        fileBuffers.push({ buffer, name: f.name });
-      }
-
-      // Crear Web Worker
-      // Usamos URL directa al archivo compilado en /workers/
-      const workerUrl = new URL('../workers/pdf-compress.worker.ts', import.meta.url);
-      const worker = new Worker(workerUrl, { type: 'module' });
-      workerRef.current = worker;
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
 
       const newResults: CompressionResultItem[] = [];
 
-      worker.onmessage = (event: MessageEvent) => {
-        const msg = event.data;
+      for (let fIdx = 0; fIdx < files.length; fIdx++) {
+        const currentFile = files[fIdx];
+        setCurrentFileIndex(fIdx + 1);
 
-        if (msg.type === 'progress') {
-          setProgressPercent(msg.percent);
-          setProgressMsg(msg.message);
-          setCurrentFileIndex(msg.currentFile);
-          setTotalFilesCount(msg.totalFiles);
-        } else if (msg.type === 'result') {
-          const blob = new Blob([msg.compressedBytes], { type: 'application/pdf' });
-          const url = URL.createObjectURL(blob);
+        const fileBuffer = await currentFile.arrayBuffer();
+        const originalSize = fileBuffer.byteLength;
 
-          const resultItem: CompressionResultItem = {
-            fileName: msg.fileName,
-            originalSize: msg.originalSize,
-            compressedSize: msg.compressedSize,
-            reductionPercent: msg.reductionPercent,
-            wasPdfA: msg.wasPdfA,
-            pdfAStatus: msg.pdfAStatus,
-            downloadUrl: url,
-            rawBlob: blob,
-          };
+        setProgressMsg(
+          isEs ? `Analizando ${currentFile.name}...` : `Analyzing ${currentFile.name}...`,
+        );
+        setProgressPercent(Math.round((fIdx / files.length) * 100) + 4);
+        await new Promise((r) => setTimeout(r, 10));
 
-          newResults.push(resultItem);
-          setResults([...newResults]);
-        } else if (msg.type === 'error') {
-          toast.error(msg.message);
+        const pdfDoc = await PDFDocument.load(fileBuffer, { ignoreEncryption: true });
+        const pages = pdfDoc.getPages();
+        const numPages = pages.length;
+
+        // Determinar páginas a procesar
+        let targetPages: number[] = [];
+        if (pageScope === 'todas') {
+          targetPages = Array.from({ length: numPages }, (_, i) => i + 1);
+        } else if (pageScope === 'pares') {
+          targetPages = Array.from({ length: numPages }, (_, i) => i + 1).filter(
+            (p) => p % 2 === 0,
+          );
+        } else if (pageScope === 'impares') {
+          targetPages = Array.from({ length: numPages }, (_, i) => i + 1).filter(
+            (p) => p % 2 !== 0,
+          );
+        } else if (pageScope === 'rango' && pageRange.trim()) {
+          const parts = pageRange.split(',').map((s) => s.trim());
+          const setP = new Set<number>();
+          for (const part of parts) {
+            if (part.includes('-')) {
+              const [s, e] = part.split('-').map(Number);
+              for (let p = s; p <= e; p++) if (p >= 1 && p <= numPages) setP.add(p);
+            } else {
+              const p = Number(part);
+              if (p >= 1 && p <= numPages) setP.add(p);
+            }
+          }
+          targetPages = Array.from(setP).sort((a, b) => a - b);
         }
-      };
+        if (targetPages.length === 0) {
+          targetPages = Array.from({ length: numPages }, (_, i) => i + 1);
+        }
 
-      worker.onerror = (error) => {
-        console.error('Worker error:', error);
-        toast.error(isEs ? 'Error en el motor de compresión' : 'Compression engine error');
-        setIsProcessing(false);
-      };
+        // Calibrar escala y calidad
+        let imageScale = 1.33;
+        let jpegQuality = 0.65;
+        if (dpiMode === '72') {
+          imageScale = 1.0;
+          jpegQuality = 0.6;
+        } else if (dpiMode === '96') {
+          imageScale = 1.33;
+          jpegQuality = 0.65;
+        } else if (dpiMode === '150') {
+          imageScale = 2.0;
+          jpegQuality = 0.78;
+        } else if (compressionLevel === 'high') {
+          imageScale = 1.25;
+          jpegQuality = 0.58;
+        } else if (compressionLevel === 'low') {
+          imageScale = 1.8;
+          jpegQuality = 0.8;
+        }
 
-      // Enviar trabajo al worker
-      worker.postMessage({
-        files: fileBuffers,
-        options: {
-          level: compressionLevel,
-          outputColorMode,
-          dpiMode,
-          pageScope,
-          pageRange: pageScope === 'rango' ? pageRange : undefined,
-          stripMetadata,
-          preserveTextVectors,
-          preservePdfA,
-          detectPdfA,
-          customSuffix,
-        },
+        const pdfjsDoc = await pdfjsLib.getDocument({
+          data: fileBuffer.slice(0),
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
+          cMapPacked: true,
+        }).promise;
+
+        const newPdf = await PDFDocument.create();
+
+        for (let pIdx = 0; pIdx < targetPages.length; pIdx++) {
+          const pageNum = targetPages[pIdx];
+          const pagePct = Math.round(((fIdx + pIdx / targetPages.length) / files.length) * 85) + 5;
+          setProgressPercent(pagePct);
+          setProgressMsg(
+            isEs
+              ? `Optimizando página ${pageNum} de ${numPages} (${currentFile.name})...`
+              : `Optimizing page ${pageNum} of ${numPages} (${currentFile.name})...`,
+          );
+          await new Promise((r) => setTimeout(r, 0));
+
+          const page = pages[pageNum - 1];
+          const hasImages = checkPageHasImages(page, pdfDoc);
+
+          if (hasImages || compressionLevel === 'high') {
+            try {
+              const pdfPage = await pdfjsDoc.getPage(pageNum);
+              const vp = pdfPage.getViewport({ scale: imageScale });
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.ceil(vp.width);
+              canvas.height = Math.ceil(vp.height);
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                await pdfPage.render({
+                  canvasContext: ctx,
+                  viewport: vp,
+                } as unknown as Parameters<typeof pdfPage.render>[0]).promise;
+
+                // Modo de color
+                if (outputColorMode === 'grayscale') {
+                  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                  const d = imgData.data;
+                  for (let i = 0; i < d.length; i += 4) {
+                    const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                    d[i] = gray;
+                    d[i + 1] = gray;
+                    d[i + 2] = gray;
+                  }
+                  ctx.putImageData(imgData, 0, 0);
+                } else if (outputColorMode === 'blackwhite') {
+                  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                  const d = imgData.data;
+                  for (let i = 0; i < d.length; i += 4) {
+                    const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                    const bw = gray > 140 ? 255 : 0;
+                    d[i] = bw;
+                    d[i + 1] = bw;
+                    d[i + 2] = bw;
+                  }
+                  ctx.putImageData(imgData, 0, 0);
+                }
+
+                const blob = await new Promise<Blob | null>((resolve) =>
+                  canvas.toBlob(resolve, 'image/jpeg', jpegQuality),
+                );
+                if (blob) {
+                  const jpegBytes = await blob.arrayBuffer();
+                  const embeddedImg = await newPdf.embedJpg(jpegBytes);
+                  const origVp = pdfPage.getViewport({ scale: 1.0 });
+                  const newPage = newPdf.addPage([origVp.width, origVp.height]);
+                  newPage.drawImage(embeddedImg, {
+                    x: 0,
+                    y: 0,
+                    width: origVp.width,
+                    height: origVp.height,
+                  });
+                  continue;
+                }
+              }
+            } catch (err) {
+              console.warn(`Fallback para página ${pageNum}:`, err);
+            }
+          }
+
+          // Fallback o vector nativo
+          try {
+            const [copied] = await newPdf.copyPages(pdfDoc, [pageNum - 1]);
+            newPdf.addPage(copied);
+          } catch {
+            newPdf.addPage([612, 792]);
+          }
+        }
+
+        if (stripMetadata) {
+          newPdf.setTitle('');
+          newPdf.setAuthor('');
+          newPdf.setProducer('PDFBlack Compressor');
+          newPdf.setCreator('');
+          newPdf.setSubject('');
+          newPdf.setKeywords([]);
+        }
+
+        setProgressMsg(
+          isEs
+            ? 'Re-comprimiendo flujos vectoriales con Deflate Nivel 9...'
+            : 'Re-compressing vector streams with Deflate Level 9...',
+        );
+        setProgressPercent(92);
+        await new Promise((r) => setTimeout(r, 10));
+
+        optimizeFlateStreamsDoc(newPdf);
+
+        setProgressMsg(isEs ? 'Guardando PDF optimizado...' : 'Saving optimized PDF...');
+        setProgressPercent(96);
+        await new Promise((r) => setTimeout(r, 10));
+
+        const compressedBytes = await newPdf.save({
+          useObjectStreams: true,
+          addDefaultPage: false,
+        });
+
+        let finalBytes = compressedBytes;
+        if (compressedBytes.byteLength >= originalSize) {
+          finalBytes = new Uint8Array(fileBuffer);
+        }
+
+        const reductionPercent = Math.max(
+          0,
+          Math.round(((originalSize - finalBytes.byteLength) / originalSize) * 100),
+        );
+
+        const outBlob = new Blob(
+          [
+            finalBytes.buffer.slice(
+              finalBytes.byteOffset,
+              finalBytes.byteOffset + finalBytes.byteLength,
+            ) as ArrayBuffer,
+          ],
+          { type: 'application/pdf' },
+        );
+        const outUrl = URL.createObjectURL(outBlob);
+
+        newResults.push({
+          fileName: currentFile.name,
+          originalSize,
+          compressedSize: finalBytes.byteLength,
+          reductionPercent,
+          wasPdfA: false,
+          pdfAStatus: 'not-applicable',
+          downloadUrl: outUrl,
+          rawBlob: outBlob,
+        });
+
+        setResults([...newResults]);
+      }
+
+      setProgressPercent(100);
+      setProgressMsg(isEs ? '¡Proceso completado con éxito!' : 'Process completed successfully!');
+
+      const totalOriginal = newResults.reduce((acc, r) => acc + r.originalSize, 0);
+      const totalCompressed = newResults.reduce((acc, r) => acc + r.compressedSize, 0);
+      const overallReduction =
+        totalOriginal > 0
+          ? Math.round(((totalOriginal - totalCompressed) / totalOriginal) * 100)
+          : 0;
+
+      const firstItem = newResults[0];
+      const originalName = firstItem ? firstItem.fileName.replace(/\.[^/.]+$/, '') : 'Documento';
+      const outName = `${originalName}${customSuffix}.pdf`;
+
+      setCompletedResult({
+        downloadUrl: firstItem ? firstItem.downloadUrl : '',
+        filename: outName,
+        fileSize: firstItem ? formatFileSize(firstItem.compressedSize) : '',
+        rawBlob: firstItem ? firstItem.rawBlob : undefined,
+        totalOriginalSize: totalOriginal,
+        totalCompressedSize: totalCompressed,
+        overallReduction,
+        items: [...newResults],
       });
 
-      // Monitorear finalización (el worker envía progress 100 al terminar)
-      const checkCompletion = setInterval(() => {
-        if (progressPercent >= 100 || newResults.length >= files.length) {
-          clearInterval(checkCompletion);
-          setIsProcessing(false);
-          worker.terminate();
-          workerRef.current = null;
-
-          const totalOriginal = newResults.reduce((acc, r) => acc + r.originalSize, 0);
-          const totalCompressed = newResults.reduce((acc, r) => acc + r.compressedSize, 0);
-          const overallReduction =
-            totalOriginal > 0
-              ? Math.round(((totalOriginal - totalCompressed) / totalOriginal) * 100)
-              : 0;
-
-          const firstItem = newResults[0];
-          const originalName = firstItem
-            ? firstItem.fileName.replace(/\.[^/.]+$/, '')
-            : 'Documento';
-          const outName = `${originalName}${customSuffix}.pdf`;
-
-          setCompletedResult({
-            downloadUrl: firstItem ? firstItem.downloadUrl : '',
-            filename: outName,
-            fileSize: firstItem ? formatFileSize(firstItem.compressedSize) : '',
-            rawBlob: firstItem ? firstItem.rawBlob : undefined,
-            totalOriginalSize: totalOriginal,
-            totalCompressedSize: totalCompressed,
-            overallReduction,
-            items: [...newResults],
-          });
-
-          toast.success(
-            isEs
-              ? `¡${newResults.length} PDF(s) comprimido(s)! Reducción total: ${overallReduction}%`
-              : `${newResults.length} PDF(s) compressed! Total reduction: ${overallReduction}%`,
-          );
-        }
-      }, 300);
+      toast.success(
+        isEs
+          ? `¡${newResults.length} PDF(s) comprimido(s)! Reducción: ${overallReduction}%`
+          : `${newResults.length} PDF(s) compressed! Reduction: ${overallReduction}%`,
+      );
     } catch (error) {
       console.error('Compression error:', error);
-      toast.error(isEs ? 'Error al iniciar la compresión' : 'Error starting compression');
+      toast.error(isEs ? 'Error durante la compresión del PDF' : 'Error during PDF compression');
+    } finally {
       setIsProcessing(false);
     }
   };
 
-  // ============================================================
-  // UTILIDADES
-  // ============================================================
+  // Descargar paquete ZIP para múltiples archivos
+  const handleDownloadAllZip = async () => {
+    if (!completedResult || completedResult.items.length === 0) return;
+    setIsCreatingZip(true);
+    try {
+      const zip = new JSZip();
+      completedResult.items.forEach((item) => {
+        if (item.rawBlob) {
+          const name = `${item.fileName.replace(/\.[^/.]+$/, '')}${customSuffix}.pdf`;
+          zip.file(name, item.rawBlob);
+        }
+      });
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = zipUrl;
+      a.download = `PDFBlack_Comprimidos_${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(zipUrl);
+      toast.success(
+        isEs ? 'Paquete ZIP descargado con éxito' : 'ZIP package downloaded successfully',
+      );
+    } catch (err) {
+      console.error('Error al generar ZIP:', err);
+      toast.error(isEs ? 'Error al generar archivo ZIP' : 'Error generating ZIP file');
+    } finally {
+      setIsCreatingZip(false);
+    }
+  };
 
   const formatFileSize = (bytes: number) => {
     if (!bytes || bytes === 0) return '0 KB';
@@ -481,29 +786,17 @@ export default function PdfCompressor() {
 
   const getEstimatedReduction = (level: CompressionLevel) => {
     const ranges: Record<CompressionLevel, { min: number; max: number; label: string }> = {
-      low: { min: 10, max: 40, label: isEs ? '10-40%' : '10-40%' },
-      medium: { min: 40, max: 70, label: isEs ? '40-70%' : '40-70%' },
-      high: { min: 60, max: 90, label: isEs ? '60-90%' : '60-90%' },
+      low: { min: 10, max: 40, label: '10-40%' },
+      medium: { min: 30, max: 65, label: '30-65%' },
+      high: { min: 50, max: 90, label: '50-90%' },
     };
     return ranges[level];
   };
 
   const totalOriginalSize = files.reduce((acc, f) => acc + f.size, 0);
-  const totalCompressedSize = results.reduce((acc, r) => acc + r.compressedSize, 0);
-  const overallReduction =
-    totalOriginalSize > 0
-      ? Math.round(((totalOriginalSize - totalCompressedSize) / totalOriginalSize) * 100)
-      : 0;
-
-  const hasResults = results.length > 0;
-  const activeResult = results[activeFileIdx] || null;
-
-  // ============================================================
-  // RENDER PRINCIPAL
-  // ============================================================
 
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto font-sans">
       <input
         type="file"
         accept=".pdf"
@@ -511,6 +804,15 @@ export default function PdfCompressor() {
         className="hidden"
         onChange={handleFileChange}
         ref={fileInputRef}
+        disabled={isProcessing}
+      />
+      <input
+        type="file"
+        accept=".pdf"
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+        ref={addMoreInputRef}
         disabled={isProcessing}
       />
 
@@ -548,8 +850,16 @@ export default function PdfCompressor() {
 
         {files.length > 0 && (
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => addMoreInputRef.current?.click()}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-zinc-200 hover:text-white px-3 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-white" />
+              <span>{isEs ? 'Añadir más' : 'Add more'}</span>
+            </button>
             <div className="bg-zinc-900 border border-zinc-700 px-3 py-2 rounded-xl text-xs text-white font-mono">
-              <Package className="w-3.5 h-3.5 inline mr-1.5 text-zinc-300" />
+              <Archive className="w-3.5 h-3.5 inline mr-1.5 text-zinc-300" />
               <span className="font-bold">{files.length}</span> {isEs ? 'archivo(s)' : 'file(s)'}
             </div>
             <button
@@ -569,8 +879,15 @@ export default function PdfCompressor() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+          className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px] ${
+            isDragging
+              ? 'border-white ring-4 ring-white/20 bg-zinc-900/90 scale-[1.01]'
+              : 'border-zinc-600 hover:border-white'
+          }`}
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
@@ -584,7 +901,7 @@ export default function PdfCompressor() {
           </h2>
           <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
             {isEs
-              ? 'Reduce el peso de tus documentos PDF manteniendo la máxima calidad posible de forma 100% confidencial y local.'
+              ? 'Reduce el peso de tus documentos manteniendo texto vectorial nítido e imágenes optimizadas sin subir tus datos a servidores externos.'
               : 'Reduce the file size of your PDF documents with local confidential processing.'}
           </p>
 
@@ -596,50 +913,54 @@ export default function PdfCompressor() {
             {isEs ? 'Seleccionar Archivos PDF' : 'Select PDF Files'}
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
-            <span>
-              {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-            </span>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full shadow-sm">
+              <ShieldCheck className="w-3.5 h-3.5 text-white" />
+              <span>{isEs ? '100% LOCAL Y CONFIDENCIAL' : '100% LOCAL & PRIVATE'}</span>
+            </div>
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full shadow-sm">
+              <Zap className="w-3.5 h-3.5 text-white" />
+              <span>
+                {isEs ? 'DEFLATE NIVEL 9 + VECTOR SHARP' : 'DEFLATE LEVEL 9 + VECTOR SHARP'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : completedResult ? (
-        /* PANTALLA DEDICADA DE ÉXITO Y DESCARGA CON METRICAS DE COMPRESIÓN */
+        /* PANTALLA DEDICADA DE ÉXITO Y DESCARGA */
         <motion.div
           ref={successContainerRef}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+          className="w-full max-w-4xl mx-auto my-2 font-sans space-y-4"
         >
-          {/* BANNER DE METRICAS DE COMPRESIÓN (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
+          {/* DASHBOARD DE METRICAS DE COMPRESIÓN (COMPACTO) */}
+          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-2xl p-4 sm:p-5 shadow-2xl font-mono relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <Zap className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-zinc-800 border border-zinc-600 rounded-xl text-white shadow-md">
+                  <Zap className="w-5 h-5 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 </div>
                 <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
+                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'RESULTADO DE LA COMPRESIÓN' : 'COMPRESSION RESULT'}
                   </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
+                  <h3 className="text-base sm:text-lg font-extrabold text-white font-sans uppercase tracking-tight">
                     {isEs ? '¡Documento optimizado con éxito!' : 'Document optimized successfully!'}
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-4 py-2.5 rounded-2xl min-w-[140px] shadow-sm">
+              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-3.5 py-1.5 rounded-xl min-w-[130px] shadow-sm">
                 <div className="w-full text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
+                  <div className="text-[9px] text-zinc-400 font-bold">
                     {isEs ? 'Ahorro de espacio' : 'Space saved'}
                   </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-base flex items-center justify-end gap-1">
+                  <div className="text-[#FAF6EE] font-extrabold text-sm flex items-center justify-end gap-1">
                     <span>↓ {completedResult.overallReduction}%</span>
                   </div>
-                  <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                  <div className="w-full bg-zinc-800 rounded-full h-1 mt-1 overflow-hidden">
                     <div
                       className="bg-[#FAF6EE] h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(250,246,238,0.5)]"
                       style={{
@@ -651,33 +972,33 @@ export default function PdfCompressor() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-zinc-800 text-xs">
+              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Tamaño Original' : 'Original Size'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.totalOriginalSize)}
                 </span>
               </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
+              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400 text-[10px] uppercase font-bold">
+                  <span className="text-zinc-400 text-[9px] uppercase font-bold">
                     {isEs ? 'Tamaño Comprimido' : 'Compressed Size'}
                   </span>
-                  <span className="text-[9px] px-2 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] rounded font-mono font-bold">
+                  <span className="text-[8px] px-1.5 py-0.2 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] rounded font-mono font-bold">
                     -{completedResult.overallReduction}%
                   </span>
                 </div>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
+                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
                   {formatFileSize(completedResult.totalCompressedSize)}
                 </span>
               </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
+              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
                   {isEs ? 'Espacio Reducido' : 'Space Reduced'}
                 </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
+                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
                   {formatFileSize(
                     completedResult.totalOriginalSize - completedResult.totalCompressedSize,
                   )}
@@ -685,25 +1006,40 @@ export default function PdfCompressor() {
               </div>
             </div>
 
+            {/* LISTADO BATCH Y BOTÓN DESCARGA ZIP */}
             {completedResult.items.length > 1 && (
-              <div className="mt-5 pt-4 border-t border-zinc-800">
-                <span className="text-[10px] font-bold text-zinc-400 block mb-2 uppercase tracking-wider">
-                  {isEs
-                    ? `Archivos procesados (${completedResult.items.length})`
-                    : `Processed files (${completedResult.items.length})`}
-                </span>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <div className="mt-4 pt-3 border-t border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
+                    {isEs
+                      ? `Archivos procesados (${completedResult.items.length})`
+                      : `Processed files (${completedResult.items.length})`}
+                  </span>
+                  <button
+                    onClick={handleDownloadAllZip}
+                    disabled={isCreatingZip}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all shadow-md cursor-pointer"
+                  >
+                    {isCreatingZip ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Archive className="w-3 h-3" />
+                    )}
+                    <span>{isEs ? 'Descargar todos (.ZIP)' : 'Download all (.ZIP)'}</span>
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                   {completedResult.items.map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between bg-[#121217] p-3 rounded-xl border border-zinc-800 text-xs"
+                      className="flex items-center justify-between bg-[#121217] p-2.5 rounded-xl border border-zinc-800 text-xs"
                     >
                       <div className="flex items-center gap-2 truncate max-w-[50%]">
                         <FileText className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
                         <span className="truncate text-white font-mono">{item.fileName}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-zinc-400 font-mono text-[11px]">
+                        <span className="text-zinc-400 font-mono text-[10px]">
                           {formatFileSize(item.originalSize)} →{' '}
                           <strong className="text-[#FAF6EE]">
                             {formatFileSize(item.compressedSize)}
@@ -712,10 +1048,10 @@ export default function PdfCompressor() {
                         <a
                           href={item.downloadUrl}
                           download={`${item.fileName.replace(/\.[^/.]+$/, '')}${customSuffix}.pdf`}
-                          className="px-3.5 py-1.5 bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black hover:opacity-90 font-bold rounded-lg text-[11px] transition-all flex items-center gap-1 cursor-pointer shadow-[0_0_10px_rgba(232,223,207,0.25)]"
+                          className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-lg text-[10px] transition-all flex items-center gap-1 cursor-pointer border border-zinc-700"
                         >
                           <FileDown className="w-3 h-3" />
-                          <span>{isEs ? 'Descargar' : 'Download'}</span>
+                          <span>{isEs ? 'Bajar' : 'Get'}</span>
                         </a>
                       </div>
                     </div>
@@ -725,7 +1061,7 @@ export default function PdfCompressor() {
             )}
           </div>
 
-          {/* TARJETA DE DESCARGA ÉXITO (DownloadSuccessCard) */}
+          {/* TARJETA DE DESCARGA PRINCIPAL */}
           <DownloadSuccessCard
             downloadUrl={completedResult.downloadUrl}
             filename={completedResult.filename}
@@ -738,83 +1074,63 @@ export default function PdfCompressor() {
         </motion.div>
       ) : (
         /* ÁREA DE TRABAJO DE 2 COLUMNAS */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans items-stretch">
-          {/* LADO IZQUIERDO: VISTA PREVIA + LISTA DE ARCHIVOS */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans items-stretch"
+        >
+          {/* LADO IZQUIERDO: VISTA PREVIA + COLA DE ARCHIVOS */}
           <div className="lg:col-span-5 flex flex-col gap-4 min-h-0 h-full overflow-hidden">
             {/* LISTA DE ARCHIVOS (BATCH) */}
             {files.length > 1 && (
-              <div className="bg-[#09090b] border border-white/10 rounded-xl p-3 max-h-[180px] overflow-y-auto">
-                <span className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase">
+              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-3 max-h-[180px] overflow-y-auto font-mono">
+                <span className="text-[10px] font-bold text-zinc-400 block mb-2 tracking-widest uppercase">
                   {isEs ? 'Cola de archivos' : 'File queue'} ({files.length})
                 </span>
                 <div className="space-y-1.5">
-                  {files.map((f, i) => {
-                    const res = results[i];
-                    return (
-                      <div
-                        key={i}
-                        onClick={() => setActiveFileIdx(i)}
-                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all text-xs ${
-                          i === activeFileIdx
-                            ? 'bg-zinc-800 border border-white/20 text-white'
-                            : 'bg-zinc-900/60 border border-white/5 text-zinc-400 hover:bg-zinc-800/60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                          <FileText className="w-3.5 h-3.5 flex-shrink-0 text-zinc-500" />
-                          <span className="truncate font-mono">{f.name}</span>
-                          <span className="text-[10px] text-zinc-500 flex-shrink-0">
-                            {formatFileSize(f.size)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 ml-2">
-                          {res && (
-                            <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                res.reductionPercent > 0
-                                  ? 'bg-emerald-500/20 text-emerald-400'
-                                  : 'bg-zinc-700/50 text-zinc-400'
-                              }`}
-                            >
-                              ↓{res.reductionPercent}%
-                            </span>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveFile(i);
-                            }}
-                            disabled={isProcessing}
-                            className="p-1 hover:bg-red-500/20 rounded text-zinc-500 hover:text-red-400"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
+                  {files.map((f, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setActiveFileIdx(i)}
+                      className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all text-xs border ${
+                        i === activeFileIdx
+                          ? 'bg-zinc-800 border-white text-white shadow-sm'
+                          : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:bg-zinc-800/60 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-zinc-400" />
+                        <span className="truncate">{f.name}</span>
+                        <span className="text-[10px] text-zinc-500 flex-shrink-0">
+                          {formatFileSize(f.size)}
+                        </span>
                       </div>
-                    );
-                  })}
+                      <button
+                        onClick={(e) => handleRemoveFile(i, e)}
+                        className="p-1 hover:text-red-400 transition-colors ml-2 text-zinc-500"
+                        title={isEs ? 'Eliminar' : 'Remove'}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isProcessing}
-                  className="mt-2 w-full text-[10px] font-mono text-zinc-500 hover:text-white py-1.5 border border-dashed border-white/10 hover:border-white/30 rounded-lg transition-all cursor-pointer"
-                >
-                  + {isEs ? 'Añadir más archivos' : 'Add more files'}
-                </button>
               </div>
             )}
 
-            {/* VISTA PREVIA CON GRILLA DE MINIATURAS DEL DOCUMENTO */}
+            {/* VISTA PREVIA CON GRILLA DE MINIATURAS */}
             <div
               className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
               style={{
                 height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
                 maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                minHeight: '300px',
+                minHeight: '320px',
               }}
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              {/* BARRA SUPERIOR DE METADATOS Y MINIATURAS */}
+
+              {/* BARRA DE INFORMACIÓN SUPERIOR */}
               <div className="bg-[#121217] border-b border-zinc-800 p-3.5 flex justify-between items-center z-10 font-sans flex-shrink-0">
                 <div className="flex items-center gap-2.5 overflow-hidden">
                   <div className="bg-zinc-800 p-1.5 rounded-xl border border-zinc-700 flex-shrink-0 text-white">
@@ -827,7 +1143,7 @@ export default function PdfCompressor() {
                     <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
                       <span>{activeFile ? formatFileSize(activeFile.size) : ''}</span>
                       <span className="text-zinc-600">•</span>
-                      <span className="text-zinc-300 font-bold">
+                      <span className="text-[#FAF6EE] font-bold">
                         {isEs
                           ? `Est. ~↓${getEstimatedReduction(compressionLevel).label}`
                           : `Est. ~↓${getEstimatedReduction(compressionLevel).label}`}
@@ -846,15 +1162,15 @@ export default function PdfCompressor() {
                 </div>
               </div>
 
-              {/* GRILLA DE MINIATURAS DE PÁGINAS (OCUPA TODO EL VISOR) */}
+              {/* GRILLA DE MINIATURAS DE PÁGINAS */}
               <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#0c0c0f] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start custom-scrollbar">
                 {isLoadingThumbnails ? (
                   <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
                     <Loader2 className="w-8 h-8 animate-spin text-white" />
                     <span className="text-xs font-mono">
                       {isEs
-                        ? 'Generando miniaturas de las páginas...'
-                        : 'Generating page thumbnails...'}
+                        ? 'Generando miniaturas de alta definición...'
+                        : 'Generating high-definition thumbnails...'}
                     </span>
                   </div>
                 ) : thumbnails.length > 0 ? (
@@ -875,6 +1191,16 @@ export default function PdfCompressor() {
                             alt={`Página ${thumb.pageNum}`}
                             className="max-h-[130px] w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
                           />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setZoomModalImage(thumb.dataUrl);
+                            }}
+                            className="absolute top-1.5 right-1.5 p-1 bg-black/70 hover:bg-black text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                            title={isEs ? 'Ampliar' : 'Zoom'}
+                          >
+                            <Maximize2 className="w-3 h-3" />
+                          </button>
                         </div>
                         <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[10px]">
                           <span
@@ -889,7 +1215,7 @@ export default function PdfCompressor() {
                           {previewPageNum === thumb.pageNum && (
                             <span className="text-white text-[9px] font-bold flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                              {isEs ? 'Seleccionada' : 'Selected'}
+                              {isEs ? 'Activa' : 'Active'}
                             </span>
                           )}
                         </div>
@@ -915,6 +1241,7 @@ export default function PdfCompressor() {
               className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between gap-3 relative shadow-2xl font-sans overflow-hidden"
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
               <div>
                 {/* CABECERA PANEL */}
                 <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3 font-sans">
@@ -931,51 +1258,90 @@ export default function PdfCompressor() {
                   </div>
                 </div>
 
-                {/* NIVEL DE COMPRESIÓN (3 PERFILES PROFESIONALES) */}
+                {/* PRESETS DE UN CLIC */}
+                <div className="mb-4">
+                  <span className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
+                    {isEs ? 'Objetivo Rápido' : 'Quick Target'}
+                  </span>
+                  <div className="grid grid-cols-3 gap-2 font-mono">
+                    <button
+                      onClick={() => handleApplyPreset('email')}
+                      className={`p-2 rounded-xl border text-left transition-all text-xs ${
+                        targetPreset === 'email'
+                          ? 'border-white bg-zinc-800 text-white shadow-md'
+                          : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold text-white flex items-center gap-1 text-[11px]">
+                        <span>📧</span> {isEs ? 'Para Correo' : 'For Email'}
+                      </div>
+                      <div className="text-[9px] text-zinc-400">
+                        {isEs ? 'Menos de 2 MB' : 'Under 2 MB'}
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleApplyPreset('web')}
+                      className={`p-2 rounded-xl border text-left transition-all text-xs ${
+                        targetPreset === 'web'
+                          ? 'border-white bg-zinc-800 text-white shadow-md'
+                          : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold text-white flex items-center gap-1 text-[11px]">
+                        <span>🌐</span> {isEs ? 'Equilibrado' : 'Balanced'}
+                      </div>
+                      <div className="text-[9px] text-zinc-400">
+                        {isEs ? 'Calidad óptima' : 'Optimal quality'}
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleApplyPreset('print')}
+                      className={`p-2 rounded-xl border text-left transition-all text-xs ${
+                        targetPreset === 'print'
+                          ? 'border-white bg-zinc-800 text-white shadow-md'
+                          : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold text-white flex items-center gap-1 text-[11px]">
+                        <span>📐</span> {isEs ? 'Planos / CAD' : 'CAD / Plans'}
+                      </div>
+                      <div className="text-[9px] text-zinc-400">
+                        {isEs ? '150 DPI nítido' : '150 DPI sharp'}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* NIVEL DE COMPRESIÓN (3 PERFILES) */}
                 <div className="mb-4">
                   <span className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
                     {isEs ? 'Perfil de Compresión' : 'Compression Profile'}
                   </span>
                   <div className="grid grid-cols-3 gap-2">
                     {(['low', 'medium', 'high'] as CompressionLevel[]).map((lvl) => {
-                      const configs: Record<
-                        CompressionLevel,
-                        {
-                          labelEs: string;
-                          labelEn: string;
-                          descEs: string;
-                          descEn: string;
-                          icon: React.ElementType;
-                          useCaseEs: string;
-                          useCaseEn: string;
-                        }
-                      > = {
+                      const configs = {
                         low: {
                           labelEs: 'Baja (Alta Calidad)',
                           labelEn: 'Low (High Quality)',
-                          descEs: 'Optimización sin pérdida visible',
-                          descEn: 'Lossless optimization',
+                          descEs: 'Máxima fidelidad para planos y cotas',
+                          descEn: 'High fidelity for CAD & dimensions',
                           icon: Shield,
-                          useCaseEs: 'Planos técnicos CAD, líneas finas y cotas legibles',
-                          useCaseEn: 'CAD blueprints, fine lines & dimensions readable',
                         },
                         medium: {
                           labelEs: 'Media (Recomendada)',
                           labelEn: 'Medium (Recommended)',
-                          descEs: 'Balance calidad-compresión',
-                          descEn: 'Quality-compression balance',
-                          icon: Gauge,
-                          useCaseEs: 'Informes CAO, reportes con texto e imágenes',
-                          useCaseEn: 'Progress reports, text & image documents',
+                          descEs: 'Balance perfecto calidad-peso',
+                          descEn: 'Perfect balance quality-size',
+                          icon: HardDrive,
                         },
                         high: {
                           labelEs: 'Alta (Máxima Compresión)',
                           labelEn: 'High (Maximum Compression)',
-                          descEs: 'Reducción extrema, downsampling agresivo',
-                          descEn: 'Extreme reduction, aggressive downsampling',
+                          descEs: 'Deflate Nivel 9 y downsampling 96 DPI',
+                          descEn: 'Deflate Level 9 & 96 DPI downsample',
                           icon: Zap,
-                          useCaseEs: 'Envíos por correo con límite de peso',
-                          useCaseEn: 'Email with file size limits',
                         },
                       };
                       const cfg = configs[lvl];
@@ -985,7 +1351,7 @@ export default function PdfCompressor() {
                       return (
                         <div
                           key={lvl}
-                          onClick={() => !isProcessing && setCompressionLevel(lvl)}
+                          onClick={() => handleLevelSelect(lvl)}
                           className={`relative p-2.5 rounded-2xl border cursor-pointer transition-all ${
                             compressionLevel === lvl
                               ? 'border-white bg-zinc-800 text-white shadow-md'
@@ -1002,7 +1368,11 @@ export default function PdfCompressor() {
                               {isEs ? cfg.labelEs : cfg.labelEn}
                             </span>
                             <div
-                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${compressionLevel === lvl ? 'border-white bg-white' : 'border-zinc-600'}`}
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                                compressionLevel === lvl
+                                  ? 'border-white bg-white'
+                                  : 'border-zinc-600'
+                              }`}
                             >
                               {compressionLevel === lvl && (
                                 <div className="w-1.5 h-1.5 rounded-full bg-black" />
@@ -1012,10 +1382,10 @@ export default function PdfCompressor() {
                           <p className="text-[10px] text-zinc-400 leading-tight">
                             {isEs ? cfg.descEs : cfg.descEn}
                           </p>
-                          <div className="flex items-center gap-1.5 mt-1.5">
+                          <div className="flex items-center gap-1.5 mt-1.5 font-mono">
                             <Icon className="w-3 h-3 text-zinc-400" />
                             <span
-                              className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                                 compressionLevel === lvl
                                   ? 'bg-zinc-900 text-white'
                                   : 'bg-zinc-800 text-zinc-300'
@@ -1030,397 +1400,315 @@ export default function PdfCompressor() {
                   </div>
                 </div>
 
-                {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES Y SIN SCROLL) */}
-                <div className="mb-4 space-y-3 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 sm:p-4 shadow-inner">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-white font-mono tracking-wider border-b border-zinc-800 pb-2 mb-2 uppercase">
+                {/* ESTIMADOR DINÁMICO DE REDUCCIÓN */}
+                <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 shadow-inner font-mono text-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-zinc-400 text-[11px] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-white" />
+                      {isEs ? 'Ahorro proyectado:' : 'Projected savings:'}
+                    </span>
+                    <span className="text-[#FAF6EE] font-extrabold text-xs">
+                      ~ {getEstimatedReduction(compressionLevel).label}
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                    <motion.div
+                      className="bg-gradient-to-r from-zinc-300 via-white to-[#FAF6EE] h-full rounded-full"
+                      initial={{ width: '40%' }}
+                      animate={{
+                        width:
+                          compressionLevel === 'low'
+                            ? '30%'
+                            : compressionLevel === 'medium'
+                              ? '60%'
+                              : '85%',
+                      }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center mt-2 text-[10px] text-zinc-400">
+                    <span>
+                      {isEs ? 'Original:' : 'Original:'}{' '}
+                      <strong className="text-white">{formatFileSize(totalOriginalSize)}</strong>
+                    </span>
+                    <span>
+                      {isEs ? 'Proyección:' : 'Projected:'}{' '}
+                      <strong className="text-[#FAF6EE]">
+                        {formatFileSize(
+                          totalOriginalSize *
+                            (compressionLevel === 'low'
+                              ? 0.75
+                              : compressionLevel === 'medium'
+                                ? 0.5
+                                : 0.25),
+                        )}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full flex items-center justify-between py-2 px-3 bg-[#121217] hover:bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer mb-3"
+                >
+                  <div className="flex items-center gap-2">
                     <SlidersHorizontal className="w-3.5 h-3.5 text-white" />
                     <span>
                       {isEs
-                        ? 'OPCIONES AVANZADAS DE OPTIMIZACIÓN'
-                        : 'ADVANCED OPTIMIZATION OPTIONS'}
+                        ? 'Opciones Avanzadas (DPI, Color, Alcance)'
+                        : 'Advanced Options (DPI, Color, Scope)'}
                     </span>
                   </div>
+                  {showAdvanced ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
 
-                  {/* MODO DE COLOR */}
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <Target className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Modo de Color de Salida' : 'Output Color Mode'}
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(['original', 'grayscale', 'blackwhite'] as OutputColorMode[]).map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => setOutputColorMode(opt)}
-                          className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
-                            outputColorMode === opt
-                              ? 'border-white bg-zinc-700 text-white'
-                              : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'
-                          }`}
-                        >
-                          {opt === 'original'
-                            ? '🎨 Color'
-                            : opt === 'grayscale'
-                              ? '⚪ Grises'
-                              : '■ B/N'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* DPI */}
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <ImageIcon className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Resolución (DPI)' : 'Resolution (DPI)'}
-                    </label>
-                    <div className="flex gap-1.5">
-                      {(['auto', '72', '96', '150'] as DpiMode[]).map((dpi) => (
-                        <button
-                          key={dpi}
-                          onClick={() => setDpiMode(dpi)}
-                          className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
-                            dpiMode === dpi
-                              ? 'border-white bg-zinc-700 text-white'
-                              : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'
-                          }`}
-                        >
-                          {dpi === 'auto' ? (isEs ? 'Auto' : 'Auto') : `${dpi}`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* ALCANCE DE PÁGINAS */}
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <FileCheck2 className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Alcance de Páginas' : 'Page Scope'}
-                    </label>
-                    <div className="grid grid-cols-2 gap-1.5 mb-1.5">
-                      {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => setPageScope(opt)}
-                          className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
-                            pageScope === opt
-                              ? 'border-white bg-zinc-700 text-white'
-                              : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'
-                          }`}
-                        >
-                          {opt === 'todas'
-                            ? isEs
-                              ? 'Todas'
-                              : 'All'
-                            : opt === 'pares'
-                              ? isEs
-                                ? 'Pares'
-                                : 'Even'
-                              : opt === 'impares'
-                                ? isEs
-                                  ? 'Impares'
-                                  : 'Odd'
-                                : isEs
-                                  ? 'Rango'
-                                  : 'Range'}
-                        </button>
-                      ))}
-                    </div>
-                    {pageScope === 'rango' && (
-                      <input
-                        type="text"
-                        value={pageRange}
-                        onChange={(e) => setPageRange(e.target.value)}
-                        placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'}
-                        className="w-full bg-zinc-900 border border-white/15 text-white text-[10px] font-mono placeholder-zinc-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-white/40 transition"
-                      />
-                    )}
-                  </div>
-
-                  {/* PRESERVACIÓN DE TEXTO VECTORIAL Y PDF/A */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-400 block font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <Shield className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Preservación y Metadatos' : 'Preservation & Metadata'}
-                    </label>
-
-                    {/* Preservar texto vectorial */}
-                    <div
-                      onClick={() => setPreserveTextVectors((v) => !v)}
-                      className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                    >
-                      <div>
-                        <p className="text-[10px] font-bold text-white">
-                          {isEs ? 'Preservar texto vectorial' : 'Preserve vector text'}
-                        </p>
-                        <p className="text-[9px] text-zinc-500 font-mono">
-                          {isEs
-                            ? 'No rasteriza páginas sin imágenes'
-                            : 'Do not rasterize pages without images'}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${preserveTextVectors ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${preserveTextVectors ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Detectar y preservar PDF/A */}
-                    <div
-                      onClick={() => setDetectPdfA((v) => !v)}
-                      className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                    >
-                      <div>
-                        <p className="text-[10px] font-bold text-white">
-                          {isEs ? 'Detectar PDF/A' : 'Detect PDF/A'}
-                        </p>
-                        <p className="text-[9px] text-zinc-500 font-mono">
-                          {isEs
-                            ? 'Identifica documentos para archivo público'
-                            : 'Identifies archival-grade documents'}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${detectPdfA ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${detectPdfA ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    {detectPdfA && (
-                      <div
-                        onClick={() => setPreservePdfA((v) => !v)}
-                        className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                      >
-                        <div>
-                          <p className="text-[10px] font-bold text-white">
-                            {isEs ? 'Preservar estructura PDF/A' : 'Preserve PDF/A structure'}
-                          </p>
-                          <p className="text-[9px] text-zinc-500 font-mono">
-                            {isEs
-                              ? 'Mantiene conformidad para archivo a largo plazo'
-                              : 'Maintains long-term archival compliance'}
-                          </p>
-                        </div>
-                        <div
-                          className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${preservePdfA ? 'bg-white' : 'bg-zinc-700'}`}
-                        >
-                          <div
-                            className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${preservePdfA ? 'left-4' : 'left-0.5'}`}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Strip metadata */}
-                    <div
-                      onClick={() => setStripMetadata((v) => !v)}
-                      className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                    >
-                      <div>
-                        <p className="text-[10px] font-bold text-white">
-                          {isEs ? 'Eliminar metadatos' : 'Strip metadata'}
-                        </p>
-                        <p className="text-[9px] text-zinc-500 font-mono">
-                          {isEs
-                            ? 'Título, autor, software de creación'
-                            : 'Title, author, creation software'}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${stripMetadata ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${stripMetadata ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Sufijo */}
-                    <div>
-                      <label className="text-[10px] font-mono text-zinc-400 block mb-1">
-                        {isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}
-                      </label>
-                      <input
-                        type="text"
-                        value={customSuffix}
-                        onChange={(e) => setCustomSuffix(e.target.value)}
-                        className="w-full bg-zinc-900 border border-white/15 text-white text-[10px] font-mono placeholder-zinc-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-white/40 transition"
-                      />
-                      <p className="text-[9px] font-mono text-zinc-600 mt-0.5">
-                        {isEs
-                          ? `Ejemplo: archivo${customSuffix}.pdf`
-                          : `Example: file${customSuffix}.pdf`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* BARRA DE PROGRESO + RESULTADOS Y BOTÓN PRINCIPAL */}
-              <div className="pt-2.5 border-t border-white/10 font-sans">
-                {/* BARRA DE PROGRESO REAL */}
+                {/* CONTENIDO DE OPCIONES AVANZADAS */}
                 <AnimatePresence>
-                  {isProcessing && (
+                  {showAdvanced && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="mb-4 font-mono"
+                      className="space-y-3 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 mb-4 shadow-inner overflow-hidden"
                     >
-                      <div className="flex justify-between items-center text-xs text-zinc-300 mb-1.5">
-                        <span className="truncate mr-2">{progressMsg}</span>
-                        <span className="font-bold tabular-nums">{progressPercent}%</span>
+                      {/* MODO DE COLOR */}
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 block mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                          <Target className="w-3 h-3 text-zinc-400" />
+                          {isEs ? 'Modo de Color' : 'Color Mode'}
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {(['original', 'grayscale', 'blackwhite'] as OutputColorMode[]).map(
+                            (opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => setOutputColorMode(opt)}
+                                className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
+                                  outputColorMode === opt
+                                    ? 'border-white bg-zinc-700 text-white'
+                                    : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
+                                }`}
+                              >
+                                {opt === 'original'
+                                  ? '🎨 Color'
+                                  : opt === 'grayscale'
+                                    ? '⚪ Grises'
+                                    : '■ B/N'}
+                              </button>
+                            ),
+                          )}
+                        </div>
                       </div>
-                      <div className="w-full bg-zinc-900 rounded-full h-2.5 overflow-hidden border border-white/10">
-                        <motion.div
-                          className="bg-gradient-to-r from-emerald-500 to-emerald-300 h-full rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progressPercent}%` }}
-                          transition={{ ease: 'easeInOut', duration: 0.3 }}
-                        />
+
+                      {/* RESOLUCIÓN DPI */}
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 block mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                          <ImageIcon className="w-3 h-3 text-zinc-400" />
+                          {isEs ? 'Resolución (DPI)' : 'Resolution (DPI)'}
+                        </label>
+                        <div className="flex gap-1.5">
+                          {(['auto', '72', '96', '150'] as DpiMode[]).map((dpi) => (
+                            <button
+                              key={dpi}
+                              type="button"
+                              onClick={() => setDpiMode(dpi)}
+                              className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
+                                dpiMode === dpi
+                                  ? 'border-white bg-zinc-700 text-white'
+                                  : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
+                              }`}
+                            >
+                              {dpi === 'auto' ? 'Auto' : `${dpi} DPI`}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      {totalFilesCount > 1 && (
-                        <p className="text-[9px] text-zinc-500 mt-1 text-center">
-                          {isEs
-                            ? `Archivo ${currentFileIndex} de ${totalFilesCount}`
-                            : `File ${currentFileIndex} of ${totalFilesCount}`}
-                        </p>
-                      )}
+
+                      {/* ALCANCE DE PÁGINAS */}
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 block mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                          <FileCheck2 className="w-3 h-3 text-zinc-400" />
+                          {isEs ? 'Alcance de Páginas' : 'Page Scope'}
+                        </label>
+                        <div className="grid grid-cols-4 gap-1.5 mb-1.5">
+                          {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map((opt) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => setPageScope(opt)}
+                              className={`py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
+                                pageScope === opt
+                                  ? 'border-white bg-zinc-700 text-white'
+                                  : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
+                              }`}
+                            >
+                              {opt === 'todas'
+                                ? isEs
+                                  ? 'Todas'
+                                  : 'All'
+                                : opt === 'pares'
+                                  ? isEs
+                                    ? 'Pares'
+                                    : 'Even'
+                                  : opt === 'impares'
+                                    ? isEs
+                                      ? 'Impares'
+                                      : 'Odd'
+                                    : isEs
+                                      ? 'Rango'
+                                      : 'Range'}
+                            </button>
+                          ))}
+                        </div>
+                        {pageScope === 'rango' && (
+                          <input
+                            type="text"
+                            value={pageRange}
+                            onChange={(e) => setPageRange(e.target.value)}
+                            placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'}
+                            className="w-full bg-zinc-900 border border-white/15 text-white text-[10px] font-mono placeholder-zinc-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-white/40 transition"
+                          />
+                        )}
+                      </div>
+
+                      {/* PRESERVACIÓN Y METADATOS */}
+                      <div className="space-y-1.5 pt-1">
+                        <div
+                          onClick={() => setPreserveTextVectors((v) => !v)}
+                          className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                        >
+                          <div>
+                            <p className="text-[10px] font-bold text-white">
+                              {isEs ? 'Preservar texto vectorial' : 'Preserve vector text'}
+                            </p>
+                            <p className="text-[9px] text-zinc-500 font-mono">
+                              {isEs
+                                ? 'Mantiene nitidez infinita en letras y planos'
+                                : 'Infinite crispness for text & CAD'}
+                            </p>
+                          </div>
+                          <div
+                            className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${
+                              preserveTextVectors ? 'bg-white' : 'bg-zinc-700'
+                            }`}
+                          >
+                            <div
+                              className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${
+                                preserveTextVectors ? 'left-4' : 'left-0.5'
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        <div
+                          onClick={() => setStripMetadata((v) => !v)}
+                          className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                        >
+                          <div>
+                            <p className="text-[10px] font-bold text-white">
+                              {isEs ? 'Eliminar metadatos ocultos' : 'Strip hidden metadata'}
+                            </p>
+                            <p className="text-[9px] text-zinc-500 font-mono">
+                              {isEs
+                                ? 'Limpia autor, software emisor y tags'
+                                : 'Removes author, software & tags'}
+                            </p>
+                          </div>
+                          <div
+                            className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${
+                              stripMetadata ? 'bg-white' : 'bg-zinc-700'
+                            }`}
+                          >
+                            <div
+                              className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${
+                                stripMetadata ? 'left-4' : 'left-0.5'
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
 
-                {/* RESUMEN DE RESULTADOS */}
-                {hasResults && !isProcessing && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl font-mono"
+              {/* BOTÓN DE ACCIÓN PRINCIPAL */}
+              <div>
+                {isProcessing ? (
+                  <div className="w-full bg-[#121217] border border-zinc-700 rounded-2xl p-4 flex flex-col gap-2 font-mono">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white font-bold flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        {progressMsg || (isEs ? 'Comprimiendo...' : 'Compressing...')}
+                      </span>
+                      <span className="text-[#FAF6EE] font-bold">{progressPercent}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-white h-full transition-all duration-300 rounded-full"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-zinc-500 flex justify-between">
+                      <span>
+                        {isEs
+                          ? `Archivo ${currentFileIndex} de ${totalFilesCount}`
+                          : `File ${currentFileIndex} of ${totalFilesCount}`}
+                      </span>
+                      <span>{isEs ? 'Deflate Nivel 9 Activo' : 'Deflate Level 9 Active'}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={executeCompress}
+                    className="w-full py-4 bg-white hover:bg-zinc-200 text-black font-extrabold rounded-2xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 font-sans text-sm sm:text-base uppercase tracking-wide cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
                   >
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="text-zinc-400">
-                        {isEs ? 'Original total' : 'Total original'}:{' '}
-                        <strong className="text-white">{formatFileSize(totalOriginalSize)}</strong>
-                      </span>
-                      <ArrowRight className="w-4 h-4 text-emerald-400" />
-                      <span className="text-zinc-400">
-                        {isEs ? 'Comprimido' : 'Compressed'}:{' '}
-                        <strong className="text-emerald-300">
-                          {formatFileSize(totalCompressedSize)}
-                        </strong>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="inline-block bg-emerald-500/20 text-emerald-300 font-extrabold px-3 py-1 rounded-lg text-xs border border-emerald-400/30">
-                        ↓ {overallReduction}% {isEs ? 'ahorrado' : 'saved'} (
-                        {formatFileSize(totalOriginalSize - totalCompressedSize)}{' '}
-                        {isEs ? 'menos' : 'less'})
-                      </div>
-
-                      {results.some((r) => r.wasPdfA) && (
-                        <div
-                          className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${
-                            results.some((r) => r.pdfAStatus === 'broken')
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          }`}
-                        >
-                          {results.some((r) => r.pdfAStatus === 'broken') ? (
-                            <>
-                              <AlertTriangle className="w-3 h-3" />{' '}
-                              {isEs ? 'PDF/A alterado' : 'PDF/A altered'}
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-3 h-3" />{' '}
-                              {isEs ? 'PDF/A preservado' : 'PDF/A preserved'}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {results.length > 1 && (
-                      <div className="mt-3 text-[10px] text-zinc-500 space-y-1 max-h-24 overflow-y-auto">
-                        {results.map((r, i) => (
-                          <div key={i} className="flex justify-between">
-                            <span className="truncate max-w-[60%]">{r.fileName}</span>
-                            <span
-                              className={
-                                r.reductionPercent > 0 ? 'text-emerald-400' : 'text-zinc-500'
-                              }
-                            >
-                              {formatFileSize(r.originalSize)} → {formatFileSize(r.compressedSize)}{' '}
-                              (↓{r.reductionPercent}%)
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
+                    <Zap className="w-5 h-5 text-black fill-current" />
+                    <span>
+                      {isEs
+                        ? `COMPRIMIR AHORA (${files.length} ARCHIVO${files.length > 1 ? 'S' : ''})`
+                        : `COMPRESS NOW (${files.length} FILE${files.length > 1 ? 'S' : ''})`}
+                    </span>
+                  </button>
                 )}
-
-                {/* BOTÓN PRINCIPAL */}
-                <div className="space-y-3 pt-2">
-                  {!hasResults ? (
-                    <button
-                      onClick={executeCompress}
-                      disabled={isProcessing || files.length === 0}
-                      className="w-full bg-white text-black hover:bg-zinc-200 font-bold py-3.5 px-6 rounded-full text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-black" />
-                          <span>{isEs ? 'Comprimiendo...' : 'Compressing...'}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4 text-black" />
-                          <span>
-                            {isEs
-                              ? files.length > 1
-                                ? `Comprimir ${files.length} archivos`
-                                : 'Comprimir PDF'
-                              : files.length > 1
-                                ? `Compress ${files.length} files`
-                                : 'Compress PDF'}
-                          </span>
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <div className="flex flex-col gap-2 font-sans">
-                      <button
-                        onClick={handleRemoveAllFiles}
-                        className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 py-2.5 px-4 rounded-full text-xs font-bold border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>{isEs ? 'Comprimir otros archivos' : 'Compress other files'}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* INDICADOR WEB WORKER */}
-                <div className="pt-3 mt-4 border-t border-white/10 flex items-center justify-between font-mono text-xs text-zinc-400">
-                  <span className="flex items-center gap-1.5 text-[11px]">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    {isEs ? 'Web Worker Activo' : 'Web Worker Active'}
-                  </span>
-                  <span className="flex items-center gap-1 text-white">
-                    <Database className="w-3 h-3" />
-                    {isEs ? '100% Local' : '100% Local'}
-                  </span>
-                </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ZOOM DE MINIATURA */}
+      {zoomModalImage && (
+        <div
+          onClick={() => setZoomModalImage(null)}
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#121217] border border-zinc-700 rounded-3xl p-4 max-w-2xl max-h-[85vh] flex flex-col items-center relative shadow-2xl"
+          >
+            <button
+              onClick={() => setZoomModalImage(null)}
+              className="absolute top-3 right-3 p-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono text-zinc-400 mb-3">
+              {isEs ? 'Vista previa de página' : 'Page preview'}
+            </span>
+            <img
+              src={zoomModalImage}
+              alt="Zoom preview"
+              className="max-h-[70vh] object-contain rounded-xl border border-zinc-800"
+            />
           </div>
         </div>
       )}

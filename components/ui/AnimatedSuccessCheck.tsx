@@ -125,87 +125,9 @@ export function AnimatedNumber({
  * Disparador de confeti rubio platinado & oro blanco de ultra-lujo (Platinum Blonde Edition)
  */
 export async function triggerLuxuryConfetti() {
-  if (typeof window === 'undefined') return;
-  try {
-    const confetti = (await import('canvas-confetti')).default;
-
-    // Ráfaga 1: Cañón izquierdo rubio platinado
-    confetti({
-      particleCount: 40,
-      angle: 60,
-      spread: 60,
-      origin: { x: 0.15, y: 0.75 },
-      colors: ['#FAF6EE', '#F3ECE0', '#E8DFCF', '#DFD5C2', '#C9BDA8', '#FFFFFF'],
-      shapes: ['square', 'circle'],
-      scalar: 0.9,
-      ticks: 160,
-      gravity: 0.9,
-      decay: 0.91,
-      zIndex: 9999,
-    });
-
-    // Ráfaga 2: Cañón derecho rubio platinado
-    confetti({
-      particleCount: 40,
-      angle: 120,
-      spread: 60,
-      origin: { x: 0.85, y: 0.75 },
-      colors: ['#FAF6EE', '#F3ECE0', '#E8DFCF', '#DFD5C2', '#C9BDA8', '#FFFFFF'],
-      shapes: ['square', 'circle'],
-      scalar: 0.9,
-      ticks: 160,
-      gravity: 0.9,
-      decay: 0.91,
-      zIndex: 9999,
-    });
-
-    // Ráfaga 3: Destello central platino champagne
-    setTimeout(() => {
-      confetti({
-        particleCount: 45,
-        spread: 85,
-        origin: { y: 0.6 },
-        colors: ['#FAF6EE', '#F3ECE0', '#EDE4D3', '#FFFFFF', '#D5C9B3'],
-        shapes: ['circle', 'square'],
-        scalar: 1.0,
-        ticks: 180,
-        gravity: 0.85,
-        decay: 0.92,
-        zIndex: 9999,
-      });
-    }, 200);
-  } catch (err) {
-    console.debug('Confetti disabled or failed:', err);
-  }
+  // Confetti disabled per user request
 }
 
-/**
- * Micro-explosión de chispas rubio platinado al pulsar el botón de descarga
- */
-export async function triggerButtonSparkles(event?: React.MouseEvent) {
-  if (typeof window === 'undefined') return;
-  try {
-    const confetti = (await import('canvas-confetti')).default;
-    let origin = { x: 0.5, y: 0.5 };
-    if (event) {
-      origin = {
-        x: event.clientX / window.innerWidth,
-        y: event.clientY / window.innerHeight,
-      };
-    }
-    confetti({
-      particleCount: 35,
-      spread: 70,
-      origin,
-      colors: ['#FAF6EE', '#F3ECE0', '#E8DFCF', '#DFD5C2', '#FFFFFF', '#C9BDA8'],
-      shapes: ['circle', 'square'],
-      scalar: 0.85,
-      ticks: 120,
-      gravity: 1.1,
-      decay: 0.9,
-      zIndex: 9999,
-    });
-  } catch (err) {
-    console.debug('Sparkles disabled or failed:', err);
-  }
+export async function triggerButtonSparkles(_event?: React.MouseEvent) {
+  // Sparkles disabled per user request
 }

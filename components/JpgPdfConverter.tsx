@@ -38,6 +38,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
+import PdfPageViewer from '@/components/PdfPageViewer';
+import { convertWithApi } from '@/lib/adobe-api-client';
 
 type ConversionDirection = 'jpg-to-pdf' | 'pdf-to-jpg';
 type ImageFormat = 'jpeg' | 'png' | 'webp';
@@ -126,6 +128,11 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
   const [pageRangeInput, setPageRangeInput] = useState<string>('1-10');
   const [selectedPageSet, setSelectedPageSet] = useState<Set<number>>(new Set());
+
+  // MOTOR DE CONVERSIÓN
+  const [conversionEngine, setConversionEngine] = useState<
+    'adobe' | 'cloudconvert' | 'local' | 'hd'
+  >('adobe');
 
   // OPCIONES AVANZADAS PDF -> JPG
   const [imgFormat, setImgFormat] = useState<ImageFormat>('jpeg');
@@ -421,47 +428,66 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
       if (mode === 'jpg-to-pdf') {
         setProgressMsg(
           isEs
-            ? 'Optimizando imagen y compilando PDF vectorial...'
-            : 'Optimizing image & compiling vector PDF...',
+            ? 'Procesando imagen a PDF con el motor seleccionado...'
+            : 'Processing image to PDF with selected engine...',
         );
-        await new Promise((r) => setTimeout(r, 60));
-        setProgressPercent(40);
 
-        const pdfDoc = await PDFDocument.create();
-        const arrayBuffer = await file.arrayBuffer();
-        const isPng = file.name.toLowerCase().endsWith('.png');
-
-        let embeddedImage;
-        if (isPng) {
-          embeddedImage = await pdfDoc.embedPng(arrayBuffer);
-        } else {
-          embeddedImage = await pdfDoc.embedJpg(arrayBuffer);
+        if (conversionEngine === 'adobe' || conversionEngine === 'cloudconvert') {
+          try {
+            resultBlob = await convertWithApi(
+              '/api/convert/jpg-to-pdf',
+              file,
+              { engine: conversionEngine },
+              (pct, msg) => {
+                setProgressPercent(pct);
+                setProgressMsg(msg);
+              },
+            );
+            localUrl = URL.createObjectURL(resultBlob);
+          } catch (apiErr) {
+            console.warn('API conversion error, attempting fallback:', apiErr);
+            setProgressPercent(40);
+          }
         }
 
-        const imgWidth = embeddedImage.width;
-        const imgHeight = embeddedImage.height;
+        if (!localUrl) {
+          const pdfDoc = await PDFDocument.create();
+          const arrayBuffer = await file.arrayBuffer();
+          const isPng = file.name.toLowerCase().endsWith('.png');
 
-        let margin = 0;
-        if (marginOption === 'small') margin = 20;
-        if (marginOption === 'big') margin = 40;
+          let embeddedImage;
+          if (isPng) {
+            embeddedImage = await pdfDoc.embedPng(arrayBuffer);
+          } else {
+            embeddedImage = await pdfDoc.embedJpg(arrayBuffer);
+          }
 
-        let page;
-        if (autoRotate && imgWidth > imgHeight) {
-          page = pdfDoc.addPage([imgWidth + margin * 2, imgHeight + margin * 2]);
-        } else {
-          page = pdfDoc.addPage([imgWidth + margin * 2, imgHeight + margin * 2]);
+          const imgWidth = embeddedImage.width;
+          const imgHeight = embeddedImage.height;
+
+          let margin = 0;
+          if (marginOption === 'small') margin = 20;
+          if (marginOption === 'big') margin = 40;
+
+          let page;
+          if (autoRotate && imgWidth > imgHeight) {
+            page = pdfDoc.addPage([imgWidth + margin * 2, imgHeight + margin * 2]);
+          } else {
+            page = pdfDoc.addPage([imgWidth + margin * 2, imgHeight + margin * 2]);
+          }
+
+          page.drawImage(embeddedImage, {
+            x: margin,
+            y: margin,
+            width: imgWidth,
+            height: imgHeight,
+          });
+
+          setProgressPercent(85);
+          const pdfBytes = await pdfDoc.save();
+          resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+          localUrl = URL.createObjectURL(resultBlob);
         }
-
-        page.drawImage(embeddedImage, {
-          x: margin,
-          y: margin,
-          width: imgWidth,
-          height: imgHeight,
-        });
-
-        const pdfBytes = await pdfDoc.save();
-        resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
-        localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
         setDownloadFilename(outName);
@@ -469,7 +495,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
 
         if (resultBlob) {
           setCompletedResult({
-            downloadUrl: localUrl,
+            downloadUrl: localUrl || '',
             filename: outName,
             fileSize: formatFileSize(resultBlob.size),
             rawBlob: resultBlob,
@@ -904,30 +930,40 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+              className="flex flex-col gap-6 w-full items-center"
             >
-              {/* LADO IZQUIERDO: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+              {/* SECCIÓN 1: VISOR SUPERIOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden h-[540px] max-h-[540px]">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
-                  <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
-                    <ImageIcon className="w-4 h-4 text-white" />
-                    <span>
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
                       {isEs
                         ? '001 / VISOR Y SELECCIÓN DE PÁGINAS'
                         : '001 / VIEWER & PAGE SELECTION'}
                     </span>
+                    <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
+                    <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
+                      {file?.name}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
                     <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
-                    {totalPages} {isEs ? 'a Imagen' : 'to Image'}
+                    {totalPages}{' '}
+                    {mode === 'jpg-to-pdf'
+                      ? isEs
+                        ? 'a PDF'
+                        : 'to PDF'
+                      : isEs
+                        ? 'a Imagen'
+                        : 'to Image'}
                   </div>
                 </div>
 
                 {/* CONTENEDOR PRINCIPAL SPLIT */}
-                <div className="w-full flex-1 bg-[#121217] rounded-2xl overflow-hidden relative border border-zinc-700/80 font-mono min-h-0 flex shadow-inner">
+                <div className="flex-1 flex flex-row gap-4 min-h-0 overflow-hidden bg-[#121217] rounded-2xl border border-zinc-700/80 shadow-inner">
                   {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  <div className="w-32 sm:w-36 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
+                  <div className="w-28 sm:w-36 md:w-44 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
                     <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
                       <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
                         {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
@@ -974,7 +1010,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                             onClick={() => setActivePage(pageNum)}
                             className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
                               isActive
-                                ? 'border-white ring-2 ring-white/40 bg-zinc-800'
+                                ? 'border-purple-400 ring-2 ring-purple-400/40 bg-zinc-800'
                                 : isIncluded
                                   ? 'border-zinc-600 hover:border-zinc-400 bg-zinc-900'
                                   : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
@@ -986,7 +1022,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                               onClick={(e) => togglePageSelection(pageNum, e)}
                               className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
                                 isIncluded
-                                  ? 'bg-white text-black shadow-md'
+                                  ? 'bg-purple-500 text-white shadow-md'
                                   : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
                               }`}
                               title={
@@ -1000,7 +1036,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                               }
                             >
                               {isIncluded ? (
-                                <Check className="w-3 h-3 stroke-[3] text-black" />
+                                <Check className="w-3 h-3 stroke-[3] text-white" />
                               ) : (
                                 <div className="w-3 h-3" />
                               )}
@@ -1027,7 +1063,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                       })
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
-                        <ImageIcon className="w-5 h-5 text-yellow-500" />
+                        <ImageIcon className="w-5 h-5 text-purple-400" />
                         <span>{isEs ? 'Modo Imagen' : 'Image Mode'}</span>
                       </div>
                     )}
@@ -1035,11 +1071,15 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
 
                   {/* COSTADO DERECHO: VISOR PDF O IMAGEN EN TAMAÑO NORMAL */}
                   <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
-                    {pdfUrl ? (
-                      <iframe
-                        src={`${pdfUrl}#page=${activePage}&toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
-                        className="w-full h-full border-none bg-white rounded-lg shadow-2xl"
-                        title="Visor PDF Tamaño Normal"
+                    {mode === 'pdf-to-jpg' || (file && file.name.toLowerCase().endsWith('.pdf')) ? (
+                      <PdfPageViewer
+                        file={file}
+                        activePage={activePage}
+                        totalPages={totalPages}
+                        onPageChange={(p) => setActivePage(p)}
+                        pageDataUrls={pageDataUrls}
+                        title={file?.name}
+                        accentColor="purple"
                       />
                     ) : imagePreviewUrl ? (
                       <div className="w-full h-full p-4 flex items-center justify-center">
@@ -1054,121 +1094,242 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                 </div>
               </div>
 
-              {/* LADO DERECHO: PANEL DE CONTROL CON SELECCIÓN DE PÁGINAS Y OPCIONES AVANZADAS */}
-              <div className="lg:col-span-6 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-5 lg:h-[780px] lg:max-h-[780px] relative overflow-hidden">
+              {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO EN CUADRÍCULA HORIZONTAL */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
-                  {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-                  <div className="mb-2 pb-2 border-b border-zinc-800">
+
+                {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                  <div>
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
                       {isEs
                         ? '002 / CONFIGURACIÓN Y SELECCIÓN DE PÁGINAS'
                         : '002 / CONFIGURATION & PAGE SELECTION'}
                     </span>
-                    <h2 className="text-lg font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                      <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
-                      <Sliders className="w-4 h-4 text-white" />
+                    <h2 className="text-base sm:text-lg font-black text-white font-sans uppercase tracking-tight">
+                      {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
                     </h2>
                   </div>
+                  <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
+                    <Sliders className="w-4 h-4" />
+                  </div>
+                </div>
 
-                  {/* SECCIÓN DE SELECCIÓN DE PÁGINAS (MODO PDF A JPG) */}
-                  {mode === 'pdf-to-jpg' && (
-                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
-                      <div className="flex items-center justify-between">
-                        <label className="text-zinc-200 font-bold flex items-center gap-1.5">
-                          <ListChecks className="w-4 h-4 text-white" />
-                          <span>
-                            {isEs ? 'Páginas a Renderizar a Imagen' : 'Pages to Render to Image'}
-                          </span>
-                        </label>
-                        <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
-                          {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                {/* SELECTOR VISUAL DE MOTOR DE CONVERSIÓN EN 2X2 */}
+                <div className="bg-[#121217] p-3.5 sm:p-4 rounded-2xl border border-zinc-700/80 space-y-2.5 font-mono text-xs shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <label className="text-zinc-200 font-bold flex items-center gap-1.5 text-xs">
+                      <Cpu className="w-4 h-4 text-purple-400" />
+                      <span>
+                        {isEs ? 'Motor de Procesamiento de Imagen' : 'Image Processing Engine'}
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      {isEs ? '4 Motores Disponibles' : '4 Engines Available'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('adobe')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'adobe'
+                          ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>🏆 Adobe Acrobat Pro (Nube)</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                          {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
                         </span>
                       </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Máxima fidelidad oficial en rasterizado y conversión de imágenes vectoriales y fotografías.'
+                          : 'Official cloud fidelity for vector rasterization & photographic images.'}
+                      </p>
+                    </button>
 
-                      {/* MODOS DE SELECCIÓN */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('all')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'all'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Todas' : 'All'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('range')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'range'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Rango' : 'Range'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('odd')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'odd'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Impares' : 'Odd'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPageSelectionMode('even')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                            pageSelectionMode === 'even'
-                              ? 'bg-white text-black border-white shadow-md'
-                              : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Pares' : 'Even'}
-                        </button>
+                    {/* OPCIÓN 2: CLOUDCONVERT API */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('cloudconvert')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'cloudconvert'
+                          ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>🌐 CloudConvert (Nube)</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                          {isEs ? 'Procesamiento Cloud' : 'Cloud Engine'}
+                        </span>
                       </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Motor en la nube de alta disponibilidad. Procesamiento limpio y optimizado para cualquier formato gráfico.'
+                          : 'High-performance cloud processing for clean graphics and photos.'}
+                      </p>
+                    </button>
 
-                      {/* INPUT DE RANGO */}
-                      {pageSelectionMode === 'range' && (
-                        <div className="space-y-2 pt-1 border-t border-white/5">
-                          <div className="flex items-center gap-2">
+                    {/* OPCIÓN 3: MOTOR LOCAL PDF.JS */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('local')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'local'
+                          ? 'bg-purple-950/50 border-purple-400 ring-1 ring-purple-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>⚡ Motor Local PDF.js</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          {isEs ? 'Instantáneo (~0.5s)' : 'Instant (~0.5s)'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Renderizado directo en memoria del navegador sin subir imágenes ni documentos a servidores externos.'
+                          : 'Direct in-browser memory rendering without uploading files externally.'}
+                      </p>
+                    </button>
+
+                    {/* OPCIÓN 4: MOTOR RENDER ULTRA HD */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('hd')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'hd'
+                          ? 'bg-pink-950/50 border-pink-400 ring-1 ring-pink-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>📊 Render Ultra HD (300 DPI)</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                          {isEs ? '300 DPI Vector' : '300 DPI Vector'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Extracción y rasterizado en alta resolución gráfica para impresiones y diseño editorial.'
+                          : 'High-resolution graphic rasterization for print & editorial design.'}
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* GRID DE OPCIONES MODULARES EN 3 COLUMNAS */}
+                {mode === 'pdf-to-jpg' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+                    {/* COLUMNA 1: SELECCIÓN DE PÁGINAS */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-zinc-200 font-bold flex items-center gap-1.5">
+                            <ListChecks className="w-4 h-4 text-purple-400" />
+                            <span>{isEs ? 'Páginas a Renderizar' : 'Pages to Render'}</span>
+                          </label>
+                          <span className="text-[11px] font-bold px-2.5 py-0.5 bg-zinc-800 border border-zinc-600 text-zinc-200 rounded-lg shadow-sm">
+                            {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                          </span>
+                        </div>
+
+                        {/* MODOS DE SELECCIÓN */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('all')}
+                            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'all'
+                                ? 'bg-purple-500 text-white border-purple-500 shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Todas' : 'All'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('range')}
+                            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'range'
+                                ? 'bg-purple-500 text-white border-purple-500 shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Rango' : 'Range'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('odd')}
+                            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'odd'
+                                ? 'bg-purple-500 text-white border-purple-500 shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Impares' : 'Odd'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPageSelectionMode('even')}
+                            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                              pageSelectionMode === 'even'
+                                ? 'bg-purple-500 text-white border-purple-500 shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Pares' : 'Even'}
+                          </button>
+                        </div>
+
+                        {/* INPUT DE RANGO */}
+                        {pageSelectionMode === 'range' && (
+                          <div className="space-y-2 pt-1 border-t border-zinc-800">
                             <input
                               type="text"
                               value={pageRangeInput}
                               onChange={(e) => setPageRangeInput(e.target.value)}
                               placeholder={isEs ? 'Ej: 1-5, 8, 11-20' : 'E.g: 1-5, 8, 11-20'}
-                              className="flex-1 bg-zinc-900 border border-white/20 focus:border-yellow-500 rounded-lg px-3 py-2 text-xs text-white font-mono outline-none"
+                              className="w-full bg-zinc-900 border border-zinc-700 focus:border-purple-500 rounded-lg px-3 py-1.5 text-xs text-white font-mono outline-none"
                             />
+                            <div className="flex flex-wrap gap-1 text-[10px]">
+                              {[
+                                { label: isEs ? '1-5' : '1-5', range: '1-5' },
+                                { label: isEs ? '1-10' : '1-10', range: '1-10' },
+                                { label: isEs ? '1-20' : '1-20', range: '1-20' },
+                                { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
+                              ].map((chip, cIdx) => (
+                                <button
+                                  key={cIdx}
+                                  type="button"
+                                  onClick={() => setPageRangeInput(chip.range)}
+                                  className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded text-zinc-300 text-[10px] cursor-pointer"
+                                >
+                                  {chip.label}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-1 text-[10px]">
-                            {[
-                              { label: isEs ? 'Primeras 5' : 'First 5', range: '1-5' },
-                              { label: isEs ? 'Primeras 10' : 'First 10', range: '1-10' },
-                              { label: isEs ? 'Primeras 20' : 'First 20', range: '1-20' },
-                              { label: isEs ? 'Todas' : 'All', range: `1-${totalPages}` },
-                            ].map((chip, cIdx) => (
-                              <button
-                                key={cIdx}
-                                type="button"
-                                onClick={() => setPageRangeInput(chip.range)}
-                                className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/10 rounded text-zinc-300 text-[10px] cursor-pointer"
-                              >
-                                {chip.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       {/* ACCIONES RÁPIDAS */}
-                      <div className="flex items-center justify-between text-[11px] pt-1 text-zinc-400">
-                        <span>{isEs ? 'Acciones rápidas:' : 'Quick actions:'}</span>
+                      <div className="flex items-center justify-between text-[11px] pt-2 border-t border-zinc-800/80 text-zinc-400">
+                        <span>{isEs ? 'Acciones:' : 'Actions:'}</span>
                         <div className="flex gap-2 font-bold">
                           <button
                             type="button"
@@ -1194,22 +1355,19 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  {/* OPCIONES DE FORMATO Y CALIDAD DE IMAGEN */}
-                  {mode === 'pdf-to-jpg' ? (
-                    <div className="space-y-3 font-mono text-xs">
-                      {/* FORMATO DE IMAGEN Y RESOLUCIÓN DPI */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <ImageIcon className="w-4 h-4 text-yellow-400" />
+                    {/* COLUMNA 2: FORMATO DE IMAGEN Y RESOLUCIÓN DPI */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                            <ImageIcon className="w-4 h-4 text-purple-400" />
                             {isEs ? 'Formato de Imagen' : 'Image Format'}
                           </label>
                           <select
                             value={imgFormat}
                             onChange={(e) => setImgFormat(e.target.value as ImageFormat)}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-yellow-500"
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-purple-500"
                           >
                             <option value="jpeg">JPG / JPEG (Ligero y Universal)</option>
                             <option value="png">PNG (Máxima Nitidez / Gráficos)</option>
@@ -1217,19 +1375,19 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                           </select>
                         </div>
 
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-yellow-400" />
+                        <div>
+                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-purple-400" />
                             {isEs ? 'Densidad y Resolución' : 'DPI Density'}
                           </label>
                           <div className="grid grid-cols-3 gap-1.5">
                             <button
                               type="button"
                               onClick={() => setDpiQuality('72dpi')}
-                              className={`py-1.5 px-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                              className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
                                 dpiQuality === '72dpi'
                                   ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                               }`}
                             >
                               72 DPI
@@ -1237,10 +1395,10 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                             <button
                               type="button"
                               onClick={() => setDpiQuality('150dpi')}
-                              className={`py-1.5 px-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                              className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
                                 dpiQuality === '150dpi'
                                   ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                               }`}
                             >
                               150 DPI
@@ -1248,10 +1406,10 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                             <button
                               type="button"
                               onClick={() => setDpiQuality('300dpi')}
-                              className={`py-1.5 px-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                              className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
                                 dpiQuality === '300dpi'
                                   ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                               }`}
                             >
                               300 DPI
@@ -1259,12 +1417,14 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                           </div>
                         </div>
                       </div>
+                    </div>
 
-                      {/* COMPRESIÓN Y CALIDAD */}
-                      <div className="bg-zinc-950 p-4 rounded-xl border border-white/10 space-y-2">
+                    {/* COLUMNA 3: COMPRESIÓN E INFORMACIÓN DE EMPAQUETADO */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
+                      <div className="space-y-2">
                         <div className="flex justify-between items-center text-xs font-bold text-zinc-300">
-                          <span>{isEs ? 'Calidad de Compresión Visual' : 'Visual Quality'}</span>
-                          <span className="text-yellow-400 font-mono">
+                          <span>{isEs ? 'Calidad de Compresión' : 'Visual Quality'}</span>
+                          <span className="text-purple-400 font-mono">
                             {Math.round(imageQuality * 100)}%
                           </span>
                         </div>
@@ -1275,109 +1435,124 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                           step="0.05"
                           value={imageQuality}
                           onChange={(e) => setImageQuality(parseFloat(e.target.value))}
-                          className="w-full accent-yellow-400 cursor-pointer"
+                          className="w-full accent-purple-500 cursor-pointer"
                         />
                         <div className="flex justify-between text-[10px] text-zinc-500 font-mono">
-                          <span>{isEs ? 'Archivo Más Ligero' : 'Smaller File'}</span>
+                          <span>{isEs ? 'Ligero' : 'Light'}</span>
                           <span>{isEs ? 'Equilibrado' : 'Balanced'}</span>
-                          <span>{isEs ? 'Ultra Nitidez' : 'Ultra Sharp'}</span>
+                          <span>{isEs ? 'Ultra' : 'Ultra'}</span>
                         </div>
                       </div>
 
-                      {/* INFO BOX EMPAQUETADO */}
-                      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3.5 text-xs text-yellow-400 space-y-1">
-                        <span className="font-bold flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4" />
+                      <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-xs text-purple-300 space-y-1">
+                        <span className="font-bold flex items-center gap-1.5 text-[11px]">
+                          <ShieldCheck className="w-3.5 h-3.5" />
                           {targetPages.length === 1
                             ? isEs
-                              ? 'Descarga Directa de Imagen Única'
+                              ? 'Descarga Directa de Imagen'
                               : 'Single Direct Image Download'
                             : isEs
-                              ? `Empaquetado Automático en ZIP (${targetPages.length} imágenes)`
-                              : `Automatic ZIP Bundling (${targetPages.length} images)`}
+                              ? `Empaquetado ZIP (${targetPages.length} imágenes)`
+                              : `ZIP Package (${targetPages.length} images)`}
                         </span>
-                        <p className="text-[11px] text-zinc-400">
+                        <p className="text-[10px] text-zinc-400 leading-snug">
                           {isEs
                             ? targetPages.length === 1
-                              ? 'Al exportar una sola página, se descargará directamente el archivo de imagen (.jpg/.png/.webp).'
-                              : 'Las páginas seleccionadas se renderizarán a máxima resolución y se empaquetarán en un archivo comprimido .zip.'
-                            : 'Selected pages render at full resolution and package into a clean .zip archive.'}
+                              ? 'Exportación directa de 1 archivo de imagen.'
+                              : 'Todas las páginas se renderizan y descargan en un ZIP ordenado.'
+                            : 'All pages render directly into an organized ZIP archive.'}
                         </p>
                       </div>
                     </div>
-                  ) : (
-                    /* OPCIONES MODO JPG A PDF */
-                    <div className="space-y-4 font-mono text-xs">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Grid className="w-4 h-4 text-yellow-400" />
-                            {isEs ? 'Márgenes de Página' : 'Page Margins'}
-                          </label>
-                          <select
-                            value={marginOption}
-                            onChange={(e) => setMarginOption(e.target.value as MarginOption)}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-yellow-500"
-                          >
-                            <option value="none">
-                              {isEs ? 'Sin márgenes (Ajuste Completo)' : 'No margins (Full Fit)'}
-                            </option>
-                            <option value="small">
-                              {isEs ? 'Márgenes pequeños (20px)' : 'Small margins (20px)'}
-                            </option>
-                            <option value="big">
-                              {isEs ? 'Márgenes amplios (40px)' : 'Big margins (40px)'}
-                            </option>
-                          </select>
-                        </div>
+                  </div>
+                ) : (
+                  /* MODO JPG A PDF EN 3 COLUMNAS */
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+                    {/* COLUMNA 1: MÁRGENES DE PÁGINA */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <Grid className="w-4 h-4 text-purple-400" />
+                          {isEs ? 'Márgenes de Página' : 'Page Margins'}
+                        </label>
+                        <select
+                          value={marginOption}
+                          onChange={(e) => setMarginOption(e.target.value as MarginOption)}
+                          className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-2 px-3 text-white text-xs font-mono focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="none">
+                            {isEs ? 'Sin márgenes (Ajuste Completo)' : 'No margins (Full Fit)'}
+                          </option>
+                          <option value="small">
+                            {isEs ? 'Márgenes pequeños (20px)' : 'Small margins (20px)'}
+                          </option>
+                          <option value="big">
+                            {isEs ? 'Márgenes amplios (40px)' : 'Big margins (40px)'}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
 
-                        <div className="bg-zinc-950 p-4 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
-                            <Compass className="w-4 h-4 text-yellow-400" />
-                            {isEs ? 'Orientación Automática' : 'Auto Orientation'}
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setAutoRotate(true)}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                autoRotate
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Automática' : 'Automatic'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAutoRotate(false)}
-                              className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
-                                !autoRotate
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                              }`}
-                            >
-                              {isEs ? 'Fija' : 'Fixed'}
-                            </button>
-                          </div>
+                    {/* COLUMNA 2: ORIENTACIÓN AUTOMÁTICA */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <Compass className="w-4 h-4 text-purple-400" />
+                          {isEs ? 'Orientación de Página' : 'Orientation'}
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAutoRotate(true)}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              autoRotate
+                                ? 'bg-white text-black border-white shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Automática' : 'Automatic'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAutoRotate(false)}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                              !autoRotate
+                                ? 'bg-white text-black border-white shadow-md'
+                                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                            }`}
+                          >
+                            {isEs ? 'Fija' : 'Fixed'}
+                          </button>
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* COLUMNA 3: COMPATIBILIDAD */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
+                      <div className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-700 flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-purple-400 shrink-0" />
+                        <span className="text-[10px] text-zinc-300 font-mono">
+                          {isEs
+                            ? 'Conversión sin pérdida de píxeles a formato estándar PDF/A'
+                            : 'Lossless pixel conversion to standard PDF/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-                <div className="pt-3 border-t border-white/10 font-sans">
+                <div className="pt-3 border-t border-zinc-800 font-sans">
                   {isProcessing && (
                     <div className="mb-3 space-y-1.5 font-mono">
                       <div className="flex justify-between text-[10px] font-bold text-zinc-300">
                         <span className="truncate max-w-[200px]">{progressMsg}</span>
                         <span>{progressPercent}%</span>
                       </div>
-                      <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                      <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-700">
                         <div
                           style={{ width: `${progressPercent}%` }}
-                          className="h-full bg-yellow-400 transition-all duration-300"
+                          className="h-full bg-purple-500 transition-all duration-300"
                         />
                       </div>
                     </div>

@@ -145,3 +145,65 @@ a.skip-to-content:focus {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) rgba(18, 18, 21, 0.6);
 }
+
+/* ============================================================
+   DOCX PREVIEW HIGH-FIDELITY VIEWER & PAGE SEPARATORS
+   ============================================================ */
+.docx-preview-custom-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 20px 0;
+}
+.docx-preview-custom-wrapper .docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+.docx-preview-custom-wrapper .docx-wrapper > section.docx {
+  position: relative !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+  margin-bottom: 52px !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease !important;
+}
+.docx-preview-custom-wrapper .docx-wrapper > section.docx:last-child {
+  margin-bottom: 24px !important;
+}
+.docx-preview-custom-wrapper .docx-wrapper > section.docx:target,
+.docx-preview-custom-wrapper .docx-wrapper > section.docx.docx-active-page {
+  box-shadow:
+    0 0 0 3px #3b82f6,
+    0 30px 60px -12px rgba(0, 0, 0, 0.95) !important;
+}
+
+/* Badge de Página en la cabecera de la hoja */
+.docx-page-badge {
+  position: absolute;
+  top: -26px;
+  right: 0;
+  background: #18181b;
+  color: #d4d4d8;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  user-select: none;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  z-index: 5;
+}

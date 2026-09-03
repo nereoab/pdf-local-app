@@ -4,12 +4,49 @@ import sys
 import os
 import argparse
 import json
+import base64
+import re
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+def pt_to_dxa(pt):
+    return int(round(pt * 20))
+
+def escape_html(s):
+    if not s:
+        return ""
+    return (str(s).replace("&", "&amp;")
+                  .replace("<", "&lt;")
+                  .replace(">", "&gt;")
+                  .replace('"', "&quot;")
+                  .replace("'", "&#39;"))
+
+def get_font_color_hex(run):
+    try:
+        if run.font.color and run.font.color.rgb:
+            return f"#{str(run.font.color.rgb)}"
+    except Exception:
+        pass
+    return None
+
+def extract_docx_images(doc):
+    """Extrae imágenes incrustadas en el archivo docx como data URIs base64."""
+    images = {}
+    try:
+        for rel in doc.part.rels.values():
+            if "image" in rel.target_ref:
+                img_part = rel.target_part
+                content_type = img_part.content_type
+                b64_data = base64.b64encode(img_part.blob).decode('utf-8')
+                images[rel.rId] = f"data:{content_type};base64,{b64_data}"
+    except Exception:
+        pass
+    return images
 
 def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation='portrait', margin='normal', font_family='helvetica', font_size=11, line_spacing=1.35, add_page_numbers=True, include_header=False):
     doc = docx.Document(docx_path)
     pdf = fitz.open()
 
-    # Dimensiones
+    # Dimensiones estándar
     if page_size.lower() == 'letter':
         w, h = 612.0, 792.0
     elif page_size.lower() == 'legal':
@@ -26,11 +63,13 @@ def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation=
     if margin == 'narrow':
         margin_val = 36.0  # 1.27 cm
     elif margin == 'wide':
-        margin_val = 108.0  # 3.8 cm
+        margin_val = 90.0  # 3.17 cm
     elif margin == 'moderate':
         margin_val = 54.0  # 1.9 cm
+    elif margin == 'none':
+        margin_val = 20.0
     else:
-        margin_val = 72.0  # 2.54 cm
+        margin_val = 60.0  # ~2.1 cm Normal
 
     margin_t = margin_val
     margin_b = margin_val
@@ -42,118 +81,180 @@ def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation=
 
     font_css_family = 'Arial, sans-serif'
     if font_family == 'times':
-        font_css_family = '"Times New Roman", Times, serif'
+        font_css_family = 'Times-Roman, serif'
     elif font_family == 'courier':
-        font_css_family = '"Courier New", Courier, monospace'
+        font_css_family = 'Courier, monospace'
 
     current_page = pdf.new_page(width=page_w, height=page_h)
     current_y = margin_t
     page_num = 1
 
-    # Título opcional en cabecera
     doc_title = os.path.basename(docx_path).replace('.docx', '').replace('.doc', '')
 
-    for p in doc.paragraphs:
-        style_name = p.style.name.lower() if p.style else ""
-        
-        runs_html = []
-        for r in p.runs:
-            txt = r.text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            if not txt:
+    # Extraer imágenes del documento
+    extracted_images = extract_docx_images(doc)
+
+    # 1. Procesar elementos del cuerpo en orden (Párrafos y Tablas)
+    for element in doc.element.body:
+        tag_name = element.tag.split('}')[-1] if '}' in element.tag else element.tag
+
+        if tag_name == 'p':
+            # Párrafo
+            p = docx.text.paragraph.Paragraph(element, doc)
+            style_name = p.style.name.lower() if p.style else ""
+            
+            runs_html = []
+            for r in p.runs:
+                txt = escape_html(r.text)
+                if not txt:
+                    continue
+
+                r_style = []
+                if r.bold:
+                    r_style.append("font-weight:bold;")
+                if r.italic:
+                    r_style.append("font-style:italic;")
+                if r.underline:
+                    r_style.append("text-decoration:underline;")
+                if hasattr(r.font, 'strike') and r.font.strike:
+                    r_style.append("text-decoration:line-through;")
+                
+                col_hex = get_font_color_hex(r)
+                if col_hex:
+                    r_style.append(f"color:{col_hex};")
+                
+                r_size = r.font.size.pt if r.font.size else None
+                if r_size:
+                    r_style.append(f"font-size:{r_size}pt;")
+
+                style_attr = f' style="{"".join(r_style)}"' if r_style else ''
+                runs_html.append(f'<span{style_attr}>{txt}</span>')
+
+            p_text = "".join(runs_html)
+
+            # Comprobar si el párrafo contiene una imagen incrustada
+            img_html = ""
+            for blip in element.xpath('.//a:blip/@r:embed'):
+                if blip in extracted_images:
+                    img_data = extracted_images[blip]
+                    img_html += f'<div style="text-align:center;margin:8pt 0;"><img src="{img_data}" style="max-width:100%;max-height:280pt;object-fit:contain;border-radius:3pt;" /></div>'
+
+            if not p_text.strip() and not img_html:
+                current_y += (font_size * 0.5)
                 continue
-            b_tag = "<b>" if r.bold else ""
-            b_end = "</b>" if r.bold else ""
-            i_tag = "<i>" if r.italic else ""
-            i_end = "</i>" if r.italic else ""
-            runs_html.append(f"{b_tag}{i_tag}{txt}{i_end}{b_end}")
 
-        p_text = "".join(runs_html)
-        if not p_text.strip():
-            current_y += (font_size * 0.6)
-            continue
+            # Alineación del párrafo
+            align_css = "text-align:left;"
+            if p.alignment == WD_ALIGN_PARAGRAPH.CENTER:
+                align_css = "text-align:center;"
+            elif p.alignment == WD_ALIGN_PARAGRAPH.RIGHT:
+                align_css = "text-align:right;"
+            elif p.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY:
+                align_css = "text-align:justify;"
 
-        is_h1 = "heading 1" in style_name
-        is_h2 = "heading 2" in style_name or "heading 3" in style_name
-        
-        if is_h1:
-            h_size = font_size + 5
-            html = f'<h1 style="font-family:{font_css_family};font-size:{h_size}pt;color:#1f4e79;margin:0 0 6pt 0;line-height:1.2;">{p_text}</h1>'
-        elif is_h2:
-            h_size = font_size + 2.5
-            html = f'<h2 style="font-family:{font_css_family};font-size:{h_size}pt;color:#2e75b6;margin:0 0 4pt 0;line-height:1.2;">{p_text}</h2>'
-        else:
-            html = f'<p style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:0 0 4pt 0;text-align:justify;">{p_text}</p>'
+            # Estilos de encabezado
+            is_title = "title" in style_name
+            is_subtitle = "subtitle" in style_name
+            is_h1 = "heading 1" in style_name
+            is_h2 = "heading 2" in style_name
+            is_h3 = "heading 3" in style_name or "heading 4" in style_name
+            is_bullet = "list bullet" in style_name or "bullet" in style_name
+            is_number = "list number" in style_name
 
-        avail_h = (page_h - margin_b) - current_y
-        if avail_h < (font_size * 2):
-            # Nueva página
-            current_page = pdf.new_page(width=page_w, height=page_h)
-            page_num += 1
-            current_y = margin_t
+            if is_title:
+                h_size = font_size + 9
+                html = f'<h1 style="font-family:{font_css_family};font-size:{h_size}pt;color:#1e3a8a;font-weight:bold;margin:4pt 0 8pt 0;line-height:1.2;{align_css}">{p_text}</h1>{img_html}'
+            elif is_subtitle:
+                h_size = font_size + 3
+                html = f'<p style="font-family:{font_css_family};font-size:{h_size}pt;color:#475569;margin:0 0 6pt 0;line-height:1.2;{align_css}">{p_text}</p>{img_html}'
+            elif is_h1:
+                h_size = font_size + 5
+                html = f'<h1 style="font-family:{font_css_family};font-size:{h_size}pt;color:#1f4e79;font-weight:bold;margin:8pt 0 4pt 0;line-height:1.2;{align_css}">{p_text}</h1>{img_html}'
+            elif is_h2:
+                h_size = font_size + 2.5
+                html = f'<h2 style="font-family:{font_css_family};font-size:{h_size}pt;color:#2e75b6;font-weight:bold;margin:6pt 0 3pt 0;line-height:1.2;{align_css}">{p_text}</h2>{img_html}'
+            elif is_h3:
+                h_size = font_size + 1
+                html = f'<h3 style="font-family:{font_css_family};font-size:{h_size}pt;color:#334155;font-weight:bold;margin:4pt 0 2pt 0;line-height:1.2;{align_css}">{p_text}</h3>{img_html}'
+            elif is_bullet:
+                html = f'<div style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:2pt 0 2pt 16pt;display:flex;align-items:flex-start;"><span style="color:#2563eb;margin-right:6pt;font-weight:bold;">•</span><span>{p_text}</span></div>{img_html}'
+            elif is_number:
+                html = f'<div style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:2pt 0 2pt 16pt;">{p_text}</div>{img_html}'
+            else:
+                html = f'<p style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:0 0 4pt 0;color:#1e293b;{align_css}">{p_text}</p>{img_html}'
+
             avail_h = (page_h - margin_b) - current_y
+            if avail_h < (font_size * 2):
+                current_page = pdf.new_page(width=page_w, height=page_h)
+                page_num += 1
+                current_y = margin_t
+                avail_h = (page_h - margin_b) - current_y
 
-        rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
-        rem_h, placed = current_page.insert_htmlbox(rect, html)
-
-        if placed < 0.99 or rem_h <= 0:
-            current_page = pdf.new_page(width=page_w, height=page_h)
-            page_num += 1
-            current_y = margin_t
             rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
             rem_h, placed = current_page.insert_htmlbox(rect, html)
 
-        used_h = rect.height - rem_h
-        current_y += max(font_size + 2, used_h)
+            if placed < 0.99 or rem_h <= 0:
+                current_page = pdf.new_page(width=page_w, height=page_h)
+                page_num += 1
+                current_y = margin_t
+                rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
+                rem_h, placed = current_page.insert_htmlbox(rect, html)
 
-    # Procesar tablas si existen
-    for tbl in doc.tables:
-        col_count = len(tbl.columns)
-        if col_count == 0:
-            continue
-        
-        table_html_rows = []
-        for r_idx, row in enumerate(tbl.rows):
-            is_hdr = (r_idx == 0)
-            cell_tag = "th" if is_hdr else "td"
-            bg_color = 'background-color:#f2f2f2;' if is_hdr else ''
-            b_open = '<b>' if is_hdr else ''
-            b_close = '</b>' if is_hdr else ''
-            
-            cells = []
-            for cell in row.cells:
-                c_txt = cell.text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").strip()
-                cells.append(f'<{cell_tag} style="border:1px solid #ccc;padding:4pt 6pt;{bg_color}">{b_open}{c_txt}{b_close}</{cell_tag}>')
-            
-            table_html_rows.append(f'<tr>{"".join(cells)}</tr>')
+            used_h = rect.height - rem_h
+            current_y += max(font_size + 1, used_h)
 
-        tbl_html = f'<table style="font-family:{font_css_family};font-size:{font_size - 1}pt;width:100%;border-collapse:collapse;margin:8pt 0;">{"".join(table_html_rows)}</table>'
+        elif tag_name == 'tbl':
+            # Tabla
+            tbl = docx.table.Table(element, doc)
+            col_count = len(tbl.columns)
+            if col_count == 0:
+                continue
 
-        avail_h = (page_h - margin_b) - current_y
-        if avail_h < 60:
-            current_page = pdf.new_page(width=page_w, height=page_h)
-            page_num += 1
-            current_y = margin_t
+            table_html_rows = []
+            for r_idx, row in enumerate(tbl.rows):
+                is_hdr = (r_idx == 0)
+                cell_tag = "th" if is_hdr else "td"
+                bg_color = 'background-color:#f1f5f9;' if is_hdr else ('background-color:#ffffff;' if r_idx % 2 == 1 else 'background-color:#f8fafc;')
+                hdr_style = 'font-weight:bold;color:#1e3a8a;' if is_hdr else 'color:#334155;'
 
-        rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
-        rem_h, placed = current_page.insert_htmlbox(rect, tbl_html)
-        if placed < 0.99 or rem_h <= 0:
-            current_page = pdf.new_page(width=page_w, height=page_h)
-            page_num += 1
-            current_y = margin_t
+                cells = []
+                for cell in row.cells:
+                    c_txt = escape_html(cell.text.strip())
+                    # Convertir saltos de línea a <br/>
+                    c_txt_html = c_txt.replace("\n", "<br/>") if c_txt else "&nbsp;"
+                    cells.append(f'<{cell_tag} style="border:1px solid #cbd5e1;padding:5pt 7pt;{bg_color}{hdr_style}text-align:left;vertical-align:middle;">{c_txt_html}</{cell_tag}>')
+
+                table_html_rows.append(f'<tr>{"".join(cells)}</tr>')
+
+            tbl_html = f'<table style="font-family:{font_css_family};font-size:{max(7.5, font_size - 1.5)}pt;width:100%;border-collapse:collapse;margin:8pt 0;box-shadow:0 1px 3px rgba(0,0,0,0.05);">{"".join(table_html_rows)}</table>'
+
+            avail_h = (page_h - margin_b) - current_y
+            if avail_h < 60:
+                current_page = pdf.new_page(width=page_w, height=page_h)
+                page_num += 1
+                current_y = margin_t
+
             rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
             rem_h, placed = current_page.insert_htmlbox(rect, tbl_html)
+            if placed < 0.99 or rem_h <= 0:
+                current_page = pdf.new_page(width=page_w, height=page_h)
+                page_num += 1
+                current_y = margin_t
+                rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
+                rem_h, placed = current_page.insert_htmlbox(rect, tbl_html)
 
-        used_h = rect.height - rem_h
-        current_y += max(30, used_h + 10)
+            used_h = rect.height - rem_h
+            current_y += max(24, used_h + 8)
 
-    # Números de página y encabezados finales
+    # Encabezados y números de página finales
     total_p = len(pdf)
     if add_page_numbers or include_header:
         for idx, p in enumerate(pdf):
             if add_page_numbers:
-                p.insert_text((page_w / 2 - 30, page_h - 25), f"Página {idx + 1} de {total_p}", fontsize=8, color=(0.4, 0.4, 0.4))
+                p.insert_text((page_w / 2 - 35, page_h - 22), f"Página {idx + 1} de {total_p}", fontsize=8, fontname='helv', color=(0.45, 0.45, 0.45))
             if include_header:
-                p.insert_text((margin_l, 25), doc_title[:60], fontsize=8, color=(0.4, 0.4, 0.4))
+                p.insert_text((margin_l, 24), doc_title[:60], fontsize=8, fontname='helv', color=(0.45, 0.45, 0.45))
+                p.draw_line((margin_l, 30), (page_w - margin_r, 30), color=(0.85, 0.85, 0.85), width=0.5)
 
     pdf.save(output_pdf_path, garbage=4, deflate=True)
     pdf.close()

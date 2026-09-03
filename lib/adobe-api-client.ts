@@ -5,11 +5,13 @@ export async function convertWithApi(
   onProgress?: (pct: number, msg: string) => void,
 ): Promise<Blob> {
   const engineName =
-    extraParams?.engine === 'cloudconvert'
-      ? 'CloudConvert'
-      : extraParams?.engine === 'adobe'
-        ? 'Adobe Acrobat'
-        : 'el motor seleccionado';
+    extraParams?.engine === 'gemini'
+      ? 'Gemini AI'
+      : extraParams?.engine === 'cloudconvert'
+        ? 'CloudConvert'
+        : extraParams?.engine === 'adobe'
+          ? 'Adobe Acrobat'
+          : 'el motor seleccionado';
   onProgress?.(10, `Subiendo archivo a ${engineName}...`);
 
   const formData = new FormData();

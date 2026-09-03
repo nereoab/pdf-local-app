@@ -28,6 +28,8 @@ import {
   Check,
   ListChecks,
   Trash2,
+  Eye,
+  Layers,
 } from 'lucide-react';
 import { JpgIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -61,6 +63,17 @@ interface CompletedResult {
   itemCount?: number;
 }
 
+interface FileSlot {
+  id: number;
+  file: File | null;
+  previewUrl: string | null;
+  thumbnailUrl: string | null;
+  totalPages: number;
+  activePage: number;
+  pageDataUrls: Record<number, string>;
+  isRendering?: boolean;
+}
+
 function parseRangeString(numPages: number, rangeStr: string): Set<number> {
   const set = new Set<number>();
   if (!rangeStr?.trim() || numPages <= 0) return set;
@@ -86,6 +99,56 @@ function parseRangeString(numPages: number, rangeStr: string): Set<number> {
   return set;
 }
 
+function formatFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+async function getEmbeddableImageBytes(
+  file: File,
+): Promise<{ bytes: Uint8Array; format: 'png' | 'jpg' }> {
+  const isPng = file.name.toLowerCase().endsWith('.png');
+  const isJpg =
+    file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg');
+  const arrayBuffer = await file.arrayBuffer();
+
+  if (isPng) return { bytes: new Uint8Array(arrayBuffer), format: 'png' };
+  if (isJpg) return { bytes: new Uint8Array(arrayBuffer), format: 'jpg' };
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || 800;
+      canvas.height = img.naturalHeight || 600;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve({ bytes: new Uint8Array(arrayBuffer), format: 'png' });
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          resolve({ bytes: new Uint8Array(arrayBuffer), format: 'png' });
+          return;
+        }
+        const buf = await blob.arrayBuffer();
+        resolve({ bytes: new Uint8Array(buf), format: 'png' });
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ bytes: new Uint8Array(arrayBuffer), format: 'png' });
+    };
+    img.src = url;
+  });
+}
+
 export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -102,21 +165,59 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     setMode(defaultMode);
   }, [defaultMode]);
 
+  // 3 CAJAS / RANURAS INDEPENDIENTES PARA PROCESAR HASTA 3 ARCHIVOS
+  const [slots, setSlots] = useState<FileSlot[]>([
+    {
+      id: 0,
+      file: null,
+      previewUrl: null,
+      thumbnailUrl: null,
+      totalPages: 0,
+      activePage: 1,
+      pageDataUrls: {},
+    },
+    {
+      id: 1,
+      file: null,
+      previewUrl: null,
+      thumbnailUrl: null,
+      totalPages: 0,
+      activePage: 1,
+      pageDataUrls: {},
+    },
+    {
+      id: 2,
+      file: null,
+      previewUrl: null,
+      thumbnailUrl: null,
+      totalPages: 0,
+      activePage: 1,
+      pageDataUrls: {},
+    },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+
+  const slotInputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
+
+  // ARCHIVO Y METADATOS DE LA CAJA ACTIVA (SE VINCULAN CON LA SECCIÓN 2 INTACTA)
+  const activeSlot = slots[activeSlotIndex] || slots[0];
+  const file = activeSlot?.file || null;
+  const totalPages = activeSlot?.totalPages || 0;
+  const activePage = activeSlot?.activePage || 1;
+  const setActivePage = (p: number) => {
+    setSlots((prev) =>
+      prev.map((s, idx) => (idx === activeSlotIndex ? { ...s, activePage: p } : s)),
+    );
+  };
+  const pageDataUrls = activeSlot?.pageDataUrls || {};
+  const isRendering = activeSlot?.isRendering || false;
+  const loadedSlots = useMemo(() => slots.filter((s) => s.file !== null), [slots]);
+
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
-  const [file, setFile] = useState<File | null>(() => {
-    if (!globalFile) return null;
-    const name = globalFile.name.toLowerCase();
-    if (defaultMode === 'pdf-to-jpg' && name.endsWith('.pdf')) return globalFile;
-    if (
-      defaultMode === 'jpg-to-pdf' &&
-      (name.endsWith('.jpg') ||
-        name.endsWith('.jpeg') ||
-        name.endsWith('.png') ||
-        name.endsWith('.webp'))
-    )
-      return globalFile;
-    return null;
-  });
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
@@ -160,12 +261,6 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     };
   }, [pdfUrl, imagePreviewUrl]);
 
-  // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
-  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
-  const [totalPages, setTotalPages] = useState<number>(0);
-  const [activePage, setActivePage] = useState<number>(1);
-  const [isRendering, setIsRendering] = useState<boolean>(false);
-
   // CÁLCULO DE PÁGINAS SELECCIONADAS
   const targetPages = useMemo(() => {
     if (totalPages === 0) return [];
@@ -193,28 +288,14 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const targetPageSet = useMemo(() => new Set(targetPages), [targetPages]);
 
   useEffect(() => {
-    if (!file) {
-      setPageDataUrls({});
-      setTotalPages(0);
-      setSelectedPageSet(new Set());
-      return;
+    if (totalPages > 0) {
+      setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
+      setPageRangeInput(totalPages > 10 ? `1-${Math.min(10, totalPages)}` : `1-${totalPages}`);
     }
-    if (file.name.toLowerCase().endsWith('.pdf')) {
-      cargarMiniaturasPdfUltraFast(file);
-    } else {
-      setTotalPages(1);
-    }
-  }, [file]);
+  }, [activeSlotIndex, totalPages]);
 
-  // CARGA ULTRA RÁPIDA DE MINIATURAS (ESCALA 0.22 + STREAMING EN SEGUNDO PLANO)
-  const cargarMiniaturasPdfUltraFast = async (pdfFile: File) => {
-    cancelRenderRef.current = true;
-    await new Promise((r) => setTimeout(r, 20));
-    cancelRenderRef.current = false;
-
-    setIsRendering(true);
-    setPageDataUrls({});
-
+  // CARGA DE METADATOS Y MINIATURA (ESCALA 0.5) PARA UNA CAJA ESPECÍFICA
+  const loadPdfMetadataForSlot = async (slotIndex: number, pdfFile: File) => {
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
@@ -227,134 +308,312 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
       }).promise;
 
       const count = pdfDoc.numPages;
-      setTotalPages(count);
-      setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
-      setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
 
-      // Lote inicial rápido (8 páginas en <100ms)
-      const initialBatch = Math.min(count, 8);
-      const initialUrls: Record<number, string> = {};
+      // Render de la página 1 a escala 0.50 (súper miniatura a mitad de tamaño)
+      let page1DataUrl: string | null = null;
+      try {
+        const page1 = await pdfDoc.getPage(1);
+        const viewport = page1.getViewport({ scale: 0.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page1.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+            typeof page1.render
+          >[0]).promise;
+          page1DataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        }
+      } catch {}
 
-      for (let p = 1; p <= initialBatch; p++) {
-        if (cancelRenderRef.current) return;
-        try {
-          const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 0.22 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
-            initialUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
-          }
-        } catch {}
-      }
-
-      setPageDataUrls({ ...initialUrls });
-      setIsRendering(false);
-
-      // Carga progresiva en segundo plano
-      if (initialBatch < count) {
-        (async () => {
-          const loadedUrls = { ...initialUrls };
-          for (let p = initialBatch + 1; p <= count; p++) {
-            if (cancelRenderRef.current) return;
-            try {
-              const page = await pdfDoc.getPage(p);
-              const viewport = page.getViewport({ scale: 0.22 });
-              const canvas = document.createElement('canvas');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-                  typeof page.render
-                >[0]).promise;
-                loadedUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
+      setSlots((prev) =>
+        prev.map((s, idx) =>
+          idx === slotIndex
+            ? {
+                ...s,
+                totalPages: count,
+                thumbnailUrl: page1DataUrl,
+                previewUrl: page1DataUrl,
+                activePage: 1,
+                pageDataUrls: page1DataUrl ? { 1: page1DataUrl } : {},
+                isRendering: false,
               }
-            } catch {}
+            : s,
+        ),
+      );
 
-            if (p % 6 === 0 || p === count) {
-              setPageDataUrls({ ...loadedUrls });
-              await new Promise((r) => setTimeout(r, 10));
-            }
-          }
-        })();
+      if (slotIndex === activeSlotIndex) {
+        setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
+        setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
       }
     } catch (err) {
-      console.error(err);
-      setIsRendering(false);
+      console.error('Error al cargar metadatos de PDF:', err);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      processSelectedFile(e.target.files[0]);
+  // RENDERIZA LA PÁGINA ACTIVA A ESCALA 0.5 CUANDO SE CAMBIA DE PÁGINA
+  const renderActivePdfPage = async (slotIndex: number, pageNum: number) => {
+    const currentSlot = slots[slotIndex];
+    if (!currentSlot?.file || !currentSlot.file.name.toLowerCase().endsWith('.pdf')) return;
+    if (currentSlot.pageDataUrls[pageNum]) return;
+
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      const arrayBuffer = await currentSlot.file.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({
+        data: arrayBuffer.slice(0),
+        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true,
+      }).promise;
+
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 0.5 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+          typeof page.render
+        >[0]).promise;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+        setSlots((prev) =>
+          prev.map((s, idx) =>
+            idx === slotIndex
+              ? { ...s, pageDataUrls: { ...s.pageDataUrls, [pageNum]: dataUrl } }
+              : s,
+          ),
+        );
+      }
+    } catch (e) {
+      console.error('Error al renderizar página:', e);
     }
-    e.target.value = '';
   };
 
-  const processSelectedFile = (selected: File) => {
-    const name = selected.name.toLowerCase();
+  useEffect(() => {
+    if (file && file.name.toLowerCase().endsWith('.pdf')) {
+      renderActivePdfPage(activeSlotIndex, activePage);
+    }
+  }, [activeSlotIndex, activePage, file]);
+
+  // CARGA DE ARCHIVOS EN LAS CAJAS
+  const loadFilesIntoSlots = (fileList: File[] | FileList, specificSlotIndex?: number) => {
+    const validFiles: File[] = [];
+    const filesArray = Array.from(fileList);
+
+    for (const f of filesArray) {
+      const name = f.name.toLowerCase();
+      const isPdf = name.endsWith('.pdf');
+      const isImg =
+        name.endsWith('.jpg') ||
+        name.endsWith('.jpeg') ||
+        name.endsWith('.png') ||
+        name.endsWith('.webp');
+
+      if (mode === 'jpg-to-pdf' && isImg) {
+        validFiles.push(f);
+      } else if (mode === 'pdf-to-jpg' && isPdf) {
+        validFiles.push(f);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      toast.error(
+        mode === 'jpg-to-pdf'
+          ? isEs
+            ? 'Por favor selecciona imágenes válidas (JPG, PNG, WebP)'
+            : 'Please select valid images (JPG, PNG, WebP)'
+          : isEs
+            ? 'Por favor selecciona archivos PDF (.pdf)'
+            : 'Please select PDF files (.pdf)',
+      );
+      return;
+    }
+
+    setSlots((prev) => {
+      const next = [...prev];
+      if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+        const f = validFiles[0];
+        const prevUrl = next[specificSlotIndex].previewUrl;
+        if (prevUrl && !next[specificSlotIndex].file?.name.toLowerCase().endsWith('.pdf')) {
+          URL.revokeObjectURL(prevUrl);
+        }
+
+        const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf') ? null : URL.createObjectURL(f);
+        next[specificSlotIndex] = {
+          id: specificSlotIndex,
+          file: f,
+          previewUrl: newPreviewUrl,
+          thumbnailUrl: newPreviewUrl,
+          totalPages: 1,
+          activePage: 1,
+          pageDataUrls: {},
+          isRendering: f.name.toLowerCase().endsWith('.pdf'),
+        };
+
+        if (f.name.toLowerCase().endsWith('.pdf')) {
+          loadPdfMetadataForSlot(specificSlotIndex, f);
+        }
+      } else {
+        let validIdx = 0;
+        for (let i = 0; i < 3; i++) {
+          if (validIdx >= validFiles.length) break;
+          if (!next[i].file) {
+            const f = validFiles[validIdx];
+            const prevUrl = next[i].previewUrl;
+            if (prevUrl && !next[i].file?.name.toLowerCase().endsWith('.pdf')) {
+              URL.revokeObjectURL(prevUrl);
+            }
+
+            const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf')
+              ? null
+              : URL.createObjectURL(f);
+            next[i] = {
+              id: i,
+              file: f,
+              previewUrl: newPreviewUrl,
+              thumbnailUrl: newPreviewUrl,
+              totalPages: 1,
+              activePage: 1,
+              pageDataUrls: {},
+              isRendering: f.name.toLowerCase().endsWith('.pdf'),
+            };
+
+            if (f.name.toLowerCase().endsWith('.pdf')) {
+              loadPdfMetadataForSlot(i, f);
+            }
+            validIdx++;
+          }
+        }
+      }
+      return next;
+    });
+
+    if (specificSlotIndex !== undefined) {
+      setActiveSlotIndex(specificSlotIndex);
+    } else {
+      setActiveSlotIndex(0);
+    }
+
+    setDownloadUrl(null);
+    setCompletedResult(null);
+
+    toast.success(
+      isEs
+        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+        : `${validFiles.length} file(s) ready in boxes`,
+    );
+  };
+
+  const initialGlobalFileLoadedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!globalFile || initialGlobalFileLoadedRef.current) return;
+    const name = globalFile.name.toLowerCase();
     const isPdf = name.endsWith('.pdf');
-    const isImage =
+    const isImg =
       name.endsWith('.jpg') ||
       name.endsWith('.jpeg') ||
       name.endsWith('.png') ||
       name.endsWith('.webp');
 
-    if (mode === 'jpg-to-pdf') {
-      if (isImage) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(
-          isEs ? 'Imagen cargada para empaquetado PDF' : 'Image loaded for PDF bundling',
-        );
-      } else {
-        toast.error(
-          isEs
-            ? 'Por favor selecciona una imagen JPG, PNG o WebP'
-            : 'Please select a JPG, PNG, or WebP image',
-        );
+    if ((defaultMode === 'pdf-to-jpg' && isPdf) || (defaultMode === 'jpg-to-pdf' && isImg)) {
+      initialGlobalFileLoadedRef.current = true;
+      loadFilesIntoSlots([globalFile], 0);
+    }
+  }, [globalFile, defaultMode]);
+
+  useEffect(() => {
+    return () => {
+      slots.forEach((s) => {
+        if (s.previewUrl && !s.file?.name.toLowerCase().endsWith('.pdf')) {
+          URL.revokeObjectURL(s.previewUrl);
+        }
+      });
+    };
+  }, [slots]);
+
+  const handleClearSlot = (slotIndex: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      if (
+        next[slotIndex].previewUrl &&
+        !next[slotIndex].file?.name.toLowerCase().endsWith('.pdf')
+      ) {
+        URL.revokeObjectURL(next[slotIndex].previewUrl);
       }
-    } else {
-      if (isPdf) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(
-          isEs
-            ? 'Archivo PDF cargado para extracción de imágenes'
-            : 'PDF file loaded for image extraction',
-        );
-      } else {
-        toast.error(
-          isEs ? 'Por favor selecciona un archivo PDF (.pdf)' : 'Please select a PDF file (.pdf)',
-        );
+      next[slotIndex] = {
+        id: slotIndex,
+        file: null,
+        previewUrl: null,
+        thumbnailUrl: null,
+        totalPages: 0,
+        activePage: 1,
+        pageDataUrls: {},
+      };
+      return next;
+    });
+
+    if (activeSlotIndex === slotIndex) {
+      const otherSlot = slots.find((s, idx) => idx !== slotIndex && s.file !== null);
+      if (otherSlot) {
+        setActiveSlotIndex(otherSlot.id);
       }
     }
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (!bytes || bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  const handleClearAllSlots = () => {
+    slots.forEach((s) => {
+      if (s.previewUrl && !s.file?.name.toLowerCase().endsWith('.pdf')) {
+        URL.revokeObjectURL(s.previewUrl);
+      }
+    });
+    setSlots([
+      {
+        id: 0,
+        file: null,
+        previewUrl: null,
+        thumbnailUrl: null,
+        totalPages: 0,
+        activePage: 1,
+        pageDataUrls: {},
+      },
+      {
+        id: 1,
+        file: null,
+        previewUrl: null,
+        thumbnailUrl: null,
+        totalPages: 0,
+        activePage: 1,
+        pageDataUrls: {},
+      },
+      {
+        id: 2,
+        file: null,
+        previewUrl: null,
+        thumbnailUrl: null,
+        totalPages: 0,
+        activePage: 1,
+        pageDataUrls: {},
+      },
+    ]);
+    setActiveSlotIndex(0);
+    setCompletedResult(null);
+    setHeaderHidden(false);
   };
 
   const handleSwitchMode = (newMode: ConversionDirection) => {
     cancelRenderRef.current = true;
+    handleClearAllSlots();
     setMode(newMode);
-    setFile(null);
+    setFileInput(null);
     setGlobalFile(null);
     setDownloadUrl(null);
     setDownloadFilename('');
@@ -362,15 +621,10 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     setHeaderHidden(false);
   };
 
+  const setFileInput = (_: unknown) => {};
+
   const handleRemoveFile = () => {
-    cancelRenderRef.current = true;
-    setFile(null);
-    setGlobalFile(null);
-    setDownloadUrl(null);
-    setDownloadFilename('');
-    setCompletedResult(null);
-    setHeaderHidden(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    handleClearAllSlots();
   };
 
   // CONTROLADORES DE SELECCIÓN DE PÁGINAS
@@ -408,8 +662,12 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     setPageSelectionMode('custom');
   };
 
-  const executeConversion = async () => {
-    if (!file) return;
+  const executeConversion = async (onlyActiveFile: boolean = false) => {
+    const readySlots =
+      onlyActiveFile && file
+        ? slots.filter((s) => s.id === activeSlotIndex && s.file !== null)
+        : slots.filter((s) => s.file !== null);
+    if (readySlots.length === 0) return;
     if (mode === 'pdf-to-jpg' && targetPages.length === 0) {
       toast.error(
         isEs
@@ -428,15 +686,18 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
       if (mode === 'jpg-to-pdf') {
         setProgressMsg(
           isEs
-            ? 'Procesando imagen a PDF con el motor seleccionado...'
-            : 'Processing image to PDF with selected engine...',
+            ? `Procesando ${readySlots.length} imagen(es) a PDF con el motor seleccionado...`
+            : `Processing ${readySlots.length} image(s) to PDF with selected engine...`,
         );
 
-        if (conversionEngine === 'adobe' || conversionEngine === 'cloudconvert') {
+        if (
+          readySlots.length === 1 &&
+          (conversionEngine === 'adobe' || conversionEngine === 'cloudconvert')
+        ) {
           try {
             resultBlob = await convertWithApi(
               '/api/convert/jpg-to-pdf',
-              file,
+              readySlots[0].file!,
               { engine: conversionEngine },
               (pct, msg) => {
                 setProgressPercent(pct);
@@ -452,36 +713,39 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
 
         if (!localUrl) {
           const pdfDoc = await PDFDocument.create();
-          const arrayBuffer = await file.arrayBuffer();
-          const isPng = file.name.toLowerCase().endsWith('.png');
-
-          let embeddedImage;
-          if (isPng) {
-            embeddedImage = await pdfDoc.embedPng(arrayBuffer);
-          } else {
-            embeddedImage = await pdfDoc.embedJpg(arrayBuffer);
-          }
-
-          const imgWidth = embeddedImage.width;
-          const imgHeight = embeddedImage.height;
-
           let margin = 0;
           if (marginOption === 'small') margin = 20;
           if (marginOption === 'big') margin = 40;
 
-          let page;
-          if (autoRotate && imgWidth > imgHeight) {
-            page = pdfDoc.addPage([imgWidth + margin * 2, imgHeight + margin * 2]);
-          } else {
-            page = pdfDoc.addPage([imgWidth + margin * 2, imgHeight + margin * 2]);
-          }
+          for (let i = 0; i < readySlots.length; i++) {
+            const currentFile = readySlots[i].file!;
+            const pct = Math.round(15 + ((i + 1) / readySlots.length) * 70);
+            setProgressPercent(pct);
+            setProgressMsg(
+              isEs
+                ? `Incrustando imagen ${i + 1} de ${readySlots.length} (${currentFile.name})...`
+                : `Embedding image ${i + 1} of ${readySlots.length} (${currentFile.name})...`,
+            );
 
-          page.drawImage(embeddedImage, {
-            x: margin,
-            y: margin,
-            width: imgWidth,
-            height: imgHeight,
-          });
+            const { bytes, format } = await getEmbeddableImageBytes(currentFile);
+            let embeddedImage;
+            if (format === 'png') {
+              embeddedImage = await pdfDoc.embedPng(bytes);
+            } else {
+              embeddedImage = await pdfDoc.embedJpg(bytes);
+            }
+
+            const imgWidth = embeddedImage.width;
+            const imgHeight = embeddedImage.height;
+
+            const page = pdfDoc.addPage([imgWidth + margin * 2, imgHeight + margin * 2]);
+            page.drawImage(embeddedImage, {
+              x: margin,
+              y: margin,
+              width: imgWidth,
+              height: imgHeight,
+            });
+          }
 
           setProgressPercent(85);
           const pdfBytes = await pdfDoc.save();
@@ -489,7 +753,12 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
           localUrl = URL.createObjectURL(resultBlob);
         }
 
-        const outName = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
+        const baseName = readySlots[0].file!.name.replace(/\.[^/.]+$/, '');
+        const outName =
+          readySlots.length === 1
+            ? `${baseName}.pdf`
+            : `${baseName}_Combinado_${readySlots.length}_imagenes.pdf`;
+
         setDownloadFilename(outName);
         setDownloadUrl(localUrl);
 
@@ -500,8 +769,10 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             fileSize: formatFileSize(resultBlob.size),
             rawBlob: resultBlob,
             outputFormat: 'pdf',
-            originalSize: formatFileSize(file.size),
-            itemCount: 1,
+            originalSize: formatFileSize(
+              readySlots.reduce((acc, s) => acc + (s.file?.size || 0), 0),
+            ),
+            itemCount: readySlots.length,
           });
           setHeaderHidden(true);
           window.scrollTo(0, 0);
@@ -512,102 +783,43 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
           isEs ? '¡Imagen convertida a PDF con éxito!' : 'Image converted to PDF successfully!',
         );
       } else {
-        // MODO PDF A IMÁGENES (JPG / PNG / WEBP) CON SELECTOR DE PÁGINAS
-        const totalToConvert = targetPages.length;
-        setProgressMsg(
-          isEs
-            ? `Inicializando renderizado de ${totalToConvert} páginas...`
-            : `Initializing render for ${totalToConvert} pages...`,
-        );
-        await new Promise((r) => setTimeout(r, 60));
-        setProgressPercent(15);
-
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-        const arrayBuffer = await file.arrayBuffer();
-        const pdfDoc = await pdfjsLib.getDocument({
-          data: arrayBuffer.slice(0),
-          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-          cMapPacked: true,
-        }).promise;
-
-        const scaleVal = dpiQuality === '300dpi' ? 3.0 : dpiQuality === '72dpi' ? 1.0 : 2.0;
-        const mimeType =
-          imgFormat === 'png' ? 'image/png' : imgFormat === 'webp' ? 'image/webp' : 'image/jpeg';
-        const ext = imgFormat === 'jpeg' ? 'jpg' : imgFormat;
-        const baseName = file.name.replace(/\.[^/.]+$/, '');
-
-        if (totalToConvert === 1) {
-          // SOLO 1 PÁGINA SELECCIONADA -> DESCARGA DIRECTA DE LA IMAGEN
-          const pageNum = targetPages[0];
+        // MODO PDF A IMÁGENES (HASTA 3 PDFs)
+        if (readySlots.length === 1) {
+          // Si solo hay 1 PDF cargado, usamos el flujo exacto original
+          const currentFile = readySlots[0].file!;
+          const totalToConvert = targetPages.length;
           setProgressMsg(
             isEs
-              ? `Renderizando página ${pageNum} a ${dpiQuality}...`
-              : `Rendering page ${pageNum} at ${dpiQuality}...`,
+              ? `Inicializando renderizado de ${totalToConvert} páginas...`
+              : `Initializing render for ${totalToConvert} pages...`,
           );
-          setProgressPercent(60);
+          await new Promise((r) => setTimeout(r, 60));
+          setProgressPercent(15);
 
-          const page = await pdfDoc.getPage(pageNum);
-          const viewport = page.getViewport({ scale: scaleVal });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
+          const pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-          if (ctx) {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
+          const arrayBuffer = await currentFile.arrayBuffer();
+          const pdfDoc = await pdfjsLib.getDocument({
+            data: arrayBuffer.slice(0),
+            cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+            cMapPacked: true,
+          }).promise;
 
-            resultBlob = await new Promise<Blob | null>((resolve) => {
-              canvas.toBlob((b) => resolve(b), mimeType, imageQuality);
-            });
-            if (resultBlob) {
-              localUrl = URL.createObjectURL(resultBlob);
-            }
-          }
+          const scaleVal = dpiQuality === '300dpi' ? 3.0 : dpiQuality === '72dpi' ? 1.0 : 2.0;
+          const mimeType =
+            imgFormat === 'png' ? 'image/png' : imgFormat === 'webp' ? 'image/webp' : 'image/jpeg';
+          const ext = imgFormat === 'jpeg' ? 'jpg' : imgFormat;
+          const baseName = currentFile.name.replace(/\.[^/.]+$/, '');
 
-          const outName = `${baseName}_Pagina_${pageNum}.${ext}`;
-          setDownloadFilename(outName);
-          setDownloadUrl(localUrl);
-
-          if (resultBlob && localUrl) {
-            setCompletedResult({
-              downloadUrl: localUrl,
-              filename: outName,
-              fileSize: formatFileSize(resultBlob.size),
-              rawBlob: resultBlob,
-              outputFormat: ext,
-              originalSize: formatFileSize(file.size),
-              itemCount: 1,
-            });
-            setHeaderHidden(true);
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-          }
-          toast.success(
-            isEs
-              ? `¡Página ${pageNum} exportada a ${ext.toUpperCase()} con éxito!`
-              : `Page ${pageNum} exported to ${ext.toUpperCase()} successfully!`,
-          );
-        } else {
-          // MÚLTIPLES PÁGINAS SELECCIONADAS -> EMPAQUETADO EN ARCHIVO ZIP
-          const zip = new JSZip();
-          const imgFolder = zip.folder('imagenes') || zip;
-
-          for (let idx = 0; idx < totalToConvert; idx++) {
-            const pageNum = targetPages[idx];
-            const pct = Math.round(15 + ((idx + 1) / totalToConvert) * 75);
-            setProgressPercent(pct);
+          if (totalToConvert === 1) {
+            const pageNum = targetPages[0];
             setProgressMsg(
               isEs
-                ? `Renderizando pág. ${idx + 1} de ${totalToConvert} (Pág. ${pageNum} a ${dpiQuality})...`
-                : `Rendering page ${idx + 1} of ${totalToConvert} (Page ${pageNum} at ${dpiQuality})...`,
+                ? `Renderizando página ${pageNum} a ${dpiQuality}...`
+                : `Rendering page ${pageNum} at ${dpiQuality}...`,
             );
+            setProgressPercent(60);
 
             const page = await pdfDoc.getPage(pageNum);
             const viewport = page.getViewport({ scale: scaleVal });
@@ -623,132 +835,256 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                 typeof page.render
               >[0]).promise;
 
-              const pageBlob = await new Promise<Blob | null>((resolve) => {
+              resultBlob = await new Promise<Blob | null>((resolve) => {
                 canvas.toBlob((b) => resolve(b), mimeType, imageQuality);
               });
-
-              if (pageBlob) {
-                const padNum = String(pageNum).padStart(String(totalPages).length, '0');
-                imgFolder.file(`${baseName}_Pagina_${padNum}.${ext}`, pageBlob);
+              if (resultBlob) {
+                localUrl = URL.createObjectURL(resultBlob);
               }
             }
-            await new Promise((r) => setTimeout(r, 10));
-          }
 
-          setProgressMsg(
-            isEs
-              ? 'Empaquetando archivo ZIP con todas las imágenes...'
-              : 'Packaging ZIP archive with all images...',
-          );
-          setProgressPercent(95);
+            const outName = `${baseName}_Pagina_${pageNum}.${ext}`;
+            setDownloadFilename(outName);
+            setDownloadUrl(localUrl);
 
-          resultBlob = await zip.generateAsync({ type: 'blob' });
-          localUrl = URL.createObjectURL(resultBlob);
+            if (resultBlob && localUrl) {
+              setCompletedResult({
+                downloadUrl: localUrl,
+                filename: outName,
+                fileSize: formatFileSize(resultBlob.size),
+                rawBlob: resultBlob,
+                outputFormat: ext,
+                originalSize: formatFileSize(currentFile.size),
+                itemCount: 1,
+              });
+              setHeaderHidden(true);
+              window.scrollTo(0, 0);
+              document.documentElement.scrollTop = 0;
+              document.body.scrollTop = 0;
+            }
+            toast.success(
+              isEs
+                ? `¡Página ${pageNum} exportada a ${ext.toUpperCase()} con éxito!`
+                : `Page ${pageNum} exported to ${ext.toUpperCase()} successfully!`,
+            );
+          } else {
+            const zip = new JSZip();
+            const imgFolder = zip.folder('imagenes') || zip;
 
-          const outName = `${baseName}_Imagenes_${ext.toUpperCase()}.zip`;
-          setDownloadFilename(outName);
-          setDownloadUrl(localUrl);
+            for (let idx = 0; idx < totalToConvert; idx++) {
+              const pageNum = targetPages[idx];
+              const pct = Math.round(15 + ((idx + 1) / totalToConvert) * 75);
+              setProgressPercent(pct);
+              setProgressMsg(
+                isEs
+                  ? `Renderizando pág. ${idx + 1} de ${totalToConvert} (Pág. ${pageNum} a ${dpiQuality})...`
+                  : `Rendering page ${idx + 1} of ${totalToConvert} (Page ${pageNum} at ${dpiQuality})...`,
+              );
 
-          if (resultBlob && localUrl) {
+              const page = await pdfDoc.getPage(pageNum);
+              const viewport = page.getViewport({ scale: scaleVal });
+              const canvas = document.createElement('canvas');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              const ctx = canvas.getContext('2d');
+
+              if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                  typeof page.render
+                >[0]).promise;
+
+                const blob = await new Promise<Blob | null>((resolve) => {
+                  canvas.toBlob((b) => resolve(b), mimeType, imageQuality);
+                });
+                if (blob) {
+                  const arrayBuf = await blob.arrayBuffer();
+                  imgFolder.file(`${baseName}_Pagina_${pageNum}.${ext}`, arrayBuf);
+                }
+              }
+            }
+
+            setProgressPercent(95);
+            setProgressMsg(
+              isEs ? 'Generando paquete ZIP descargable...' : 'Packaging downloadable ZIP...',
+            );
+            const zipBlob = await zip.generateAsync({
+              type: 'blob',
+              compression: 'DEFLATE',
+              compressionOptions: { level: 6 },
+            });
+            localUrl = URL.createObjectURL(zipBlob);
+            resultBlob = zipBlob;
+
+            const outName = `${baseName}_Imagenes_${totalToConvert}_Pags.zip`;
+            setDownloadFilename(outName);
+            setDownloadUrl(localUrl);
+
             setCompletedResult({
               downloadUrl: localUrl,
               filename: outName,
-              fileSize: formatFileSize(resultBlob.size),
-              rawBlob: resultBlob,
+              fileSize: formatFileSize(zipBlob.size),
+              rawBlob: zipBlob,
               outputFormat: 'zip',
-              originalSize: formatFileSize(file.size),
+              originalSize: formatFileSize(currentFile.size),
               itemCount: totalToConvert,
             });
             setHeaderHidden(true);
             window.scrollTo(0, 0);
             document.documentElement.scrollTop = 0;
             document.body.scrollTop = 0;
+
+            toast.success(
+              isEs
+                ? `¡${totalToConvert} páginas exportadas a ZIP con éxito!`
+                : `${totalToConvert} pages exported to ZIP successfully!`,
+            );
           }
+        } else {
+          // Múltiples PDFs en paralelo
+          const zip = new JSZip();
+          let totalRendered = 0;
+          const pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+          const scaleVal = dpiQuality === '300dpi' ? 3.0 : dpiQuality === '72dpi' ? 1.0 : 2.0;
+          const mimeType =
+            imgFormat === 'png' ? 'image/png' : imgFormat === 'webp' ? 'image/webp' : 'image/jpeg';
+          const ext = imgFormat === 'jpeg' ? 'jpg' : imgFormat;
+
+          for (let sIdx = 0; sIdx < readySlots.length; sIdx++) {
+            const currentSlot = readySlots[sIdx];
+            const currentFile = currentSlot.file!;
+            const baseName = currentFile.name.replace(/\.[^/.]+$/, '');
+            const arrayBuffer = await currentFile.arrayBuffer();
+
+            const pdfDoc = await pdfjsLib.getDocument({
+              data: arrayBuffer.slice(0),
+              cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+              cMapPacked: true,
+            }).promise;
+
+            const docTotalPages = pdfDoc.numPages;
+            const pagesToExport =
+              currentSlot.id === activeSlotIndex && targetPages.length > 0
+                ? targetPages
+                : Array.from({ length: docTotalPages }, (_, i) => i + 1);
+
+            const targetFolder = zip.folder(baseName) || zip;
+
+            for (let pIdx = 0; pIdx < pagesToExport.length; pIdx++) {
+              const pNum = pagesToExport[pIdx];
+              totalRendered++;
+              const pct = Math.min(
+                92,
+                Math.round(20 + (totalRendered / (readySlots.length * 4)) * 70),
+              );
+              setProgressPercent(pct);
+              setProgressMsg(
+                isEs
+                  ? `[${currentFile.name}] Exportando pág. ${pNum}...`
+                  : `[${currentFile.name}] Exporting page ${pNum}...`,
+              );
+
+              const page = await pdfDoc.getPage(pNum);
+              const viewport = page.getViewport({ scale: scaleVal });
+              const canvas = document.createElement('canvas');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                  typeof page.render
+                >[0]).promise;
+              }
+
+              const imgBlob: Blob | null = await new Promise<Blob | null>((resolve) => {
+                canvas.toBlob((b) => resolve(b), mimeType, imageQuality);
+              });
+
+              if (imgBlob) {
+                const imgBytes = await imgBlob.arrayBuffer();
+                targetFolder.file(`Pagina_${pNum}.${ext}`, imgBytes);
+              }
+            }
+          }
+
+          setProgressPercent(95);
+          setProgressMsg(isEs ? 'Comprimiendo archivo ZIP...' : 'Compressing ZIP package...');
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          localUrl = URL.createObjectURL(zipBlob);
+
+          const outName = `Imagenes_Exportadas_${readySlots.length}_PDFs.zip`;
+          setDownloadFilename(outName);
+          setDownloadUrl(localUrl);
+
+          setCompletedResult({
+            downloadUrl: localUrl,
+            filename: outName,
+            fileSize: formatFileSize(zipBlob.size),
+            rawBlob: zipBlob,
+            outputFormat: 'zip',
+            originalSize: formatFileSize(
+              readySlots.reduce((acc, s) => acc + (s.file?.size || 0), 0),
+            ),
+            itemCount: totalRendered,
+          });
+          setHeaderHidden(true);
+          window.scrollTo(0, 0);
+
           toast.success(
             isEs
-              ? `¡${totalToConvert} páginas exportadas y empaquetadas en ZIP con éxito!`
-              : `Successfully exported and zipped ${totalToConvert} pages!`,
+              ? `¡${totalRendered} imágenes exportadas a ZIP con éxito!`
+              : `${totalRendered} images exported to ZIP successfully!`,
           );
         }
       }
-
-      setProgressPercent(100);
-    } catch (error) {
-      console.error(error);
-      toast.error(isEs ? 'Error en la conversión de imagen.' : 'Image conversion error.');
+    } catch (err) {
+      console.error(err);
+      toast.error(isEs ? 'Error en la conversión.' : 'Conversion error.');
     } finally {
       setIsProcessing(false);
+      setProgressPercent(0);
       setProgressMsg('');
     }
   };
 
   return (
-    <div
-      ref={topHeaderRef}
-      className="w-full flex flex-col font-mono text-white selection:bg-white selection:text-black"
-    >
+    <div className="w-full font-sans">
+      {/* INPUTS ESPECÍFICOS PARA LAS 3 CAJAS INDEPENDIENTES */}
+      {slots.map((s, idx) => (
+        <input
+          key={s.id}
+          type="file"
+          accept={mode === 'jpg-to-pdf' ? '.jpg,.jpeg,.png,.webp' : '.pdf'}
+          className="hidden"
+          ref={slotInputRefs[idx]}
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              loadFilesIntoSlots(e.target.files, idx);
+            }
+            e.target.value = '';
+          }}
+        />
+      ))}
+
+      {/* INPUT FILE GLOBAL */}
       <input
-        type="file"
-        accept={
-          mode === 'jpg-to-pdf'
-            ? '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp'
-            : '.pdf, application/pdf'
-        }
-        className="hidden"
-        onChange={handleFileChange}
         ref={fileInputRef}
-        disabled={isProcessing}
+        type="file"
+        multiple
+        accept={mode === 'jpg-to-pdf' ? '.jpg,.jpeg,.png,.webp' : '.pdf'}
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            loadFilesIntoSlots(e.target.files);
+          }
+          e.target.value = '';
+        }}
       />
-
-      {/* HEADER SUPERIOR UNIFICADO */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden">
-        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-        <div className="flex items-center gap-4">
-          <Link
-            href="/convertir"
-            onClick={() => setHeaderHidden(false)}
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
-          </Link>
-          <div className="hidden sm:block h-5 w-px bg-zinc-700" />
-          <div className="flex flex-col">
-            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-              {isEs
-                ? '006 / EXTRACCIÓN Y CONVERSIÓN DE IMÁGENES JPG Y PDF (CONVERSOR DUAL 2 EN 1)'
-                : '006 / JPG & PDF IMAGE EXTRACTION & CONVERSION (2-IN-1 DUAL CONVERTER)'}
-            </span>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
-              <ImageIcon className="w-6 h-6 text-white flex-shrink-0" />
-              {mode === 'jpg-to-pdf'
-                ? isEs
-                  ? 'CONVERTIR IMAGEN A PDF'
-                  : 'CONVERT IMAGE TO PDF'
-                : isEs
-                  ? 'CONVERTIR PDF A JPG (CONVERSOR DUAL 2 EN 1)'
-                  : 'CONVERT PDF TO JPG (2-IN-1 DUAL CONVERTER)'}
-            </h1>
-          </div>
-        </div>
-
-        {(file || completedResult) && (
-          <div className="flex items-center gap-3">
-            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
-              <FileText className="w-4 h-4 text-zinc-300" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
-                {completedResult ? completedResult.filename : file?.name}
-              </span>
-            </div>
-            <button
-              onClick={handleRemoveFile}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
-              title={isEs ? 'Quitar archivo' : 'Remove file'}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
 
       {completedResult ? (
         /* ── PANTALLA DE ÉXITO DEDICADA ── */
@@ -757,7 +1093,42 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
+          {/* SECCIÓN SUPERIOR CON BOTÓN VOLVER Y NOMBRE DE LA HERRAMIENTA (COMO EN LA SEGUNDA IMAGEN) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-wrap items-center justify-between gap-4 font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+            <div className="flex items-center gap-4">
+              <Link
+                href="/convertir"
+                className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
+              </Link>
+              <div className="hidden sm:block h-5 w-px bg-zinc-700" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+                  {mode === 'pdf-to-jpg'
+                    ? isEs
+                      ? '001 / EXTRACCIÓN Y RASTERIZADO'
+                      : '001 / EXTRACTION & RASTER'
+                    : isEs
+                      ? '001 / EMPAQUETADO VECTORIAL'
+                      : '001 / VECTOR PACKAGING'}
+                </span>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+                  <Sparkles className="w-6 h-6 text-white flex-shrink-0" />
+                  {mode === 'pdf-to-jpg'
+                    ? isEs
+                      ? 'CONVERTIR PDF A IMAGEN'
+                      : 'CONVERT PDF TO IMAGE'
+                    : isEs
+                      ? 'CONVERTIR IMAGEN A PDF'
+                      : 'CONVERT IMAGE TO PDF'}
+                </h1>
+              </div>
+            </div>
+          </div>
+
+          {/* BANNER DE RESULTADO Y MÉTRICAS */}
           <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -808,11 +1179,11 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
                 <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
+                  {isEs ? 'Archivos Procesados' : 'Processed Files'}
                 </span>
                 <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
                   <AnimatedNumber value={completedResult.itemCount || 1} />{' '}
-                  {isEs ? 'archivos' : 'files'}
+                  {isEs ? 'elemento(s)' : 'file(s)'}
                 </span>
               </div>
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
@@ -826,7 +1197,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             </div>
           </div>
 
-          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
+          {/* TARJETA DE DESCARGA ÉXITO */}
           <DownloadSuccessCard
             downloadUrl={completedResult.downloadUrl}
             filename={completedResult.filename}
@@ -834,18 +1205,79 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             outputFormat={completedResult.outputFormat}
             rawBlob={completedResult.rawBlob}
             currentToolId="jpg-pdf"
-            onReset={handleRemoveFile}
+            onReset={handleClearAllSlots}
           />
         </motion.div>
       ) : (
         <>
-          {/* SELECTOR DUAL DE MODO 2 EN 1 */}
-          <div className="flex items-center justify-center mb-6 font-mono">
+          {/* HEADER SUPERIOR UNIFICADO (COMO EN PDF-TEXTO) */}
+          <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+            <div className="flex items-center gap-4">
+              <Link
+                href="/convertir"
+                onClick={() => setHeaderHidden(false)}
+                className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
+              </Link>
+              <div className="hidden sm:block h-5 w-px bg-zinc-700" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+                  {mode === 'pdf-to-jpg'
+                    ? isEs
+                      ? '001 / EXTRACCIÓN Y RASTERIZADO (CONVERSOR DUAL 2 EN 1)'
+                      : '001 / EXTRACTION & RASTER (2-IN-1 DUAL CONVERTER)'
+                    : isEs
+                      ? '001 / EMPAQUETADO VECTORIAL (CONVERSOR DUAL 2 EN 1)'
+                      : '001 / VECTOR PACKAGING (2-IN-1 DUAL CONVERTER)'}
+                </span>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+                  {mode === 'pdf-to-jpg' ? (
+                    <JpgIcon className="w-6 h-6 rounded-sm flex-shrink-0" />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-white rounded-sm flex-shrink-0" />
+                  )}
+                  {mode === 'pdf-to-jpg'
+                    ? isEs
+                      ? 'CONVERTIR PDF A IMAGEN (CONVERSOR DUAL 2 EN 1)'
+                      : 'CONVERT PDF TO IMAGE (2-IN-1 DUAL CONVERTER)'
+                    : isEs
+                      ? 'CONVERTIR IMAGEN A PDF (CONVERSOR DUAL 2 EN 1)'
+                      : 'CONVERT IMAGE TO PDF (2-IN-1 DUAL CONVERTER)'}
+                </h1>
+              </div>
+            </div>
+
+            {loadedSlots.length > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
+                  <FileText className="w-4 h-4 text-zinc-300" />
+                  <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
+                    {file?.name ||
+                      (isEs
+                        ? `${loadedSlots.length} archivos cargados`
+                        : `${loadedSlots.length} files loaded`)}
+                  </span>
+                </div>
+                <button
+                  onClick={handleClearAllSlots}
+                  className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
+                  title={isEs ? 'Limpiar archivos' : 'Clear files'}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* SELECTOR DE MODO EN CÁPSULAS */}
+          <div className="flex items-center justify-center mb-6 font-mono text-center">
             <div className="bg-[#09090b] border border-zinc-700 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">
               <button
                 type="button"
                 onClick={() => handleSwitchMode('jpg-to-pdf')}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-5 sm:px-6 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   mode === 'jpg-to-pdf'
                     ? 'bg-white text-black shadow-lg scale-105'
                     : 'text-zinc-400 hover:text-white'
@@ -858,242 +1290,369 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
               <button
                 type="button"
                 onClick={() => handleSwitchMode('pdf-to-jpg')}
-                className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-5 sm:px-6 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                   mode === 'pdf-to-jpg'
                     ? 'bg-white text-black shadow-lg scale-105'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 <Repeat className="w-4 h-4" />
-                <span>{isEs ? 'PDF a JPG (.pdf → .jpg)' : 'PDF to JPG (.pdf → .jpg)'}</span>
+                <span>{isEs ? 'PDF a Imagen (.pdf → .jpg)' : 'PDF to JPG (.pdf → .jpg)'}</span>
               </button>
             </div>
           </div>
-
-          {!file ? (
-            /* VISTA DROPZONE VACÍA */
+          {/* ZONA DE CARGA INICIAL (SI NINGUNA CAJA TIENE ARCHIVO) */}
+          {loadedSlots.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  loadFilesIntoSlots(e.dataTransfer.files);
+                }
+              }}
+              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700 hover:border-zinc-500 rounded-3xl p-10 sm:p-14 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[460px]"
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-                <UploadCloud className="w-12 h-12 text-white" />
+
+              <div className="p-6 bg-zinc-900 border border-zinc-700 rounded-2xl text-purple-400 group-hover:scale-110 group-hover:border-purple-400/50 transition-all duration-300 shadow-xl mb-4">
+                {mode === 'jpg-to-pdf' ? (
+                  <ImageIcon className="w-12 h-12 text-purple-400" />
+                ) : (
+                  <JpgIcon className="w-12 h-12" />
+                )}
               </div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+
+              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight mb-2">
                 {mode === 'jpg-to-pdf'
                   ? isEs
-                    ? 'CONVERTIR IMÁGENES A PDF'
-                    : 'CONVERT IMAGES TO PDF'
+                    ? 'Arrastra hasta 3 imágenes aquí'
+                    : 'Drop up to 3 images here'
                   : isEs
-                    ? 'CONVERTIR PDF A IMÁGENES JPG (CONVERSOR DUAL 2 EN 1)'
-                    : 'CONVERT PDF TO JPG IMAGES (2-IN-1 DUAL CONVERTER)'}
+                    ? 'Arrastra hasta 3 PDFs aquí'
+                    : 'Drop up to 3 PDFs here'}
               </h2>
-              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono max-w-md mb-6">
                 {mode === 'jpg-to-pdf'
                   ? isEs
-                    ? 'Transforma imágenes (JPG, PNG, WebP) en documentos PDF optimizados.'
-                    : 'Transform images (JPG, PNG, WebP) into optimized PDF documents.'
+                    ? 'Admite imágenes JPG, PNG o WebP. Se habilitarán 3 cajas independientes para procesar tus archivos a la vez.'
+                    : 'Supports JPG, PNG, or WebP images. 3 independent boxes will be available to process at once.'
                   : isEs
-                    ? 'Extrae y renderiza cada página de tu PDF como imagen JPG/PNG/WebP en alta resolución con selector de páginas 100% en RAM.'
-                    : 'Extract and render PDF pages as high-resolution JPG/PNG/WebP images with page selector 100% in RAM.'}
+                    ? 'Sube hasta 3 archivos PDF. Previsualiza la página a mitad de tamaño y exporta a JPG/PNG.'
+                    : 'Upload up to 3 PDF files. Preview pages at half size and export to JPG/PNG.'}
               </p>
+
               <button
                 type="button"
-                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+                className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-3 rounded-full font-sans text-xs font-bold transition-all shadow-lg hover:shadow-purple-500/20 cursor-pointer"
               >
-                <Plus className="w-4 h-4 text-black" />
+                <FilePlus className="w-4 h-4 text-black" />
                 <span>
                   {mode === 'jpg-to-pdf'
                     ? isEs
-                      ? 'Seleccionar Imagen (.jpg/.png/.webp)'
-                      : 'Select Image (.jpg/.png/.webp)'
+                      ? 'Seleccionar Imágenes (Hasta 3)'
+                      : 'Select Images (Up to 3)'
                     : isEs
-                      ? 'Seleccionar Archivo PDF'
-                      : 'Select PDF File'}
+                      ? 'Seleccionar PDFs (Hasta 3)'
+                      : 'Select PDFs (Up to 3)'}
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-white" />
+              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700/80 text-zinc-400 text-[11px] font-mono rounded-full mt-6 shadow-sm">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
                 <span>
                   {isEs
-                    ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                    : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+                    ? '3 CAJAS INDEPENDIENTES • VISTA AL 50% • 100% LOCAL'
+                    : '3 INDEPENDENT BOXES • 50% PREVIEW • 100% LOCAL'}
                 </span>
               </div>
             </motion.div>
           ) : (
-            /* VISTA PRINCIPAL CON PREVISUALIZACIÓN Y PANEL DE CONTROL */
+            /* ── PANTALLA PRINCIPAL: VISTA PREVIA (SECCIÓN 1) + PANEL DE CONTROL (SECCIÓN 2) ── */
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col gap-6 w-full items-center"
             >
-              {/* SECCIÓN 1: VISOR SUPERIOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden h-[540px] max-h-[540px]">
+              {/* ═════════════════════════════════════════════════════════════════════════════
+                  SECCIÓN 1: VISTA PREVIA AL 50% (IZQUIERDA) + 3 CAJAS INDEPENDIENTES (DERECHA)
+                 ═════════════════════════════════════════════════════════════════════════════ */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+                {/* BARRA SUPERIOR DE LA SECCIÓN 1 */}
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
-                      {isEs
-                        ? '001 / VISOR Y SELECCIÓN DE PÁGINAS'
-                        : '001 / VIEWER & PAGE SELECTION'}
+                      {isEs ? '001 / VISTA PREVIA (50%) Y ARCHIVOS' : '001 / PREVIEW (50%) & FILES'}
                     </span>
                     <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
                     <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
-                      {file?.name}
+                      {file ? file.name : isEs ? 'Sin archivo seleccionado' : 'No file selected'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
-                    <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
-                    {totalPages}{' '}
-                    {mode === 'jpg-to-pdf'
-                      ? isEs
-                        ? 'a PDF'
-                        : 'to PDF'
-                      : isEs
-                        ? 'a Imagen'
-                        : 'to Image'}
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                      <span className="font-bold font-mono text-white">{loadedSlots.length}</span> /
+                      3 {isEs ? 'cargados' : 'loaded'}
+                    </div>
+
+                    {loadedSlots.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllSlots}
+                        className="text-zinc-500 hover:text-red-400 text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 ml-2"
+                        title={isEs ? 'Limpiar todas las cajas' : 'Clear all boxes'}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">
+                          {isEs ? 'Limpiar todo' : 'Clear all'}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* CONTENEDOR PRINCIPAL SPLIT */}
-                <div className="flex-1 flex flex-row gap-4 min-h-0 overflow-hidden bg-[#121217] rounded-2xl border border-zinc-700/80 shadow-inner">
-                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  <div className="w-28 sm:w-36 md:w-44 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
-                      <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
-                        {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={
-                          targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
-                        }
-                        className="text-[9px] text-zinc-300 hover:text-white font-bold cursor-pointer"
-                        title={
-                          targetPages.length === totalPages
-                            ? isEs
-                              ? 'Deseleccionar todas'
-                              : 'Deselect all'
-                            : isEs
-                              ? 'Seleccionar todas'
-                              : 'Select all'
-                        }
-                      >
-                        {targetPages.length === totalPages
-                          ? isEs
-                            ? 'Ninguna'
-                            : 'None'
-                          : isEs
-                            ? 'Todas'
-                            : 'All'}
-                      </button>
-                    </div>
+                {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
+                  {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
+                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                    {file ? (
+                      <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                        {/* HOJA EN VISTA PREVIA REDUCIDA AL 50% (SÚPER MINIATURA COMPACTA) */}
+                        <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
+                          {mode === 'pdf-to-jpg' || file.name.toLowerCase().endsWith('.pdf') ? (
+                            activeSlot.pageDataUrls[activePage] ? (
+                              <img
+                                src={activeSlot.pageDataUrls[activePage]}
+                                alt={`Pág ${activePage}`}
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : activeSlot.thumbnailUrl ? (
+                              <img
+                                src={activeSlot.thumbnailUrl}
+                                alt="Pág 1"
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                                <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                                <span className="text-[11px] font-mono font-bold">
+                                  Pág. {activePage}
+                                </span>
+                              </div>
+                            )
+                          ) : activeSlot.previewUrl ? (
+                            <img
+                              src={activeSlot.previewUrl}
+                              alt="Vista previa"
+                              className="w-full h-full object-contain select-none"
+                            />
+                          ) : null}
 
-                    {isRendering ? (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                        <Loader2 className="w-5 h-5 animate-spin text-white" />
-                        <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
-                      </div>
-                    ) : totalPages > 0 ? (
-                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                        const isIncluded = targetPageSet.has(pageNum);
-                        const isActive = activePage === pageNum;
+                          {/* INDICADOR DE PÁGINA EN LA ESQUINA */}
+                          {totalPages > 0 && (
+                            <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                              #{activePage} / {totalPages}
+                            </div>
+                          )}
+                        </div>
 
-                        return (
-                          <div
-                            key={pageNum}
-                            onClick={() => setActivePage(pageNum)}
-                            className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
-                              isActive
-                                ? 'border-purple-400 ring-2 ring-purple-400/40 bg-zinc-800'
-                                : isIncluded
-                                  ? 'border-zinc-600 hover:border-zinc-400 bg-zinc-900'
-                                  : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
-                            }`}
-                          >
-                            {/* Checkbox selector */}
+                        {/* CONTROLES COMPACTOS DE PAGINACIÓN DEBAJO DE LA HOJA (SI MULTIPÁGINA) */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
                             <button
                               type="button"
-                              onClick={(e) => togglePageSelection(pageNum, e)}
-                              className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
-                                isIncluded
-                                  ? 'bg-purple-500 text-white shadow-md'
-                                  : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
-                              }`}
-                              title={
-                                isIncluded
-                                  ? isEs
-                                    ? 'Quitar de la conversión'
-                                    : 'Exclude from conversion'
-                                  : isEs
-                                    ? 'Incluir en la conversión'
-                                    : 'Include in conversion'
-                              }
+                              onClick={() => setActivePage(Math.max(1, activePage - 1))}
+                              disabled={activePage <= 1}
+                              className="hover:text-white disabled:opacity-30 cursor-pointer p-0.5"
+                              title={isEs ? 'Página anterior' : 'Previous page'}
                             >
-                              {isIncluded ? (
-                                <Check className="w-3 h-3 stroke-[3] text-white" />
-                              ) : (
-                                <div className="w-3 h-3" />
-                              )}
+                              ◀
                             </button>
-
-                            <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                              {pageDataUrls[pageNum] ? (
-                                <img
-                                  src={pageDataUrls[pageNum]}
-                                  alt={`Pág ${pageNum}`}
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <span className="text-[10px] text-zinc-600 font-mono font-bold">
-                                  #{pageNum}
-                                </span>
-                              )}
-                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded font-bold">
-                                #{pageNum}
-                              </span>
-                            </div>
+                            <span className="font-bold text-white text-[11px]">
+                              {activePage} / {totalPages}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setActivePage(Math.min(totalPages, activePage + 1))}
+                              disabled={activePage >= totalPages}
+                              className="hover:text-white disabled:opacity-30 cursor-pointer p-0.5"
+                              title={isEs ? 'Página siguiente' : 'Next page'}
+                            >
+                              ▶
+                            </button>
                           </div>
-                        );
-                      })
+                        )}
+                      </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
-                        <ImageIcon className="w-5 h-5 text-purple-400" />
-                        <span>{isEs ? 'Modo Imagen' : 'Image Mode'}</span>
+                      /* ESTADO VACÍO CUANDO LA CAJA ACTIVA NO TIENE ARCHIVO */
+                      <div
+                        onClick={() => slotInputRefs[activeSlotIndex]?.current?.click()}
+                        className="flex flex-col items-center justify-center text-center p-6 cursor-pointer group"
+                      >
+                        <div className="w-[200px] h-[280px] border-2 border-dashed border-zinc-700/80 rounded-xl flex flex-col items-center justify-center gap-3 group-hover:border-purple-400/80 group-hover:bg-zinc-900/30 transition-all">
+                          <UploadCloud className="w-8 h-8 text-zinc-600 group-hover:text-purple-400 transition-colors" />
+                          <span className="text-zinc-500 group-hover:text-zinc-300 text-xs font-mono px-4">
+                            {isEs
+                              ? `Cargar archivo en Caja ${activeSlotIndex + 1} para ver aquí al 50%`
+                              : `Upload file in Box ${activeSlotIndex + 1} to view here at 50%`}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* COSTADO DERECHO: VISOR PDF O IMAGEN EN TAMAÑO NORMAL */}
-                  <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
-                    {mode === 'pdf-to-jpg' || (file && file.name.toLowerCase().endsWith('.pdf')) ? (
-                      <PdfPageViewer
-                        file={file}
-                        activePage={activePage}
-                        totalPages={totalPages}
-                        onPageChange={(p) => setActivePage(p)}
-                        pageDataUrls={pageDataUrls}
-                        title={file?.name}
-                        accentColor="purple"
-                      />
-                    ) : imagePreviewUrl ? (
-                      <div className="w-full h-full p-4 flex items-center justify-center">
-                        <img
-                          src={imagePreviewUrl}
-                          alt="Preview"
-                          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                        />
-                      </div>
-                    ) : null}
+                  {/* ── LADO DERECHO: 3 CAJAS INDEPENDIENTES PARA PROCESAR A LA VEZ ── */}
+                  <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                    {slots.map((slot, idx) => {
+                      const isFilled = slot.file !== null;
+                      const isActive = activeSlotIndex === idx;
+
+                      return (
+                        <div
+                          key={slot.id}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                              loadFilesIntoSlots(e.dataTransfer.files, idx);
+                            }
+                          }}
+                          className={`flex-1 min-h-[105px] rounded-2xl p-3 transition-all duration-200 border flex items-center justify-between gap-3 relative ${
+                            isActive && isFilled
+                              ? 'bg-[#181824] border-purple-500 ring-2 ring-purple-500/40 shadow-lg shadow-purple-500/10'
+                              : isFilled
+                                ? 'bg-[#121217] border-zinc-700 hover:border-zinc-500'
+                                : 'bg-[#0e0e12]/60 border-dashed border-zinc-700/80 hover:border-purple-400 hover:bg-zinc-900/40'
+                          }`}
+                        >
+                          {isFilled ? (
+                            <>
+                              {/* Miniatura cuadrada de la caja */}
+                              <div
+                                onClick={() => setActiveSlotIndex(idx)}
+                                className="w-16 h-20 bg-white rounded-lg overflow-hidden border border-zinc-300 flex-shrink-0 flex items-center justify-center cursor-pointer relative shadow group"
+                              >
+                                {slot.thumbnailUrl ? (
+                                  <img
+                                    src={slot.thumbnailUrl}
+                                    alt={`Miniatura ${idx + 1}`}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform select-none"
+                                  />
+                                ) : (
+                                  <FileText className="w-7 h-7 text-purple-600" />
+                                )}
+                              </div>
+
+                              {/* Información del archivo */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-purple-300 border border-zinc-700">
+                                    {isEs ? `Caja ${idx + 1}` : `Box ${idx + 1}`}
+                                  </span>
+                                  {isActive && (
+                                    <span className="text-[9px] font-mono text-purple-300 bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800">
+                                      {isEs ? 'En Pantalla (50%)' : 'On Screen (50%)'}
+                                    </span>
+                                  )}
+                                </div>
+                                <p
+                                  onClick={() => setActiveSlotIndex(idx)}
+                                  className="text-white text-xs font-bold truncate cursor-pointer hover:text-purple-300 transition-colors"
+                                  title={slot.file?.name}
+                                >
+                                  {slot.file?.name}
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono mt-0.5">
+                                  <span>{formatFileSize(slot.file?.size || 0)}</span>
+                                  {slot.totalPages > 1 && (
+                                    <>
+                                      <span>•</span>
+                                      <span>
+                                        {slot.totalPages} {isEs ? 'págs' : 'pages'}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Acciones de la caja */}
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveSlotIndex(idx)}
+                                  className={`p-2 rounded-xl text-xs transition-all cursor-pointer ${
+                                    isActive
+                                      ? 'bg-purple-600 text-white shadow-md'
+                                      : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                                  }`}
+                                  title={isEs ? 'Ver en miniatura al 50%' : 'View at 50%'}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => slotInputRefs[idx]?.current?.click()}
+                                  className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl transition-colors cursor-pointer"
+                                  title={isEs ? 'Cambiar archivo' : 'Change file'}
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleClearSlot(idx, e)}
+                                  className="p-2 bg-zinc-800 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-xl transition-colors cursor-pointer"
+                                  title={isEs ? 'Quitar archivo' : 'Remove file'}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            /* ESTADO VACÍO DE LA CAJA */
+                            <div
+                              onClick={() => slotInputRefs[idx]?.current?.click()}
+                              className="w-full h-full flex items-center justify-center gap-3 cursor-pointer group py-2"
+                            >
+                              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 group-hover:text-purple-400 group-hover:border-purple-400/40 transition-all">
+                                <FilePlus className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold text-zinc-300 group-hover:text-white font-mono block">
+                                  {mode === 'jpg-to-pdf'
+                                    ? isEs
+                                      ? `+ Cargar Imagen ${idx + 1}`
+                                      : `+ Load Image ${idx + 1}`
+                                    : isEs
+                                      ? `+ Cargar PDF ${idx + 1}`
+                                      : `+ Load PDF ${idx + 1}`}
+                                </span>
+                                <span className="text-[10px] text-zinc-500 font-mono">
+                                  {mode === 'jpg-to-pdf' ? 'JPG, PNG, WebP' : 'Archivo PDF'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
-
               {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO EN CUADRÍCULA HORIZONTAL */}
               <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
@@ -1558,42 +2117,95 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                     </div>
                   )}
 
-                  <button
-                    onClick={executeConversion}
-                    disabled={
-                      isProcessing || !file || (mode === 'pdf-to-jpg' && targetPages.length === 0)
-                    }
-                    className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-3.5 rounded-2xl font-sans font-bold text-sm sm:text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-black" />
-                    ) : (
-                      <RefreshCw className="w-5 h-5 text-black" />
-                    )}
-                    <span>
-                      {isProcessing
-                        ? progressMsg
-                        : !file
-                          ? isEs
-                            ? 'Selecciona un archivo'
-                            : 'Select a file'
-                          : mode === 'jpg-to-pdf'
+                  {loadedSlots.length > 1 ? (
+                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+                      {/* BOTÓN PRINCIPAL: CONVERTIR LOS 3 ARCHIVOS A LA VEZ */}
+                      <button
+                        type="button"
+                        onClick={() => executeConversion(false)}
+                        disabled={isProcessing}
+                        className="flex-1 flex items-center justify-center gap-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white py-3.5 px-4 rounded-2xl font-sans font-bold text-sm sm:text-base transition-all shadow-lg hover:shadow-purple-600/30 hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isProcessing ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-white" />
+                        ) : (
+                          <Zap className="w-5 h-5 text-yellow-300 fill-yellow-300" />
+                        )}
+                        <span>
+                          {isProcessing
+                            ? progressMsg
+                            : mode === 'jpg-to-pdf'
+                              ? isEs
+                                ? `⚡ Convertir los ${loadedSlots.length} Archivos a PDF (Combinado) →`
+                                : `⚡ Convert all ${loadedSlots.length} Files to PDF →`
+                              : isEs
+                                ? `⚡ Convertir los ${loadedSlots.length} Archivos a la vez (ZIP) →`
+                                : `⚡ Convert all ${loadedSlots.length} Files at once (ZIP) →`}
+                        </span>
+                      </button>
+
+                      {/* BOTÓN SECUNDARIO: CONVERTIR SOLO EL ARCHIVO ACTIVO */}
+                      <button
+                        type="button"
+                        onClick={() => executeConversion(true)}
+                        disabled={
+                          isProcessing ||
+                          !file ||
+                          (mode === 'pdf-to-jpg' && targetPages.length === 0)
+                        }
+                        className="sm:w-auto px-5 py-3.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 hover:border-zinc-500 rounded-2xl font-sans font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                        title={isEs ? `Procesar solo ${file?.name}` : `Process only ${file?.name}`}
+                      >
+                        <Eye className="w-4 h-4 text-purple-400 shrink-0" />
+                        <span className="truncate max-w-[240px]">
+                          {isEs
+                            ? mode === 'jpg-to-pdf'
+                              ? `Solo esta imagen →`
+                              : `Solo archivo activo (${targetPages.length} pág${targetPages.length === 1 ? '' : 's'}) →`
+                            : mode === 'jpg-to-pdf'
+                              ? `Only this image →`
+                              : `Only active file (${targetPages.length} pg${targetPages.length === 1 ? '' : 's'}) →`}
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => executeConversion(false)}
+                      disabled={
+                        isProcessing || !file || (mode === 'pdf-to-jpg' && targetPages.length === 0)
+                      }
+                      className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-3.5 rounded-2xl font-sans font-bold text-sm sm:text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-black" />
+                      ) : (
+                        <RefreshCw className="w-5 h-5 text-black" />
+                      )}
+                      <span>
+                        {isProcessing
+                          ? progressMsg
+                          : !file
                             ? isEs
-                              ? 'Convertir Imagen a PDF →'
-                              : 'Convert Image to PDF →'
-                            : isEs
-                              ? targetPages.length === 0
-                                ? 'Selecciona al menos 1 página'
-                                : targetPages.length === 1
-                                  ? `Exportar 1 Página a .${imgFormat === 'jpeg' ? 'jpg' : imgFormat} →`
-                                  : `Exportar ${targetPages.length} Páginas a ZIP (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`
-                              : targetPages.length === 0
-                                ? 'Select at least 1 page'
-                                : targetPages.length === 1
-                                  ? `Export 1 Page to .${imgFormat === 'jpeg' ? 'jpg' : imgFormat} →`
-                                  : `Export ${targetPages.length} Pages to ZIP (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`}
-                    </span>
-                  </button>
+                              ? 'Selecciona un archivo'
+                              : 'Select a file'
+                            : mode === 'jpg-to-pdf'
+                              ? isEs
+                                ? 'Convertir Imagen a PDF →'
+                                : 'Convert Image to PDF →'
+                              : isEs
+                                ? targetPages.length === 0
+                                  ? 'Selecciona al menos 1 página'
+                                  : targetPages.length === 1
+                                    ? `Exportar 1 Página a .${imgFormat === 'jpeg' ? 'jpg' : imgFormat} →`
+                                    : `Exportar ${targetPages.length} Páginas a ZIP (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`
+                                : targetPages.length === 0
+                                  ? 'Select at least 1 page'
+                                  : targetPages.length === 1
+                                    ? `Export 1 Page to .${imgFormat === 'jpeg' ? 'jpg' : imgFormat} →`
+                                    : `Export ${targetPages.length} Pages to ZIP (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>

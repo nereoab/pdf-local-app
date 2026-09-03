@@ -52,3 +52,8 @@ scratch/
 tess-out.json
 *.pdf
 
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { convertPdfToExcelWithAdobe } from '@/lib/adobe-converter-service';
 import { convertPdfToExcelWithCloudConvert } from '@/lib/cloudconvert-service';
+import { convertPdfToExcelWithGemini } from '@/lib/gemini-converter-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -20,7 +21,33 @@ export async function POST(req: NextRequest) {
     const originalName = file.name.replace(/\.[^/.]+$/, '');
     const safeOutName = `${encodeURIComponent(originalName)}_Excel.xlsx`;
 
-    // 1. CloudConvert API v2
+    // 1. Motor Gemini AI (Reconstrucción de Tablas y Cuadros desde Cero)
+    if (engine === 'gemini') {
+      try {
+        console.log('[PDF-to-Excel] Converting with Gemini AI Structural Engine...');
+        const xlsxBuffer = await convertPdfToExcelWithGemini(buffer, file.name);
+        return new NextResponse(new Uint8Array(xlsxBuffer), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': `attachment; filename="${safeOutName}"`,
+            'Content-Length': xlsxBuffer.length.toString(),
+          },
+        });
+      } catch (geminiErr: any) {
+        console.error('[PDF-to-Excel] Gemini error:', geminiErr);
+        return NextResponse.json(
+          {
+            error:
+              geminiErr?.message ||
+              'Error en el motor Gemini AI. Asegúrate de configurar GEMINI_API_KEY.',
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    // 2. CloudConvert API v2
     if (engine === 'cloudconvert') {
       try {
         console.log('[PDF-to-Excel] Converting with CloudConvert API v2...');
@@ -38,7 +65,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Adobe Acrobat Services API
+    // 3. Adobe Acrobat Services API
     if (process.env.PDF_SERVICES_CLIENT_ID && process.env.PDF_SERVICES_CLIENT_SECRET) {
       try {
         console.log('[PDF-to-Excel] Converting with Adobe Acrobat Services...');
@@ -56,21 +83,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fallback: Si no era CloudConvert pero falló Adobe, intentar CloudConvert
-    if (engine !== 'cloudconvert') {
-      try {
-        const xlsxBuffer = await convertPdfToExcelWithCloudConvert(buffer, file.name);
-        return new NextResponse(new Uint8Array(xlsxBuffer), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition': `attachment; filename="${safeOutName}"`,
-            'Content-Length': xlsxBuffer.length.toString(),
-          },
-        });
-      } catch (ccErr2) {
-        console.warn('[PDF-to-Excel] CloudConvert fallback error:', ccErr2);
-      }
+    // 4. Fallback universal con Gemini / CloudConvert
+    try {
+      const xlsxBuffer = await convertPdfToExcelWithGemini(buffer, file.name);
+      return new NextResponse(new Uint8Array(xlsxBuffer), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${safeOutName}"`,
+          'Content-Length': xlsxBuffer.length.toString(),
+        },
+      });
+    } catch (ccErr2) {
+      console.warn('[PDF-to-Excel] Final fallback error:', ccErr2);
     }
 
     return NextResponse.json(

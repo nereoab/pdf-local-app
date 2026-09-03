@@ -1,9 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { 
-  FileDown, Loader2, X, ShieldCheck, FilePlus, 
-  SlidersHorizontal, Layout, Grid, Compass, Sparkles, FileText
+import {
+  FileDown,
+  Loader2,
+  X,
+  ShieldCheck,
+  FilePlus,
+  SlidersHorizontal,
+  Layout,
+  Grid,
+  Compass,
+  Sparkles,
+  FileText,
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -63,7 +72,7 @@ export default function WordToPdf() {
       height = orientation === 'landscape' ? 595.28 : 841.89;
     }
 
-    const marginOffset = margin === 'narrow' ? 25 : (margin === 'none' ? 10 : 45);
+    const marginOffset = margin === 'narrow' ? 25 : margin === 'none' ? 10 : 45;
 
     // Extraer texto de word/document.xml mediante JSZip
     let extractedParagraphs: string[] = [];
@@ -128,18 +137,34 @@ export default function WordToPdf() {
     });
     currentY -= 25;
 
-    const printableWidth = width - (marginOffset * 2);
+    const sanitizeText = (str: string) => {
+      return str
+        .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
+        .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+        .replace(/[\u2013\u2014\u2015]/g, '-')
+        .replace(/\u2026/g, '...')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[^\x00-\xFF]/g, (char) => {
+          const norm = char.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return norm.length > 0 && norm.charCodeAt(0) <= 255 ? norm : '?';
+        });
+    };
+
+    const printableWidth = width - marginOffset * 2;
     const fontSize = 10;
     const lineHeight = 14;
 
-    for (const para of extractedParagraphs) {
-      // Ajuste de línea básico
+    for (const rawPara of extractedParagraphs) {
+      const para = sanitizeText(rawPara);
       const words = para.split(' ');
       let currentLine = '';
 
       for (const word of words) {
         const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+        let testWidth = testLine.length * (fontSize * 0.52);
+        try {
+          testWidth = font.widthOfTextAtSize(testLine, fontSize);
+        } catch {}
 
         if (testWidth > printableWidth) {
           if (currentY < marginOffset + 30) {
@@ -147,13 +172,15 @@ export default function WordToPdf() {
             drawWatermark(currentPage);
             currentY = height - marginOffset - 20;
           }
-          currentPage.drawText(currentLine, {
-            x: marginOffset,
-            y: currentY,
-            size: fontSize,
-            font,
-            color: rgb(0.15, 0.15, 0.15),
-          });
+          try {
+            currentPage.drawText(currentLine, {
+              x: marginOffset,
+              y: currentY,
+              size: fontSize,
+              font,
+              color: rgb(0.15, 0.15, 0.15),
+            });
+          } catch {}
           currentY -= lineHeight;
           currentLine = word;
         } else {
@@ -167,13 +194,15 @@ export default function WordToPdf() {
           drawWatermark(currentPage);
           currentY = height - marginOffset - 20;
         }
-        currentPage.drawText(currentLine, {
-          x: marginOffset,
-          y: currentY,
-          size: fontSize,
-          font,
-          color: rgb(0.15, 0.15, 0.15),
-        });
+        try {
+          currentPage.drawText(currentLine, {
+            x: marginOffset,
+            y: currentY,
+            size: fontSize,
+            font,
+            color: rgb(0.15, 0.15, 0.15),
+          });
+        } catch {}
         currentY -= lineHeight + 6; // Espacio entre párrafos
       }
     }
@@ -210,7 +239,9 @@ export default function WordToPdf() {
           canvas.height = viewport.height;
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+              typeof page.render
+            >[0]).promise;
             urls[p] = canvas.toDataURL('image/jpeg', 0.8);
           }
         } catch {
@@ -228,13 +259,17 @@ export default function WordToPdf() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
-      const isWord = selected.name.toLowerCase().endsWith('.docx') || selected.name.toLowerCase().endsWith('.doc');
+      const isWord =
+        selected.name.toLowerCase().endsWith('.docx') ||
+        selected.name.toLowerCase().endsWith('.doc');
       if (isWord) {
         setFile(selected);
         setDownloadUrl(null);
         toast.success(isEs ? 'Documento Word cargado' : 'Word document loaded');
       } else {
-        toast.error(isEs ? 'Selecciona un archivo Word (.docx/.doc)' : 'Select a Word file (.docx/.doc)');
+        toast.error(
+          isEs ? 'Selecciona un archivo Word (.docx/.doc)' : 'Select a Word file (.docx/.doc)',
+        );
       }
     }
     e.target.value = '';
@@ -255,10 +290,13 @@ export default function WordToPdf() {
           formData.append('File', file);
           formData.append('StoreFile', 'false');
 
-          const response = await fetch(`https://v2.convertapi.com/convert/docx/to/pdf?Secret=${API_SECRET}`, {
-            method: 'POST',
-            body: formData,
-          });
+          const response = await fetch(
+            `https://v2.convertapi.com/convert/docx/to/pdf?Secret=${API_SECRET}`,
+            {
+              method: 'POST',
+              body: formData,
+            },
+          );
 
           const data = await response.json();
           if (data.Files && data.Files.length > 0) {
@@ -293,7 +331,9 @@ export default function WordToPdf() {
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? '¡Documento PDF generado con éxito!' : 'PDF document generated successfully!');
+      toast.success(
+        isEs ? '¡Documento PDF generado con éxito!' : 'PDF document generated successfully!',
+      );
     } catch (error) {
       console.error('Error al convertir Word a PDF:', error);
       toast.error(isEs ? 'Ocurrió un error en la conversión' : 'Conversion error occurred');
@@ -311,7 +351,13 @@ export default function WordToPdf() {
 
   return (
     <div className="w-full font-sans">
-      <input type="file" accept=".docx,.doc" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+      <input
+        type="file"
+        accept=".docx,.doc"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+      />
 
       {!file ? (
         <div
@@ -323,23 +369,31 @@ export default function WordToPdf() {
           </div>
           <div className="text-center flex flex-col items-center gap-2 font-sans">
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              {isEs ? 'Arrastra tu archivo Word (.docx/.doc) para convertir a PDF' : 'Drop your Word file (.docx/.doc) to convert to PDF'}
+              {isEs
+                ? 'Arrastra tu archivo Word (.docx/.doc) para convertir a PDF'
+                : 'Drop your Word file (.docx/.doc) to convert to PDF'}
             </h2>
             <p className="text-zinc-400 text-xs sm:text-sm font-mono">
-              {isEs ? 'Preserva la estructura de párrafos, márgenes, orientación y marcas de agua' : 'Preserve paragraph structure, margins, orientation & watermarks'}
+              {isEs
+                ? 'Preserva la estructura de párrafos, márgenes, orientación y marcas de agua'
+                : 'Preserve paragraph structure, margins, orientation & watermarks'}
             </p>
           </div>
           <button className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-2.5 rounded-full font-sans text-xs font-semibold transition-all shadow-md cursor-pointer">
-            <FilePlus className="w-4 h-4 text-black" /> {isEs ? 'Subir Documento Word' : 'Upload Word Document'}
+            <FilePlus className="w-4 h-4 text-black" />{' '}
+            {isEs ? 'Subir Documento Word' : 'Upload Word Document'}
           </button>
           <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-white/10 text-blue-400 text-[11px] font-mono rounded-full mt-2">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            <span>{isEs ? 'PARSER JSZIP OPENXML • MAQUETADO PDF-LIB • 100% LOCAL' : 'OPENXML JSZIP PARSER • PDF-LIB LAYOUT • 100% LOCAL'}</span>
+            <span>
+              {isEs
+                ? 'PARSER JSZIP OPENXML • MAQUETADO PDF-LIB • 100% LOCAL'
+                : 'OPENXML JSZIP PARSER • PDF-LIB LAYOUT • 100% LOCAL'}
+            </span>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
-          
           {/* LADO IZQUIERDO: VISOR DE MINIATURAS (7 COLUMNAS) */}
           <div className="lg:col-span-7 flex flex-col">
             <div className="w-full bg-[#09090b] border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative font-mono">
@@ -349,8 +403,13 @@ export default function WordToPdf() {
                     <WordIcon className="w-5 h-5" />
                   </div>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-white font-bold text-xs truncate w-40 sm:w-64">{file.name}</span>
-                    <span className="text-zinc-400 text-[10px]">{(file.size / 1024).toFixed(1)} KB • {totalPages} {isEs ? 'Páginas PDF' : 'PDF Pages'}</span>
+                    <span className="text-white font-bold text-xs truncate w-40 sm:w-64">
+                      {file.name}
+                    </span>
+                    <span className="text-zinc-400 text-[10px]">
+                      {(file.size / 1024).toFixed(1)} KB • {totalPages}{' '}
+                      {isEs ? 'Páginas PDF' : 'PDF Pages'}
+                    </span>
                   </div>
                 </div>
                 <button
@@ -378,9 +437,15 @@ export default function WordToPdf() {
                       >
                         <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
                           {pageDataUrls[pageNum] ? (
-                            <img src={pageDataUrls[pageNum]} alt={`Pág ${pageNum}`} className="w-full h-full object-contain" />
+                            <img
+                              src={pageDataUrls[pageNum]}
+                              alt={`Pág ${pageNum}`}
+                              className="w-full h-full object-contain"
+                            />
                           ) : (
-                            <span className="text-[10px] text-zinc-400 font-mono">Pág {pageNum}</span>
+                            <span className="text-[10px] text-zinc-400 font-mono">
+                              Pág {pageNum}
+                            </span>
                           )}
                           <span className="absolute bottom-1 right-1 bg-black/80 text-white font-mono text-[9px] px-1.5 py-0.5 rounded">
                             #{pageNum}
@@ -398,12 +463,15 @@ export default function WordToPdf() {
           <div className="lg:col-span-5 flex flex-col">
             <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans min-h-[580px]">
               <div className="flex flex-col gap-4">
-                
                 {/* Cabecera del Panel */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <div>
-                    <span className="text-[10px] text-blue-400 font-mono tracking-wider uppercase block mb-0.5">CONVERSIÓN DE DOCUMENTOS</span>
-                    <h2 className="text-xl font-bold text-white uppercase">{isEs ? 'WORD A PDF' : 'WORD TO PDF'}</h2>
+                    <span className="text-[10px] text-blue-400 font-mono tracking-wider uppercase block mb-0.5">
+                      CONVERSIÓN DE DOCUMENTOS
+                    </span>
+                    <h2 className="text-xl font-bold text-white uppercase">
+                      {isEs ? 'WORD A PDF' : 'WORD TO PDF'}
+                    </h2>
                   </div>
                   <div className="bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/20">
                     <WordIcon className="w-6 h-6" />
@@ -491,7 +559,9 @@ export default function WordToPdf() {
                     </label>
                     <input
                       type="text"
-                      placeholder={isEs ? 'Ej: CONFIDENCIAL / BORRADOR' : 'e.g. CONFIDENTIAL / DRAFT'}
+                      placeholder={
+                        isEs ? 'Ej: CONFIDENCIAL / BORRADOR' : 'e.g. CONFIDENTIAL / DRAFT'
+                      }
                       value={watermarkText}
                       onChange={(e) => setWatermarkText(e.target.value)}
                       className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-1.5 focus:outline-none focus:border-white/40 transition"
@@ -500,7 +570,9 @@ export default function WordToPdf() {
 
                   {/* Sufijo del archivo */}
                   <div>
-                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">{isEs ? 'Sufijo del archivo:' : 'Output suffix:'}</label>
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                      {isEs ? 'Sufijo del archivo:' : 'Output suffix:'}
+                    </label>
                     <input
                       type="text"
                       value={customSuffix}
@@ -527,7 +599,9 @@ export default function WordToPdf() {
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 text-blue-600 fill-blue-600" />
-                        <span>{isEs ? 'Convertir a PDF Corporativo' : 'Convert to Corporate PDF'}</span>
+                        <span>
+                          {isEs ? 'Convertir a PDF Corporativo' : 'Convert to Corporate PDF'}
+                        </span>
                       </>
                     )}
                   </button>

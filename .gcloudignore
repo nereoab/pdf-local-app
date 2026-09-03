@@ -1,0 +1,11 @@
+.gcloudignore
+.git
+.gitignore
+.firebase
+.next
+node_modules
+scratch
+graphify-out
+*.traineddata
+*.pdf
+*.log

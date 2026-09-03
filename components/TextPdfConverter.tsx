@@ -89,6 +89,15 @@ function sanitizeText(str: string): string {
   return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g, '').trim();
 }
 
+interface SlotItem {
+  id: string;
+  file: File | null;
+  thumbnailUrl?: string;
+  pageDataUrls: Record<number, string>;
+  totalPages: number;
+  textSnippet?: string;
+}
+
 export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -101,6 +110,24 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
+  // ── ESTADO DE 3 SLOTS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ──
+  const [slots, setSlots] = useState<SlotItem[]>([
+    { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+    { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+    { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+
+  const inputRef0 = useRef<HTMLInputElement>(null);
+  const inputRef1 = useRef<HTMLInputElement>(null);
+  const inputRef2 = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (index: number) => {
+    if (index === 0) return inputRef0;
+    if (index === 1) return inputRef1;
+    return inputRef2;
+  };
+
   const [file, setFile] = useState<File | null>(() => {
     if (!globalFile) return null;
     const name = globalFile.name.toLowerCase();
@@ -359,6 +386,132 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     setHeaderHidden(false);
   };
 
+  // CARGA AISLADA DE UN ARCHIVO EN UNA CAJA ESPECÍFICA (SIN DUPLICAR)
+  const loadSingleFileIntoSlot = async (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = {
+        ...next[slotIdx],
+        file: newFile,
+        pageDataUrls: {},
+        totalPages: 0,
+      };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+
+    const name = newFile.name.toLowerCase();
+    if (name.endsWith('.pdf')) {
+      try {
+        const arrayBuffer = await newFile.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const pdf = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const count = pdf.numPages;
+        const pageUrls: Record<number, string> = {};
+        const maxPagesToRender = Math.min(count, 5);
+
+        for (let p = 1; p <= maxPagesToRender; p++) {
+          const page = await pdf.getPage(p);
+          const vp = page.getViewport({ scale: 1.2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport: vp } as unknown as Parameters<
+              typeof page.render
+            >[0]).promise;
+            pageUrls[p] = canvas.toDataURL('image/png', 0.85);
+          }
+        }
+
+        setSlots((prev) => {
+          const next = [...prev];
+          if (next[slotIdx]) {
+            next[slotIdx] = {
+              ...next[slotIdx],
+              pageDataUrls: pageUrls,
+              totalPages: count,
+              thumbnailUrl: pageUrls[1] || '',
+            };
+          }
+          return next;
+        });
+      } catch (err) {
+        console.warn('Error previsualizando PDF en slot', slotIdx, err);
+      }
+    } else {
+      // Archivo de Texto (.txt)
+      try {
+        const text = await newFile.text();
+        const estP = Math.max(1, Math.ceil(text.length / 2500));
+        setSlots((prev) => {
+          const next = [...prev];
+          if (next[slotIdx]) {
+            next[slotIdx] = {
+              ...next[slotIdx],
+              totalPages: estP,
+              textSnippet: text.slice(0, 1000),
+            };
+          }
+          return next;
+        });
+      } catch (err) {
+        console.warn('Error previsualizando Texto en slot', slotIdx, err);
+      }
+    }
+  };
+
+  const handleSlotFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const selectedFile = files[0];
+    e.target.value = '';
+    loadSingleFileIntoSlot(index, selectedFile);
+  };
+
+  const handleRemoveSlot = (index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[index] = { id: `slot-${index + 1}`, file: null, pageDataUrls: {}, totalPages: 0 };
+      return next;
+    });
+    const remaining = slots
+      .map((s, idx) => ({ s, idx }))
+      .filter((item) => item.idx !== index && item.s.file !== null);
+    if (remaining.length > 0) {
+      setActiveSlotIndex(remaining[0].idx);
+    } else {
+      setActiveSlotIndex(0);
+      setFile(null);
+    }
+  };
+
+  const handleClearAllSlots = () => {
+    setSlots([
+      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+    ]);
+    setActiveSlotIndex(0);
+    setFile(null);
+    setCompletedResult(null);
+  };
+
+  const loadFilesIntoSlots = (fileList: FileList | File[]) => {
+    const arr = Array.from(fileList).slice(0, 3);
+    arr.forEach((f, idx) => {
+      loadSingleFileIntoSlot(idx, f);
+    });
+  };
+
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;
     setFile(null);
@@ -384,6 +537,35 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     setSelectedPageSet(newSet);
     setPageSelectionMode('custom');
   };
+
+  // Sincronizar slot activo con estado de archivo y previsualización
+  const loadedSlots = slots.filter((s) => s.file !== null);
+  const activeSlot = slots[activeSlotIndex] || slots[0];
+
+  useEffect(() => {
+    if (activeSlot && activeSlot.file) {
+      setFile(activeSlot.file);
+      if (activeSlot.totalPages > 0) {
+        setTotalPages(activeSlot.totalPages);
+      }
+      if (Object.keys(activeSlot.pageDataUrls).length > 0) {
+        setPageDataUrls(activeSlot.pageDataUrls);
+      }
+      if (activeSlot.textSnippet) {
+        setManualText(activeSlot.textSnippet);
+      }
+    } else {
+      const firstLoaded = slots.find((s) => s.file !== null);
+      if (firstLoaded && firstLoaded.file) {
+        setFile(firstLoaded.file);
+        setTotalPages(firstLoaded.totalPages);
+        setPageDataUrls(firstLoaded.pageDataUrls);
+        if (firstLoaded.textSnippet) setManualText(firstLoaded.textSnippet);
+      } else {
+        setFile(null);
+      }
+    }
+  }, [slots, activeSlotIndex]);
 
   const handleSelectAll = () => {
     if (totalPages > 0) {
@@ -489,35 +671,95 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
 
         yPos -= 30;
 
-        const textToRender = manualText || (file ? await file.text() : '');
-        const lines = textToRender.split('\n');
-        const maxCharsPerLine = Math.floor((width - sideMargin * 2) / (fontSize * 0.55));
+        // Función de sanitización para compatibilidad con WinAnsi / StandardFonts en pdf-lib
+        const sanitizeForStandardFonts = (str: string): string => {
+          if (!str) return '';
+          return str
+            .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"') // Comillas dobles tipográficas
+            .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // Comillas simples / apóstrofes
+            .replace(/[\u2013\u2014\u2015]/g, '-') // Guiones largo y medio
+            .replace(/\u2026/g, '...') // Puntos suspensivos
+            .replace(/\u00A0/g, ' ') // Espacio no separable
+            .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '•') // Viñetas
+            .replace(/[^\x00-\xFF]/g, (char) => {
+              // Si es un carácter especial fuera de Latin-1, intentar normalizar o reemplazar
+              const norm = char.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+              return norm.length > 0 && norm.charCodeAt(0) <= 255 ? norm : '?';
+            });
+        };
 
-        for (const line of lines) {
-          let remaining = line;
-          if (!remaining.trim()) {
-            yPos -= fontSize * lineSpacing;
+        const rawTextToRender = manualText || (file ? await file.text() : '');
+        const textToRender = sanitizeForStandardFonts(rawTextToRender);
+        const paragraphs = textToRender.split(/\r?\n/);
+        const usableWidth = width - sideMargin * 2;
+        const lineHeight = fontSize * lineSpacing;
+
+        for (const p of paragraphs) {
+          if (!p.trim()) {
+            yPos -= lineHeight * 0.7;
+            if (yPos < 50) {
+              page = pdfDoc.addPage([width, height]);
+              yPos = height - 50;
+            }
             continue;
           }
 
-          while (remaining.length > 0) {
+          const words = p.split(' ');
+          let currentLine = '';
+
+          for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+
+            let testWidth = testLine.length * (fontSize * 0.52);
+            try {
+              testWidth = font.widthOfTextAtSize(testLine, fontSize);
+            } catch {}
+
+            if (testWidth > usableWidth && currentLine !== '') {
+              if (yPos < 50) {
+                page = pdfDoc.addPage([width, height]);
+                yPos = height - 50;
+              }
+
+              try {
+                page.drawText(currentLine, {
+                  x: sideMargin,
+                  y: yPos,
+                  size: fontSize,
+                  font,
+                  color: rgb(0.12, 0.14, 0.18),
+                });
+              } catch (e) {
+                console.warn('Carácter no soportado en línea:', e);
+              }
+
+              yPos -= lineHeight;
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          }
+
+          if (currentLine) {
             if (yPos < 50) {
               page = pdfDoc.addPage([width, height]);
               yPos = height - 50;
             }
 
-            const chunk = remaining.substring(0, maxCharsPerLine);
-            remaining = remaining.substring(maxCharsPerLine);
+            try {
+              page.drawText(currentLine, {
+                x: sideMargin,
+                y: yPos,
+                size: fontSize,
+                font,
+                color: rgb(0.12, 0.14, 0.18),
+              });
+            } catch (e) {
+              console.warn('Carácter no soportado en línea final:', e);
+            }
 
-            page.drawText(chunk, {
-              x: sideMargin,
-              y: yPos,
-              size: fontSize,
-              font,
-              color: rgb(0.15, 0.15, 0.15),
-            });
-
-            yPos -= fontSize * lineSpacing;
+            yPos -= lineHeight;
           }
         }
 
@@ -536,6 +778,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
 
         const pdfBytes = await pdfDoc.save();
         resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
         localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${(file ? file.name : 'Documento').replace(/\.[^/.]+$/, '')}.pdf`;
@@ -739,18 +982,23 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
           </div>
         </div>
 
-        {(file || completedResult) && (
+        {(loadedSlots.length > 0 || completedResult) && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
-                {completedResult ? completedResult.filename : file?.name}
+                {completedResult
+                  ? completedResult.filename
+                  : file?.name ||
+                    (isEs
+                      ? `${loadedSlots.length} archivos cargados`
+                      : `${loadedSlots.length} files loaded`)}
               </span>
             </div>
             <button
-              onClick={handleRemoveFile}
+              onClick={handleClearAllSlots}
               className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
-              title={isEs ? 'Quitar archivo' : 'Remove file'}
+              title={isEs ? 'Limpiar archivos' : 'Clear files'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -878,7 +1126,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
             </div>
           </div>
 
-          {!file ? (
+          {loadedSlots.length === 0 ? (
             /* VISTA DROPZONE VACÍA */
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -940,166 +1188,261 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col gap-6 w-full items-center"
             >
-              {/* SECCIÓN 1: VISOR SUPERIOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden h-[540px] max-h-[540px]">
+              {/* ═════════════════════════════════════════════════════════════════════════════
+                  SECCIÓN 1: VISTA PREVIA AL 50% (IZQUIERDA) + 3 CAJAS INDEPENDIENTES (DERECHA)
+                 ═════════════════════════════════════════════════════════════════════════════ */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+                {/* BARRA SUPERIOR DE LA SECCIÓN 1 */}
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
-                      {isEs
-                        ? '001 / VISOR Y SELECCIÓN DE PÁGINAS'
-                        : '001 / VIEWER & PAGE SELECTION'}
+                      {isEs ? '001 / VISTA PREVIA (50%) Y ARCHIVOS' : '001 / PREVIEW (50%) & FILES'}
                     </span>
                     <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
                     <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
-                      {file?.name || (isEs ? 'Texto Manual' : 'Manual Text')}
+                      {file ? file.name : isEs ? 'Sin archivo seleccionado' : 'No file selected'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
-                    <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
-                    {totalPages}{' '}
-                    {mode === 'text-to-pdf'
-                      ? isEs
-                        ? 'a PDF'
-                        : 'to PDF'
-                      : isEs
-                        ? 'a Texto'
-                        : 'to Text'}
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                      <span className="font-bold font-mono text-white">{loadedSlots.length}</span> /
+                      3 {isEs ? 'cargados' : 'loaded'}
+                    </div>
+
+                    {loadedSlots.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllSlots}
+                        className="text-zinc-500 hover:text-red-400 text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 ml-2"
+                        title={isEs ? 'Limpiar todas las cajas' : 'Clear all boxes'}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">
+                          {isEs ? 'Limpiar todo' : 'Clear all'}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* CONTENEDOR PRINCIPAL SPLIT */}
-                <div className="flex-1 flex flex-row gap-4 min-h-0 overflow-hidden bg-[#121217] rounded-2xl border border-zinc-700/80 shadow-inner">
-                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  <div className="w-28 sm:w-36 md:w-44 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
-                      <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
-                        {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={
-                          targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
-                        }
-                        className="text-[9px] text-zinc-300 hover:text-white font-bold cursor-pointer"
-                      >
-                        {targetPages.length === totalPages
-                          ? isEs
-                            ? 'Ninguna'
-                            : 'None'
-                          : isEs
-                            ? 'Todas'
-                            : 'All'}
-                      </button>
-                    </div>
-
-                    {isRendering ? (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                        <Loader2 className="w-5 h-5 animate-spin text-white" />
-                        <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
-                      </div>
-                    ) : totalPages > 0 ? (
-                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                        const isIncluded = targetPageSet.has(pageNum);
-                        const isActive = activePage === pageNum;
-
-                        return (
-                          <div
-                            key={pageNum}
-                            onClick={() => setActivePage(pageNum)}
-                            className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
-                              isActive
-                                ? 'border-cyan-400 ring-2 ring-cyan-400/40 bg-zinc-800'
-                                : isIncluded
-                                  ? 'border-zinc-600 hover:border-zinc-400 bg-zinc-900'
-                                  : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => togglePageSelection(pageNum, e)}
-                              className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
-                                isIncluded
-                                  ? 'bg-cyan-500 text-black shadow-md'
-                                  : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
-                              }`}
-                              title={
-                                isIncluded
-                                  ? isEs
-                                    ? 'Quitar de la conversión de texto'
-                                    : 'Exclude from text extraction'
-                                  : isEs
-                                    ? 'Incluir en la conversión de texto'
-                                    : 'Include in text extraction'
-                              }
-                            >
-                              {isIncluded ? (
-                                <Check className="w-3 h-3 stroke-[3] text-black" />
-                              ) : (
-                                <div className="w-3 h-3" />
-                              )}
-                            </button>
-
-                            <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                              {pageDataUrls[pageNum] ? (
-                                <img
-                                  src={pageDataUrls[pageNum]}
-                                  alt={`Pág ${pageNum}`}
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <span className="text-[10px] text-zinc-600 font-mono font-bold">
-                                  #{pageNum}
+                {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
+                  {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
+                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                    {file ? (
+                      <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                        {/* HOJA PDF O DOCUMENTO DE TEXTO EN VISTA PREVIA REDUCIDA AL 50% */}
+                        {mode === 'pdf-to-text' || file.name.toLowerCase().endsWith('.pdf') ? (
+                          <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
+                            {activeSlot.pageDataUrls[activePage] ? (
+                              <img
+                                src={activeSlot.pageDataUrls[activePage]}
+                                alt={`Pág ${activePage}`}
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : activeSlot.thumbnailUrl ? (
+                              <img
+                                src={activeSlot.thumbnailUrl}
+                                alt="Pág 1"
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                                <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
+                                <span className="text-[11px] font-mono font-bold">
+                                  Pág. {activePage}
                                 </span>
-                              )}
-                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded font-bold">
-                                #{pageNum}
+                              </div>
+                            )}
+
+                            {totalPages > 0 && (
+                              <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                                #{activePage} / {totalPages}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* HOJA DE TEXTO AL 50% VISUAL */
+                          <div className="relative bg-[#18181f] text-white rounded-xl shadow-2xl border border-cyan-500/40 overflow-hidden flex flex-col p-4 transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group justify-between">
+                            <div className="space-y-2 overflow-hidden flex-1 flex flex-col">
+                              <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs border-b border-zinc-700/80 pb-1.5 shrink-0">
+                                <TextIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+                                <span className="truncate font-sans font-extrabold text-cyan-300">
+                                  {file.name}
+                                </span>
+                              </div>
+
+                              {/* CONTENIDO PREVIO DE TEXTO */}
+                              <div className="flex-1 overflow-hidden rounded border border-zinc-800 bg-[#0e0e12] p-2.5 text-[10px] font-mono text-zinc-300 leading-relaxed overflow-y-auto custom-scrollbar">
+                                {manualText ? (
+                                  <p className="whitespace-pre-wrap">{manualText}</p>
+                                ) : (
+                                  <p className="text-zinc-500 italic">
+                                    {isEs
+                                      ? 'Archivo de texto plano (.txt)'
+                                      : 'Plain text file (.txt)'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500 pt-1.5 border-t border-zinc-800 shrink-0">
+                              <span className="text-cyan-400 font-bold">
+                                {manualText ? `${manualText.length} caracteres` : 'Texto UTF-8'}
+                              </span>
+                              <span className="bg-black/80 px-2 py-0.5 rounded text-white font-bold border border-white/20">
+                                #{activePage} / {totalPages || 1}
                               </span>
                             </div>
                           </div>
-                        );
-                      })
+                        )}
+
+                        {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
+                            <button
+                              type="button"
+                              onClick={() => setActivePage(Math.max(1, activePage - 1))}
+                              disabled={activePage <= 1}
+                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                              title={isEs ? 'Página anterior' : 'Previous page'}
+                            >
+                              ◀
+                            </button>
+                            <span className="font-bold text-white text-[11px]">
+                              {activePage} / {totalPages}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setActivePage(Math.min(totalPages, activePage + 1))}
+                              disabled={activePage >= totalPages}
+                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                              title={isEs ? 'Página siguiente' : 'Next page'}
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
-                        <TextIcon className="w-5 h-5 text-cyan-400" />
-                        <span>{isEs ? 'Modo Texto' : 'Text Mode'}</span>
+                      <div className="flex flex-col items-center justify-center py-10 gap-3 text-zinc-500 font-mono text-xs">
+                        <TextIcon className="w-8 h-8 text-zinc-600" />
+                        <span>
+                          {isEs ? 'Sin archivo para previsualizar' : 'No file to preview'}
+                        </span>
                       </div>
                     )}
                   </div>
 
-                  {/* COSTADO DERECHO: VISOR PDF O EDITOR DE TEXTO EN TAMAÑO NORMAL */}
-                  <div className="flex-1 bg-zinc-950 p-3 relative flex flex-col items-center justify-center overflow-hidden">
-                    {mode === 'pdf-to-text' ||
-                    (file && file.name.toLowerCase().endsWith('.pdf')) ? (
-                      <PdfPageViewer
-                        file={file}
-                        activePage={activePage}
-                        totalPages={totalPages}
-                        onPageChange={(p) => setActivePage(p)}
-                        pageDataUrls={pageDataUrls}
-                        title={file?.name}
-                        accentColor="cyan"
-                      />
-                    ) : (
-                      <div className="w-full h-full p-3 flex flex-col">
-                        <label className="text-xs text-zinc-400 font-mono font-bold mb-2 flex items-center gap-1.5 shrink-0">
-                          <AlignLeft className="w-4 h-4 text-cyan-400" />
-                          <span>
-                            {isEs ? 'Contenido de Texto Editable:' : 'Editable Text Content:'}
-                          </span>
-                        </label>
-                        <textarea
-                          value={manualText}
-                          onChange={(e) => setManualText(e.target.value)}
-                          placeholder={
-                            isEs
-                              ? 'Escribe o pega aquí el texto que deseas convertir a PDF...'
-                              : 'Type or paste text to convert to PDF...'
-                          }
-                          className="w-full flex-1 bg-zinc-900/90 border border-zinc-700 rounded-xl p-3 text-xs font-mono text-white resize-none focus:outline-none focus:border-cyan-500"
-                        />
-                      </div>
-                    )}
+                  {/* ── LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ── */}
+                  <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                    {slots.map((slot, sIdx) => {
+                      const isLoaded = slot.file !== null;
+                      const isActive = isLoaded && sIdx === activeSlotIndex;
+
+                      return (
+                        <div
+                          key={slot.id}
+                          onClick={() => {
+                            if (isLoaded) {
+                              setActiveSlotIndex(sIdx);
+                            } else {
+                              getSlotInputRef(sIdx).current?.click();
+                            }
+                          }}
+                          className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                            isActive
+                              ? 'bg-cyan-950/40 border-cyan-500 shadow-cyan-500/10'
+                              : isLoaded
+                                ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                                : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                          }`}
+                        >
+                          <input
+                            ref={getSlotInputRef(sIdx)}
+                            type="file"
+                            accept={
+                              mode === 'text-to-pdf' ? '.txt,text/plain' : '.pdf,application/pdf'
+                            }
+                            className="hidden"
+                            onChange={(e) => handleSlotFileChange(sIdx, e)}
+                          />
+
+                          {isLoaded ? (
+                            <div className="flex items-center justify-between w-full gap-3 font-mono">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                    isActive
+                                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                                      : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                                  }`}
+                                >
+                                  {mode === 'text-to-pdf' ? (
+                                    <TextIcon className="w-5 h-5 text-cyan-400" />
+                                  ) : (
+                                    <FileText className="w-5 h-5 text-cyan-400" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                      {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`}
+                                    </span>
+                                    {isActive && (
+                                      <span className="text-[9px] px-1.5 py-0.2 bg-cyan-500/20 text-cyan-300 rounded border border-cyan-500/40 font-bold">
+                                        {isEs ? 'Visualizando' : 'Viewing'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                    {slot.file!.name}
+                                  </p>
+                                  <span className="text-[10px] text-zinc-400">
+                                    {formatFileSize(slot.file!.size)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleRemoveSlot(sIdx, e)}
+                                  className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                                  title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between w-full font-mono">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                                  <Plus className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                    {isEs
+                                      ? `+ Cargar ${mode === 'text-to-pdf' ? 'Texto' : 'PDF'} ${sIdx + 1}`
+                                      : `+ Upload ${mode === 'text-to-pdf' ? 'Text' : 'PDF'} ${sIdx + 1}`}
+                                  </p>
+                                  <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                    {mode === 'text-to-pdf' ? '.txt' : '.pdf'}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                                {isEs ? 'Disponible' : 'Available'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

@@ -124,6 +124,14 @@ function sanitizeDocxText(text: string): string {
   return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g, '').trim();
 }
 
+interface SlotItem {
+  id: string;
+  file: File | null;
+  thumbnailUrl?: string;
+  pageDataUrls: Record<number, string>;
+  totalPages: number;
+}
+
 export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -141,6 +149,24 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   }, [defaultMode]);
 
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
+  // ── ESTADO DE 3 SLOTS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ──
+  const [slots, setSlots] = useState<SlotItem[]>([
+    { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+    { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+    { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+
+  const inputRef0 = useRef<HTMLInputElement>(null);
+  const inputRef1 = useRef<HTMLInputElement>(null);
+  const inputRef2 = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (index: number) => {
+    if (index === 0) return inputRef0;
+    if (index === 1) return inputRef1;
+    return inputRef2;
+  };
+
   const [file, setFile] = useState<File | null>(() => {
     if (!globalFile) return null;
     const name = globalFile.name.toLowerCase();
@@ -195,18 +221,44 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const docxScrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDocxRendering, setIsDocxRendering] = useState<boolean>(false);
   const [docxRenderError, setDocxRenderError] = useState<boolean>(false);
-  const [docxZoom, setDocxZoom] = useState<number>(45);
+  const [docxZoom, setDocxZoom] = useState<number>(75);
+  const [wordHtml, setWordHtml] = useState<string>('');
+
+  // Sincronizar slot activo con estado de archivo y previsualización
+  const loadedSlots = slots.filter((s) => s.file !== null);
+  const activeSlot = slots[activeSlotIndex] || slots[0];
+
+  useEffect(() => {
+    if (activeSlot && activeSlot.file) {
+      setFile(activeSlot.file);
+      if (activeSlot.totalPages > 0) {
+        setTotalPages(activeSlot.totalPages);
+      }
+      if (Object.keys(activeSlot.pageDataUrls).length > 0) {
+        setPageDataUrls(activeSlot.pageDataUrls);
+      }
+    } else {
+      const firstLoaded = slots.find((s) => s.file !== null);
+      if (firstLoaded && firstLoaded.file) {
+        setFile(firstLoaded.file);
+        setTotalPages(firstLoaded.totalPages);
+        setPageDataUrls(firstLoaded.pageDataUrls);
+      } else {
+        setFile(null);
+      }
+    }
+  }, [slots, activeSlotIndex]);
 
   const handleFitDocxWidth = useCallback(() => {
     if (docxScrollContainerRef.current) {
-      const containerWidth = docxScrollContainerRef.current.clientWidth || 360;
+      const containerWidth = docxScrollContainerRef.current.clientWidth || 600;
       const fitPercent = Math.max(
-        25,
-        Math.min(100, Math.floor(((containerWidth - 32) / 816) * 100)),
+        35,
+        Math.min(125, Math.floor(((containerWidth - 48) / 814) * 100)),
       );
       setDocxZoom(fitPercent);
     } else {
-      setDocxZoom(45);
+      setDocxZoom(75);
     }
   }, []);
   // AUTO-SCROLL DE LA BARRA LATERAL DE MINIATURAS A LA MINIATURA ACTIVA
@@ -397,7 +449,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     }
   }, [file]);
 
-  // EFECTO DE RENDERIZADO ALTA FIDELIDAD DE DOCX CON DOCX-PREVIEW
+  // EFECTO DE RENDERIZADO ALTA FIDELIDAD DE DOCX CON DOCX-PREVIEW Y MAMMOTH
   useEffect(() => {
     let isMounted = true;
     if (
@@ -409,69 +461,83 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
       (async () => {
         try {
           const buffer = await file.arrayBuffer();
-          const docx = await import('docx-preview');
-          if (docxContainerRef.current && isMounted) {
-            docxContainerRef.current.innerHTML = '';
-            await docx.renderAsync(buffer, docxContainerRef.current, undefined, {
-              className: 'docx-preview-rendered',
-              inWrapper: true,
-              ignoreWidth: false,
-              ignoreHeight: false,
-              ignoreFonts: false,
-              breakPages: true,
-              useBase64URL: true,
-              renderHeaders: true,
-              renderFooters: true,
-              renderFootnotes: true,
-              renderEndnotes: true,
-            });
-            if (isMounted) {
-              setIsDocxRendering(false);
-              const sections = docxContainerRef.current.querySelectorAll(
-                '.docx-wrapper > section.docx, section.docx',
-              );
-              if (sections && sections.length > 0) {
-                const total = Math.max(sections.length, parsedWordDoc?.estPages || totalPages || 1);
-                setTotalPages(total);
-                setSelectedPageSet(new Set(Array.from({ length: total }, (_, i) => i + 1)));
-                setPageRangeInput(`1-${total}`);
-                setActivePage(1);
 
-                // Inyectar identificador, número de página visible y separadores claros
-                sections.forEach((sec, idx) => {
-                  sec.setAttribute('id', `docx-page-${idx + 1}`);
-                  (sec as HTMLElement).style.position = 'relative';
+          // Intentar renderizar con docx-preview
+          try {
+            const docx = await import('docx-preview');
+            if (docxContainerRef.current && isMounted) {
+              docxContainerRef.current.innerHTML = '';
+              await docx.renderAsync(buffer.slice(0), docxContainerRef.current, undefined, {
+                className: 'docx-preview-rendered',
+                inWrapper: true,
+                ignoreWidth: false,
+                ignoreHeight: false,
+                ignoreFonts: false,
+                breakPages: true,
+                useBase64URL: true,
+                renderHeaders: true,
+                renderFooters: true,
+                renderFootnotes: true,
+                renderEndnotes: true,
+              });
 
-                  // Badge de número de página en la esquina superior de cada hoja
-                  const badge = document.createElement('div');
-                  badge.className = 'docx-page-badge';
-                  badge.innerText = `Página ${idx + 1} de ${total}`;
-                  sec.insertBefore(badge, sec.firstChild);
-
-                  if (idx === 0) sec.classList.add('docx-active-page');
-                });
-
-                // Generar miniaturas enriquecidas con el contenido y colores ya maquetados
-                if (parsedWordDoc) {
-                  const richThumbs = renderWordPageThumbnails(
-                    parsedWordDoc,
-                    total,
-                    docxContainerRef.current,
+              if (isMounted) {
+                const sections = docxContainerRef.current.querySelectorAll(
+                  '.docx-wrapper > section.docx, section.docx',
+                );
+                if (sections && sections.length > 0) {
+                  setDocxRenderError(false);
+                  const total = Math.max(
+                    sections.length,
+                    parsedWordDoc?.estPages || totalPages || 1,
                   );
-                  setPageDataUrls(richThumbs);
-                }
+                  setTotalPages(total);
+                  setSelectedPageSet(new Set(Array.from({ length: total }, (_, i) => i + 1)));
+                  setPageRangeInput(`1-${total}`);
+                  setActivePage(1);
 
-                setTimeout(() => {
-                  handleFitDocxWidth();
-                }, 80);
+                  sections.forEach((sec, idx) => {
+                    sec.setAttribute('id', `docx-page-${idx + 1}`);
+                    (sec as HTMLElement).style.position = 'relative';
+
+                    const badge = document.createElement('div');
+                    badge.className = 'docx-page-badge';
+                    badge.innerText = `Página ${idx + 1} de ${total}`;
+                    sec.insertBefore(badge, sec.firstChild);
+
+                    if (idx === 0) sec.classList.add('docx-active-page');
+                  });
+
+                  if (parsedWordDoc) {
+                    const richThumbs = renderWordPageThumbnails(
+                      parsedWordDoc,
+                      total,
+                      docxContainerRef.current,
+                    );
+                    setPageDataUrls(richThumbs);
+                  }
+                } else {
+                  setDocxRenderError(true);
+                }
               }
+            }
+          } catch (docxErr) {
+            console.warn('docx-preview warning, using high-fidelity Mammoth Word Engine:', docxErr);
+            if (isMounted) {
+              setDocxRenderError(true);
             }
           }
         } catch (err) {
-          console.warn('docx-preview error, falling back to structured preview:', err);
+          console.warn('Document buffer read error:', err);
           if (isMounted) {
             setDocxRenderError(true);
+          }
+        } finally {
+          if (isMounted) {
             setIsDocxRendering(false);
+            setTimeout(() => {
+              handleFitDocxWidth();
+            }, 60);
           }
         }
       })();
@@ -503,97 +569,66 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
       const sec = sections && sections[p - 1] ? (sections[p - 1] as HTMLElement) : null;
       const secText = sec?.innerText?.trim() || '';
 
-      const isCover =
-        p === 1 &&
-        (doc.title.toLowerCase().includes('lean') ||
-          doc.title.toLowerCase().includes('mgc') ||
-          secText.includes('LAST') ||
-          (paragraphs[0] && paragraphs[0].toUpperCase().includes('LAST')));
+      // Hoja de documento Word con sombra y borde
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, 180, 250);
 
-      if (isCover) {
-        // Portada naranja fiel al documento Lean Construction
-        ctx.fillStyle = '#f97316';
-        ctx.fillRect(0, 0, 180, 250);
+      // Barra superior azul Word
+      ctx.fillStyle = '#1e3a8a';
+      ctx.fillRect(0, 0, 180, 7);
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 12px sans-serif';
-        const cleanTitle = (doc.title || 'LEAN CONSTRUCTION').replace(/_/g, ' ');
-        const words = cleanTitle.split(' ');
-        let ty = 50;
-        for (let w = 0; w < Math.min(words.length, 5); w++) {
-          ctx.fillText(words[w], 14, ty);
-          ty += 16;
+      // Párrafos y textos de la página
+      const pageLines = secText
+        ? secText
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean)
+        : paragraphs.slice((p - 1) * paragraphsPerPage, p * paragraphsPerPage);
+
+      const heading = pageLines[0] || doc.headings[p - 2] || `Página ${p}`;
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 8.5px sans-serif';
+      ctx.fillText(heading.substring(0, 24), 12, 24);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(12, 30, 156, 1.5);
+
+      let y = 42;
+      for (let l = 1; l < Math.min(pageLines.length, 12); l++) {
+        const line = pageLines[l] || '';
+        if (line.length > 0) {
+          ctx.fillStyle = '#475569';
+          ctx.font = '7px sans-serif';
+          ctx.fillText(line.substring(0, 32), 12, y);
+        } else {
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillRect(12, y - 4, 130 - (l % 4) * 20, 3);
         }
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.fillRect(14, ty + 8, 150, 3);
-        ctx.fillRect(14, ty + 15, 90, 2);
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 8px monospace';
-        ctx.fillText('PORTADA • PÁG. 1', 14, 236);
-      } else {
-        // Hoja blanca de documento Word
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, 180, 250);
-
-        // Barra superior azul Word
-        ctx.fillStyle = '#2b579a';
-        ctx.fillRect(0, 0, 180, 6);
-
-        // Párrafos y textos de la página
-        const pageLines = secText
-          ? secText
-              .split('\n')
-              .map((l) => l.trim())
-              .filter(Boolean)
-          : paragraphs.slice((p - 1) * paragraphsPerPage, p * paragraphsPerPage);
-
-        const heading = pageLines[0] || doc.headings[p - 2] || `Página ${p}`;
-        ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 8.5px sans-serif';
-        ctx.fillText(heading.substring(0, 25), 12, 24);
-
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(12, 30, 156, 1);
-
-        let y = 42;
-        for (let l = 1; l < Math.min(pageLines.length, 12); l++) {
-          const line = pageLines[l] || '';
-          if (line.length > 0) {
-            ctx.fillStyle = '#475569';
-            ctx.font = '7px sans-serif';
-            ctx.fillText(line.substring(0, 32), 12, y);
-          } else {
-            ctx.fillStyle = '#cbd5e1';
-            ctx.fillRect(12, y - 4, 130 - (l % 4) * 20, 3);
-          }
-          y += 13;
-          if (y > 210) break;
-        }
-
-        if (sec?.querySelector('table') || (doc.tables && doc.tables.length > 0 && p % 3 === 0)) {
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 0.5;
-          ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(12, y, 156, 26);
-          ctx.strokeRect(12, y, 156, 26);
-          ctx.beginPath();
-          ctx.moveTo(12, y + 8);
-          ctx.lineTo(168, y + 8);
-          ctx.moveTo(12, y + 17);
-          ctx.lineTo(168, y + 17);
-          ctx.moveTo(64, y);
-          ctx.lineTo(64, y + 26);
-          ctx.moveTo(116, y);
-          ctx.lineTo(116, y + 26);
-          ctx.stroke();
-        }
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 7.5px monospace';
-        ctx.fillText(`Pág. ${p} / ${pagesCount}`, 12, 240);
+        y += 13;
+        if (y > 205) break;
       }
+
+      if (sec?.querySelector('table') || (doc.tables && doc.tables.length > 0)) {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 0.5;
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(12, Math.min(y, 175), 156, 26);
+        ctx.strokeRect(12, Math.min(y, 175), 156, 26);
+        ctx.beginPath();
+        ctx.moveTo(12, Math.min(y, 175) + 8);
+        ctx.lineTo(168, Math.min(y, 175) + 8);
+        ctx.moveTo(12, Math.min(y, 175) + 17);
+        ctx.lineTo(168, Math.min(y, 175) + 17);
+        ctx.moveTo(64, Math.min(y, 175));
+        ctx.lineTo(64, Math.min(y, 175) + 26);
+        ctx.moveTo(116, Math.min(y, 175));
+        ctx.lineTo(116, Math.min(y, 175) + 26);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 7.5px monospace';
+      ctx.fillText(`Pág. ${p} / ${pagesCount}`, 12, 240);
 
       urls[p] = canvas.toDataURL('image/jpeg', 0.88);
     }
@@ -603,7 +638,31 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const prepararWordDocCompleto = async (wordFile: File) => {
     setIsRendering(true);
     setPageDataUrls({});
+    setWordHtml('');
     try {
+      const arrayBuffer = await wordFile.arrayBuffer();
+
+      // 1. Extraer HTML enriquecido con Mammoth (con imágenes base64 y tablas estilizadas)
+      try {
+        const mammothRes = await mammoth.convertToHtml(
+          { arrayBuffer: arrayBuffer.slice(0) },
+          {
+            convertImage: mammoth.images.imgElement((image) => {
+              return image.read('base64').then((imageBuffer) => {
+                return {
+                  src: `data:${image.contentType};base64,${imageBuffer}`,
+                };
+              });
+            }),
+          },
+        );
+        if (mammothRes && mammothRes.value) {
+          setWordHtml(mammothRes.value);
+        }
+      } catch (mErr) {
+        console.warn('Mammoth HTML conversion error:', mErr);
+      }
+
       const doc = await parseDocxDetails(wordFile);
       setParsedWordDoc(doc);
       const estPages = Math.max(doc.estPages, 1);
@@ -615,7 +674,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
       const urls = renderWordPageThumbnails(doc, estPages);
       setPageDataUrls(urls);
     } catch (err) {
-      console.error(err);
+      console.error('Error preparando documento Word:', err);
     } finally {
       setIsRendering(false);
     }
@@ -766,6 +825,131 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     setParsedWordDoc(null);
     setCompletedResult(null);
     setHeaderHidden(false);
+  };
+
+  // CARGA AISLADA DE UN ARCHIVO EN UNA CAJA ESPECÍFICA (SIN DUPLICAR)
+  const loadSingleFileIntoSlot = async (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = {
+        ...next[slotIdx],
+        file: newFile,
+        pageDataUrls: {},
+        totalPages: 0,
+      };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+
+    // Cargar previsualización para este slot específico
+    const name = newFile.name.toLowerCase();
+    if (name.endsWith('.pdf')) {
+      try {
+        const arrayBuffer = await newFile.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const pdf = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const count = pdf.numPages;
+        const pageUrls: Record<number, string> = {};
+        const maxPagesToRender = Math.min(count, 5);
+
+        for (let p = 1; p <= maxPagesToRender; p++) {
+          const page = await pdf.getPage(p);
+          const vp = page.getViewport({ scale: 1.2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport: vp } as unknown as Parameters<
+              typeof page.render
+            >[0]).promise;
+            pageUrls[p] = canvas.toDataURL('image/png', 0.85);
+          }
+        }
+
+        setSlots((prev) => {
+          const next = [...prev];
+          if (next[slotIdx]) {
+            next[slotIdx] = {
+              ...next[slotIdx],
+              pageDataUrls: pageUrls,
+              totalPages: count,
+              thumbnailUrl: pageUrls[1] || '',
+            };
+          }
+          return next;
+        });
+      } catch (err) {
+        console.warn('Error previsualizando PDF en slot', slotIdx, err);
+      }
+    } else {
+      // Archivo Word: procesar documento
+      try {
+        const parsed = await parseDocxDetails(newFile);
+        setSlots((prev) => {
+          const next = [...prev];
+          if (next[slotIdx]) {
+            next[slotIdx] = {
+              ...next[slotIdx],
+              totalPages: parsed.estPages || 1,
+            };
+          }
+          return next;
+        });
+      } catch (err) {
+        console.warn('Error previsualizando Word en slot', slotIdx, err);
+      }
+    }
+  };
+
+  const handleSlotFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const selectedFile = files[0];
+    e.target.value = '';
+    loadSingleFileIntoSlot(index, selectedFile);
+  };
+
+  const handleRemoveSlot = (index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[index] = { id: `slot-${index + 1}`, file: null, pageDataUrls: {}, totalPages: 0 };
+      return next;
+    });
+    const remaining = slots
+      .map((s, idx) => ({ s, idx }))
+      .filter((item) => item.idx !== index && item.s.file !== null);
+    if (remaining.length > 0) {
+      setActiveSlotIndex(remaining[0].idx);
+    } else {
+      setActiveSlotIndex(0);
+      setFile(null);
+    }
+  };
+
+  const handleClearAllSlots = () => {
+    setSlots([
+      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+    ]);
+    setActiveSlotIndex(0);
+    setFile(null);
+    setCompletedResult(null);
+  };
+
+  const loadFilesIntoSlots = (fileList: FileList | File[]) => {
+    const arr = Array.from(fileList).slice(0, 3);
+    arr.forEach((f, idx) => {
+      loadSingleFileIntoSlot(idx, f);
+    });
   };
 
   const handleRemoveFile = () => {
@@ -1170,18 +1354,23 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
           </div>
         </div>
 
-        {(file || completedResult) && (
+        {(loadedSlots.length > 0 || completedResult) && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-zinc-700 px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
-                {completedResult ? completedResult.filename : file?.name}
+                {completedResult
+                  ? completedResult.filename
+                  : file?.name ||
+                    (isEs
+                      ? `${loadedSlots.length} archivos cargados`
+                      : `${loadedSlots.length} files loaded`)}
               </span>
             </div>
             <button
-              onClick={handleRemoveFile}
+              onClick={handleClearAllSlots}
               className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
-              title={isEs ? 'Quitar archivo' : 'Remove file'}
+              title={isEs ? 'Limpiar archivos' : 'Clear files'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -1307,7 +1496,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
             </div>
           </div>
 
-          {!file ? (
+          {loadedSlots.length === 0 ? (
             /* VISTA DROPZONE VACÍA */
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -1369,294 +1558,266 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col gap-6 flex-1 w-full"
             >
-              {/* SECCIÓN 1: VISOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO GRANDE (ANCHO COMPLETO) */}
-              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col h-[580px] sm:h-[640px] lg:h-[680px] relative overflow-hidden">
+              {/* ═════════════════════════════════════════════════════════════════════════════
+                  SECCIÓN 1: VISTA PREVIA AL 50% (IZQUIERDA) + 3 CAJAS INDEPENDIENTES (DERECHA)
+                 ═════════════════════════════════════════════════════════════════════════════ */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex items-center justify-between mb-3 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
-                  <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
-                    <FileText className="w-4 h-4 text-white" />
-                    <span>
-                      {isEs ? '001 / VISOR Y SELECCIÓN VISUAL' : '001 / VIEWER & VISUAL SELECTION'}
+
+                {/* BARRA SUPERIOR DE LA SECCIÓN 1 */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+                      {isEs ? '001 / VISTA PREVIA (50%) Y ARCHIVOS' : '001 / PREVIEW (50%) & FILES'}
+                    </span>
+                    <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
+                    <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
+                      {file ? file.name : isEs ? 'Sin archivo seleccionado' : 'No file selected'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
-                    <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
-                    {totalPages}{' '}
-                    {mode === 'word-to-pdf'
-                      ? isEs
-                        ? 'páginas'
-                        : 'pages'
-                      : isEs
-                        ? 'págs a Word'
-                        : 'pgs to Word'}
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                      <span className="font-bold font-mono text-white">{loadedSlots.length}</span> /
+                      3 {isEs ? 'cargados' : 'loaded'}
+                    </div>
+
+                    {loadedSlots.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllSlots}
+                        className="text-zinc-500 hover:text-red-400 text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 ml-2"
+                        title={isEs ? 'Limpiar todas las cajas' : 'Clear all boxes'}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">
+                          {isEs ? 'Limpiar todo' : 'Clear all'}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* CONTENEDOR SPLIT: IZQUIERDA MINIATURAS - DERECHA VISOR AMPLIADO */}
-                <div className="w-full flex-1 bg-[#121217] rounded-2xl overflow-hidden relative border border-zinc-700/80 font-mono min-h-0 flex shadow-inner">
-                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  {file && (
-                    <div className="w-32 sm:w-36 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
-                        <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
-                          {isEs ? 'PÁGS' : 'PAGES'} ({totalPages || 1})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={
-                            targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
-                          }
-                          className="text-[9px] text-zinc-300 hover:text-white font-bold cursor-pointer"
-                          title={
-                            targetPages.length === totalPages
-                              ? isEs
-                                ? 'Deseleccionar todas'
-                                : 'Deselect all'
-                              : isEs
-                                ? 'Seleccionar todas'
-                                : 'Select all'
-                          }
-                        >
-                          {targetPages.length === totalPages
-                            ? isEs
-                              ? 'Ninguna'
-                              : 'None'
-                            : isEs
-                              ? 'Todas'
-                              : 'All'}
-                        </button>
-                      </div>
-
-                      {isRendering ? (
-                        <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                          <Loader2 className="w-5 h-5 animate-spin text-white" />
-                          <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
-                        </div>
-                      ) : totalPages > 0 ? (
-                        Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                          const isIncluded = targetPageSet.has(pageNum);
-                          const isActive = activePage === pageNum;
-
-                          return (
-                            <div
-                              key={pageNum}
-                              id={`thumb-page-${pageNum}`}
-                              onClick={() => {
-                                setActivePage(pageNum);
-                                if (
-                                  mode === 'word-to-pdf' ||
-                                  (file &&
-                                    (file.name.toLowerCase().endsWith('.docx') ||
-                                      file.name.toLowerCase().endsWith('.doc')))
-                                ) {
-                                  scrollToDocxPage(pageNum);
-                                }
-                              }}
-                              className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
-                                isActive
-                                  ? 'border-blue-400 ring-2 ring-blue-400/50 bg-blue-950/40 shadow-blue-500/20'
-                                  : isIncluded
-                                    ? 'border-zinc-700 hover:border-zinc-500 bg-zinc-900/90'
-                                    : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
-                              }`}
-                            >
-                              {/* Checkbox selector */}
-                              <button
-                                type="button"
-                                onClick={(e) => togglePageSelection(pageNum, e)}
-                                className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
-                                  isIncluded
-                                    ? 'bg-blue-500 text-white shadow-md'
-                                    : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
-                                }`}
-                                title={
-                                  isIncluded
-                                    ? isEs
-                                      ? 'Quitar de la extracción'
-                                      : 'Exclude page'
-                                    : isEs
-                                      ? 'Incluir en la extracción'
-                                      : 'Include page'
-                                }
-                              >
-                                {isIncluded ? (
-                                  <Check className="w-3 h-3 stroke-[3] text-white" />
-                                ) : (
-                                  <div className="w-3 h-3" />
-                                )}
-                              </button>
-
-                              <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex flex-col items-center justify-center p-1.5 shadow-inner">
-                                {pageDataUrls[pageNum] ? (
-                                  <img
-                                    src={pageDataUrls[pageNum]}
-                                    alt={`Pág ${pageNum}`}
-                                    className="w-full h-full object-contain"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50 text-zinc-800 rounded border border-zinc-200">
-                                    <FileText className="w-4 h-4 text-blue-600 mb-0.5" />
-                                    <span className="text-[9px] font-bold font-mono text-zinc-800">
-                                      Pág. {pageNum}
-                                    </span>
-                                  </div>
-                                )}
-                                <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded font-bold">
-                                  #{pageNum}
+                {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
+                  {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
+                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                    {file ? (
+                      <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                        {/* HOJA PDF O DOCUMENTO WORD EN VISTA PREVIA REDUCIDA AL 50% */}
+                        {mode === 'pdf-to-word' || file.name.toLowerCase().endsWith('.pdf') ? (
+                          <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
+                            {activeSlot.pageDataUrls[activePage] ? (
+                              <img
+                                src={activeSlot.pageDataUrls[activePage]}
+                                alt={`Pág ${activePage}`}
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : activeSlot.thumbnailUrl ? (
+                              <img
+                                src={activeSlot.thumbnailUrl}
+                                alt="Pág 1"
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                                <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                                <span className="text-[11px] font-mono font-bold">
+                                  Pág. {activePage}
                                 </span>
                               </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
-                          <WordIcon className="w-5 h-5" />
-                          <span>{isEs ? 'Modo Word' : 'Word Mode'}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                            )}
 
-                  {/* COSTADO DERECHO: VISOR PDF O VISTA DOCUMENTAL WORD AMPLIADO */}
-                  <div className="flex-1 bg-zinc-950 p-3 relative flex flex-col items-center justify-center overflow-hidden">
-                    {mode === 'pdf-to-word' ||
-                    (file && file.name.toLowerCase().endsWith('.pdf')) ? (
-                      <PdfPageViewer
-                        file={file}
-                        activePage={activePage}
-                        totalPages={totalPages}
-                        onPageChange={(p) => setActivePage(p)}
-                        pageDataUrls={pageDataUrls}
-                        title={file?.name}
-                        accentColor="blue"
-                      />
-                    ) : (
-                      /* HOJA DE PREVISUALIZACIÓN DE DOCUMENTO MICROSOFT WORD DE ALTA FIDELIDAD */
-                      <div className="w-full h-full flex flex-col overflow-hidden">
-                        {/* BARRA SUPERIOR CON ESTADÍSTICAS, NAVEGADOR DE PÁGINAS Y ZOOM */}
-                        <div className="flex items-center justify-between px-2.5 py-1.5 bg-zinc-900 border border-white/10 rounded-t-xl text-[11px] font-mono text-zinc-400 shrink-0 gap-1.5 overflow-hidden">
-                          {/* TÍTULO COMPACTO */}
-                          <div className="flex items-center gap-1.5 min-w-0 shrink">
-                            <BookOpen className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                            <span
-                              className="text-white font-bold truncate text-[11px] max-w-[150px] sm:max-w-[240px]"
-                              title={parsedWordDoc?.title || file?.name}
-                            >
-                              {parsedWordDoc?.title || file?.name}
-                            </span>
-                          </div>
-
-                          {/* CONTROLES AGRUPADOS */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {/* NAVEGADOR DE PÁGINAS */}
-                            <div className="flex items-center bg-zinc-950 px-1.5 py-0.5 rounded-lg border border-zinc-700 text-[10px]">
-                              <button
-                                type="button"
-                                onClick={() => scrollToDocxPage(Math.max(1, activePage - 1))}
-                                disabled={activePage <= 1}
-                                className="px-1 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
-                                title="Página anterior"
-                              >
-                                ◀
-                              </button>
-                              <span className="px-1 font-bold text-white select-none whitespace-nowrap">
-                                {activePage} / {totalPages || 1}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  scrollToDocxPage(Math.min(totalPages, activePage + 1))
-                                }
-                                disabled={activePage >= totalPages}
-                                className="px-1 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
-                                title="Página siguiente"
-                              >
-                                ▶
-                              </button>
-                            </div>
-
-                            {/* CONTROLES DE ZOOM COMPACTOS */}
-                            <div className="flex items-center bg-zinc-950 px-1 py-0.5 rounded-lg border border-zinc-700 text-[10px]">
-                              <button
-                                type="button"
-                                onClick={() => setDocxZoom((z) => Math.max(25, z - 10))}
-                                className="p-1 hover:text-white transition-colors cursor-pointer"
-                                title={isEs ? 'Reducir' : 'Zoom out'}
-                              >
-                                <ZoomOut className="w-3 h-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleFitDocxWidth}
-                                className="px-1.5 py-0.5 rounded text-zinc-300 hover:text-white font-bold select-none transition-colors cursor-pointer text-[10px]"
-                                title={isEs ? 'Ajustar al ancho' : 'Fit to width'}
-                              >
-                                {docxZoom}%
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDocxZoom((z) => Math.min(150, z + 10))}
-                                className="p-1 hover:text-white transition-colors cursor-pointer"
-                                title={isEs ? 'Aumentar' : 'Zoom in'}
-                              >
-                                <ZoomIn className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* CONTENEDOR DOCUMENTAL WORD */}
-                        <div
-                          ref={docxScrollContainerRef}
-                          className="flex-1 overflow-y-auto overflow-x-auto bg-[#0a0a0d] p-4 border-x border-b border-white/10 rounded-b-xl custom-scrollbar flex justify-center relative scroll-smooth"
-                        >
-                          {isDocxRendering && (
-                            <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-10 font-mono text-xs text-blue-400">
-                              <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
-                              <span>
-                                {isEs
-                                  ? 'Renderizando maquetación de Microsoft Word...'
-                                  : 'Rendering Microsoft Word layout...'}
-                              </span>
-                            </div>
-                          )}
-
-                          <div
-                            className="docx-preview-custom-wrapper transition-transform duration-150 origin-top flex flex-col items-center"
-                            style={{
-                              transform: `scale(${docxZoom / 100})`,
-                              transformOrigin: 'top center',
-                            }}
-                          >
-                            <div
-                              ref={docxContainerRef}
-                              className="flex flex-col items-center w-full"
-                            />
-                          </div>
-
-                          {docxRenderError && parsedWordDoc && (
-                            /* FALLBACK ESTRUCTURADO */
-                            <div className="w-full max-w-2xl bg-white text-zinc-900 rounded-lg shadow-2xl p-8 font-sans space-y-4 min-h-[500px]">
-                              <div className="border-b border-zinc-200 pb-4 mb-4">
-                                <h1 className="text-xl font-black text-blue-950 tracking-tight">
-                                  {parsedWordDoc.title}
-                                </h1>
-                                <p className="text-xs text-zinc-500 font-mono mt-1">
-                                  {isEs ? 'Vista estructurada' : 'Structured view'}
-                                </p>
+                            {totalPages > 0 && (
+                              <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                                #{activePage} / {totalPages}
                               </div>
-                              <div className="space-y-3 text-sm leading-relaxed text-zinc-800">
-                                {parsedWordDoc.paragraphs.map((p, idx) => (
-                                  <p key={idx} className="text-xs sm:text-sm text-zinc-700">
-                                    {p}
+                            )}
+                          </div>
+                        ) : (
+                          /* DOCUMENTO WORD AL 50% VISUAL */
+                          <div className="relative bg-white text-zinc-900 rounded-xl shadow-2xl border border-blue-400/60 overflow-hidden flex flex-col p-4 transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group justify-between">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-blue-600 font-bold text-xs border-b border-zinc-200 pb-1.5">
+                                <WordIcon className="w-4 h-4 rounded-sm flex-shrink-0" />
+                                <span className="truncate font-sans font-extrabold text-blue-800">
+                                  {parsedWordDoc?.title || file.name}
+                                </span>
+                              </div>
+                              <div className="space-y-1.5 text-[10px] text-zinc-600 font-sans line-clamp-6 text-justify leading-relaxed">
+                                {parsedWordDoc?.paragraphs?.length ? (
+                                  parsedWordDoc.paragraphs.slice(0, 4).map((p, pIdx) => (
+                                    <p key={pIdx} className="line-clamp-2">
+                                      {p}
+                                    </p>
+                                  ))
+                                ) : (
+                                  <p className="text-zinc-400 italic">
+                                    {isEs
+                                      ? 'Documento de Microsoft Word (.docx)'
+                                      : 'Microsoft Word document (.docx)'}
                                   </p>
-                                ))}
+                                )}
                               </div>
                             </div>
-                          )}
-                        </div>
+                            <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500 pt-1.5 border-t border-zinc-200">
+                              <span className="text-blue-700 font-bold">
+                                {parsedWordDoc?.wordCount
+                                  ? `${parsedWordDoc.wordCount} palabras`
+                                  : 'Microsoft Word'}
+                              </span>
+                              <span className="bg-zinc-800 px-2 py-0.5 rounded text-white font-bold">
+                                #{activePage} / {totalPages || 1}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
+                            <button
+                              type="button"
+                              onClick={() => setActivePage(Math.max(1, activePage - 1))}
+                              disabled={activePage <= 1}
+                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                              title={isEs ? 'Página anterior' : 'Previous page'}
+                            >
+                              ◀
+                            </button>
+                            <span className="font-bold text-white text-[11px]">
+                              {activePage} / {totalPages}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setActivePage(Math.min(totalPages, activePage + 1))}
+                              disabled={activePage >= totalPages}
+                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                              title={isEs ? 'Página siguiente' : 'Next page'}
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 gap-3 text-zinc-500 font-mono text-xs">
+                        <FileText className="w-8 h-8 text-zinc-600" />
+                        <span>
+                          {isEs ? 'Sin archivo para previsualizar' : 'No file to preview'}
+                        </span>
                       </div>
                     )}
+                  </div>
+
+                  {/* ── LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ── */}
+                  <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                    {slots.map((slot, sIdx) => {
+                      const isLoaded = slot.file !== null;
+                      const isActive = isLoaded && sIdx === activeSlotIndex;
+
+                      return (
+                        <div
+                          key={slot.id}
+                          onClick={() => {
+                            if (isLoaded) {
+                              setActiveSlotIndex(sIdx);
+                            } else {
+                              getSlotInputRef(sIdx).current?.click();
+                            }
+                          }}
+                          className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                            isActive
+                              ? 'bg-blue-950/40 border-blue-500 shadow-blue-500/10'
+                              : isLoaded
+                                ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                                : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                          }`}
+                        >
+                          <input
+                            ref={getSlotInputRef(sIdx)}
+                            type="file"
+                            accept={
+                              mode === 'word-to-pdf'
+                                ? '.docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword'
+                                : '.pdf,application/pdf'
+                            }
+                            className="hidden"
+                            onChange={(e) => handleSlotFileChange(sIdx, e)}
+                          />
+
+                          {isLoaded ? (
+                            <div className="flex items-center justify-between w-full gap-3 font-mono">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                    isActive
+                                      ? 'bg-blue-500/20 border-blue-400 text-blue-300'
+                                      : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                                  }`}
+                                >
+                                  {mode === 'word-to-pdf' ? (
+                                    <WordIcon className="w-5 h-5 rounded-sm" />
+                                  ) : (
+                                    <FileText className="w-5 h-5 text-blue-400" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                      {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`}
+                                    </span>
+                                    {isActive && (
+                                      <span className="text-[9px] px-1.5 py-0.2 bg-blue-500/20 text-blue-300 rounded border border-blue-500/40 font-bold">
+                                        {isEs ? 'Visualizando' : 'Viewing'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                    {slot.file!.name}
+                                  </p>
+                                  <span className="text-[10px] text-zinc-400">
+                                    {formatFileSize(slot.file!.size)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleRemoveSlot(sIdx, e)}
+                                  className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                                  title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between w-full font-mono">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                                  <Plus className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                    {isEs
+                                      ? `+ Cargar ${mode === 'word-to-pdf' ? 'Word' : 'PDF'} ${sIdx + 1}`
+                                      : `+ Upload ${mode === 'word-to-pdf' ? 'Word' : 'PDF'} ${sIdx + 1}`}
+                                  </p>
+                                  <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                    {mode === 'word-to-pdf' ? '.docx / .doc' : '.pdf'}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                                {isEs ? 'Disponible' : 'Available'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

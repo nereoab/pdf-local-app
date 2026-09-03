@@ -4,12 +4,12 @@ export interface ApiConversionOptions {
   includeImages?: boolean;
   primaryFont?: string;
   addPageBreaks?: boolean;
-  engine?: 'adobe' | 'local' | 'pdf2docx' | 'cloudconvert' | 'auto';
+  engine?: 'adobe' | 'local' | 'pdf2docx' | 'cloudconvert' | 'gemini' | 'auto';
   onProgress?: (pct: number, msg: string) => void;
 }
 
 /**
- * Convierte un archivo PDF a Word (.docx) usando el motor seleccionado (Adobe, CloudConvert, Local o pdf2docx)
+ * Convierte un archivo PDF a Word (.docx) usando el motor seleccionado (Adobe, CloudConvert, Gemini, Local o pdf2docx)
  */
 export async function convertPdfToWordWithApi(
   file: File,
@@ -17,13 +17,15 @@ export async function convertPdfToWordWithApi(
 ): Promise<Blob> {
   const onProgress = options?.onProgress;
   const initialMsg =
-    options?.engine === 'adobe'
-      ? 'Enviando a Adobe Acrobat Services...'
-      : options?.engine === 'cloudconvert'
-        ? 'Enviando a CloudConvert API v2 (Nube Privada)...'
-        : options?.engine === 'pdf2docx'
-          ? 'Iniciando motor pdf2docx (análisis de tablas y columnas)...'
-          : 'Enviando documento al motor de conversión...';
+    options?.engine === 'gemini'
+      ? 'Iniciando reconstrucción semántica con Gemini AI...'
+      : options?.engine === 'adobe'
+        ? 'Enviando a Adobe Acrobat Services...'
+        : options?.engine === 'cloudconvert'
+          ? 'Enviando a CloudConvert API v2 (Nube Privada)...'
+          : options?.engine === 'pdf2docx'
+            ? 'Iniciando motor pdf2docx (análisis de tablas y columnas)...'
+            : 'Enviando documento al motor de conversión...';
   onProgress?.(10, initialMsg);
 
   const formData = new FormData();

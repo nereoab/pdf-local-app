@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { convertExcelToPdfWithAdobe } from '@/lib/adobe-converter-service';
 import { convertExcelToPdfWithCloudConvert } from '@/lib/cloudconvert-service';
+import { convertExcelToPdfWithGemini } from '@/lib/gemini-converter-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -21,7 +22,25 @@ export async function POST(req: NextRequest) {
     const originalName = file.name.replace(/\.[^/.]+$/, '');
     const safeOutName = `${encodeURIComponent(originalName)}.pdf`;
 
-    // 1. CloudConvert API v2
+    // 1. Motor Gemini AI (Reconstructor de Tablas y Cuadros)
+    if (engine === 'gemini') {
+      try {
+        console.log('[Excel-to-PDF] Converting with Gemini AI Structural Engine...');
+        const pdfBuffer = await convertExcelToPdfWithGemini(buffer, file.name);
+        return new NextResponse(new Uint8Array(pdfBuffer), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${safeOutName}"`,
+            'Content-Length': pdfBuffer.length.toString(),
+          },
+        });
+      } catch (geminiErr) {
+        console.warn('[Excel-to-PDF] Gemini error, falling back to CloudConvert:', geminiErr);
+      }
+    }
+
+    // 2. CloudConvert API v2
     if (engine === 'cloudconvert') {
       try {
         console.log('[Excel-to-PDF] Converting with CloudConvert API v2...');
@@ -39,7 +58,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Adobe Acrobat Services API
+    // 3. Adobe Acrobat Services API
     if (process.env.PDF_SERVICES_CLIENT_ID && process.env.PDF_SERVICES_CLIENT_SECRET) {
       try {
         console.log('[Excel-to-PDF] Converting with Adobe Acrobat Services...');
@@ -57,21 +76,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fallback: Si no era CloudConvert pero falló Adobe, intentar CloudConvert
-    if (engine !== 'cloudconvert') {
-      try {
-        const pdfBuffer = await convertExcelToPdfWithCloudConvert(buffer, file.name);
-        return new NextResponse(new Uint8Array(pdfBuffer), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${safeOutName}"`,
-            'Content-Length': pdfBuffer.length.toString(),
-          },
-        });
-      } catch (ccErr2) {
-        console.warn('[Excel-to-PDF] CloudConvert fallback error:', ccErr2);
-      }
+    // 4. Fallback general
+    try {
+      const pdfBuffer = await convertExcelToPdfWithGemini(buffer, file.name);
+      return new NextResponse(new Uint8Array(pdfBuffer), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${safeOutName}"`,
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+      });
+    } catch (finalErr) {
+      console.warn('[Excel-to-PDF] Final fallback error:', finalErr);
     }
 
     return NextResponse.json(

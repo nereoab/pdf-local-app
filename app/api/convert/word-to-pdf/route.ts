@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import { convertWordToPdfWithAdobe } from '@/lib/adobe-converter-service';
 import { convertWordToPdfWithCloudConvert } from '@/lib/cloudconvert-service';
+import { convertWordToPdfWithGemini } from '@/lib/gemini-converter-service';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -36,12 +37,30 @@ export async function POST(req: NextRequest) {
     const originalName = file.name.replace(/\.[^/.]+$/, '');
     const safeOutName = `${encodeURIComponent(originalName)}.pdf`;
 
+    // 1. Motor Gemini AI (Reconstructor Estructural)
+    if (engine === 'gemini') {
+      try {
+        console.log('[Word-to-PDF] Converting with Gemini AI Engine...');
+        const pdfBuffer = await convertWordToPdfWithGemini(buffer, file.name);
+        return new NextResponse(new Uint8Array(pdfBuffer), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${safeOutName}"`,
+            'Content-Length': pdfBuffer.length.toString(),
+          },
+        });
+      } catch (geminiErr) {
+        console.warn('[Word-to-PDF] Gemini AI error, attempting next engine:', geminiErr);
+      }
+    }
+
     const hasAdobeCredentials = Boolean(
       process.env.PDF_SERVICES_CLIENT_ID && process.env.PDF_SERVICES_CLIENT_SECRET,
     );
     const preferAdobe = engine === 'adobe' && hasAdobeCredentials;
 
-    // 1. CloudConvert API v2
+    // 2. CloudConvert API v2
     if (engine === 'cloudconvert') {
       try {
         console.log('[Word-to-PDF] Converting with CloudConvert API v2...');
@@ -62,7 +81,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Adobe Acrobat Services API (si se solicita específicamente o en auto)
+    // 3. Adobe Acrobat Services API (si se solicita específicamente o en auto)
     if (preferAdobe) {
       try {
         console.log('[Word-to-PDF] Converting with Adobe Acrobat Services...');
@@ -80,7 +99,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Motor Local Python de Alto Rendimiento
+    // 4. Motor Local Python de Alto Rendimiento
     const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const tempDir = os.tmpdir();
     const ext = isDocx ? '.docx' : '.doc';
@@ -158,7 +177,7 @@ export async function POST(req: NextRequest) {
       console.warn('Local engine execution error, falling back:', localErr);
     }
 
-    // 3. Fallback a Adobe si no se había intentado
+    // Fallback a Adobe si no se había intentado
     if (!preferAdobe && hasAdobeCredentials) {
       try {
         console.log('[Word-to-PDF] Fallback: Converting with Adobe Acrobat Services...');

@@ -5,9 +5,70 @@ import path from 'path';
 import os from 'os';
 import { convertPdfToDocxWithAdobe } from '@/lib/adobe-converter-service';
 import { convertPdfToDocxWithCloudConvert } from '@/lib/cloudconvert-service';
+import { convertPdfToWordWithGemini } from '@/lib/gemini-converter-service';
+import { PDFDocument } from 'pdf-lib';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // 2 minutes max execution
+
+async function extractSelectedPages(
+  originalBuffer: Buffer,
+  pagesStr: string | null,
+): Promise<{ buffer: Buffer; pageCount: number; isSubSet: boolean }> {
+  if (!pagesStr || !pagesStr.trim()) {
+    return { buffer: originalBuffer, pageCount: 0, isSubSet: false };
+  }
+  try {
+    const srcDoc = await PDFDocument.load(originalBuffer);
+    const totalPages = srcDoc.getPageCount();
+    const targetIndices: number[] = [];
+    const parts = pagesStr.split(',');
+
+    for (const part of parts) {
+      const clean = part.trim();
+      if (!clean) continue;
+      if (clean.includes('-')) {
+        const [sStr, eStr] = clean.split('-');
+        const s = parseInt(sStr, 10);
+        const e = parseInt(eStr, 10);
+        if (!isNaN(s) && !isNaN(e)) {
+          const start = Math.min(s, e);
+          const end = Math.max(s, e);
+          for (let p = start; p <= end; p++) {
+            if (p >= 1 && p <= totalPages) targetIndices.push(p - 1);
+          }
+        }
+      } else {
+        const p = parseInt(clean, 10);
+        if (!isNaN(p) && p >= 1 && p <= totalPages) {
+          targetIndices.push(p - 1);
+        }
+      }
+    }
+
+    const uniqueIndices = Array.from(new Set(targetIndices)).sort((a, b) => a - b);
+    if (uniqueIndices.length === 0 || uniqueIndices.length === totalPages) {
+      return { buffer: originalBuffer, pageCount: totalPages, isSubSet: false };
+    }
+
+    const dstDoc = await PDFDocument.create();
+    const copiedPages = await dstDoc.copyPages(srcDoc, uniqueIndices);
+    copiedPages.forEach((cp) => dstDoc.addPage(cp));
+    const slicedBytes = await dstDoc.save();
+
+    console.log(
+      `[PDF-to-Word] Sliced ${uniqueIndices.length} of ${totalPages} pages for conversion (reduced size: ${slicedBytes.length} bytes)`,
+    );
+    return {
+      buffer: Buffer.from(slicedBytes),
+      pageCount: uniqueIndices.length,
+      isSubSet: true,
+    };
+  } catch (err) {
+    console.warn('[PDF-to-Word] Page extraction error, using original buffer:', err);
+    return { buffer: originalBuffer, pageCount: 0, isSubSet: false };
+  }
+}
 
 export async function POST(req: NextRequest) {
   let tempInputPath = '';
@@ -28,24 +89,63 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const rawBuffer = Buffer.from(arrayBuffer);
+    const {
+      buffer: activeBuffer,
+      pageCount: activePageCount,
+      isSubSet,
+    } = await extractSelectedPages(rawBuffer, pages);
     const originalName = file.name.replace(/\.[^/.]+$/, '');
     const safeOutName = `${encodeURIComponent(originalName)}_Word.docx`;
 
-    const pageCount = pages ? pages.split(',').filter(Boolean).length : 0;
+    // 1. Motor Gemini AI (Reconstrucción Semántica de Tablas y Párrafos desde Cero)
+    if (engine === 'gemini') {
+      try {
+        console.log('[PDF-to-Word] Converting with Gemini AI Structural Engine...');
+        const geminiDocxBuffer = await convertPdfToWordWithGemini(activeBuffer, file.name, {
+          pages: isSubSet ? undefined : pages || undefined,
+        });
+        return new NextResponse(new Uint8Array(geminiDocxBuffer), {
+          status: 200,
+          headers: {
+            'Content-Type':
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition': `attachment; filename="${safeOutName}"`,
+            'Content-Length': geminiDocxBuffer.length.toString(),
+          },
+        });
+      } catch (geminiErr: any) {
+        console.error('[PDF-to-Word] Gemini AI error:', geminiErr);
+        return NextResponse.json(
+          {
+            error:
+              geminiErr?.message ||
+              'Error en el motor Gemini AI. Asegúrate de configurar GEMINI_API_KEY.',
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    const effectivePageCount = isSubSet
+      ? activePageCount
+      : pages
+        ? pages.split(',').filter(Boolean).length
+        : 0;
     const hasAdobeCredentials = Boolean(
       process.env.PDF_SERVICES_CLIENT_ID && process.env.PDF_SERVICES_CLIENT_SECRET,
     );
 
-    // Si el usuario seleccionó Adobe (o auto con <= 200 págs) y hay credenciales de Adobe
+    // 2. Si el usuario seleccionó Adobe (o auto con <= 200 págs) y hay credenciales de Adobe
     const preferAdobe =
-      (engine === 'adobe' || (engine === 'auto' && pageCount > 0 && pageCount <= 200)) &&
+      (engine === 'adobe' ||
+        (engine === 'auto' && effectivePageCount > 0 && effectivePageCount <= 200)) &&
       hasAdobeCredentials;
 
     if (preferAdobe) {
       try {
         console.log('[PDF-to-Word] Converting with Adobe Acrobat Services...');
-        const adobeDocxBuffer = await convertPdfToDocxWithAdobe(buffer);
+        const adobeDocxBuffer = await convertPdfToDocxWithAdobe(activeBuffer);
         return new NextResponse(new Uint8Array(adobeDocxBuffer), {
           status: 200,
           headers: {
@@ -63,11 +163,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Motor 2: CloudConvert API v2 (Nube Privada - 25/día Gratis)
+    // 3. Motor CloudConvert API v2 (Nube Privada)
     if (engine === 'cloudconvert') {
       try {
         console.log('[PDF-to-Word] Converting with CloudConvert API v2...');
-        const cloudConvertDocxBuffer = await convertPdfToDocxWithCloudConvert(buffer, file.name);
+        const cloudConvertDocxBuffer = await convertPdfToDocxWithCloudConvert(
+          activeBuffer,
+          file.name,
+        );
         return new NextResponse(new Uint8Array(cloudConvertDocxBuffer), {
           status: 200,
           headers: {
@@ -90,10 +193,10 @@ export async function POST(req: NextRequest) {
     tempInputPath = path.join(tempDir, `pdf2docx_in_${uniqueId}.pdf`);
     tempOutputPath = path.join(tempDir, `pdf2docx_out_${uniqueId}.docx`);
 
-    await fs.promises.writeFile(tempInputPath, buffer);
+    await fs.promises.writeFile(tempInputPath, activeBuffer);
 
-    // Motor 3: pdf2docx Oficial (Especializado en Tablas y Columnas)
-    if (engine === 'pdf2docx') {
+    // 4. Motor Local Avanzado: pdf2docx Oficial (Tablas complejas, columnas y maquetación nativa)
+    if (engine === 'local' || engine === 'pdf2docx' || engine === 'auto') {
       try {
         console.log('[PDF-to-Word] Converting with official pdf2docx (Tables & Columns engine)...');
         const officialScriptPath = path.join(
@@ -102,7 +205,8 @@ export async function POST(req: NextRequest) {
           'pdf2docx_official_convert.py',
         );
         const officialArgs = [officialScriptPath, tempInputPath, tempOutputPath];
-        if (pages && pages.trim().length > 0) {
+        // Si no se recortó previamente el archivo, pasar las páginas seleccionadas
+        if (!isSubSet && pages && pages.trim().length > 0) {
           officialArgs.push('--pages', pages.trim());
         }
 
@@ -124,10 +228,10 @@ export async function POST(req: NextRequest) {
               pyOfficialProcess.kill();
             } catch {}
             console.warn(
-              '[PDF-to-Word] pdf2docx timed out after 30s, falling back to fast local engine',
+              '[PDF-to-Word] pdf2docx timed out after 45s, falling back to fast PyMuPDF engine',
             );
             resolve(1);
-          }, 30000);
+          }, 45000);
 
           pyOfficialProcess.on('close', (code) => {
             clearTimeout(timeout);
@@ -166,7 +270,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Motor 3: Motor Local Ultrarrápido de Alta Precisión (PyMuPDF - ~0.5s)
+    // 5. Motor Local Ultrarrápido de Alta Precisión (PyMuPDF - ~0.5s)
     const scriptPath = path.join(process.cwd(), 'server', 'pdf2docx_convert.py');
     const args = [
       scriptPath,
@@ -181,12 +285,13 @@ export async function POST(req: NextRequest) {
       '--add-page-breaks',
       addPageBreaks,
     ];
-    if (pages && pages.trim().length > 0) {
+    if (!isSubSet && pages && pages.trim().length > 0) {
       args.push('--pages', pages.trim());
     }
 
     try {
-      const pyProcess = spawn('python', args, {
+      const pythonCmd = process.env.PYTHON_PATH || 'python';
+      const pyProcess = spawn(pythonCmd, args, {
         windowsHide: true,
       });
 
@@ -202,10 +307,20 @@ export async function POST(req: NextRequest) {
       });
 
       const exitCode = await new Promise<number>((resolve) => {
+        const timeout = setTimeout(() => {
+          try {
+            pyProcess.kill();
+          } catch {}
+          console.warn('[PDF-to-Word] PyMuPDF local engine timed out after 50s');
+          resolve(1);
+        }, 50000);
+
         pyProcess.on('close', (code) => {
+          clearTimeout(timeout);
           resolve(code ?? 1);
         });
         pyProcess.on('error', (err) => {
+          clearTimeout(timeout);
           console.error('Python spawn error:', err);
           resolve(1);
         });
@@ -236,7 +351,7 @@ export async function POST(req: NextRequest) {
     if (!preferAdobe && hasAdobeCredentials) {
       try {
         console.log('[PDF-to-Word] Fallback: Converting with Adobe Acrobat Services...');
-        const adobeDocxBuffer = await convertPdfToDocxWithAdobe(buffer);
+        const adobeDocxBuffer = await convertPdfToDocxWithAdobe(activeBuffer);
         return new NextResponse(new Uint8Array(adobeDocxBuffer), {
           status: 200,
           headers: {
@@ -251,7 +366,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Fallback Terciario: Google Cloud Run (Microservicio)
+    // Fallback Terciario: Google Cloud Run (Microservicio)
     const cloudRunUrl = process.env.CONVERTER_API_URL || process.env.NEXT_PUBLIC_CONVERTER_API_URL;
     if (cloudRunUrl) {
       try {

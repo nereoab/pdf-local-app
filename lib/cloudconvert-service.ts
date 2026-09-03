@@ -132,21 +132,21 @@ export async function convertPdfToDocxWithCloudConvert(
   pdfBuffer: Buffer,
   fileName = 'document.pdf',
 ) {
-  return convertWithCloudConvert(pdfBuffer, fileName, 'docx', { engine: 'office' });
+  return convertWithCloudConvert(pdfBuffer, fileName, 'docx');
 }
 
 export async function convertPdfToExcelWithCloudConvert(
   pdfBuffer: Buffer,
   fileName = 'document.pdf',
 ) {
-  return convertWithCloudConvert(pdfBuffer, fileName, 'xlsx', { engine: 'office' });
+  return convertWithCloudConvert(pdfBuffer, fileName, 'xlsx');
 }
 
 export async function convertPdfToPowerPointWithCloudConvert(
   pdfBuffer: Buffer,
   fileName = 'document.pdf',
 ) {
-  return convertWithCloudConvert(pdfBuffer, fileName, 'pptx', { engine: 'office' });
+  return convertWithCloudConvert(pdfBuffer, fileName, 'pptx');
 }
 
 export async function convertPdfToJpgWithCloudConvert(

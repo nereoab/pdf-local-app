@@ -56,10 +56,16 @@ def main():
 
     try:
         cv = Converter(args.input_pdf)
+        kwargs = {
+            "delete_end_line_hyphen": True,
+            "line_overlap_threshold": 1.0,
+            "parse_stream_table": True,
+            "parse_lattice_table": True,
+        }
         if target_pages:
-            cv.convert(args.output_docx, pages=target_pages, multi_processing=args.multi_processing)
+            cv.convert(args.output_docx, pages=target_pages, multi_processing=False, **kwargs)
         else:
-            cv.convert(args.output_docx, multi_processing=args.multi_processing)
+            cv.convert(args.output_docx, multi_processing=args.multi_processing, **kwargs)
         cv.close()
 
         if os.path.exists(args.output_docx) and os.path.getsize(args.output_docx) > 0:

@@ -93,6 +93,15 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
+interface SlotItem {
+  id: string;
+  file: File | null;
+  thumbnailUrl?: string;
+  pageDataUrls: Record<number, string>;
+  totalPages: number;
+  htmlSnippet?: string;
+}
+
 export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPdfConverterProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -105,6 +114,24 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
+  // ── ESTADO DE 3 SLOTS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ──
+  const [slots, setSlots] = useState<SlotItem[]>([
+    { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+    { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+    { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+
+  const inputRef0 = useRef<HTMLInputElement>(null);
+  const inputRef1 = useRef<HTMLInputElement>(null);
+  const inputRef2 = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (index: number) => {
+    if (index === 0) return inputRef0;
+    if (index === 1) return inputRef1;
+    return inputRef2;
+  };
+
   const [file, setFile] = useState<File | null>(() => {
     if (!globalFile) return null;
     const name = globalFile.name.toLowerCase();
@@ -363,6 +390,132 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     setHeaderHidden(false);
   };
 
+  // CARGA AISLADA DE UN ARCHIVO EN UNA CAJA ESPECÍFICA (SIN DUPLICAR)
+  const loadSingleFileIntoSlot = async (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = {
+        ...next[slotIdx],
+        file: newFile,
+        pageDataUrls: {},
+        totalPages: 0,
+      };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+
+    const name = newFile.name.toLowerCase();
+    if (name.endsWith('.pdf')) {
+      try {
+        const arrayBuffer = await newFile.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const pdf = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const count = pdf.numPages;
+        const pageUrls: Record<number, string> = {};
+        const maxPagesToRender = Math.min(count, 5);
+
+        for (let p = 1; p <= maxPagesToRender; p++) {
+          const page = await pdf.getPage(p);
+          const vp = page.getViewport({ scale: 1.2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport: vp } as unknown as Parameters<
+              typeof page.render
+            >[0]).promise;
+            pageUrls[p] = canvas.toDataURL('image/png', 0.85);
+          }
+        }
+
+        setSlots((prev) => {
+          const next = [...prev];
+          if (next[slotIdx]) {
+            next[slotIdx] = {
+              ...next[slotIdx],
+              pageDataUrls: pageUrls,
+              totalPages: count,
+              thumbnailUrl: pageUrls[1] || '',
+            };
+          }
+          return next;
+        });
+      } catch (err) {
+        console.warn('Error previsualizando PDF en slot', slotIdx, err);
+      }
+    } else {
+      // Archivo HTML (.html / .htm)
+      try {
+        const text = await newFile.text();
+        const estP = Math.max(1, Math.ceil(text.length / 3000));
+        setSlots((prev) => {
+          const next = [...prev];
+          if (next[slotIdx]) {
+            next[slotIdx] = {
+              ...next[slotIdx],
+              totalPages: estP,
+              htmlSnippet: text.slice(0, 1000),
+            };
+          }
+          return next;
+        });
+      } catch (err) {
+        console.warn('Error previsualizando HTML en slot', slotIdx, err);
+      }
+    }
+  };
+
+  const handleSlotFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const selectedFile = files[0];
+    e.target.value = '';
+    loadSingleFileIntoSlot(index, selectedFile);
+  };
+
+  const handleRemoveSlot = (index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[index] = { id: `slot-${index + 1}`, file: null, pageDataUrls: {}, totalPages: 0 };
+      return next;
+    });
+    const remaining = slots
+      .map((s, idx) => ({ s, idx }))
+      .filter((item) => item.idx !== index && item.s.file !== null);
+    if (remaining.length > 0) {
+      setActiveSlotIndex(remaining[0].idx);
+    } else {
+      setActiveSlotIndex(0);
+      setFile(null);
+    }
+  };
+
+  const handleClearAllSlots = () => {
+    setSlots([
+      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+    ]);
+    setActiveSlotIndex(0);
+    setFile(null);
+    setCompletedResult(null);
+  };
+
+  const loadFilesIntoSlots = (fileList: FileList | File[]) => {
+    const arr = Array.from(fileList).slice(0, 3);
+    arr.forEach((f, idx) => {
+      loadSingleFileIntoSlot(idx, f);
+    });
+  };
+
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;
     setFile(null);
@@ -386,6 +539,31 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     setSelectedPageSet(newSet);
     setPageSelectionMode('custom');
   };
+
+  // Sincronizar slot activo con estado de archivo y previsualización
+  const loadedSlots = slots.filter((s) => s.file !== null);
+  const activeSlot = slots[activeSlotIndex] || slots[0];
+
+  useEffect(() => {
+    if (activeSlot && activeSlot.file) {
+      setFile(activeSlot.file);
+      if (activeSlot.totalPages > 0) {
+        setTotalPages(activeSlot.totalPages);
+      }
+      if (Object.keys(activeSlot.pageDataUrls).length > 0) {
+        setPageDataUrls(activeSlot.pageDataUrls);
+      }
+    } else {
+      const firstLoaded = slots.find((s) => s.file !== null);
+      if (firstLoaded && firstLoaded.file) {
+        setFile(firstLoaded.file);
+        setTotalPages(firstLoaded.totalPages);
+        setPageDataUrls(firstLoaded.pageDataUrls);
+      } else {
+        setFile(null);
+      }
+    }
+  }, [slots, activeSlotIndex]);
 
   const handleSelectAll = () => {
     if (totalPages > 0) {
@@ -435,9 +613,8 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         await new Promise((r) => setTimeout(r, 60));
         setProgressPercent(40);
 
+        const rawHtml = await file.text();
         const pdfDoc = await PDFDocument.create();
-        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
         let width = orientation === 'landscape' ? 841.89 : 595.28;
         let height = orientation === 'landscape' ? 595.28 : 841.89;
@@ -450,67 +627,243 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
           height = orientation === 'landscape' ? 612 : 1008;
         }
 
-        const page = pdfDoc.addPage([width, height]);
-        const docTitle = file.name.replace(/\.[^/.]+$/, '');
+        // 1. Intentar renderizado gráfico de alta fidelidad con Sandbox DOM & SVG ForeignObject
+        let renderSuccess = false;
+        try {
+          const domWidthPx = Math.round(width * 1.333); // Convertir pt a px de pantalla (96 DPI)
+          const domHeightPx = Math.round(height * 1.333);
 
-        page.drawText(docTitle, {
-          x: 45,
-          y: height - 50,
-          size: 16,
-          font: boldFont,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-
-        page.drawText(
-          isEs ? 'Documento compilado a partir de código HTML' : 'Document compiled from HTML code',
-          {
-            x: 45,
-            y: height - 75,
-            size: 10,
-            font,
-            color: rgb(0.4, 0.4, 0.4),
-          },
-        );
-
-        const rawHtml = await file.text();
-        const cleanLines = rawHtml
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        const words = cleanLines.split(' ');
-        let yPos = height - 110;
-        let currentLine = '';
-
-        for (const word of words) {
-          if ((currentLine + ' ' + word).length > 85) {
-            page.drawText(currentLine, {
-              x: 45,
-              y: yPos,
-              size: 10,
-              font,
-              color: rgb(0.2, 0.2, 0.2),
-            });
-            currentLine = word;
-            yPos -= 16;
-            if (yPos < 50) break;
-          } else {
-            currentLine += (currentLine ? ' ' : '') + word;
+          // Extraer contenido limpio o body
+          let bodyContent = rawHtml;
+          const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+          if (bodyMatch) {
+            bodyContent = bodyMatch[1];
           }
+
+          // Extraer estilos <style>
+          const styleMatches = rawHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+          const stylesBlock = styleMatches.join('\n');
+
+          const sandboxWrapper = document.createElement('div');
+          sandboxWrapper.style.position = 'fixed';
+          sandboxWrapper.style.left = '-99999px';
+          sandboxWrapper.style.top = '0';
+          sandboxWrapper.style.width = `${domWidthPx}px`;
+          sandboxWrapper.style.background = '#ffffff';
+          sandboxWrapper.style.color = '#111827';
+          sandboxWrapper.style.fontFamily =
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+          sandboxWrapper.style.fontSize = '14px';
+          sandboxWrapper.style.lineHeight = '1.6';
+          sandboxWrapper.style.padding = '36px 40px';
+          sandboxWrapper.style.boxSizing = 'border-box';
+          sandboxWrapper.innerHTML = `
+            ${stylesBlock}
+            <div class="html-pdf-render-root">
+              ${bodyContent}
+            </div>
+          `;
+
+          document.body.appendChild(sandboxWrapper);
+          await new Promise((r) => setTimeout(r, 80));
+
+          const totalContentHeightPx = Math.max(sandboxWrapper.scrollHeight, domHeightPx);
+          const totalPagesNeeded = Math.max(1, Math.ceil(totalContentHeightPx / domHeightPx));
+
+          // Renderizar mediante SVG ForeignObject
+          const serializedHtml = new XMLSerializer().serializeToString(sandboxWrapper);
+          document.body.removeChild(sandboxWrapper);
+
+          const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="${domWidthPx}" height="${totalContentHeightPx}">
+            <foreignObject width="100%" height="100%">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="background:#ffffff; color:#111827; font-family:sans-serif;">
+                ${serializedHtml}
+              </div>
+            </foreignObject>
+          </svg>`;
+
+          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+          const svgUrl = URL.createObjectURL(svgBlob);
+
+          const fullImg = new Image();
+          await new Promise<void>((resolve, reject) => {
+            fullImg.onload = () => resolve();
+            fullImg.onerror = () => reject(new Error('SVG ForeignObject render failed'));
+            fullImg.src = svgUrl;
+          });
+
+          URL.revokeObjectURL(svgUrl);
+
+          const scale = 2.0; // Renderizado Ultra HD 2x
+          for (let p = 0; p < totalPagesNeeded; p++) {
+            setProgressMsg(
+              isEs
+                ? `Compilando página ${p + 1} de ${totalPagesNeeded}...`
+                : `Compiling page ${p + 1} of ${totalPagesNeeded}...`,
+            );
+            setProgressPercent(40 + Math.round(((p + 1) / totalPagesNeeded) * 45));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(domWidthPx * scale);
+            canvas.height = Math.round(domHeightPx * scale);
+            const ctx = canvas.getContext('2d');
+
+            if (ctx) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.scale(scale, scale);
+
+              const sourceY = p * domHeightPx;
+              const sourceH = Math.min(domHeightPx, totalContentHeightPx - sourceY);
+
+              ctx.drawImage(fullImg, 0, sourceY, domWidthPx, sourceH, 0, 0, domWidthPx, sourceH);
+
+              const pageBlob = await new Promise<Blob | null>((res) =>
+                canvas.toBlob(res, 'image/jpeg', 0.92),
+              );
+
+              if (pageBlob) {
+                const pageImgBytes = new Uint8Array(await pageBlob.arrayBuffer());
+                const embeddedPage = await pdfDoc.embedJpg(pageImgBytes);
+                const newPdfPage = pdfDoc.addPage([width, height]);
+                newPdfPage.drawImage(embeddedPage, {
+                  x: 0,
+                  y: 0,
+                  width,
+                  height,
+                });
+              }
+            }
+          }
+          renderSuccess = true;
+        } catch (svgErr) {
+          console.warn('Fallo en SVG ForeignObject, aplicando motor estructurado DOM:', svgErr);
         }
 
-        if (currentLine && yPos >= 50) {
-          page.drawText(currentLine, {
-            x: 45,
+        // 2. Fallback estructurado de alta fidelidad si ForeignObject no fue permitido por el navegador
+        if (!renderSuccess || pdfDoc.getPageCount() === 0) {
+          const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+          const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+          const sideMargin = 45;
+          const usableWidth = width - sideMargin * 2;
+          let currentPage = pdfDoc.addPage([width, height]);
+          let yPos = height - 55;
+
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(rawHtml, 'text/html');
+          const title = doc.title || file.name.replace(/\.[^/.]+$/, '');
+
+          currentPage.drawText(title.substring(0, 60), {
+            x: sideMargin,
             y: yPos,
-            size: 10,
-            font,
-            color: rgb(0.2, 0.2, 0.2),
+            size: 16,
+            font: boldFont,
+            color: rgb(0.08, 0.12, 0.2),
           });
+          yPos -= 25;
+
+          currentPage.drawLine({
+            start: { x: sideMargin, y: yPos },
+            end: { x: width - sideMargin, y: yPos },
+            thickness: 1,
+            color: rgb(0.85, 0.88, 0.92),
+          });
+          yPos -= 25;
+
+          const elements = doc.body
+            ? Array.from(doc.body.querySelectorAll('h1, h2, h3, h4, p, li, tr, pre, code'))
+            : [];
+          const textBlocks: {
+            text: string;
+            isHeading: boolean;
+            isCode: boolean;
+            fontSize: number;
+          }[] = [];
+
+          if (elements.length > 0) {
+            elements.forEach((el) => {
+              const tag = el.tagName.toLowerCase();
+              const text = el.textContent?.trim() || '';
+              if (!text) return;
+
+              if (tag === 'h1')
+                textBlocks.push({ text, isHeading: true, isCode: false, fontSize: 15 });
+              else if (tag === 'h2')
+                textBlocks.push({ text, isHeading: true, isCode: false, fontSize: 13 });
+              else if (tag === 'h3' || tag === 'h4')
+                textBlocks.push({ text, isHeading: true, isCode: false, fontSize: 11.5 });
+              else if (tag === 'pre' || tag === 'code')
+                textBlocks.push({ text, isHeading: false, isCode: true, fontSize: 8.5 });
+              else textBlocks.push({ text, isHeading: false, isCode: false, fontSize: 9.5 });
+            });
+          } else {
+            const fallbackText = rawHtml
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            textBlocks.push({ text: fallbackText, isHeading: false, isCode: false, fontSize: 9.5 });
+          }
+
+          for (const block of textBlocks) {
+            const chosenFont = block.isHeading ? boldFont : font;
+            const lineHeight = block.fontSize * 1.35;
+            const words = block.text.split(' ');
+            let line = '';
+
+            for (let i = 0; i < words.length; i++) {
+              const testLine = line + (line ? ' ' : '') + words[i];
+              let testWidth = testLine.length * (block.fontSize * 0.52);
+              try {
+                testWidth = chosenFont.widthOfTextAtSize(testLine, block.fontSize);
+              } catch {}
+
+              if (testWidth > usableWidth && line !== '') {
+                if (yPos < sideMargin + 30) {
+                  currentPage = pdfDoc.addPage([width, height]);
+                  yPos = height - sideMargin;
+                }
+
+                try {
+                  currentPage.drawText(line, {
+                    x: sideMargin,
+                    y: yPos,
+                    size: block.fontSize,
+                    font: chosenFont,
+                    color: block.isHeading ? rgb(0.1, 0.15, 0.25) : rgb(0.2, 0.22, 0.26),
+                  });
+                } catch {}
+
+                yPos -= lineHeight;
+                line = words[i];
+              } else {
+                line = testLine;
+              }
+            }
+
+            if (line) {
+              if (yPos < sideMargin + 30) {
+                currentPage = pdfDoc.addPage([width, height]);
+                yPos = height - sideMargin;
+              }
+
+              try {
+                currentPage.drawText(line, {
+                  x: sideMargin,
+                  y: yPos,
+                  size: block.fontSize,
+                  font: chosenFont,
+                  color: block.isHeading ? rgb(0.1, 0.15, 0.25) : rgb(0.2, 0.22, 0.26),
+                });
+              } catch {}
+
+              yPos -= lineHeight + (block.isHeading ? 6 : 3);
+            }
+          }
         }
 
         const pdfBytes = await pdfDoc.save();
         resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
         localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
@@ -525,7 +878,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
             rawBlob: resultBlob,
             outputFormat: 'pdf',
             originalSize: formatFileSize(file.size),
-            itemCount: 1,
+            itemCount: pdfDoc.getPageCount(),
           });
           setHeaderHidden(true);
           window.scrollTo(0, 0);
@@ -920,18 +1273,23 @@ ${p.html}
           </div>
         </div>
 
-        {(file || completedResult) && (
+        {(loadedSlots.length > 0 || completedResult) && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
-                {completedResult ? completedResult.filename : file?.name}
+                {completedResult
+                  ? completedResult.filename
+                  : file?.name ||
+                    (isEs
+                      ? `${loadedSlots.length} archivos cargados`
+                      : `${loadedSlots.length} files loaded`)}
               </span>
             </div>
             <button
-              onClick={handleRemoveFile}
+              onClick={handleClearAllSlots}
               className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
-              title={isEs ? 'Quitar archivo' : 'Remove file'}
+              title={isEs ? 'Limpiar archivos' : 'Clear files'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -1059,7 +1417,7 @@ ${p.html}
             </div>
           </div>
 
-          {!file ? (
+          {loadedSlots.length === 0 ? (
             /* VISTA DROPZONE VACÍA */
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -1121,166 +1479,265 @@ ${p.html}
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col gap-6 w-full items-center"
             >
-              {/* SECCIÓN 1: VISOR SUPERIOR SPLIT CON MINIATURAS 1 COLUMNA + VISOR TAMAÑO NORMAL */}
-              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden h-[540px] max-h-[540px]">
+              {/* ═════════════════════════════════════════════════════════════════════════════
+                  SECCIÓN 1: VISTA PREVIA AL 50% (IZQUIERDA) + 3 CAJAS INDEPENDIENTES (DERECHA)
+                 ═════════════════════════════════════════════════════════════════════════════ */}
+              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden">
                 <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+                {/* BARRA SUPERIOR DE LA SECCIÓN 1 */}
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
-                      {isEs
-                        ? '001 / VISOR Y SELECCIÓN DE PÁGINAS'
-                        : '001 / VIEWER & PAGE SELECTION'}
+                      {isEs ? '001 / VISTA PREVIA (50%) Y ARCHIVOS' : '001 / PREVIEW (50%) & FILES'}
                     </span>
                     <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
                     <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
-                      {file?.name}
+                      {file ? file.name : isEs ? 'Sin archivo seleccionado' : 'No file selected'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
-                    <span className="font-bold font-mono text-white">{targetPages.length}</span> /{' '}
-                    {totalPages}{' '}
-                    {mode === 'html-to-pdf'
-                      ? isEs
-                        ? 'a PDF'
-                        : 'to PDF'
-                      : isEs
-                        ? 'a HTML'
-                        : 'to HTML'}
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                      <span className="font-bold font-mono text-white">{loadedSlots.length}</span> /
+                      3 {isEs ? 'cargados' : 'loaded'}
+                    </div>
+
+                    {loadedSlots.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllSlots}
+                        className="text-zinc-500 hover:text-red-400 text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 ml-2"
+                        title={isEs ? 'Limpiar todas las cajas' : 'Clear all boxes'}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span className="hidden sm:inline">
+                          {isEs ? 'Limpiar todo' : 'Clear all'}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* CONTENEDOR PRINCIPAL SPLIT */}
-                <div className="flex-1 flex flex-row gap-4 min-h-0 overflow-hidden bg-[#121217] rounded-2xl border border-zinc-700/80 shadow-inner">
-                  {/* COLUMNA IZQUIERDA: MINIATURAS EN 1 COLUMNA CON CHECKBOX */}
-                  <div className="w-28 sm:w-36 md:w-44 flex-shrink-0 bg-[#0c0c0f] border-r border-zinc-800 p-2 overflow-y-auto flex flex-col gap-2.5 custom-scrollbar">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-zinc-800">
-                      <span className="text-[9px] text-zinc-400 font-mono uppercase font-bold">
-                        {isEs ? 'PÁGS' : 'PAGES'} ({totalPages})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={
-                          targetPages.length === totalPages ? handleDeselectAll : handleSelectAll
-                        }
-                        className="text-[9px] text-zinc-300 hover:text-white font-bold cursor-pointer"
-                        title={
-                          targetPages.length === totalPages
-                            ? isEs
-                              ? 'Deseleccionar todas'
-                              : 'Deselect all'
-                            : isEs
-                              ? 'Seleccionar todas'
-                              : 'Select all'
-                        }
-                      >
-                        {targetPages.length === totalPages
-                          ? isEs
-                            ? 'Ninguna'
-                            : 'None'
-                          : isEs
-                            ? 'Todas'
-                            : 'All'}
-                      </button>
-                    </div>
-
-                    {isRendering ? (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-400 text-[10px]">
-                        <Loader2 className="w-5 h-5 animate-spin text-white" />
-                        <span>{isEs ? 'Cargando...' : 'Loading...'}</span>
-                      </div>
-                    ) : totalPages > 0 ? (
-                      Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                        const isIncluded = targetPageSet.has(pageNum);
-                        const isActive = activePage === pageNum;
-
-                        return (
-                          <div
-                            key={pageNum}
-                            onClick={() => setActivePage(pageNum)}
-                            className={`w-full bg-[#18181f] border rounded-xl p-1.5 flex flex-col items-center relative transition-all cursor-pointer group shadow-sm ${
-                              isActive
-                                ? 'border-amber-400 ring-2 ring-amber-400/40 bg-zinc-800'
-                                : isIncluded
-                                  ? 'border-zinc-600 hover:border-zinc-400 bg-zinc-900'
-                                  : 'border-zinc-800 opacity-40 grayscale hover:opacity-80 hover:border-zinc-700'
-                            }`}
-                          >
-                            {/* Checkbox selector */}
-                            <button
-                              type="button"
-                              onClick={(e) => togglePageSelection(pageNum, e)}
-                              className={`absolute top-2 left-2 z-10 p-0.5 rounded-md transition-all cursor-pointer ${
-                                isIncluded
-                                  ? 'bg-amber-500 text-black shadow-md'
-                                  : 'bg-black/70 text-zinc-500 hover:text-white border border-zinc-700'
-                              }`}
-                              title={
-                                isIncluded
-                                  ? isEs
-                                    ? 'Quitar de la conversión HTML'
-                                    : 'Exclude from HTML'
-                                  : isEs
-                                    ? 'Incluir en la conversión HTML'
-                                    : 'Include in HTML'
-                              }
-                            >
-                              {isIncluded ? (
-                                <Check className="w-3 h-3 stroke-[3] text-black" />
-                              ) : (
-                                <div className="w-3 h-3" />
-                              )}
-                            </button>
-
-                            <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
-                              {pageDataUrls[pageNum] ? (
-                                <img
-                                  src={pageDataUrls[pageNum]}
-                                  alt={`Pág ${pageNum}`}
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <span className="text-[10px] text-zinc-600 font-mono font-bold">
-                                  #{pageNum}
+                {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
+                  {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
+                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                    {file ? (
+                      <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                        {/* HOJA PDF O VISTA HTML EN VISTA PREVIA REDUCIDA AL 50% */}
+                        {mode === 'pdf-to-html' || file.name.toLowerCase().endsWith('.pdf') ? (
+                          <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
+                            {activeSlot.pageDataUrls[activePage] ? (
+                              <img
+                                src={activeSlot.pageDataUrls[activePage]}
+                                alt={`Pág ${activePage}`}
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : activeSlot.thumbnailUrl ? (
+                              <img
+                                src={activeSlot.thumbnailUrl}
+                                alt="Pág 1"
+                                className="w-full h-full object-contain select-none"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                                <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                                <span className="text-[11px] font-mono font-bold">
+                                  Pág. {activePage}
                                 </span>
-                              )}
-                              <span className="absolute bottom-0.5 right-0.5 bg-black/80 text-white font-mono text-[8px] px-1 py-0.2 rounded font-bold">
-                                #{pageNum}
+                              </div>
+                            )}
+
+                            {totalPages > 0 && (
+                              <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                                #{activePage} / {totalPages}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* FRAME WEB HTML AL 50% VISUAL */
+                          <div className="relative bg-[#18181f] text-white rounded-xl shadow-2xl border border-amber-500/40 overflow-hidden flex flex-col p-4 transition-all duration-300 w-[260px] sm:w-[280px] h-[330px] sm:h-[358px] group justify-between">
+                            <div className="space-y-2 overflow-hidden flex-1 flex flex-col">
+                              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs border-b border-zinc-700/80 pb-1.5 shrink-0">
+                                <Code className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span className="truncate font-sans font-extrabold text-amber-300">
+                                  {file.name}
+                                </span>
+                              </div>
+
+                              {/* CONTENIDO PREVIO DE CÓDIGO HTML */}
+                              <div className="flex-1 overflow-hidden rounded border border-zinc-800 bg-[#0e0e12] p-2.5 text-[10px] font-mono text-zinc-300 leading-relaxed overflow-y-auto custom-scrollbar">
+                                {activeSlot.htmlSnippet ? (
+                                  <pre className="whitespace-pre-wrap font-mono text-amber-200/90 text-[9px]">
+                                    {activeSlot.htmlSnippet}
+                                  </pre>
+                                ) : (
+                                  <p className="text-zinc-500 italic">
+                                    {isEs
+                                      ? 'Documento web HTML (.html/.htm)'
+                                      : 'HTML web document (.html/.htm)'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500 pt-1.5 border-t border-zinc-800 shrink-0">
+                              <span className="text-amber-400 font-bold">
+                                {htmlTagCount ? `${htmlTagCount} etiquetas` : 'HTML5'}
+                              </span>
+                              <span className="bg-black/80 px-2 py-0.5 rounded text-white font-bold border border-white/20">
+                                #{activePage} / {totalPages || 1}
                               </span>
                             </div>
                           </div>
-                        );
-                      })
+                        )}
+
+                        {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
+                            <button
+                              type="button"
+                              onClick={() => setActivePage(Math.max(1, activePage - 1))}
+                              disabled={activePage <= 1}
+                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                              title={isEs ? 'Página anterior' : 'Previous page'}
+                            >
+                              ◀
+                            </button>
+                            <span className="font-bold text-white text-[11px]">
+                              {activePage} / {totalPages}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setActivePage(Math.min(totalPages, activePage + 1))}
+                              disabled={activePage >= totalPages}
+                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                              title={isEs ? 'Página siguiente' : 'Next page'}
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 gap-2 text-zinc-500 text-[10px] text-center">
-                        <Code className="w-5 h-5 text-amber-400" />
-                        <span>{isEs ? 'Modo HTML' : 'HTML Mode'}</span>
+                      <div className="flex flex-col items-center justify-center py-10 gap-3 text-zinc-500 font-mono text-xs">
+                        <Code className="w-8 h-8 text-zinc-600" />
+                        <span>
+                          {isEs ? 'Sin archivo para previsualizar' : 'No file to preview'}
+                        </span>
                       </div>
                     )}
                   </div>
 
-                  {/* COSTADO DERECHO: VISOR PDF EN TAMAÑO NORMAL O RECEPTOR HTML */}
-                  <div className="flex-1 bg-zinc-950 p-2 relative flex flex-col items-center justify-center overflow-hidden">
-                    {mode === 'pdf-to-html' ||
-                    (file && file.name.toLowerCase().endsWith('.pdf')) ? (
-                      <PdfPageViewer
-                        file={file}
-                        activePage={activePage}
-                        totalPages={totalPages}
-                        onPageChange={(p) => setActivePage(p)}
-                        pageDataUrls={pageDataUrls}
-                        title={file?.name}
-                        accentColor="amber"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center gap-4 text-center p-6 h-full">
-                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-                          <Code className="w-16 h-16 text-amber-400" />
+                  {/* ── LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ── */}
+                  <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                    {slots.map((slot, sIdx) => {
+                      const isLoaded = slot.file !== null;
+                      const isActive = isLoaded && sIdx === activeSlotIndex;
+
+                      return (
+                        <div
+                          key={slot.id}
+                          onClick={() => {
+                            if (isLoaded) {
+                              setActiveSlotIndex(sIdx);
+                            } else {
+                              getSlotInputRef(sIdx).current?.click();
+                            }
+                          }}
+                          className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                            isActive
+                              ? 'bg-amber-950/40 border-amber-500 shadow-amber-500/10'
+                              : isLoaded
+                                ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                                : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                          }`}
+                        >
+                          <input
+                            ref={getSlotInputRef(sIdx)}
+                            type="file"
+                            accept={
+                              mode === 'html-to-pdf'
+                                ? '.html,.htm,text/html'
+                                : '.pdf,application/pdf'
+                            }
+                            className="hidden"
+                            onChange={(e) => handleSlotFileChange(sIdx, e)}
+                          />
+
+                          {isLoaded ? (
+                            <div className="flex items-center justify-between w-full gap-3 font-mono">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                    isActive
+                                      ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                                      : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                                  }`}
+                                >
+                                  {mode === 'html-to-pdf' ? (
+                                    <Code className="w-5 h-5 text-amber-400" />
+                                  ) : (
+                                    <FileText className="w-5 h-5 text-amber-400" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                      {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`}
+                                    </span>
+                                    {isActive && (
+                                      <span className="text-[9px] px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded border border-amber-500/40 font-bold">
+                                        {isEs ? 'Visualizando' : 'Viewing'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                    {slot.file!.name}
+                                  </p>
+                                  <span className="text-[10px] text-zinc-400">
+                                    {formatFileSize(slot.file!.size)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleRemoveSlot(sIdx, e)}
+                                  className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                                  title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between w-full font-mono">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                                  <Plus className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                    {isEs
+                                      ? `+ Cargar ${mode === 'html-to-pdf' ? 'HTML' : 'PDF'} ${sIdx + 1}`
+                                      : `+ Upload ${mode === 'html-to-pdf' ? 'HTML' : 'PDF'} ${sIdx + 1}`}
+                                  </p>
+                                  <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                    {mode === 'html-to-pdf' ? '.html / .htm' : '.pdf'}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                                {isEs ? 'Disponible' : 'Available'}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        <span className="text-xs text-amber-400 font-mono bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
-                          ✓ {htmlTagCount || 15} {isEs ? 'etiquetas detectadas' : 'detected tags'}
-                        </span>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

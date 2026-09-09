@@ -36,6 +36,7 @@ import {
   Trash2,
   Plus,
   Wrench,
+  Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -56,6 +57,11 @@ import type {
 // ---------------------------------------------------------------------------
 // TIPOS LOCALES
 // ---------------------------------------------------------------------------
+
+interface SlotItem {
+  id: number;
+  file: File | null;
+}
 
 type RepairMode = 'smart' | 'deep';
 type RecoveryPriority = 'texto' | 'imagenes' | 'todo';
@@ -90,7 +96,90 @@ export default function PdfRepairer() {
   const { globalFile, setGlobalFile } = useFileStore();
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
+  // Sistema de 3 slots independientes
+  const [slots, setSlots] = useState<SlotItem[]>(() => [
+    { id: 1, file: globalFile || null },
+    { id: 2, file: null },
+    { id: 3, file: null },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+  const [zoomModalImage, setZoomModalImage] = useState<string | null>(null);
+
+  const slot1InputRef = useRef<HTMLInputElement>(null);
+  const slot2InputRef = useRef<HTMLInputElement>(null);
+  const slot3InputRef = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (idx: number) => {
+    if (idx === 0) return slot1InputRef;
+    if (idx === 1) return slot2InputRef;
+    return slot3InputRef;
+  };
+
+  const activeSlot = slots[activeSlotIndex];
+  const activeFile = activeSlot?.file || null;
   const [file, setFile] = useState<File | null>(() => globalFile || null);
+
+  // Sincronizar activeFile con file y globalFile
+  useEffect(() => {
+    setFile(activeFile);
+    setGlobalFile(activeFile);
+  }, [activeFile, setGlobalFile]);
+
+  const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: newFile };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+    setDownloadUrl(null);
+    setDiagnostic(null);
+    setShowDiagnostic(false);
+    setRecoveryReport(null);
+    setCompletedResult(null);
+    toast.success(isEs ? `PDF cargado en Caja ${slotIdx + 1}` : `PDF loaded in Box ${slotIdx + 1}`);
+  };
+
+  const handleSlotFileChange = (slotIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      loadSingleFileIntoSlot(slotIdx, f);
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveSlot = (slotIdx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: null };
+      return next;
+    });
+    if (activeSlotIndex === slotIdx) {
+      const remainingIdx = [0, 1, 2].find((i) => i !== slotIdx && slots[i]?.file !== null);
+      if (remainingIdx !== undefined) {
+        setActiveSlotIndex(remainingIdx);
+      } else {
+        setFile(null);
+        setGlobalFile(null);
+      }
+    }
+  };
+
+  const handleRemoveAllFiles = () => {
+    setSlots([
+      { id: 1, file: null },
+      { id: 2, file: null },
+      { id: 3, file: null },
+    ]);
+    setActiveSlotIndex(0);
+    setFile(null);
+    setGlobalFile(null);
+    setCompletedResult(null);
+    setDiagnostic(null);
+    setShowDiagnostic(false);
+    setRecoveryReport(null);
+  };
 
   // Modo & opciones
   const [repairMode, setRepairMode] = useState<RepairMode>('smart');
@@ -276,31 +365,14 @@ export default function PdfRepairer() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
-      setFile(selected);
-      setGlobalFile(selected);
-      setDownloadUrl(null);
-      setDiagnostic(null);
-      setShowDiagnostic(false);
-      setRecoveryReport(null);
-      setCompletedResult(null);
-      setProgressPercent(0);
-      setProgressMsg('');
-      toast.success(isEs ? 'Archivo cargado correctamente' : 'File loaded successfully');
+      loadSingleFileIntoSlot(activeSlotIndex, selected);
     }
     e.target.value = '';
   };
 
   const removeFile = useCallback(() => {
-    setFile(null);
-    setDownloadUrl(null);
-    setGlobalFile(null);
-    setDiagnostic(null);
-    setShowDiagnostic(false);
-    setRecoveryReport(null);
-    setCompletedResult(null);
-    setProgressPercent(0);
-    setProgressMsg('');
-  }, [setGlobalFile]);
+    handleRemoveAllFiles();
+  }, []);
 
   // ---------------------------------------------------------------------------
   // DIAGNÓSTICO PREVIO (rápido, sin worker completo — escanea header/EOF/xref/obj en el hilo principal)
@@ -719,7 +791,7 @@ export default function PdfRepairer() {
         )}
       </div>
 
-      {!file ? (
+      {!slots.some((s) => s.file !== null) ? (
         /* DROPZONE */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -856,73 +928,66 @@ export default function PdfRepairer() {
           />
         </motion.div>
       ) : (
-        /* WORKSPACE */
-        <div
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans"
-          style={{ alignItems: 'stretch' }}
-        >
-          {/* LADO IZQUIERDO: PREVIEW (MINIATURAS) + DIAGNÓSTICO + REPORTE */}
-          <div
-            className="lg:col-span-5"
-            style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
-          >
-            {/* PREVIEW CON GRILLA DE MINIATURAS */}
-            <div
-              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 flex flex-col shadow-2xl overflow-hidden relative"
-              style={{
-                height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                minHeight: '300px',
-              }}
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-4 mb-4 font-mono flex-shrink-0">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="bg-zinc-800 p-2 rounded-2xl border border-zinc-700 flex-shrink-0 text-white shadow-sm">
-                    <Activity className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="overflow-hidden">
-                    <span className="text-white font-bold text-xs truncate block max-w-[180px] sm:max-w-[240px]">
-                      {file.name}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5">
-                      <span>{formatFileSize(file.size)}</span>
-                      <span className="text-zinc-600">•</span>
-                      <span className="text-zinc-300 font-bold">
-                        {diagnostic
-                          ? isEs
-                            ? 'Diagnóstico listo'
-                            : 'Diagnosis ready'
-                          : isEs
-                            ? 'Listo para reparar'
-                            : 'Ready to repair'}
-                      </span>
+        /* ÁREA DE TRABAJO VERTICAL: SECCIÓN 1 (SUPERIOR) + SECCIÓN 2 (INFERIOR) */
+        <div className="flex flex-col gap-6 mb-6 font-sans">
+          {/* SECCIÓN 1: VISOR INTERACTIVO Y CAJAS DE ARCHIVOS (PARALELOS ARRIBA) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+            {/* Cabecera Sección 1 */}
+            <div className="flex items-center justify-between pb-3 mb-5 border-b border-zinc-800">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
+                  001 / VISOR INTERACTIVO Y DOCUMENTOS
+                </span>
+                <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
+                  {isEs ? 'PANEL DE VISTA PREVIA' : 'PREVIEW PANEL'}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="bg-zinc-900 border border-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm font-mono">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  <span>
+                    {isEs
+                      ? `Cajas Activas (${slots.filter((s) => s.file !== null).length}/3)`
+                      : `Active Slots (${slots.filter((s) => s.file !== null).length}/3)`}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {/* Grid 2 Columnas Sección 1: Visor (50%) + 3 Cajas de Archivos (50%) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {/* LADO IZQUIERDO: VISOR INTERACTIVO (6/12) */}
+              <div className="lg:col-span-6 flex flex-col justify-between bg-[#0c0c0f] border border-zinc-800/80 rounded-2xl p-4 min-h-[380px]">
+                {/* Header Visor con Tabs Miniaturas / Diagnóstico */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80 font-mono text-xs text-zinc-400">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="w-4 h-4 text-white flex-shrink-0" />
+                    <span className="text-white font-bold truncate max-w-[150px] sm:max-w-[200px]">
+                      {activeFile?.name || (isEs ? 'Sin documento' : 'No document')}
                     </span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 font-mono">
-                  <div className="bg-zinc-900 border border-zinc-700 p-0.5 rounded-full flex items-center gap-1 shadow-sm">
+
+                  <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-0.5 rounded-full">
                     <button
+                      type="button"
                       onClick={() => setPreviewTab('thumbnails')}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all cursor-pointer ${
                         previewTab === 'thumbnails'
                           ? 'bg-white text-black shadow-sm'
                           : 'text-zinc-400 hover:text-white'
                       }`}
                     >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${previewTab === 'thumbnails' ? 'bg-black' : 'bg-white'}`}
-                      />
-                      <span>
-                        {isEs ? `Miniaturas (${totalPages})` : `Thumbnails (${totalPages})`}
-                      </span>
+                      {isEs ? `Miniaturas (${totalPages})` : `Thumbnails (${totalPages})`}
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         if (!diagnostic) runPreliminaryDiagnosis();
                         else setPreviewTab('diagnostic');
                       }}
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all cursor-pointer ${
                         previewTab === 'diagnostic'
                           ? 'bg-white text-black shadow-sm'
                           : 'text-zinc-400 hover:text-white'
@@ -932,677 +997,743 @@ export default function PdfRepairer() {
                         className={`w-3 h-3 ${previewTab === 'diagnostic' ? 'text-black' : 'text-zinc-400'}`}
                       />
                       <span>{isEs ? 'Diagnóstico' : 'Diagnosis'}</span>
-                      {diagnostic && <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />}
                     </button>
                   </div>
-                  <button
-                    onClick={removeFile}
-                    className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl cursor-pointer"
-                    title={isEs ? 'Remover archivo' : 'Remove file'}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
 
-              {/* CONTENEDOR PRINCIPAL DEL VISOR (MINIATURAS O DIAGNÓSTICO) */}
-              <div className="relative w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#09090b] rounded-xl overflow-y-auto p-3 border border-white/10 font-sans">
-                {previewTab === 'diagnostic' ? (
-                  diagnostic ? (
-                    <div className="space-y-3 font-mono">
-                      <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                        <div className="flex items-center gap-2">
-                          {diagnostic.severity === 'critical' ? (
-                            <AlertTriangle className="w-5 h-5 text-red-400" />
-                          ) : diagnostic.severity === 'warning' ? (
-                            <AlertTriangle className="w-5 h-5 text-amber-400" />
-                          ) : (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                          )}
-                          <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                            {isEs
-                              ? 'Informe de Diagnóstico Estructural'
-                              : 'Structural Diagnosis Report'}
-                          </h3>
-                        </div>
-                        <span className="text-[10px] text-zinc-500">
-                          {formatFileSize(diagnostic.fileSize)}
-                        </span>
-                      </div>
-
-                      <div
-                        className={`p-3 rounded-xl border ${severityColor(diagnostic.severity)}`}
-                      >
-                        <p className="text-xs font-bold">{diagnostic.summary}</p>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
-                          {isEs ? 'Análisis de Componentes' : 'Component Breakdown'} (
-                          {diagnostic.issues.length})
-                        </span>
-                        {diagnostic.issues.map((issue, i) => (
-                          <div
-                            key={i}
-                            className={`flex items-start gap-2 text-[11px] px-2.5 py-2 rounded-xl border ${severityColor(issue.severity)}`}
-                          >
-                            <span className="flex-shrink-0 mt-0.5">
-                              {categoryIcon(issue.category)}
-                            </span>
-                            <div>
-                              <span className="font-bold text-zinc-200">{issue.message}</span>
-                              {issue.details && (
-                                <p className="text-[10px] text-zinc-400 mt-0.5">{issue.details}</p>
-                              )}
-                            </div>
+                {/* Contenido Central del Visor */}
+                <div className="flex-1 flex flex-col items-center justify-center my-3 relative min-h-[220px]">
+                  {previewTab === 'diagnostic' ? (
+                    diagnostic ? (
+                      <div className="w-full space-y-3 font-mono max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+                        <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                          <div className="flex items-center gap-2">
+                            {diagnostic.severity === 'critical' ? (
+                              <AlertTriangle className="w-4 h-4 text-red-400" />
+                            ) : diagnostic.severity === 'warning' ? (
+                              <AlertTriangle className="w-4 h-4 text-amber-400" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            )}
+                            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                              {isEs
+                                ? 'Informe de Diagnóstico Estructural'
+                                : 'Structural Diagnosis Report'}
+                            </h3>
                           </div>
-                        ))}
+                          <span className="text-[10px] text-zinc-500">
+                            {formatFileSize(diagnostic.fileSize)}
+                          </span>
+                        </div>
+
+                        <div
+                          className={`p-3 rounded-xl border ${severityColor(diagnostic.severity)}`}
+                        >
+                          <p className="text-xs font-bold">{diagnostic.summary}</p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                            {isEs ? 'Análisis de Componentes' : 'Component Breakdown'} (
+                            {diagnostic.issues.length})
+                          </span>
+                          {diagnostic.issues.map((issue, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-start gap-2 text-[11px] px-2.5 py-2 rounded-xl border ${severityColor(issue.severity)}`}
+                            >
+                              <span className="flex-shrink-0 mt-0.5">
+                                {categoryIcon(issue.category)}
+                              </span>
+                              <div>
+                                <span className="font-bold text-zinc-200">{issue.message}</span>
+                                {issue.details && (
+                                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                                    {issue.details}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[220px]">
+                        <Loader2 className="w-7 h-7 animate-spin text-white" />
+                        <span className="text-xs font-mono">
+                          {isEs ? 'Ejecutando diagnóstico...' : 'Running diagnosis...'}
+                        </span>
+                      </div>
+                    )
+                  ) : isLoadingThumbnails ? (
+                    <div className="flex flex-col items-center gap-2 text-zinc-500 font-mono text-xs">
+                      <Loader2 className="w-6 h-6 animate-spin text-white" />
+                      <span>{isEs ? 'Renderizando páginas...' : 'Rendering pages...'}</span>
                     </div>
+                  ) : thumbnails.length > 0 ? (
+                    (() => {
+                      const activeThumb =
+                        thumbnails.find((t) => t.pageNum === previewPageNum) || thumbnails[0];
+                      return (
+                        <div className="relative group max-h-[280px] max-w-full flex items-center justify-center">
+                          <img
+                            src={activeThumb.dataUrl}
+                            alt={`Página ${activeThumb.pageNum}`}
+                            className="max-h-[260px] w-auto object-contain rounded-lg border border-zinc-700 shadow-xl bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setZoomModalImage(activeThumb.dataUrl)}
+                            className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                            title={isEs ? 'Ver en tamaño completo' : 'Full preview'}
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })()
+                  ) : pdfUrl ? (
+                    <iframe
+                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                      className="w-full h-full rounded border border-zinc-800 min-h-[260px]"
+                      title="PDF Preview"
+                    />
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
-                      <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                      <span className="text-xs font-mono">
-                        {isEs
-                          ? 'Ejecutando diagnóstico estructural...'
-                          : 'Running structural diagnosis...'}
-                      </span>
+                    <div className="flex flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs text-center p-4">
+                      <FileText className="w-8 h-8 text-zinc-600" />
+                      <span>{isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}</span>
                     </div>
-                  )
-                ) : isLoadingThumbnails ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
-                    <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-                    <span className="text-xs font-mono">
-                      {isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}
-                    </span>
-                  </div>
-                ) : thumbnails.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 w-full">
-                    {thumbnails.map((thumb) => (
-                      <div
-                        key={thumb.pageNum}
-                        onClick={() => setPreviewPageNum(thumb.pageNum)}
-                        className={`group relative bg-zinc-900/90 rounded-xl p-1.5 sm:p-2 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-1.5 shadow-md ${
-                          previewPageNum === thumb.pageNum
-                            ? 'border-emerald-400 ring-2 ring-emerald-500/30 bg-zinc-800'
-                            : 'border-white/10 hover:border-white/30 hover:bg-zinc-800/80'
-                        }`}
+                  )}
+                </div>
+
+                {/* Footer del Visor: Paginación y Miniaturas */}
+                {previewTab === 'thumbnails' && thumbnails.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-zinc-800/80 font-mono">
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewPageNum((p) => Math.max(1, p - 1))}
+                        disabled={previewPageNum <= 1}
+                        className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded text-zinc-300 disabled:opacity-30 cursor-pointer text-[11px]"
                       >
-                        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-white flex items-center justify-center h-[110px] sm:h-[125px] w-full p-1">
+                        ◀ {isEs ? 'Anterior' : 'Previous'}
+                      </button>
+                      <span className="text-[11px] font-bold text-white">
+                        {previewPageNum} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewPageNum((p) => Math.min(totalPages, p + 1))}
+                        disabled={previewPageNum >= totalPages}
+                        className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded text-zinc-300 disabled:opacity-30 cursor-pointer text-[11px]"
+                      >
+                        {isEs ? 'Siguiente' : 'Next'} ▶
+                      </button>
+                    </div>
+
+                    {/* Fila compacta de miniaturas */}
+                    <div className="flex gap-2 overflow-x-auto py-1 custom-scrollbar">
+                      {thumbnails.map((thumb) => (
+                        <div
+                          key={thumb.pageNum}
+                          onClick={() => setPreviewPageNum(thumb.pageNum)}
+                          className={`flex-shrink-0 w-12 h-16 rounded border overflow-hidden cursor-pointer transition-all ${
+                            previewPageNum === thumb.pageNum
+                              ? 'border-white ring-2 ring-white/40 scale-105'
+                              : 'border-zinc-800 opacity-60 hover:opacity-100'
+                          }`}
+                        >
                           <img
                             src={thumb.dataUrl}
-                            alt={`Página ${thumb.pageNum}`}
-                            className="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                            alt={`Thumb ${thumb.pageNum}`}
+                            className="w-full h-full object-cover bg-white"
                           />
                         </div>
-                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[9px] sm:text-[10px]">
-                          <span
-                            className={`font-bold px-1.5 py-0.5 rounded-full ${
-                              previewPageNum === thumb.pageNum
-                                ? 'bg-emerald-500 text-black font-extrabold shadow-sm'
-                                : 'bg-zinc-800 text-zinc-300 border border-white/10'
-                            }`}
-                          >
-                            {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
-                          </span>
-                          {previewPageNum === thumb.pageNum && (
-                            <span className="text-emerald-400 text-[8px] sm:text-[9px] font-bold">
-                              ✓
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : pdfUrl ? (
-                  <iframe
-                    src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                    className="w-full h-full rounded border-0 min-h-[300px]"
-                    title="PDF Preview"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 h-full min-h-[300px]">
-                    <FileText className="w-10 h-10 text-zinc-600" />
-                    <span className="text-xs font-mono">
-                      {isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}
-                    </span>
+                      ))}
+                    </div>
                   </div>
                 )}
+              </div>
+
+              {/* LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) (6/12) */}
+              <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                {slots.map((slot, sIdx) => {
+                  const isLoaded = slot.file !== null;
+                  const isActive = isLoaded && sIdx === activeSlotIndex;
+
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => {
+                        if (isLoaded) {
+                          setActiveSlotIndex(sIdx);
+                        } else {
+                          getSlotInputRef(sIdx).current?.click();
+                        }
+                      }}
+                      className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                        isActive
+                          ? 'bg-zinc-800/80 border-white shadow-white/10'
+                          : isLoaded
+                            ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                            : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                      }`}
+                    >
+                      <input
+                        ref={getSlotInputRef(sIdx)}
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="hidden"
+                        onChange={(e) => handleSlotFileChange(sIdx, e)}
+                      />
+
+                      {isLoaded ? (
+                        <div className="flex items-center justify-between w-full gap-3 font-mono">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                isActive
+                                  ? 'bg-white/20 border-white text-white'
+                                  : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                              }`}
+                            >
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                  {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`}
+                                </span>
+                                {isActive && (
+                                  <span className="text-[9px] px-1.5 py-0.2 bg-white/20 text-white rounded border border-white/40 font-bold">
+                                    {isEs ? 'Visualizando' : 'Viewing'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                {slot.file!.name}
+                              </p>
+                              <span className="text-[10px] text-zinc-400">
+                                {formatFileSize(slot.file!.size)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleRemoveSlot(sIdx, e)}
+                              className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                              title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full font-mono">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                {isEs ? `+ Cargar PDF ${sIdx + 1}` : `+ Upload PDF ${sIdx + 1}`}
+                              </p>
+                              <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                .pdf
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                            {isEs ? 'Disponible' : 'Available'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO A ANCHO COMPLETO */}
+          <div
+            ref={controlPanelRef}
+            className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden font-sans"
+          >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+            {/* CABECERA PANEL */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 font-sans">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
+                  002 / CONFIGURACIÓN DE REPARACIÓN
+                </span>
+                <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
+                  {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
+                </h2>
+              </div>
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
+                <Activity className="w-5 h-5 text-white" />
               </div>
             </div>
 
-            {/* REPORTE DE RECUPERACIÓN */}
-            <AnimatePresence>
-              {recoveryReport && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-5 overflow-hidden shadow-2xl"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    <h3 className="text-sm font-bold text-white font-mono uppercase tracking-wider">
-                      {isEs ? 'Reporte de Recuperación' : 'Recovery Report'}
-                    </h3>
-                    <span className="text-[10px] text-zinc-500 ml-auto font-mono">
-                      {recoveryReport.repairTimeMs}ms
-                    </span>
+            <div>
+              {/* BOTÓN DE DIAGNÓSTICO PREVIO */}
+              <button
+                onClick={runPreliminaryDiagnosis}
+                disabled={isProcessing}
+                className="w-full mb-3 flex items-center justify-center gap-2 bg-[#121217] hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-500 text-zinc-300 hover:text-white font-bold py-2.5 px-4 rounded-2xl text-xs transition-all cursor-pointer disabled:opacity-40 font-mono shadow-sm"
+              >
+                <FileWarning className="w-3.5 h-3.5 text-zinc-400" />
+                {isEs ? 'EJECUTAR DIAGNÓSTICO PREVIO' : 'RUN PRELIMINARY DIAGNOSIS'}
+              </button>
+
+              {/* RESUMEN DEL DIAGNÓSTICO (INMEDIATO EN PANEL) */}
+              {diagnostic && (
+                <div className="p-3.5 rounded-2xl border border-zinc-700/80 bg-[#121217] mb-4 font-mono text-xs text-zinc-300 flex flex-col gap-1.5 animate-fadeIn shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white">{diagnostic.summary}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTab('diagnostic')}
+                      className="text-[10px] text-zinc-300 hover:text-white underline cursor-pointer"
+                    >
+                      {isEs ? 'Ver en visor ↑' : 'View in viewport ↑'}
+                    </button>
                   </div>
-
-                  {/* KPIs */}
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">
-                        {isEs ? 'Método' : 'Method'}
-                      </span>
-                      <span className="text-sm font-bold text-white">
-                        {recoveryReport.repairMethod === 'smart'
-                          ? 'Smart Repair'
-                          : recoveryReport.repairMethod === 'deep'
-                            ? 'Deep Rescue'
-                            : 'Parcial'}
-                      </span>
-                    </div>
-                    <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">
-                        {isEs ? 'Págs. Recuperadas' : 'Pages Recovered'}
-                      </span>
-                      <span className="text-sm font-bold text-emerald-400">
-                        {recoveryReport.pagesRecovered}
-                      </span>
-                    </div>
-                    <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">
-                        {isEs ? 'Vectores' : 'Vectors'}
-                      </span>
-                      <span
-                        className={`text-sm font-bold ${recoveryReport.vectorPreserved ? 'text-emerald-400' : 'text-amber-400'}`}
-                      >
-                        {recoveryReport.vectorPreserved ? '✓ Preservados' : '✗ Rasterizados'}
-                      </span>
-                    </div>
-                    <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-3 text-center">
-                      <span className="text-[10px] text-zinc-500 font-mono block">
-                        {isEs ? 'Fuentes' : 'Fonts'}
-                      </span>
-                      <span
-                        className={`text-sm font-bold ${recoveryReport.fontsPreserved ? 'text-emerald-400' : 'text-amber-400'}`}
-                      >
-                        {recoveryReport.fontsPreserved ? '✓ Preservadas' : '✗ Perdidas'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Detalles */}
-                  {recoveryReport.pagesLost > 0 && (
-                    <div className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 mb-2 font-mono">
-                      <AlertTriangle className="w-3.5 h-3.5 inline-block mr-1" />
-                      {recoveryReport.pagesLost}{' '}
-                      {isEs
-                        ? 'página(s) perdida(s) por corrupción irrecuperable'
-                        : 'page(s) lost to irrecoverable corruption'}
-                      {recoveryReport.lostPageNumbers.length > 0 && (
-                        <span className="text-zinc-400 ml-1">
-                          ({recoveryReport.lostPageNumbers.join(', ')})
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {recoveryReport.blankPageNumbers.length > 0 && (
-                    <div className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-white/10 rounded-lg p-2.5 mb-2 font-mono">
-                      {recoveryReport.blankPageNumbers.length}{' '}
-                      {isEs ? 'página(s) en blanco insertada(s)' : 'blank page(s) inserted'}:{' '}
-                      {recoveryReport.blankPageNumbers.join(', ')}
-                    </div>
-                  )}
-                  {recoveryReport.substitutedPageNumbers.length > 0 && (
-                    <div className="text-[11px] text-zinc-400 bg-zinc-900/60 border border-white/10 rounded-lg p-2.5 mb-2 font-mono">
-                      {recoveryReport.substitutedPageNumbers.length}{' '}
-                      {isEs ? 'página(s) sustituida(s) con aviso' : 'page(s) replaced with notice'}:{' '}
-                      {recoveryReport.substitutedPageNumbers.join(', ')}
-                    </div>
-                  )}
-
-                  {/* Issues fixed / unresolved */}
-                  <div className="grid grid-cols-1 gap-2 mt-2">
-                    {recoveryReport.issuesFixed.length > 0 && (
-                      <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2.5">
-                        <span className="text-[10px] font-bold text-emerald-400 font-mono uppercase block mb-1">
-                          {isEs ? '✓ Problemas Resueltos' : '✓ Issues Fixed'}
-                        </span>
-                        {recoveryReport.issuesFixed.map((f, i) => (
-                          <p
-                            key={i}
-                            className="text-[10px] text-zinc-300 font-mono leading-relaxed"
-                          >
-                            {f}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                    {recoveryReport.issuesUnresolved.length > 0 && (
-                      <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5">
-                        <span className="text-[10px] font-bold text-amber-400 font-mono uppercase block mb-1">
-                          {isEs ? '⚠ Problemas Sin Resolver' : '⚠ Unresolved Issues'}
-                        </span>
-                        {recoveryReport.issuesUnresolved.map((u, i) => (
-                          <p
-                            key={i}
-                            className="text-[10px] text-zinc-400 font-mono leading-relaxed"
-                          >
-                            {u}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Warnings */}
-                  {recoveryReport.warnings.length > 0 && (
-                    <div className="mt-2 bg-zinc-900/60 border border-white/10 rounded-lg p-2.5">
-                      <span className="text-[10px] font-bold text-zinc-400 font-mono uppercase block mb-1">
-                        {isEs ? 'Avisos' : 'Warnings'}
-                      </span>
-                      {recoveryReport.warnings.map((w, i) => (
-                        <p key={i} className="text-[10px] text-zinc-500 font-mono leading-relaxed">
-                          {w}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
+                  <p className="text-[10px] opacity-80 text-zinc-400">
+                    {diagnostic.issues.length}{' '}
+                    {isEs
+                      ? 'componentes analizados. Resultados detallados en el panel superior.'
+                      : 'scans run. Details displayed in top preview panel.'}
+                  </p>
+                </div>
               )}
-            </AnimatePresence>
-          </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 flex flex-col">
-            <div
-              ref={controlPanelRef}
-              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between shadow-2xl font-sans relative overflow-hidden"
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              <div>
-                {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3 font-sans">
-                  <div>
-                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
-                      002 / CONFIGURACIÓN
-                    </span>
-                    <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
-                      PANEL DE CONTROL
-                    </h2>
-                  </div>
-                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
-                    <Activity className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-
-                {/* BOTÓN DE DIAGNÓSTICO PREVIO */}
-                <button
-                  onClick={runPreliminaryDiagnosis}
-                  disabled={isProcessing}
-                  className="w-full mb-3 flex items-center justify-center gap-2 bg-[#121217] hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-500 text-zinc-300 hover:text-white font-bold py-2.5 px-4 rounded-2xl text-xs transition-all cursor-pointer disabled:opacity-40 font-mono shadow-sm"
-                >
-                  <FileWarning className="w-3.5 h-3.5 text-zinc-400" />
-                  {isEs ? 'EJECUTAR DIAGNÓSTICO PREVIO' : 'RUN PRELIMINARY DIAGNOSIS'}
-                </button>
-
-                {/* RESUMEN DEL DIAGNÓSTICO (INMEDIATO EN PANEL DERECHO) */}
-                {diagnostic && (
-                  <div className="p-3.5 rounded-2xl border border-zinc-700/80 bg-[#121217] mb-4 font-mono text-xs text-zinc-300 flex flex-col gap-1.5 animate-fadeIn shadow-inner">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-white">{diagnostic.summary}</span>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewTab('diagnostic')}
-                        className="text-[10px] text-zinc-300 hover:text-white underline cursor-pointer"
+              {/* MODOS DE REPARACIÓN */}
+              <div className="mb-4">
+                <span className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase">
+                  {isEs ? 'Modo de Reparación' : 'Repair Mode'}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div
+                    onClick={() => setRepairMode('smart')}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${repairMode === 'smart' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
+                      <span className="flex items-center gap-1.5">
+                        <Zap className="w-3 h-3 text-white" />
+                        Smart Repair
+                      </span>
+                      <div
+                        className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'smart' ? 'border-white bg-white' : 'border-zinc-600'}`}
                       >
-                        {isEs ? 'Ver en visor →' : 'View in canvas →'}
-                      </button>
+                        {repairMode === 'smart' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                        )}
+                      </div>
                     </div>
-                    <p className="text-[10px] opacity-80 text-zinc-400">
-                      {diagnostic.issues.length}{' '}
-                      {isEs
-                        ? 'componentes analizados. Resultados visibles en el visor izquierdo.'
-                        : 'scans run. Details displayed in left viewport.'}
+                    <p className="text-[10px] text-zinc-400 leading-tight">
+                      {isEs ? 'XRef + metadatos (Estructural)' : 'XRef + metadata (Structural)'}
                     </p>
                   </div>
-                )}
-
-                {/* MODOS DE REPARACIÓN */}
-                <div className="mb-4">
-                  <span className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase">
-                    {isEs ? 'Modo de Reparación' : 'Repair Mode'}
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div
-                      onClick={() => setRepairMode('smart')}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${repairMode === 'smart' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'}`}
-                    >
-                      <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
-                        <span className="flex items-center gap-1.5">
-                          <Zap className="w-3 h-3 text-white" />
-                          Smart Repair
-                        </span>
-                        <div
-                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'smart' ? 'border-white bg-white' : 'border-zinc-600'}`}
-                        >
-                          {repairMode === 'smart' && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-zinc-400 leading-tight">
-                        {isEs ? 'XRef + metadatos' : 'XRef + metadata'}
-                      </p>
-                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-lg border border-zinc-700">
-                        Estructural
+                  <div
+                    onClick={() => setRepairMode('deep')}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${repairMode === 'deep' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
+                      <span className="flex items-center gap-1.5">
+                        <Activity className="w-3 h-3 text-white" />
+                        Deep Rebuild
                       </span>
-                    </div>
-                    <div
-                      onClick={() => setRepairMode('deep')}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${repairMode === 'deep' ? 'border-white bg-zinc-800 text-white shadow-md' : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'}`}
-                    >
-                      <div className="flex items-center justify-between mb-1 font-bold text-[11px]">
-                        <span className="flex items-center gap-1.5">
-                          <Activity className="w-3 h-3 text-white" />
-                          Deep Rebuild
-                        </span>
-                        <div
-                          className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'deep' ? 'border-white bg-white' : 'border-zinc-600'}`}
-                        >
-                          {repairMode === 'deep' && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-zinc-400 leading-tight">
-                        {isEs ? 'Render visual avanzado' : 'Advanced visual render'}
-                      </p>
-                      <span className="inline-block mt-1.5 text-[8px] font-mono font-bold bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-lg border border-zinc-700">
-                        Visual
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* BARRA DE PROGRESO (cuando está procesando) */}
-                {isProcessing && (
-                  <div className="mb-4 bg-zinc-950 border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span className="text-[11px] font-bold text-white font-mono">
-                        {progressPhase === 'diagnosis'
-                          ? isEs
-                            ? '🔍 Diagnóstico'
-                            : '🔍 Diagnosis'
-                          : progressPhase === 'smart-repair'
-                            ? isEs
-                              ? '🔧 Smart Repair'
-                              : '🔧 Smart Repair'
-                            : progressPhase === 'deep-rescue'
-                              ? isEs
-                                ? '⚙️ Deep Rescue'
-                                : '⚙️ Deep Rescue'
-                              : progressPhase === 'packaging'
-                                ? isEs
-                                  ? '📦 Empaquetando'
-                                  : '📦 Packaging'
-                                : isEs
-                                  ? 'Procesando'
-                                  : 'Processing'}
-                      </span>
-                      <span className="text-[10px] text-zinc-500 ml-auto font-mono">
-                        {progressPercent}%
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-white rounded-full transition-all duration-300 ease-out"
-                        style={{ width: `${progressPercent}%` }}
-                      />
+                        className={`w-3 h-3 rounded-full border flex items-center justify-center ${repairMode === 'deep' ? 'border-white bg-white' : 'border-zinc-600'}`}
+                      >
+                        {repairMode === 'deep' && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                        )}
+                      </div>
                     </div>
-                    <p className="text-[10px] text-zinc-400 font-mono mt-2 leading-relaxed">
-                      {progressMsg}
+                    <p className="text-[10px] text-zinc-400 leading-tight">
+                      {isEs ? 'Render visual avanzado (Visual)' : 'Advanced visual render (Visual)'}
                     </p>
-                  </div>
-                )}
-
-                {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES Y COMPACTAS) */}
-                <div className="mb-4 space-y-4 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 mb-3 uppercase">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>
-                      {isEs ? 'OPCIONES AVANZADAS DE RECUPERACIÓN' : 'ADVANCED RECOVERY OPTIONS'}
-                    </span>
-                  </div>
-
-                  {/* PRIORIDAD */}
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <Target className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Prioridad de Recuperación' : 'Recovery Priority'}
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(['texto', 'imagenes', 'todo'] as RecoveryPriority[]).map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => setRecoveryPriority(opt)}
-                          className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${recoveryPriority === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
-                        >
-                          {opt === 'texto'
-                            ? '📄 Texto'
-                            : opt === 'imagenes'
-                              ? '🖼️ Imgs'
-                              : '⚡ Todo'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* ALCANCE */}
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <FileCheck2 className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Alcance de Páginas' : 'Page Scope'}
-                    </label>
-                    <div className="grid grid-cols-2 gap-1.5 mb-2">
-                      {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => setPageScope(opt)}
-                          className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${pageScope === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
-                        >
-                          {opt === 'todas'
-                            ? isEs
-                              ? 'Todas'
-                              : 'All'
-                            : opt === 'pares'
-                              ? isEs
-                                ? 'Pares'
-                                : 'Even'
-                              : opt === 'impares'
-                                ? isEs
-                                  ? 'Impares'
-                                  : 'Odd'
-                                : isEs
-                                  ? 'Rango'
-                                  : 'Range'}
-                        </button>
-                      ))}
-                    </div>
-                    {pageScope === 'rango' && (
-                      <input
-                        type="text"
-                        value={pageRange}
-                        onChange={(e) => setPageRange(e.target.value)}
-                        placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'}
-                        className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
-                      />
-                    )}
-                  </div>
-
-                  {/* COMPRESIÓN */}
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <Archive className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Compresión de Salida' : 'Output Compression'}
-                    </label>
-                    <div className="flex gap-1.5">
-                      {(
-                        [
-                          ['none', isEs ? 'Sin comprimir' : 'None'],
-                          ['low', isEs ? 'Baja' : 'Low'],
-                          ['medium', isEs ? 'Media' : 'Med'],
-                          ['high', isEs ? 'Alta' : 'High'],
-                        ] as [CompressionLevel, string][]
-                      ).map(([lvl, label]) => (
-                        <button
-                          key={lvl}
-                          onClick={() => setCompressionLevel(lvl)}
-                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${compressionLevel === lvl ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* ACCIÓN EN PÁGINAS DAÑADAS */}
-                  <div>
-                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <AlertTriangle className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Acción ante Páginas Dañadas' : 'Action on Corrupted Pages'}
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(
-                        [
-                          ['omitir', isEs ? 'Omitir' : 'Skip'],
-                          ['sustituir', isEs ? 'Sustituir' : 'Replace'],
-                          ['incluir_vacia', isEs ? 'Vía en blanco' : 'Blank'],
-                        ] as [DamagedPageAction, string][]
-                      ).map(([act, label]) => (
-                        <button
-                          key={act}
-                          onClick={() => setDamagedPageAction(act)}
-                          className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${damagedPageAction === act ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* OPCIONES DE SEGURIDAD Y SELLADO */}
-                  <div className="space-y-2">
-                    <div
-                      onClick={() => setRemoveRestrictions((v) => !v)}
-                      className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                    >
-                      <div>
-                        <p className="text-[11px] font-bold text-white">
-                          {isEs
-                            ? 'Eliminar restricciones de impresión/copia'
-                            : 'Remove print/copy restrictions'}
-                        </p>
-                        <p className="text-[10px] text-zinc-500 font-mono">
-                          {isEs
-                            ? 'Desbloquea permisos del documento'
-                            : 'Unlock document permissions'}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${removeRestrictions ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${removeRestrictions ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      onClick={() => setAddRepairStamp((v) => !v)}
-                      className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                    >
-                      <div>
-                        <p className="text-[11px] font-bold text-white">
-                          {isEs ? 'Añadir sello de reparación (pie)' : 'Add repair stamp (footer)'}
-                        </p>
-                        <p className="text-[10px] text-zinc-500 font-mono">
-                          {isEs ? 'Marca el PDF como reparado' : 'Marks the PDF as repaired'}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${addRepairStamp ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${addRepairStamp ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">
-                        {isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}
-                      </label>
-                      <input
-                        type="text"
-                        value={customSuffix}
-                        onChange={(e) => setCustomSuffix(e.target.value)}
-                        className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
-                      />
-                      <p className="text-[9px] font-mono text-zinc-600 mt-1">
-                        {isEs
-                          ? `Salida: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'archivo'}${customSuffix}.pdf`
-                          : `Output: ${file?.name?.replace(/\.[^/.]+$/, '') ?? 'file'}${customSuffix}.pdf`}
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* BOTÓN DE ACCIÓN PRINCIPAL */}
-              <div>
-                <button
-                  onClick={executeRepair}
-                  disabled={isProcessing}
-                  className="w-full bg-white text-black hover:bg-zinc-200 font-bold py-3.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-40"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-black" />
-                      <span>
-                        {progressPercent > 0
-                          ? `${progressPercent}%`
-                          : isEs
-                            ? 'Reparando...'
-                            : 'Repairing...'}
+              {/* REPORTE DE RECUPERACIÓN (SI EXISTE) */}
+              <AnimatePresence>
+                {recoveryReport && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="bg-[#09090b] border border-emerald-500/20 rounded-2xl p-4 mb-4 overflow-hidden shadow-2xl"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <h3 className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                        {isEs ? 'Reporte de Recuperación' : 'Recovery Report'}
+                      </h3>
+                      <span className="text-[10px] text-zinc-500 ml-auto font-mono">
+                        {recoveryReport.repairTimeMs}ms
                       </span>
-                    </>
-                  ) : (
-                    <>
-                      <Activity className="w-4 h-4 text-black" />
-                      <span>{isEs ? 'Reparar PDF' : 'Repair PDF'}</span>
-                    </>
-                  )}
-                </button>
+                    </div>
 
-                <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 mt-4 border-t border-white/10 pt-3">
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    100% Local · Web Worker
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {isEs ? 'Listo →' : 'Ready →'}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+                      <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] text-zinc-500 font-mono block">
+                          {isEs ? 'Método' : 'Method'}
+                        </span>
+                        <span className="text-xs font-bold text-white">
+                          {recoveryReport.repairMethod === 'smart'
+                            ? 'Smart Repair'
+                            : recoveryReport.repairMethod === 'deep'
+                              ? 'Deep Rescue'
+                              : 'Parcial'}
+                        </span>
+                      </div>
+                      <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] text-zinc-500 font-mono block">
+                          {isEs ? 'Págs. Recuperadas' : 'Pages Recovered'}
+                        </span>
+                        <span className="text-xs font-bold text-emerald-400">
+                          {recoveryReport.pagesRecovered}
+                        </span>
+                      </div>
+                      <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] text-zinc-500 font-mono block">
+                          {isEs ? 'Vectores' : 'Vectors'}
+                        </span>
+                        <span
+                          className={`text-xs font-bold ${recoveryReport.vectorPreserved ? 'text-emerald-400' : 'text-amber-400'}`}
+                        >
+                          {recoveryReport.vectorPreserved ? '✓ Preservados' : '✗ Rasterizados'}
+                        </span>
+                      </div>
+                      <div className="bg-zinc-900/60 border border-white/10 rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] text-zinc-500 font-mono block">
+                          {isEs ? 'Fuentes' : 'Fonts'}
+                        </span>
+                        <span
+                          className={`text-xs font-bold ${recoveryReport.fontsPreserved ? 'text-emerald-400' : 'text-amber-400'}`}
+                        >
+                          {recoveryReport.fontsPreserved ? '✓ Preservadas' : '✗ Perdidas'}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES Y COMPACTAS) */}
+              <div className="mb-4 space-y-4 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 mb-3 uppercase">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    {isEs ? 'OPCIONES AVANZADAS DE RECUPERACIÓN' : 'ADVANCED RECOVERY OPTIONS'}
                   </span>
                 </div>
+
+                {/* PRIORIDAD */}
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <Target className="w-3 h-3 text-zinc-400" />
+                    {isEs ? 'Prioridad de Recuperación' : 'Recovery Priority'}
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['texto', 'imagenes', 'todo'] as RecoveryPriority[]).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setRecoveryPriority(opt)}
+                        className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${recoveryPriority === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                      >
+                        {opt === 'texto' ? '📄 Texto' : opt === 'imagenes' ? '🖼️ Imgs' : '⚡ Todo'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ALCANCE */}
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <FileCheck2 className="w-3 h-3 text-zinc-400" />
+                    {isEs ? 'Alcance de Páginas' : 'Page Scope'}
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
+                    {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setPageScope(opt)}
+                        className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${pageScope === opt ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                      >
+                        {opt === 'todas'
+                          ? isEs
+                            ? 'Todas'
+                            : 'All'
+                          : opt === 'pares'
+                            ? isEs
+                              ? 'Pares'
+                              : 'Even'
+                            : opt === 'impares'
+                              ? isEs
+                                ? 'Impares'
+                                : 'Odd'
+                              : isEs
+                                ? 'Rango'
+                                : 'Range'}
+                      </button>
+                    ))}
+                  </div>
+                  {pageScope === 'rango' && (
+                    <input
+                      type="text"
+                      value={pageRange}
+                      onChange={(e) => setPageRange(e.target.value)}
+                      placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'}
+                      className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
+                    />
+                  )}
+                </div>
+
+                {/* COMPRESIÓN */}
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <Archive className="w-3 h-3 text-zinc-400" />
+                    {isEs ? 'Compresión de Salida' : 'Output Compression'}
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {(
+                      [
+                        ['none', isEs ? 'Sin comprimir' : 'None'],
+                        ['low', isEs ? 'Baja' : 'Low'],
+                        ['medium', isEs ? 'Media' : 'Med'],
+                        ['high', isEs ? 'Alta' : 'High'],
+                      ] as [CompressionLevel, string][]
+                    ).map(([lvl, label]) => (
+                      <button
+                        key={lvl}
+                        onClick={() => setCompressionLevel(lvl)}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${compressionLevel === lvl ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ACCIÓN EN PÁGINAS DAÑADAS */}
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <AlertTriangle className="w-3 h-3 text-zinc-400" />
+                    {isEs ? 'Acción ante Páginas Dañadas' : 'Action on Corrupted Pages'}
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        ['omitir', isEs ? 'Omitir' : 'Skip'],
+                        ['sustituir', isEs ? 'Sustituir' : 'Replace'],
+                        ['incluir_vacia', isEs ? 'Vía en blanco' : 'Blank'],
+                      ] as [DamagedPageAction, string][]
+                    ).map(([act, label]) => (
+                      <button
+                        key={act}
+                        onClick={() => setDamagedPageAction(act)}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${damagedPageAction === act ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-500 hover:text-white'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* OPCIONES DE SEGURIDAD Y SELLADO */}
+                <div className="space-y-2">
+                  <div
+                    onClick={() => setRemoveRestrictions((v) => !v)}
+                    className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                  >
+                    <div>
+                      <p className="text-[11px] font-bold text-white">
+                        {isEs
+                          ? 'Eliminar restricciones de impresión/copia'
+                          : 'Remove print/copy restrictions'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 font-mono">
+                        {isEs ? 'Desbloquea permisos del documento' : 'Unlock document permissions'}
+                      </p>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${removeRestrictions ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${removeRestrictions ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setAddRepairStamp((v) => !v)}
+                    className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                  >
+                    <div>
+                      <p className="text-[11px] font-bold text-white">
+                        {isEs ? 'Añadir sello de reparación (pie)' : 'Add repair stamp (footer)'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 font-mono">
+                        {isEs ? 'Marca el PDF como reparado' : 'Marks the PDF as repaired'}
+                      </p>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${addRepairStamp ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${addRepairStamp ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">
+                      {isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={customSuffix}
+                      onChange={(e) => setCustomSuffix(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
+                    />
+                    <p className="text-[9px] font-mono text-zinc-600 mt-1">
+                      {isEs
+                        ? `Salida: ${activeFile?.name?.replace(/\.[^/.]+$/, '') ?? 'archivo'}${customSuffix}.pdf`
+                        : `Output: ${activeFile?.name?.replace(/\.[^/.]+$/, '') ?? 'file'}${customSuffix}.pdf`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* BOTÓN DE ACCIÓN PRINCIPAL */}
+            <div>
+              {/* BARRA DE PROGRESO (cuando está procesando) */}
+              {isProcessing && (
+                <div className="mb-4 bg-zinc-950 border border-white/10 rounded-xl p-4 font-mono">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span className="text-[11px] font-bold text-white">
+                      {progressPhase === 'diagnosis'
+                        ? isEs
+                          ? '🔍 Diagnóstico'
+                          : '🔍 Diagnosis'
+                        : progressPhase === 'smart-repair'
+                          ? isEs
+                            ? '🔧 Smart Repair'
+                            : '🔧 Smart Repair'
+                          : progressPhase === 'deep-rescue'
+                            ? isEs
+                              ? '⚙️ Deep Rescue'
+                              : '⚙️ Deep Rescue'
+                            : progressPhase === 'packaging'
+                              ? isEs
+                                ? '📦 Empaquetando'
+                                : '📦 Packaging'
+                              : isEs
+                                ? 'Procesando'
+                                : 'Processing'}
+                    </span>
+                    <span className="text-[10px] text-zinc-500 ml-auto font-mono">
+                      {progressPercent}%
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-2 leading-relaxed">{progressMsg}</p>
+                </div>
+              )}
+
+              <button
+                onClick={executeRepair}
+                disabled={isProcessing || !activeFile}
+                className="w-full bg-white text-black hover:bg-zinc-200 font-bold py-3.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-40"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-black" />
+                    <span>
+                      {progressPercent > 0
+                        ? `${progressPercent}%`
+                        : isEs
+                          ? 'Reparando...'
+                          : 'Repairing...'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Activity className="w-4 h-4 text-black" />
+                    <span>{isEs ? 'Reparar PDF' : 'Repair PDF'}</span>
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 mt-4 border-t border-white/10 pt-3">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  100% Local · Web Worker
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {isEs ? 'Listo →' : 'Ready →'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL DE ZOOM DE PÁGINA */}
+      <AnimatePresence>
+        {zoomModalImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setZoomModalImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl max-h-[90vh] bg-[#121217] border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900/60">
+                <span className="text-xs font-mono font-bold text-zinc-300">
+                  {isEs ? `Página ${previewPageNum}` : `Page ${previewPageNum}`}
+                </span>
+                <button
+                  onClick={() => setZoomModalImage(null)}
+                  className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-4 overflow-auto flex items-center justify-center bg-black/50">
+                <img
+                  src={zoomModalImage}
+                  alt="Zoom preview"
+                  className="max-h-[75vh] w-auto object-contain rounded border border-zinc-800 bg-white"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

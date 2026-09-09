@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
+  Sliders,
   Database,
   Package,
   FilePlus,
@@ -27,6 +28,7 @@ import {
   Sparkles,
   Trash2,
   Plus,
+  Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -48,15 +50,38 @@ export default function PdfProtector() {
   const { globalFile, setGlobalFile } = useFileStore();
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
-  // === BATCH DE ARCHIVOS ===
-  const [files, setFiles] = useState<File[]>(globalFile ? [globalFile] : []);
-  const [activeFileIdx, setActiveFileIdx] = useState<number>(0);
+  // === SISTEMA DE 3 CAJAS AISLADAS (ESTÁNDAR CONVERTIR) ===
+  interface SlotItem {
+    id: string;
+    file: File | null;
+  }
+
+  const [slots, setSlots] = useState<SlotItem[]>([
+    { id: 'slot-1', file: globalFile || null },
+    { id: 'slot-2', file: null },
+    { id: 'slot-3', file: null },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+
+  const slot1InputRef = useRef<HTMLInputElement>(null);
+  const slot2InputRef = useRef<HTMLInputElement>(null);
+  const slot3InputRef = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (index: number) => {
+    if (index === 0) return slot1InputRef;
+    if (index === 1) return slot2InputRef;
+    return slot3InputRef;
+  };
+
+  const files = slots.map((s) => s.file).filter(Boolean) as File[];
+  const activeFile = slots[activeSlotIndex]?.file || files[0] || null;
 
   // === PREVISUALIZACIÓN / MINIATURAS ===
   const [previewPageNum, setPreviewPageNum] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [thumbnails, setThumbnails] = useState<{ pageNum: number; dataUrl: string }[]>([]);
   const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
+  const [zoomModalImage, setZoomModalImage] = useState<string | null>(null);
 
   // === CONTRASEÑAS ===
   const [userPassword, setUserPassword] = useState('');
@@ -148,7 +173,6 @@ export default function PdfProtector() {
     restrictions: string[];
   } | null>(null);
 
-  const activeFile = files[activeFileIdx] || null;
   const hasResults = results.length > 0;
 
   // Altura sincronizada para igualar panel de vista previa al panel de control
@@ -183,7 +207,7 @@ export default function PdfProtector() {
     observer.observe(controlPanelRef.current);
     updateHeight();
     return () => observer.disconnect();
-  }, [files, activeFileIdx, userPassword, ownerPassword, showAdvanced, isProcessing, results]);
+  }, [files, activeSlotIndex, userPassword, ownerPassword, showAdvanced, isProcessing, results]);
 
   // === EFECTOS ===
   // Ocultar barra superior global y posicionar la vista en el tope de la página
@@ -222,10 +246,15 @@ export default function PdfProtector() {
   }, [setHeaderHidden]);
 
   useEffect(() => {
-    if (globalFile && files.length === 0) {
-      setFiles([globalFile]);
+    if (globalFile && !slots.some((s) => s.file !== null)) {
+      setSlots([
+        { id: 'slot-1', file: globalFile },
+        { id: 'slot-2', file: null },
+        { id: 'slot-3', file: null },
+      ]);
+      setActiveSlotIndex(0);
     }
-  }, [globalFile, files.length]);
+  }, [globalFile]);
 
   useEffect(() => {
     return () => {
@@ -285,7 +314,54 @@ export default function PdfProtector() {
     }
   }, [activeFile, loadFileThumbnails]);
 
-  // === MANEJO DE ARCHIVOS (BATCH) ===
+  // === SISTEMA DE CARGA Y SLOTS ===
+  const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: newFile };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+  };
+
+  const handleSlotFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFiles = e.target.files;
+    if (!uploadedFiles || uploadedFiles.length === 0) return;
+    const selected = uploadedFiles[0];
+    e.target.value = '';
+    loadSingleFileIntoSlot(index, selected);
+  };
+
+  const handleRemoveSlot = (index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], file: null };
+      return next;
+    });
+    const remaining = slots
+      .map((s, idx) => ({ s, idx }))
+      .filter((item) => item.idx !== index && item.s.file !== null);
+    if (remaining.length > 0) {
+      setActiveSlotIndex(remaining[0].idx);
+    } else {
+      setActiveSlotIndex(0);
+      setGlobalFile(null);
+    }
+  };
+
+  const handleRemoveAllFiles = () => {
+    setSlots([
+      { id: 'slot-1', file: null },
+      { id: 'slot-2', file: null },
+      { id: 'slot-3', file: null },
+    ]);
+    setActiveSlotIndex(0);
+    setCompletedResult(null);
+    setResults([]);
+    setGlobalFile(null);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files).filter((f) => f.type === 'application/pdf');
@@ -294,36 +370,23 @@ export default function PdfProtector() {
         e.target.value = '';
         return;
       }
-      if (newFiles.length !== e.target.files.length) {
-        toast.warning(
-          isEs
-            ? `${e.target.files.length - newFiles.length} archivo(s) ignorado(s)`
-            : `${e.target.files.length - newFiles.length} file(s) ignored`,
-        );
-      }
-      setFiles((prev) => [...prev, ...newFiles]);
-      if (newFiles.length > 0) {
-        setGlobalFile(newFiles[0]);
-        setActiveFileIdx(0);
-      }
+      setSlots((prev) => {
+        const next = [...prev];
+        let addedIdx = 0;
+        for (let i = 0; i < next.length && addedIdx < newFiles.length; i++) {
+          if (!next[i].file) {
+            next[i] = { ...next[i], file: newFiles[addedIdx++] };
+          }
+        }
+        return next;
+      });
       setResults([]);
+      setCompletedResult(null);
+      toast.success(
+        isEs ? `${newFiles.length} PDF(s) añadido(s)` : `${newFiles.length} PDF(s) added`,
+      );
     }
     e.target.value = '';
-  };
-
-  const handleRemoveFile = (idx: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
-    setResults((prev) => prev.filter((_, i) => i !== idx));
-    if (idx === activeFileIdx) setActiveFileIdx(0);
-    else if (idx < activeFileIdx) setActiveFileIdx((prev) => Math.max(0, prev - 1));
-    if (files.length <= 1) setGlobalFile(null);
-  };
-
-  const handleRemoveAllFiles = () => {
-    setFiles([]);
-    setGlobalFile(null);
-    setResults([]);
-    setActiveFileIdx(0);
   };
 
   // === MEDIDOR DE FUERZA DE CONTRASEÑA ===
@@ -703,633 +766,753 @@ export default function PdfProtector() {
           />
         </motion.div>
       ) : (
-        /* ÁREA DE TRABAJO: VISOR 5/12 + PANEL 7/12 */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans items-stretch">
-          {/* LADO IZQUIERDO: LISTA DE ARCHIVOS + VISTA PREVIA */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
-            {files.length > 1 && (
-              <div className="bg-[#09090b] border border-white/10 rounded-xl p-3 max-h-[160px] overflow-y-auto">
-                <span className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase">
-                  {isEs ? 'Cola de archivos' : 'File queue'} ({files.length})
+        <div className="w-full flex flex-col gap-6 font-sans mb-6">
+          {/* SECCIÓN 1: VISTA PREVIA (50%) Y PANEL DE 3 CAJAS (50%) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+            {/* BARRA SUPERIOR DE LA SECCIÓN 1 */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+                  {isEs
+                    ? '001 / VISOR INTERACTIVO Y DOCUMENTOS'
+                    : '001 / INTERACTIVE VIEWER & DOCUMENTS'}
                 </span>
-                <div className="space-y-1.5">
-                  {files.map((f, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setActiveFileIdx(i)}
-                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all text-xs ${
-                        i === activeFileIdx
-                          ? 'bg-zinc-800 border border-white/20 text-white'
-                          : 'bg-zinc-900/60 border border-white/5 text-zinc-400 hover:bg-zinc-800/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-zinc-500" />
-                        <span className="truncate font-mono">{f.name}</span>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveFile(i);
-                        }}
-                        disabled={isProcessing}
-                        className="p-1 hover:bg-red-500/20 rounded text-zinc-500 hover:text-red-400"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isProcessing}
-                  className="mt-2 w-full text-[10px] font-mono text-zinc-500 hover:text-white py-1.5 border border-dashed border-white/10 hover:border-white/30 rounded-lg transition-all cursor-pointer"
-                >
-                  + {isEs ? 'Añadir más archivos' : 'Add more files'}
-                </button>
+                <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
+                <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
+                  {activeFile
+                    ? activeFile.name
+                    : isEs
+                      ? 'Sin archivo seleccionado'
+                      : 'No file selected'}
+                </span>
               </div>
-            )}
 
-            {/* VISTA PREVIA CON GRILLA DE MINIATURAS (3 COLUMNAS X 4 FILAS) */}
-            <div
-              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
-              style={{
-                height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                minHeight: '300px',
-              }}
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              <div className="bg-[#121217] border-b border-zinc-800 p-3.5 flex justify-between items-center z-10 font-sans">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="p-2 rounded-2xl border border-zinc-700 bg-zinc-800 text-white flex-shrink-0 shadow-sm">
-                    <ShieldCheck className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex flex-col overflow-hidden font-mono">
-                    <span className="text-white font-bold text-xs truncate w-28 sm:w-44">
-                      {activeFile?.name || ''}
-                    </span>
-                    <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
-                      <span>{activeFile ? formatFileSize(activeFile.size) : ''}</span>
-                      <span className="text-zinc-600">•</span>
-                      <span className="text-zinc-300 font-bold">
-                        {userPassword || ownerPassword
-                          ? isEs
-                            ? 'AES-256 Configurado'
-                            : 'AES-256 Set'
-                          : isEs
-                            ? 'Sin Cifrado'
-                            : 'Unencrypted'}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                  <span className="font-bold font-mono text-white">{files.length}</span> / 3{' '}
+                  {isEs ? 'cargados' : 'loaded'}
+                </div>
+
+                {files.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAllFiles}
+                    className="text-zinc-500 hover:text-red-400 text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 ml-2"
+                    title={isEs ? 'Limpiar todas las cajas' : 'Clear all boxes'}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">{isEs ? 'Limpiar todo' : 'Clear all'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
+              {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
+              <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                {activeFile ? (
+                  <div className="flex flex-col items-center justify-between w-full h-full py-1">
+                    {/* ENCABEZADO INFO DEL VISOR */}
+                    <div className="w-full flex items-center justify-between px-2 pb-2 border-b border-zinc-800/80 text-[11px] font-mono text-zinc-400 shrink-0">
+                      <span className="truncate max-w-[180px] sm:max-w-[220px] text-white font-bold">
+                        {activeFile.name}
                       </span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 font-mono">
-                  <span className="bg-zinc-900 border border-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
-                    <span
-                      className={`w-2 h-2 rounded-full ${userPassword || ownerPassword ? 'bg-white animate-pulse' : 'bg-zinc-500'}`}
-                    />
-                    <span>
-                      {isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-              {/* GRILLA DE MINIATURAS */}
-              <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#0c0c0f] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start custom-scrollbar">
-                {isLoadingThumbnails ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
-                    <Loader2 className="w-8 h-8 animate-spin text-white" />
-                    <span className="text-xs font-mono">
-                      {isEs ? 'Generando miniaturas...' : 'Generating thumbnails...'}
-                    </span>
-                  </div>
-                ) : thumbnails.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 w-full">
-                    {thumbnails.map((thumb) => (
-                      <div
-                        key={thumb.pageNum}
-                        onClick={() => setPreviewPageNum(thumb.pageNum)}
-                        className={`group relative bg-[#18181f] rounded-2xl p-2.5 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-2 shadow-sm hover:shadow-md ${
-                          previewPageNum === thumb.pageNum
-                            ? 'border-white ring-2 ring-white/40 bg-zinc-800 scale-[1.02]'
-                            : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900'
-                        }`}
-                      >
-                        <div className="relative overflow-hidden rounded-xl border border-zinc-700/80 bg-white flex items-center justify-center min-h-[110px] max-h-[140px] w-full p-1 shadow-inner">
-                          <img
-                            src={thumb.dataUrl}
-                            alt={`Página ${thumb.pageNum}`}
-                            className="max-h-[130px] w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
-                          />
-                        </div>
-                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[10px]">
-                          <span
-                            className={`font-bold px-2.5 py-0.5 rounded-lg ${
-                              previewPageNum === thumb.pageNum
-                                ? 'bg-white text-black font-extrabold shadow-sm'
-                                : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-                            }`}
-                          >
-                            {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
-                          </span>
-                          {previewPageNum === thumb.pageNum && (
-                            <span className="text-white text-[9px] font-bold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                              {isEs ? 'Seleccionada' : 'Selected'}
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <span>{formatFileSize(activeFile.size)}</span>
+                        <span className="text-zinc-600">•</span>
+                        <span className="text-zinc-300 font-bold">
+                          {userPassword || ownerPassword
+                            ? isEs
+                              ? 'AES-256'
+                              : 'AES-256'
+                            : isEs
+                              ? 'Sin Cifrado'
+                              : 'Unencrypted'}
+                        </span>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* LIENZO / VISUALIZADOR DE PÁGINA */}
+                    <div className="relative my-auto bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[310px] sm:h-[330px] group">
+                      {isLoadingThumbnails ? (
+                        <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                          <Loader2 className="w-6 h-6 animate-spin text-white" />
+                          <span className="text-[11px] font-mono font-bold text-zinc-400">
+                            {isEs ? 'Generando visor...' : 'Generating viewer...'}
+                          </span>
+                        </div>
+                      ) : thumbnails.find((t) => t.pageNum === previewPageNum) ? (
+                        <>
+                          <img
+                            src={thumbnails.find((t) => t.pageNum === previewPageNum)?.dataUrl}
+                            alt={`Pág ${previewPageNum}`}
+                            className="w-full h-full object-contain select-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setZoomModalImage(
+                                thumbnails.find((t) => t.pageNum === previewPageNum)?.dataUrl ||
+                                  null,
+                              )
+                            }
+                            className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                            title={isEs ? 'Ampliar' : 'Zoom'}
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-zinc-500 gap-2 p-4 text-center">
+                          <FileText className="w-8 h-8 text-zinc-400" />
+                          <span className="text-[10px] font-mono">
+                            {isEs ? 'Vista previa no disponible' : 'Preview not available'}
+                          </span>
+                        </div>
+                      )}
+
+                      {totalPages > 0 && (
+                        <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                          #{previewPageNum} / {totalPages}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-3 mt-2 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewPageNum((p) => Math.max(1, p - 1))}
+                          disabled={previewPageNum <= 1}
+                          className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                          title={isEs ? 'Anterior' : 'Previous'}
+                        >
+                          ◀
+                        </button>
+                        <span className="font-bold text-white text-[11px]">
+                          {previewPageNum} / {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewPageNum((p) => Math.min(totalPages, p + 1))}
+                          disabled={previewPageNum >= totalPages}
+                          className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                          title={isEs ? 'Siguiente' : 'Next'}
+                        >
+                          ▶
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
-                    <FileText className="w-10 h-10 text-zinc-600" />
-                    <span className="text-xs font-mono">
-                      {isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}
-                    </span>
+                  <div className="flex flex-col items-center justify-center py-10 gap-3 text-zinc-500 font-mono text-xs">
+                    <FileText className="w-8 h-8 text-zinc-600" />
+                    <span>{isEs ? 'Sin archivo para previsualizar' : 'No file to preview'}</span>
                   </div>
                 )}
+              </div>
+
+              {/* ── LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ── */}
+              <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                {slots.map((slot, sIdx) => {
+                  const isLoaded = slot.file !== null;
+                  const isActive = isLoaded && sIdx === activeSlotIndex;
+
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => {
+                        if (isLoaded) {
+                          setActiveSlotIndex(sIdx);
+                        } else {
+                          getSlotInputRef(sIdx).current?.click();
+                        }
+                      }}
+                      className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                        isActive
+                          ? 'bg-zinc-800/80 border-white shadow-white/10'
+                          : isLoaded
+                            ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                            : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                      }`}
+                    >
+                      <input
+                        ref={getSlotInputRef(sIdx)}
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="hidden"
+                        onChange={(e) => handleSlotFileChange(sIdx, e)}
+                      />
+
+                      {isLoaded ? (
+                        <div className="flex items-center justify-between w-full gap-3 font-mono">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                isActive
+                                  ? 'bg-white/20 border-white text-white'
+                                  : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                              }`}
+                            >
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                  {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`}
+                                </span>
+                                {isActive && (
+                                  <span className="text-[9px] px-1.5 py-0.2 bg-white/20 text-white rounded border border-white/40 font-bold">
+                                    {isEs ? 'Visualizando' : 'Viewing'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                {slot.file!.name}
+                              </p>
+                              <span className="text-[10px] text-zinc-400">
+                                {formatFileSize(slot.file!.size)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleRemoveSlot(sIdx, e)}
+                              className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                              title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full font-mono">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                {isEs ? `+ Cargar PDF ${sIdx + 1}` : `+ Upload PDF ${sIdx + 1}`}
+                              </p>
+                              <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                .pdf
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                            {isEs ? 'Disponible' : 'Available'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 flex flex-col">
-            <div
-              ref={controlPanelRef}
-              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-2xl font-sans"
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              <div>
-                {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3 font-sans">
-                  <div>
-                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
-                      002 / CONFIGURACIÓN DE SEGURIDAD
-                    </span>
-                    <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
-                      {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
-                    </h2>
-                  </div>
-                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
-                    <Lock className="w-5 h-5 text-white" />
-                  </div>
-                </div>
+          {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO A ANCHO COMPLETO */}
+          <div
+            ref={controlPanelRef}
+            className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden font-sans"
+          >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-                {/* === CONTRASEÑA DE APERTURA (User Password) === */}
-                <div className="mb-5 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <KeyRound className="w-4 h-4 text-white" />
-                      <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
-                        {isEs ? 'Contraseña de Apertura' : 'User Password (Open)'}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={generateStrongPassword}
-                      className="flex items-center gap-1.5 px-3 py-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl text-[11px] font-mono transition-all cursor-pointer shadow-sm"
-                      title={
-                        isEs
-                          ? 'Generar y copiar contraseña segura aleatoria'
-                          : 'Generate and copy random strong password'
-                      }
-                    >
-                      <Sparkles className="w-3 h-3 text-black" />
-                      <span>{isEs ? 'Generar Clave' : 'Generate'}</span>
-                    </button>
+            {/* CABECERA PANEL DE CONTROL */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
+                  002 / CONFIGURACIÓN Y ACCIÓN
+                </span>
+                <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
+                  {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
+                </h2>
+              </div>
+              <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white shadow-sm">
+                <Lock className="w-4 h-4 text-white" />
+              </div>
+            </div>
+
+            <div>
+              {/* === CONTRASEÑA DE APERTURA (User Password) === */}
+              <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-white" />
+                    <span className="text-xs sm:text-sm font-bold text-white font-mono uppercase tracking-wide">
+                      {isEs ? 'Contraseña de Apertura' : 'User Password (Open)'}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-zinc-400 mb-3 font-sans leading-relaxed">
-                    {isEs
-                      ? 'Restringe quién puede abrir y leer el documento. Déjalo en blanco si solo deseas restricciones de permisos.'
-                      : 'Restricts who can open and read the document. Leave blank for permission-only restrictions.'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="relative">
-                      <input
-                        type={showUserPassword ? 'text' : 'password'}
-                        value={userPassword}
-                        onChange={(e) => setUserPassword(e.target.value)}
-                        placeholder={isEs ? 'Contraseña de apertura' : 'User password'}
-                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowUserPassword(!showUserPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-                      >
-                        {showUserPassword ? (
-                          <EyeOff className="w-3.5 h-3.5" />
-                        ) : (
-                          <Eye className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
+                  <button
+                    type="button"
+                    onClick={generateStrongPassword}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl text-[11px] font-mono transition-all cursor-pointer shadow-sm"
+                    title={
+                      isEs
+                        ? 'Generar y copiar contraseña segura aleatoria'
+                        : 'Generate and copy random strong password'
+                    }
+                  >
+                    <Sparkles className="w-3 h-3 text-black" />
+                    <span>{isEs ? 'Generar Clave' : 'Generate'}</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-400 mb-3 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Restringe quién puede abrir y leer el documento. Déjalo en blanco si solo deseas restricciones de permisos.'
+                    : 'Restricts who can open and read the document. Leave blank for permission-only restrictions.'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="relative">
                     <input
                       type={showUserPassword ? 'text' : 'password'}
-                      value={confirmUserPassword}
-                      onChange={(e) => setConfirmUserPassword(e.target.value)}
-                      placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
-                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                      value={userPassword}
+                      onChange={(e) => setUserPassword(e.target.value)}
+                      placeholder={isEs ? 'Contraseña de apertura' : 'User password'}
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowUserPassword(!showUserPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
+                    >
+                      {showUserPassword ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                   </div>
-                  {userPassword && (
-                    <div className="mt-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-zinc-900 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${userPwdStrength.color}`}
-                            style={{ width: `${(userPwdStrength.score / 4) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-mono font-bold text-zinc-300">
-                          {userPwdStrength.label}
-                        </span>
-                      </div>
-                      <p className="text-[9px] text-zinc-500 mt-1 font-mono">
-                        {isEs
-                          ? 'Usa 8+ caracteres con mayúsculas, números y símbolos'
-                          : 'Use 8+ chars with uppercase, numbers & symbols'}
-                      </p>
-                    </div>
-                  )}
+                  <input
+                    type={showUserPassword ? 'text' : 'password'}
+                    value={confirmUserPassword}
+                    onChange={(e) => setConfirmUserPassword(e.target.value)}
+                    placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
+                    className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                  />
                 </div>
-
-                {/* === CONTRASEÑA DE PROPIETARIO (Owner Password) === */}
-                <div className="mb-5 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="w-4 h-4 text-white" />
-                    <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
-                      {isEs ? 'Contraseña de Propietario' : 'Owner Password (Permissions)'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-400 mb-3 font-sans leading-relaxed">
-                    {isEs
-                      ? 'Contraseña maestra para restringir permisos sin impedir la lectura. Si no se establece, se genera una automáticamente.'
-                      : 'Master password to restrict permissions without blocking reading. Auto-generated if left blank.'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="relative">
-                      <input
-                        type={showOwnerPassword ? 'text' : 'password'}
-                        value={ownerPassword}
-                        onChange={(e) => setOwnerPassword(e.target.value)}
-                        placeholder={
-                          isEs ? 'Contraseña maestra (opcional)' : 'Owner password (optional)'
-                        }
-                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowOwnerPassword(!showOwnerPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
-                      >
-                        {showOwnerPassword ? (
-                          <EyeOff className="w-3.5 h-3.5" />
-                        ) : (
-                          <Eye className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                {userPassword && (
+                  <div className="mt-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-zinc-900 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${userPwdStrength.color}`}
+                          style={{ width: `${(userPwdStrength.score / 4) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-zinc-300">
+                        {userPwdStrength.label}
+                      </span>
                     </div>
+                    <p className="text-[9px] text-zinc-500 mt-1 font-mono">
+                      {isEs
+                        ? 'Usa 8+ caracteres con mayúsculas, números y símbolos'
+                        : 'Use 8+ chars with uppercase, numbers & symbols'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* === CONTRASEÑA DE PROPIETARIO (Owner Password) === */}
+              <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="w-4 h-4 text-white" />
+                  <span className="text-xs sm:text-sm font-bold text-white font-mono uppercase tracking-wide">
+                    {isEs ? 'Contraseña de Propietario' : 'Owner Password (Permissions)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-400 mb-3 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Contraseña maestra para restringir permisos sin impedir la lectura. Si no se establece, se genera una automáticamente.'
+                    : 'Master password to restrict permissions without blocking reading. Auto-generated if left blank.'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="relative">
                     <input
                       type={showOwnerPassword ? 'text' : 'password'}
-                      value={confirmOwnerPassword}
-                      onChange={(e) => setConfirmOwnerPassword(e.target.value)}
-                      placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
-                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                      value={ownerPassword}
+                      onChange={(e) => setOwnerPassword(e.target.value)}
+                      placeholder={
+                        isEs ? 'Contraseña maestra (opcional)' : 'Owner password (optional)'
+                      }
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors pr-9 font-mono"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowOwnerPassword(!showOwnerPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
+                    >
+                      {showOwnerPassword ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  <input
+                    type={showOwnerPassword ? 'text' : 'password'}
+                    value={confirmOwnerPassword}
+                    onChange={(e) => setConfirmOwnerPassword(e.target.value)}
+                    placeholder={isEs ? 'Confirmar contraseña' : 'Confirm password'}
+                    className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* === PANEL DE POLÍTICAS DE SEGURIDAD (PERMISOS GRANULARES) === */}
+              <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="w-4 h-4 text-white" />
+                    <span className="text-xs sm:text-sm font-bold text-white font-mono uppercase tracking-wide">
+                      {isEs ? 'Políticas de Seguridad' : 'Security Policies'}
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={applyReadOnly}
+                      className="text-[9px] font-bold px-2.5 py-1 rounded-xl bg-zinc-800 text-white border border-zinc-600 hover:bg-zinc-700 transition-all font-mono cursor-pointer shadow-sm"
+                    >
+                      {isEs ? 'Solo lectura' : 'Read-only'}
+                    </button>
+                    <button
+                      onClick={applyMaxProtection}
+                      className="text-[9px] font-bold px-2.5 py-1 rounded-xl bg-zinc-800 text-white border border-zinc-600 hover:bg-zinc-700 transition-all font-mono cursor-pointer shadow-sm"
+                    >
+                      {isEs ? 'Máxima protección' : 'Max protection'}
+                    </button>
                   </div>
                 </div>
 
-                {/* === PANEL DE POLÍTICAS DE SEGURIDAD (PERMISOS GRANULARES) === */}
-                <div className="mb-5 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <SlidersHorizontal className="w-4 h-4 text-white" />
-                      <span className="text-sm font-bold text-white font-mono uppercase tracking-wide">
-                        {isEs ? 'Políticas de Seguridad' : 'Security Policies'}
-                      </span>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={applyReadOnly}
-                        className="text-[9px] font-bold px-2.5 py-1 rounded-xl bg-zinc-800 text-white border border-zinc-600 hover:bg-zinc-700 transition-all font-mono cursor-pointer shadow-sm"
-                      >
-                        {isEs ? 'Solo lectura' : 'Read-only'}
-                      </button>
-                      <button
-                        onClick={applyMaxProtection}
-                        className="text-[9px] font-bold px-2.5 py-1 rounded-xl bg-zinc-800 text-white border border-zinc-600 hover:bg-zinc-700 transition-all font-mono cursor-pointer shadow-sm"
-                      >
-                        {isEs ? 'Máxima protección' : 'Max protection'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {/* IMPRESIÓN */}
-                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-white">
-                            {isEs ? 'Permitir impresión' : 'Allow printing'}
-                          </p>
-                          <p className="text-[10px] text-zinc-500">
-                            {isEs
-                              ? 'El usuario puede imprimir el documento'
-                              : 'User can print the document'}
-                          </p>
-                        </div>
-                        <div
-                          onClick={() => {
-                            setAllowPrinting(!allowPrinting);
-                            if (!allowPrinting) setAllowHighQualityPrint(false);
-                          }}
-                          className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowPrinting ? 'bg-white' : 'bg-zinc-700'}`}
-                        >
-                          <div
-                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowPrinting ? 'left-4' : 'left-0.5'}`}
-                          />
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {/* IMPRESIÓN */}
+                  <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-white">
+                          {isEs ? 'Permitir impresión' : 'Allow printing'}
+                        </p>
+                        <p className="text-[10px] text-zinc-500">
+                          {isEs
+                            ? 'El usuario puede imprimir el documento'
+                            : 'User can print the document'}
+                        </p>
                       </div>
-                      {allowPrinting && (
-                        <div className="mt-2 pl-2 border-l-2 border-white/10">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-zinc-400">
-                              {isEs ? 'Alta calidad' : 'High quality'}
-                            </span>
+                      <div
+                        onClick={() => {
+                          setAllowPrinting(!allowPrinting);
+                          if (!allowPrinting) setAllowHighQualityPrint(false);
+                        }}
+                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowPrinting ? 'bg-white' : 'bg-zinc-700'}`}
+                      >
+                        <div
+                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowPrinting ? 'left-4' : 'left-0.5'}`}
+                        />
+                      </div>
+                    </div>
+                    {allowPrinting && (
+                      <div className="mt-2 pl-2 border-l-2 border-white/10">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-zinc-400">
+                            {isEs ? 'Alta calidad' : 'High quality'}
+                          </span>
+                          <div
+                            onClick={() => setAllowHighQualityPrint(!allowHighQualityPrint)}
+                            className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowHighQualityPrint ? 'bg-white' : 'bg-zinc-700'}`}
+                          >
                             <div
-                              onClick={() => setAllowHighQualityPrint(!allowHighQualityPrint)}
-                              className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowHighQualityPrint ? 'bg-white' : 'bg-zinc-700'}`}
-                            >
-                              <div
-                                className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowHighQualityPrint ? 'left-4' : 'left-0.5'}`}
-                              />
-                            </div>
+                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowHighQualityPrint ? 'left-4' : 'left-0.5'}`}
+                            />
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    {/* COPIA */}
-                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-white">
-                          {isEs ? 'Permitir copia de texto/imágenes' : 'Allow copying text/images'}
-                        </p>
-                        <p className="text-[10px] text-zinc-500">
-                          {isEs
-                            ? 'Ctrl+C / clic derecho sobre contenido'
-                            : 'Ctrl+C / right-click on content'}
-                        </p>
                       </div>
-                      <div
-                        onClick={() => {
-                          setAllowCopying(!allowCopying);
-                          setAllowExtraction(!allowCopying);
-                        }}
-                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowCopying ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowCopying ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* MODIFICACIÓN */}
-                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-white">
-                          {isEs ? 'Permitir modificación de páginas' : 'Allow page modification'}
-                        </p>
-                        <p className="text-[10px] text-zinc-500">
-                          {isEs
-                            ? 'Rotar, eliminar, insertar páginas'
-                            : 'Rotate, delete, insert pages'}
-                        </p>
-                      </div>
-                      <div
-                        onClick={() => {
-                          setAllowModifying(!allowModifying);
-                          setAllowAssembly(!allowModifying);
-                        }}
-                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowModifying ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowModifying ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* FORMULARIOS */}
-                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-white">
-                          {isEs ? 'Permitir llenado de formularios' : 'Allow form filling'}
-                        </p>
-                        <p className="text-[10px] text-zinc-500">
-                          {isEs ? 'Campos de formulario interactivos' : 'Interactive form fields'}
-                        </p>
-                      </div>
-                      <div
-                        onClick={() => setAllowFillingForms(!allowFillingForms)}
-                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowFillingForms ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowFillingForms ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* ANOTACIONES */}
-                    <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-bold text-white">
-                          {isEs ? 'Permitir anotaciones/comentarios' : 'Allow annotations/comments'}
-                        </p>
-                        <p className="text-[10px] text-zinc-500">
-                          {isEs
-                            ? 'Resaltar, subrayar, notas adhesivas'
-                            : 'Highlight, underline, sticky notes'}
-                        </p>
-                      </div>
-                      <div
-                        onClick={() => setAllowAnnotating(!allowAnnotating)}
-                        className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowAnnotating ? 'bg-white' : 'bg-zinc-700'}`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowAnnotating ? 'left-4' : 'left-0.5'}`}
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
 
-                  {/* Resumen de restricciones activas */}
-                  {hasAnyRestriction && (
-                    <div className="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-[10px] text-amber-300 font-mono">
-                      <span className="font-bold">
-                        {isEs ? 'Restricciones activas:' : 'Active restrictions:'}
-                      </span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {!allowPrinting && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
-                            {isEs ? 'Impresión' : 'Print'}
-                          </span>
-                        )}
-                        {!allowCopying && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
-                            {isEs ? 'Copia' : 'Copy'}
-                          </span>
-                        )}
-                        {!allowModifying && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
-                            {isEs ? 'Edición' : 'Edit'}
-                          </span>
-                        )}
-                        {!allowFillingForms && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
-                            {isEs ? 'Formularios' : 'Forms'}
-                          </span>
-                        )}
-                        {!allowAnnotating && (
-                          <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
-                            {isEs ? 'Anotaciones' : 'Annotations'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* === OPCIONES AVANZADAS (SIEMPRE VISIBLES) === */}
-                <div className="mb-5 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5 font-sans space-y-4">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
-                    <Settings className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
-                  </div>
-
-                  <div
-                    onClick={() => setEnableRasterize(!enableRasterize)}
-                    className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                  >
+                  {/* COPIA */}
+                  <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
                     <div>
-                      <p className="text-[11px] font-bold text-white">
-                        {isEs
-                          ? 'Rasterizar contenido (máxima seguridad)'
-                          : 'Rasterize content (maximum security)'}
+                      <p className="text-xs font-bold text-white">
+                        {isEs ? 'Permitir copia de texto/imágenes' : 'Allow copying text/images'}
                       </p>
-                      <p className="text-[9px] text-zinc-500 font-mono">
+                      <p className="text-[10px] text-zinc-500">
                         {isEs
-                          ? 'Convierte todo a imagen no editable ni buscable'
-                          : 'Converts all to non-editable, non-searchable image'}
+                          ? 'Ctrl+C / clic derecho sobre contenido'
+                          : 'Ctrl+C / right-click on content'}
                       </p>
                     </div>
                     <div
-                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableRasterize ? 'bg-white' : 'bg-zinc-700'}`}
+                      onClick={() => {
+                        setAllowCopying(!allowCopying);
+                        setAllowExtraction(!allowCopying);
+                      }}
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowCopying ? 'bg-white' : 'bg-zinc-700'}`}
                     >
                       <div
-                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableRasterize ? 'left-4' : 'left-0.5'}`}
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowCopying ? 'left-4' : 'left-0.5'}`}
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">
-                      {isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}
-                    </label>
-                    <input
-                      type="text"
-                      value={customSuffix}
-                      onChange={(e) => setCustomSuffix(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
-                    />
-                    <p className="text-[9px] font-mono text-zinc-600 mt-1">
-                      {isEs
-                        ? `Ejemplo: archivo${customSuffix}.pdf`
-                        : `Example: file${customSuffix}.pdf`}
-                    </p>
+                  {/* MODIFICACIÓN */}
+                  <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {isEs ? 'Permitir modificación de páginas' : 'Allow page modification'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500">
+                        {isEs
+                          ? 'Rotar, eliminar, insertar páginas'
+                          : 'Rotate, delete, insert pages'}
+                      </p>
+                    </div>
+                    <div
+                      onClick={() => {
+                        setAllowModifying(!allowModifying);
+                        setAllowAssembly(!allowModifying);
+                      }}
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowModifying ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowModifying ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* FORMULARIOS */}
+                  <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {isEs ? 'Permitir llenado de formularios' : 'Allow form filling'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500">
+                        {isEs ? 'Campos de formulario interactivos' : 'Interactive form fields'}
+                      </p>
+                    </div>
+                    <div
+                      onClick={() => setAllowFillingForms(!allowFillingForms)}
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowFillingForms ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowFillingForms ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* ANOTACIONES */}
+                  <div className="bg-zinc-900/80 rounded-xl p-3 border border-white/5 flex items-center justify-between sm:col-span-2">
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {isEs ? 'Permitir anotaciones/comentarios' : 'Allow annotations/comments'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500">
+                        {isEs
+                          ? 'Resaltar, subrayar, notas adhesivas'
+                          : 'Highlight, underline, sticky notes'}
+                      </p>
+                    </div>
+                    <div
+                      onClick={() => setAllowAnnotating(!allowAnnotating)}
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${allowAnnotating ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${allowAnnotating ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Resumen de restricciones activas */}
+                {hasAnyRestriction && (
+                  <div className="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-[10px] text-amber-300 font-mono">
+                    <span className="font-bold">
+                      {isEs ? 'Restricciones activas:' : 'Active restrictions:'}
+                    </span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {!allowPrinting && (
+                        <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
+                          {isEs ? 'Impresión' : 'Print'}
+                        </span>
+                      )}
+                      {!allowCopying && (
+                        <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
+                          {isEs ? 'Copia' : 'Copy'}
+                        </span>
+                      )}
+                      {!allowModifying && (
+                        <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
+                          {isEs ? 'Edición' : 'Edit'}
+                        </span>
+                      )}
+                      {!allowFillingForms && (
+                        <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
+                          {isEs ? 'Formularios' : 'Forms'}
+                        </span>
+                      )}
+                      {!allowAnnotating && (
+                        <span className="px-1.5 py-0.5 bg-amber-500/20 rounded">
+                          {isEs ? 'Anotaciones' : 'Annotations'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* BARRA DE PROGRESO + BOTÓN */}
-              <div>
-                <AnimatePresence>
-                  {isProcessing && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mb-4 font-mono"
-                    >
-                      <div className="flex justify-between items-center text-xs text-zinc-300 mb-1.5">
-                        <span className="truncate mr-2">{progressMsg}</span>
-                        <span className="font-bold tabular-nums">{progressPercent}%</span>
-                      </div>
-                      <div className="w-full bg-zinc-900 rounded-full h-2.5 overflow-hidden border border-white/10">
-                        <motion.div
-                          className="bg-gradient-to-r from-emerald-500 to-emerald-300 h-full rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progressPercent}%` }}
-                          transition={{ ease: 'easeInOut', duration: 0.3 }}
-                        />
-                      </div>
-                      {totalFilesCount > 1 && (
-                        <p className="text-[9px] text-zinc-500 mt-1 text-center">
-                          {isEs
-                            ? `Archivo ${currentFileIndex} de ${totalFilesCount}`
-                            : `File ${currentFileIndex} of ${totalFilesCount}`}
-                        </p>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="space-y-3 pt-2">
-                  <button
-                    onClick={executeProtect}
-                    disabled={isProcessing || files.length === 0}
-                    className="w-full bg-white text-black hover:bg-zinc-200 font-bold py-3.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-black" />
-                        <span>{isEs ? 'Cifrando...' : 'Encrypting...'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-4 h-4 text-black" />
-                        <span>
-                          {isEs
-                            ? files.length > 1
-                              ? `Proteger ${files.length} archivos`
-                              : 'Proteger PDF'
-                            : files.length > 1
-                              ? `Protect ${files.length} files`
-                              : 'Protect PDF'}
-                        </span>
-                      </>
-                    )}
-                  </button>
+              {/* === OPCIONES AVANZADAS === */}
+              <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 font-sans space-y-3">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-zinc-800 pb-2 uppercase">
+                  <Settings className="w-3.5 h-3.5 text-white" />
+                  <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
                 </div>
 
-                {/* INDICADOR WEB WORKER */}
-                <div className="pt-3 mt-4 border-t border-white/10 flex items-center justify-between font-mono text-xs text-zinc-400">
-                  <span className="flex items-center gap-1.5 text-[11px]">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    {isEs ? 'Web Worker Activo' : 'Web Worker Active'}
-                  </span>
-                  <span className="flex items-center gap-1 text-white">
-                    <Database className="w-3 h-3" />
-                    {isEs ? '100% Local' : '100% Local'}
-                  </span>
+                <div
+                  onClick={() => setEnableRasterize(!enableRasterize)}
+                  className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                >
+                  <div>
+                    <p className="text-[11px] font-bold text-white">
+                      {isEs
+                        ? 'Rasterizar contenido (máxima seguridad)'
+                        : 'Rasterize content (maximum security)'}
+                    </p>
+                    <p className="text-[9px] text-zinc-500 font-mono">
+                      {isEs
+                        ? 'Convierte todo a imagen no editable ni buscable'
+                        : 'Converts all to non-editable, non-searchable image'}
+                    </p>
+                  </div>
+                  <div
+                    className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableRasterize ? 'bg-white' : 'bg-zinc-700'}`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableRasterize ? 'left-4' : 'left-0.5'}`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono text-zinc-400 block mb-1.5">
+                    {isEs ? 'Sufijo del archivo de salida:' : 'Output file suffix:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={customSuffix}
+                    onChange={(e) => setCustomSuffix(e.target.value)}
+                    className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono placeholder-zinc-600 rounded-lg px-3 py-2 focus:outline-none focus:border-white/40 transition"
+                  />
                 </div>
               </div>
             </div>
+
+            {/* BARRA DE PROGRESO + BOTÓN */}
+            <div>
+              <AnimatePresence>
+                {isProcessing && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-4 font-mono"
+                  >
+                    <div className="flex justify-between items-center text-xs text-zinc-300 mb-1.5">
+                      <span className="truncate mr-2">{progressMsg}</span>
+                      <span className="font-bold tabular-nums">{progressPercent}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 rounded-full h-2.5 overflow-hidden border border-white/10">
+                      <motion.div
+                        className="bg-gradient-to-r from-zinc-300 via-white to-zinc-400 h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPercent}%` }}
+                        transition={{ ease: 'easeInOut', duration: 0.3 }}
+                      />
+                    </div>
+                    {totalFilesCount > 1 && (
+                      <p className="text-[9px] text-zinc-500 mt-1 text-center">
+                        {isEs
+                          ? `Archivo ${currentFileIndex} de ${totalFilesCount}`
+                          : `File ${currentFileIndex} of ${totalFilesCount}`}
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="space-y-3 pt-2">
+                <button
+                  onClick={executeProtect}
+                  disabled={isProcessing || files.length === 0}
+                  className="w-full py-4 bg-white hover:bg-zinc-200 text-black font-extrabold rounded-2xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 font-sans text-sm sm:text-base uppercase tracking-wide cursor-pointer hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-black" />
+                      <span>{isEs ? 'Cifrando...' : 'Encrypting...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-black" />
+                      <span>
+                        {isEs
+                          ? files.length > 1
+                            ? `Proteger ${files.length} archivos`
+                            : 'Proteger PDF'
+                          : files.length > 1
+                            ? `Protect ${files.length} files`
+                            : 'Protect PDF'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* INDICADOR WEB WORKER */}
+              <div className="pt-3 mt-4 border-t border-zinc-800 flex items-center justify-between font-mono text-xs text-zinc-400">
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  {isEs ? 'Web Worker Activo' : 'Web Worker Active'}
+                </span>
+                <span className="flex items-center gap-1 text-white">
+                  <Database className="w-3 h-3" />
+                  {isEs ? '100% Local' : '100% Local'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ZOOM DE MINIATURA */}
+      {zoomModalImage && (
+        <div
+          onClick={() => setZoomModalImage(null)}
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#121217] border border-zinc-700 rounded-3xl p-4 max-w-2xl max-h-[85vh] flex flex-col items-center relative shadow-2xl"
+          >
+            <button
+              onClick={() => setZoomModalImage(null)}
+              className="absolute top-3 right-3 p-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono text-zinc-400 mb-3">
+              {isEs ? 'Vista previa de página' : 'Page preview'}
+            </span>
+            <img
+              src={zoomModalImage}
+              alt="Zoom preview"
+              className="max-h-[70vh] object-contain rounded-xl border border-zinc-800"
+            />
           </div>
         </div>
       )}

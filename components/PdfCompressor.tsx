@@ -154,9 +154,32 @@ export default function PdfCompressor() {
   const { globalFile, setGlobalFile } = useFileStore();
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
-  // === ESTADO MULTI-ARCHIVO (BATCH) ===
-  const [files, setFiles] = useState<File[]>(globalFile ? [globalFile] : []);
-  const [activeFileIdx, setActiveFileIdx] = useState<number>(0);
+  // === SISTEMA DE 3 CAJAS AISLADAS (ESTÁNDAR CONVERTIR) ===
+  interface SlotItem {
+    id: string;
+    file: File | null;
+  }
+
+  const [slots, setSlots] = useState<SlotItem[]>([
+    { id: 'slot-1', file: globalFile || null },
+    { id: 'slot-2', file: null },
+    { id: 'slot-3', file: null },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+
+  const slot1InputRef = useRef<HTMLInputElement>(null);
+  const slot2InputRef = useRef<HTMLInputElement>(null);
+  const slot3InputRef = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (index: number) => {
+    if (index === 0) return slot1InputRef;
+    if (index === 1) return slot2InputRef;
+    return slot3InputRef;
+  };
+
+  const files = slots.map((s) => s.file).filter(Boolean) as File[];
+  const activeFile = slots[activeSlotIndex]?.file || files[0] || null;
+
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // === ESTADO DE ÉXITO DE COMPRESIÓN ===
@@ -213,12 +236,62 @@ export default function PdfCompressor() {
   }, [setHeaderHidden]);
 
   useEffect(() => {
-    if (globalFile && files.length === 0) {
-      setFiles([globalFile]);
+    if (globalFile && !slots.some((s) => s.file !== null)) {
+      setSlots([
+        { id: 'slot-1', file: globalFile },
+        { id: 'slot-2', file: null },
+        { id: 'slot-3', file: null },
+      ]);
+      setActiveSlotIndex(0);
     }
-  }, [globalFile, files.length]);
+  }, [globalFile]);
 
-  const activeFile = files[activeFileIdx] || null;
+  const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: newFile };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+  };
+
+  const handleSlotFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFiles = e.target.files;
+    if (!uploadedFiles || uploadedFiles.length === 0) return;
+    const selected = uploadedFiles[0];
+    e.target.value = '';
+    loadSingleFileIntoSlot(index, selected);
+  };
+
+  const handleRemoveSlot = (index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], file: null };
+      return next;
+    });
+    const remaining = slots
+      .map((s, idx) => ({ s, idx }))
+      .filter((item) => item.idx !== index && item.s.file !== null);
+    if (remaining.length > 0) {
+      setActiveSlotIndex(remaining[0].idx);
+    } else {
+      setActiveSlotIndex(0);
+      setGlobalFile(null);
+    }
+  };
+
+  const handleRemoveAllFiles = () => {
+    setSlots([
+      { id: 'slot-1', file: null },
+      { id: 'slot-2', file: null },
+      { id: 'slot-3', file: null },
+    ]);
+    setActiveSlotIndex(0);
+    setCompletedResult(null);
+    setResults([]);
+    setGlobalFile(null);
+  };
 
   useEffect(() => {
     const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
@@ -339,11 +412,16 @@ export default function PdfCompressor() {
         toast.error(isEs ? 'Solo se admiten archivos PDF válidos' : 'Only valid PDF files allowed');
         return;
       }
-      setFiles((prev) => [...prev, ...droppedFiles]);
-      if (files.length === 0 && droppedFiles.length > 0) {
-        setGlobalFile(droppedFiles[0]);
-        setActiveFileIdx(0);
-      }
+      setSlots((prev) => {
+        const next = [...prev];
+        let addedIdx = 0;
+        for (let i = 0; i < next.length && addedIdx < droppedFiles.length; i++) {
+          if (!next[i].file) {
+            next[i] = { ...next[i], file: droppedFiles[addedIdx++] };
+          }
+        }
+        return next;
+      });
       setResults([]);
       setCompletedResult(null);
       toast.success(
@@ -363,44 +441,23 @@ export default function PdfCompressor() {
         return;
       }
 
-      setFiles((prev) => [...prev, ...newFiles]);
-      if (files.length === 0 && newFiles.length > 0) {
-        setGlobalFile(newFiles[0]);
-        setActiveFileIdx(0);
-      }
+      setSlots((prev) => {
+        const next = [...prev];
+        let addedIdx = 0;
+        for (let i = 0; i < next.length && addedIdx < newFiles.length; i++) {
+          if (!next[i].file) {
+            next[i] = { ...next[i], file: newFiles[addedIdx++] };
+          }
+        }
+        return next;
+      });
       setResults([]);
       setCompletedResult(null);
       toast.success(
-        isEs
-          ? `${newFiles.length} PDF(s) añadido(s) a la cola`
-          : `${newFiles.length} PDF(s) added to queue`,
+        isEs ? `${newFiles.length} PDF(s) añadido(s)` : `${newFiles.length} PDF(s) added`,
       );
     }
     e.target.value = '';
-  };
-
-  const handleRemoveFile = (idx: number, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    const updated = files.filter((_, i) => i !== idx);
-    setFiles(updated);
-    setResults((prev) => prev.filter((_, i) => i !== idx));
-    setCompletedResult(null);
-    if (idx === activeFileIdx) {
-      setActiveFileIdx(0);
-    } else if (idx < activeFileIdx) {
-      setActiveFileIdx((prev) => Math.max(0, prev - 1));
-    }
-    if (updated.length === 0) {
-      setGlobalFile(null);
-    }
-  };
-
-  const handleRemoveAllFiles = () => {
-    setFiles([]);
-    setGlobalFile(null);
-    setResults([]);
-    setCompletedResult(null);
-    setActiveFileIdx(0);
   };
 
   // Selector de perfiles calibrado
@@ -1073,613 +1130,693 @@ export default function PdfCompressor() {
           />
         </motion.div>
       ) : (
-        /* ÁREA DE TRABAJO DE 2 COLUMNAS */
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 font-sans items-stretch"
+          className="w-full flex flex-col gap-6 font-sans mb-6"
         >
-          {/* LADO IZQUIERDO: VISTA PREVIA + COLA DE ARCHIVOS */}
-          <div className="lg:col-span-5 flex flex-col gap-4 min-h-0 h-full overflow-hidden">
-            {/* LISTA DE ARCHIVOS (BATCH) */}
-            {files.length > 1 && (
-              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-3 max-h-[180px] overflow-y-auto font-mono">
-                <span className="text-[10px] font-bold text-zinc-400 block mb-2 tracking-widest uppercase">
-                  {isEs ? 'Cola de archivos' : 'File queue'} ({files.length})
+          {/* SECCIÓN 1: VISTA PREVIA (50%) Y PANEL DE 3 CAJAS (50%) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col space-y-4 relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+            {/* BARRA SUPERIOR DE LA SECCIÓN 1 */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0 font-mono text-xs text-zinc-400 font-bold">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+                  {isEs
+                    ? '001 / VISOR INTERACTIVO Y DOCUMENTOS'
+                    : '001 / INTERACTIVE VIEWER & DOCUMENTS'}
                 </span>
-                <div className="space-y-1.5">
-                  {files.map((f, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setActiveFileIdx(i)}
-                      className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all text-xs border ${
-                        i === activeFileIdx
-                          ? 'bg-zinc-800 border-white text-white shadow-sm'
-                          : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:bg-zinc-800/60 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                        <FileText className="w-3.5 h-3.5 flex-shrink-0 text-zinc-400" />
-                        <span className="truncate">{f.name}</span>
-                        <span className="text-[10px] text-zinc-500 flex-shrink-0">
-                          {formatFileSize(f.size)}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => handleRemoveFile(i, e)}
-                        className="p-1 hover:text-red-400 transition-colors ml-2 text-zinc-500"
-                        title={isEs ? 'Eliminar' : 'Remove'}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <div className="hidden sm:block h-3.5 w-px bg-zinc-700" />
+                <span className="text-xs text-zinc-300 font-bold font-sans truncate max-w-[200px] sm:max-w-[400px]">
+                  {activeFile
+                    ? activeFile.name
+                    : isEs
+                      ? 'Sin archivo seleccionado'
+                      : 'No file selected'}
+                </span>
               </div>
-            )}
 
-            {/* VISTA PREVIA CON GRILLA DE MINIATURAS */}
-            <div
-              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
-              style={{
-                height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                minHeight: '320px',
-              }}
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
+                  <span className="font-bold font-mono text-white">{files.length}</span> / 3{' '}
+                  {isEs ? 'cargados' : 'loaded'}
+                </div>
 
-              {/* BARRA DE INFORMACIÓN SUPERIOR */}
-              <div className="bg-[#121217] border-b border-zinc-800 p-3.5 flex justify-between items-center z-10 font-sans flex-shrink-0">
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <div className="bg-zinc-800 p-1.5 rounded-xl border border-zinc-700 flex-shrink-0 text-white">
-                    <ImageIcon className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex flex-col overflow-hidden font-mono">
-                    <span className="text-white font-bold text-xs truncate w-28 sm:w-44">
-                      {activeFile?.name || ''}
-                    </span>
-                    <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
-                      <span>{activeFile ? formatFileSize(activeFile.size) : ''}</span>
-                      <span className="text-zinc-600">•</span>
-                      <span className="text-[#FAF6EE] font-bold">
-                        {isEs
-                          ? `Est. ~↓${getEstimatedReduction(compressionLevel).label}`
-                          : `Est. ~↓${getEstimatedReduction(compressionLevel).label}`}
+                {files.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAllFiles}
+                    className="text-zinc-500 hover:text-red-400 text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 ml-2"
+                    title={isEs ? 'Limpiar todas las cajas' : 'Clear all boxes'}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">{isEs ? 'Limpiar todo' : 'Clear all'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
+              {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
+              <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                {activeFile ? (
+                  <div className="flex flex-col items-center justify-between w-full h-full py-1">
+                    {/* ENCABEZADO INFO DEL VISOR */}
+                    <div className="w-full flex items-center justify-between px-2 pb-2 border-b border-zinc-800/80 text-[11px] font-mono text-zinc-400 shrink-0">
+                      <span className="truncate max-w-[200px] text-white font-bold">
+                        {activeFile.name}
                       </span>
-                    </span>
-                  </div>
-                </div>
+                      <span className="text-zinc-400">{formatFileSize(activeFile.size)}</span>
+                    </div>
 
-                <div className="flex items-center gap-2 font-mono">
-                  <span className="bg-zinc-900 border border-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    <span>
-                      {isEs ? `Miniaturas (${totalPages} págs)` : `Thumbnails (${totalPages} pgs)`}
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-              {/* GRILLA DE MINIATURAS DE PÁGINAS */}
-              <div className="w-full flex-1 min-h-0 max-lg:max-h-[500px] bg-[#0c0c0f] relative p-3 sm:p-4 overflow-y-auto font-sans flex flex-col justify-start custom-scrollbar">
-                {isLoadingThumbnails ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
-                    <Loader2 className="w-8 h-8 animate-spin text-white" />
-                    <span className="text-xs font-mono">
-                      {isEs
-                        ? 'Generando miniaturas de alta definición...'
-                        : 'Generating high-definition thumbnails...'}
-                    </span>
-                  </div>
-                ) : thumbnails.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3 w-full">
-                    {thumbnails.map((thumb) => (
-                      <div
-                        key={thumb.pageNum}
-                        onClick={() => setPreviewPageNum(thumb.pageNum)}
-                        className={`group relative bg-[#18181f] rounded-2xl p-2.5 border transition-all duration-200 cursor-pointer flex flex-col items-center justify-between gap-2 shadow-sm hover:shadow-md ${
-                          previewPageNum === thumb.pageNum
-                            ? 'border-white ring-2 ring-white/40 bg-zinc-800 scale-[1.02]'
-                            : 'border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900'
-                        }`}
-                      >
-                        <div className="relative overflow-hidden rounded-xl border border-zinc-700/80 bg-white flex items-center justify-center min-h-[110px] max-h-[140px] w-full p-1 shadow-inner">
+                    {/* LIENZO / VISUALIZADOR DE PÁGINA */}
+                    <div className="relative my-auto bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[310px] sm:h-[330px] group">
+                      {isLoadingThumbnails ? (
+                        <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                          <Loader2 className="w-6 h-6 animate-spin text-white" />
+                          <span className="text-[11px] font-mono font-bold text-zinc-400">
+                            {isEs ? 'Generando visor...' : 'Generating viewer...'}
+                          </span>
+                        </div>
+                      ) : thumbnails.find((t) => t.pageNum === previewPageNum) ? (
+                        <>
                           <img
-                            src={thumb.dataUrl}
-                            alt={`Página ${thumb.pageNum}`}
-                            className="max-h-[130px] w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
+                            src={thumbnails.find((t) => t.pageNum === previewPageNum)?.dataUrl}
+                            alt={`Pág ${previewPageNum}`}
+                            className="w-full h-full object-contain select-none"
                           />
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setZoomModalImage(thumb.dataUrl);
-                            }}
-                            className="absolute top-1.5 right-1.5 p-1 bg-black/70 hover:bg-black text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                            type="button"
+                            onClick={() =>
+                              setZoomModalImage(
+                                thumbnails.find((t) => t.pageNum === previewPageNum)?.dataUrl ||
+                                  null,
+                              )
+                            }
+                            className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
                             title={isEs ? 'Ampliar' : 'Zoom'}
                           >
-                            <Maximize2 className="w-3 h-3" />
+                            <Maximize2 className="w-3.5 h-3.5" />
                           </button>
-                        </div>
-                        <div className="w-full flex items-center justify-between pt-0.5 font-mono text-[10px]">
-                          <span
-                            className={`font-bold px-2.5 py-0.5 rounded-lg ${
-                              previewPageNum === thumb.pageNum
-                                ? 'bg-white text-black font-extrabold shadow-sm'
-                                : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-                            }`}
-                          >
-                            {isEs ? `Pág ${thumb.pageNum}` : `Pg ${thumb.pageNum}`}
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-zinc-500 gap-2 p-4 text-center">
+                          <FileText className="w-8 h-8 text-zinc-400" />
+                          <span className="text-[10px] font-mono">
+                            {isEs ? 'Vista previa no disponible' : 'Preview not available'}
                           </span>
-                          {previewPageNum === thumb.pageNum && (
-                            <span className="text-white text-[9px] font-bold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                              {isEs ? 'Activa' : 'Active'}
-                            </span>
-                          )}
                         </div>
+                      )}
+
+                      {totalPages > 0 && (
+                        <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                          #{previewPageNum} / {totalPages}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-3 mt-2 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewPageNum((p) => Math.max(1, p - 1))}
+                          disabled={previewPageNum <= 1}
+                          className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                          title={isEs ? 'Anterior' : 'Previous'}
+                        >
+                          ◀
+                        </button>
+                        <span className="font-bold text-white text-[11px]">
+                          {previewPageNum} / {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewPageNum((p) => Math.min(totalPages, p + 1))}
+                          disabled={previewPageNum >= totalPages}
+                          className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                          title={isEs ? 'Siguiente' : 'Next'}
+                        >
+                          ▶
+                        </button>
                       </div>
-                    ))}
+                    )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 min-h-[320px] my-auto">
-                    <FileText className="w-10 h-10 text-zinc-600" />
-                    <span className="text-xs font-mono">
-                      {isEs ? 'Sin miniaturas disponibles' : 'No thumbnails available'}
-                    </span>
+                  <div className="flex flex-col items-center justify-center py-10 gap-3 text-zinc-500 font-mono text-xs">
+                    <FileText className="w-8 h-8 text-zinc-600" />
+                    <span>{isEs ? 'Sin archivo para previsualizar' : 'No file to preview'}</span>
                   </div>
                 )}
+              </div>
+
+              {/* ── LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ── */}
+              <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                {slots.map((slot, sIdx) => {
+                  const isLoaded = slot.file !== null;
+                  const isActive = isLoaded && sIdx === activeSlotIndex;
+
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => {
+                        if (isLoaded) {
+                          setActiveSlotIndex(sIdx);
+                        } else {
+                          getSlotInputRef(sIdx).current?.click();
+                        }
+                      }}
+                      className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                        isActive
+                          ? 'bg-zinc-800/80 border-white shadow-white/10'
+                          : isLoaded
+                            ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                            : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                      }`}
+                    >
+                      <input
+                        ref={getSlotInputRef(sIdx)}
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="hidden"
+                        onChange={(e) => handleSlotFileChange(sIdx, e)}
+                      />
+
+                      {isLoaded ? (
+                        <div className="flex items-center justify-between w-full gap-3 font-mono">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                isActive
+                                  ? 'bg-white/20 border-white text-white'
+                                  : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                              }`}
+                            >
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                  {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`}
+                                </span>
+                                {isActive && (
+                                  <span className="text-[9px] px-1.5 py-0.2 bg-white/20 text-white rounded border border-white/40 font-bold">
+                                    {isEs ? 'Visualizando' : 'Viewing'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                {slot.file!.name}
+                              </p>
+                              <span className="text-[10px] text-zinc-400">
+                                {formatFileSize(slot.file!.size)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleRemoveSlot(sIdx, e)}
+                              className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                              title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full font-mono">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                {isEs ? `+ Cargar PDF ${sIdx + 1}` : `+ Upload PDF ${sIdx + 1}`}
+                              </p>
+                              <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                .pdf
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                            {isEs ? 'Disponible' : 'Available'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-7 flex flex-col">
-            <div
-              ref={controlPanelRef}
-              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 transition-all duration-300 flex flex-col justify-between gap-3 relative shadow-2xl font-sans overflow-hidden"
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+          {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO A ANCHO COMPLETO */}
+          <div
+            ref={controlPanelRef}
+            className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden font-sans"
+          >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
+            {/* CABECERA PANEL DE CONTROL */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <div>
-                {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3 font-sans">
-                  <div>
-                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-0.5">
-                      002 / CONFIGURACIÓN DE OPTIMIZACIÓN
-                    </span>
-                    <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
-                      {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
-                    </h2>
-                  </div>
-                  <div className="bg-zinc-900 p-2 rounded-xl border border-zinc-700 text-white shadow-sm">
-                    <Sliders className="w-4.5 h-4.5 text-white" />
-                  </div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
+                  002 / CONFIGURACIÓN Y ACCIÓN
+                </span>
+                <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
+                  {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
+                </h2>
+              </div>
+              <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white shadow-sm">
+                <Sliders className="w-4 h-4 text-white" />
+              </div>
+            </div>
+
+            <div>
+              {/* PRESETS DE UN CLIC */}
+              <div className="mb-4">
+                <span className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
+                  {isEs ? 'Objetivo Rápido' : 'Quick Target'}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono">
+                  <button
+                    onClick={() => handleApplyPreset('email')}
+                    className={`p-2.5 rounded-xl border text-left transition-all text-xs cursor-pointer ${
+                      targetPreset === 'email'
+                        ? 'border-white bg-zinc-800 text-white shadow-md'
+                        : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-bold text-white flex items-center gap-1 text-[11px]">
+                      <span>📧</span> {isEs ? 'Para Correo' : 'For Email'}
+                    </div>
+                    <div className="text-[9px] text-zinc-400">
+                      {isEs ? 'Menos de 2 MB' : 'Under 2 MB'}
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleApplyPreset('web')}
+                    className={`p-2.5 rounded-xl border text-left transition-all text-xs cursor-pointer ${
+                      targetPreset === 'web'
+                        ? 'border-white bg-zinc-800 text-white shadow-md'
+                        : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-bold text-white flex items-center gap-1 text-[11px]">
+                      <span>🌐</span> {isEs ? 'Equilibrado' : 'Balanced'}
+                    </div>
+                    <div className="text-[9px] text-zinc-400">
+                      {isEs ? 'Calidad óptima' : 'Optimal quality'}
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleApplyPreset('print')}
+                    className={`p-2.5 rounded-xl border text-left transition-all text-xs cursor-pointer ${
+                      targetPreset === 'print'
+                        ? 'border-white bg-zinc-800 text-white shadow-md'
+                        : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-bold text-white flex items-center gap-1 text-[11px]">
+                      <span>📐</span> {isEs ? 'Planos / CAD' : 'CAD / Plans'}
+                    </div>
+                    <div className="text-[9px] text-zinc-400">
+                      {isEs ? '150 DPI nítido' : '150 DPI sharp'}
+                    </div>
+                  </button>
                 </div>
+              </div>
 
-                {/* PRESETS DE UN CLIC */}
-                <div className="mb-4">
-                  <span className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
-                    {isEs ? 'Objetivo Rápido' : 'Quick Target'}
-                  </span>
-                  <div className="grid grid-cols-3 gap-2 font-mono">
-                    <button
-                      onClick={() => handleApplyPreset('email')}
-                      className={`p-2 rounded-xl border text-left transition-all text-xs ${
-                        targetPreset === 'email'
-                          ? 'border-white bg-zinc-800 text-white shadow-md'
-                          : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
-                      }`}
-                    >
-                      <div className="font-bold text-white flex items-center gap-1 text-[11px]">
-                        <span>📧</span> {isEs ? 'Para Correo' : 'For Email'}
-                      </div>
-                      <div className="text-[9px] text-zinc-400">
-                        {isEs ? 'Menos de 2 MB' : 'Under 2 MB'}
-                      </div>
-                    </button>
+              {/* NIVEL DE COMPRESIÓN (3 PERFILES) */}
+              <div className="mb-4">
+                <span className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
+                  {isEs ? 'Perfil de Compresión' : 'Compression Profile'}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {(['low', 'medium', 'high'] as CompressionLevel[]).map((lvl) => {
+                    const configs = {
+                      low: {
+                        labelEs: 'Baja (Alta Calidad)',
+                        labelEn: 'Low (High Quality)',
+                        descEs: 'Máxima fidelidad para planos y cotas',
+                        descEn: 'High fidelity for CAD & dimensions',
+                        icon: Shield,
+                      },
+                      medium: {
+                        labelEs: 'Media (Recomendada)',
+                        labelEn: 'Medium (Recommended)',
+                        descEs: 'Balance perfecto calidad-peso',
+                        descEn: 'Perfect balance quality-size',
+                        icon: HardDrive,
+                      },
+                      high: {
+                        labelEs: 'Alta (Máxima Compresión)',
+                        labelEn: 'High (Maximum Compression)',
+                        descEs: 'Deflate Nivel 9 y downsampling 96 DPI',
+                        descEn: 'Deflate Level 9 & 96 DPI downsample',
+                        icon: Zap,
+                      },
+                    };
+                    const cfg = configs[lvl];
+                    const Icon = cfg.icon;
+                    const est = getEstimatedReduction(lvl);
 
-                    <button
-                      onClick={() => handleApplyPreset('web')}
-                      className={`p-2 rounded-xl border text-left transition-all text-xs ${
-                        targetPreset === 'web'
-                          ? 'border-white bg-zinc-800 text-white shadow-md'
-                          : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
-                      }`}
-                    >
-                      <div className="font-bold text-white flex items-center gap-1 text-[11px]">
-                        <span>🌐</span> {isEs ? 'Equilibrado' : 'Balanced'}
-                      </div>
-                      <div className="text-[9px] text-zinc-400">
-                        {isEs ? 'Calidad óptima' : 'Optimal quality'}
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => handleApplyPreset('print')}
-                      className={`p-2 rounded-xl border text-left transition-all text-xs ${
-                        targetPreset === 'print'
-                          ? 'border-white bg-zinc-800 text-white shadow-md'
-                          : 'border-zinc-800 bg-[#121217] text-zinc-400 hover:border-zinc-600 hover:text-white'
-                      }`}
-                    >
-                      <div className="font-bold text-white flex items-center gap-1 text-[11px]">
-                        <span>📐</span> {isEs ? 'Planos / CAD' : 'CAD / Plans'}
-                      </div>
-                      <div className="text-[9px] text-zinc-400">
-                        {isEs ? '150 DPI nítido' : '150 DPI sharp'}
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* NIVEL DE COMPRESIÓN (3 PERFILES) */}
-                <div className="mb-4">
-                  <span className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
-                    {isEs ? 'Perfil de Compresión' : 'Compression Profile'}
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['low', 'medium', 'high'] as CompressionLevel[]).map((lvl) => {
-                      const configs = {
-                        low: {
-                          labelEs: 'Baja (Alta Calidad)',
-                          labelEn: 'Low (High Quality)',
-                          descEs: 'Máxima fidelidad para planos y cotas',
-                          descEn: 'High fidelity for CAD & dimensions',
-                          icon: Shield,
-                        },
-                        medium: {
-                          labelEs: 'Media (Recomendada)',
-                          labelEn: 'Medium (Recommended)',
-                          descEs: 'Balance perfecto calidad-peso',
-                          descEn: 'Perfect balance quality-size',
-                          icon: HardDrive,
-                        },
-                        high: {
-                          labelEs: 'Alta (Máxima Compresión)',
-                          labelEn: 'High (Maximum Compression)',
-                          descEs: 'Deflate Nivel 9 y downsampling 96 DPI',
-                          descEn: 'Deflate Level 9 & 96 DPI downsample',
-                          icon: Zap,
-                        },
-                      };
-                      const cfg = configs[lvl];
-                      const Icon = cfg.icon;
-                      const est = getEstimatedReduction(lvl);
-
-                      return (
-                        <div
-                          key={lvl}
-                          onClick={() => handleLevelSelect(lvl)}
-                          className={`relative p-2.5 rounded-2xl border cursor-pointer transition-all ${
-                            compressionLevel === lvl
-                              ? 'border-white bg-zinc-800 text-white shadow-md'
-                              : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'
-                          }`}
-                        >
-                          {lvl === 'medium' && (
-                            <span className="absolute -top-2 right-2 bg-white text-black text-[8px] font-black font-mono px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-sm">
-                              {isEs ? 'Recomendado' : 'Best Choice'}
-                            </span>
-                          )}
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] font-bold leading-tight">
-                              {isEs ? cfg.labelEs : cfg.labelEn}
-                            </span>
-                            <div
-                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                                compressionLevel === lvl
-                                  ? 'border-white bg-white'
-                                  : 'border-zinc-600'
-                              }`}
-                            >
-                              {compressionLevel === lvl && (
-                                <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-[10px] text-zinc-400 leading-tight">
-                            {isEs ? cfg.descEs : cfg.descEn}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-1.5 font-mono">
-                            <Icon className="w-3 h-3 text-zinc-400" />
-                            <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                                compressionLevel === lvl
-                                  ? 'bg-zinc-900 text-white'
-                                  : 'bg-zinc-800 text-zinc-300'
-                              }`}
-                            >
-                              ↓ {est.label}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* ESTIMADOR DINÁMICO DE REDUCCIÓN */}
-                <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 shadow-inner font-mono text-xs">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-zinc-400 text-[11px] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-white" />
-                      {isEs ? 'Ahorro proyectado:' : 'Projected savings:'}
-                    </span>
-                    <span className="text-[#FAF6EE] font-extrabold text-xs">
-                      ~ {getEstimatedReduction(compressionLevel).label}
-                    </span>
-                  </div>
-                  <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <motion.div
-                      className="bg-gradient-to-r from-zinc-300 via-white to-[#FAF6EE] h-full rounded-full"
-                      initial={{ width: '40%' }}
-                      animate={{
-                        width:
-                          compressionLevel === 'low'
-                            ? '30%'
-                            : compressionLevel === 'medium'
-                              ? '60%'
-                              : '85%',
-                      }}
-                      transition={{ duration: 0.4 }}
-                    />
-                  </div>
-                  <div className="flex justify-between items-center mt-2 text-[10px] text-zinc-400">
-                    <span>
-                      {isEs ? 'Original:' : 'Original:'}{' '}
-                      <strong className="text-white">{formatFileSize(totalOriginalSize)}</strong>
-                    </span>
-                    <span>
-                      {isEs ? 'Proyección:' : 'Projected:'}{' '}
-                      <strong className="text-[#FAF6EE]">
-                        {formatFileSize(
-                          totalOriginalSize *
-                            (compressionLevel === 'low'
-                              ? 0.75
-                              : compressionLevel === 'medium'
-                                ? 0.5
-                                : 0.25),
+                    return (
+                      <div
+                        key={lvl}
+                        onClick={() => handleLevelSelect(lvl)}
+                        className={`relative p-3 rounded-2xl border cursor-pointer transition-all ${
+                          compressionLevel === lvl
+                            ? 'border-white bg-zinc-800 text-white shadow-md'
+                            : 'border-zinc-700/80 bg-[#121217] text-zinc-400 hover:text-white hover:border-zinc-600'
+                        }`}
+                      >
+                        {lvl === 'medium' && (
+                          <span className="absolute -top-2 right-2 bg-white text-black text-[8px] font-black font-mono px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-sm">
+                            {isEs ? 'Recomendado' : 'Best Choice'}
+                          </span>
                         )}
-                      </strong>
-                    </span>
-                  </div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-bold leading-tight">
+                            {isEs ? cfg.labelEs : cfg.labelEn}
+                          </span>
+                          <div
+                            className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                              compressionLevel === lvl ? 'border-white bg-white' : 'border-zinc-600'
+                            }`}
+                          >
+                            {compressionLevel === lvl && (
+                              <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 leading-tight">
+                          {isEs ? cfg.descEs : cfg.descEn}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-2 font-mono">
+                          <Icon className="w-3 h-3 text-zinc-400" />
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              compressionLevel === lvl
+                                ? 'bg-zinc-900 text-white'
+                                : 'bg-zinc-800 text-zinc-300'
+                            }`}
+                          >
+                            ↓ {est.label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
-                <button
-                  type="button"
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full flex items-center justify-between py-2 px-3 bg-[#121217] hover:bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer mb-3"
-                >
-                  <div className="flex items-center gap-2">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-white" />
-                    <span>
-                      {isEs
-                        ? 'Opciones Avanzadas (DPI, Color, Alcance)'
-                        : 'Advanced Options (DPI, Color, Scope)'}
-                    </span>
-                  </div>
-                  {showAdvanced ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </button>
+              {/* ESTIMADOR DINÁMICO DE REDUCCIÓN */}
+              <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 shadow-inner font-mono text-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-zinc-400 text-[11px] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                    {isEs ? 'Ahorro proyectado:' : 'Projected savings:'}
+                  </span>
+                  <span className="text-[#FAF6EE] font-extrabold text-xs">
+                    ~ {getEstimatedReduction(compressionLevel).label}
+                  </span>
+                </div>
+                <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                  <motion.div
+                    className="bg-gradient-to-r from-zinc-300 via-white to-[#FAF6EE] h-full rounded-full"
+                    initial={{ width: '40%' }}
+                    animate={{
+                      width:
+                        compressionLevel === 'low'
+                          ? '30%'
+                          : compressionLevel === 'medium'
+                            ? '60%'
+                            : '85%',
+                    }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </div>
+                <div className="flex justify-between items-center mt-2 text-[10px] text-zinc-400">
+                  <span>
+                    {isEs ? 'Original:' : 'Original:'}{' '}
+                    <strong className="text-white">{formatFileSize(totalOriginalSize)}</strong>
+                  </span>
+                  <span>
+                    {isEs ? 'Proyección:' : 'Projected:'}{' '}
+                    <strong className="text-[#FAF6EE]">
+                      {formatFileSize(
+                        totalOriginalSize *
+                          (compressionLevel === 'low'
+                            ? 0.75
+                            : compressionLevel === 'medium'
+                              ? 0.5
+                              : 0.25),
+                      )}
+                    </strong>
+                  </span>
+                </div>
+              </div>
 
-                {/* CONTENIDO DE OPCIONES AVANZADAS */}
-                <AnimatePresence>
-                  {showAdvanced && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-3 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 mb-4 shadow-inner overflow-hidden"
-                    >
-                      {/* MODO DE COLOR */}
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <Target className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Modo de Color' : 'Color Mode'}
-                        </label>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {(['original', 'grayscale', 'blackwhite'] as OutputColorMode[]).map(
-                            (opt) => (
-                              <button
-                                key={opt}
-                                type="button"
-                                onClick={() => setOutputColorMode(opt)}
-                                className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
-                                  outputColorMode === opt
-                                    ? 'border-white bg-zinc-700 text-white'
-                                    : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
-                                }`}
-                              >
-                                {opt === 'original'
-                                  ? '🎨 Color'
-                                  : opt === 'grayscale'
-                                    ? '⚪ Grises'
-                                    : '■ B/N'}
-                              </button>
-                            ),
-                          )}
-                        </div>
-                      </div>
+              {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full flex items-center justify-between py-2 px-3 bg-[#121217] hover:bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer mb-3"
+              >
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-white" />
+                  <span>
+                    {isEs
+                      ? 'Opciones Avanzadas (DPI, Color, Alcance)'
+                      : 'Advanced Options (DPI, Color, Scope)'}
+                  </span>
+                </div>
+                {showAdvanced ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
 
-                      {/* RESOLUCIÓN DPI */}
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <ImageIcon className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Resolución (DPI)' : 'Resolution (DPI)'}
-                        </label>
-                        <div className="flex gap-1.5">
-                          {(['auto', '72', '96', '150'] as DpiMode[]).map((dpi) => (
-                            <button
-                              key={dpi}
-                              type="button"
-                              onClick={() => setDpiMode(dpi)}
-                              className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
-                                dpiMode === dpi
-                                  ? 'border-white bg-zinc-700 text-white'
-                                  : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
-                              }`}
-                            >
-                              {dpi === 'auto' ? 'Auto' : `${dpi} DPI`}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* ALCANCE DE PÁGINAS */}
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                          <FileCheck2 className="w-3 h-3 text-zinc-400" />
-                          {isEs ? 'Alcance de Páginas' : 'Page Scope'}
-                        </label>
-                        <div className="grid grid-cols-4 gap-1.5 mb-1.5">
-                          {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map((opt) => (
+              {/* CONTENIDO DE OPCIONES AVANZADAS */}
+              <AnimatePresence>
+                {showAdvanced && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-3 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 mb-4 shadow-inner overflow-hidden"
+                  >
+                    {/* MODO DE COLOR */}
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                        <Target className="w-3 h-3 text-zinc-400" />
+                        {isEs ? 'Modo de Color' : 'Color Mode'}
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(['original', 'grayscale', 'blackwhite'] as OutputColorMode[]).map(
+                          (opt) => (
                             <button
                               key={opt}
                               type="button"
-                              onClick={() => setPageScope(opt)}
-                              className={`py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
-                                pageScope === opt
+                              onClick={() => setOutputColorMode(opt)}
+                              className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
+                                outputColorMode === opt
                                   ? 'border-white bg-zinc-700 text-white'
                                   : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
                               }`}
                             >
-                              {opt === 'todas'
-                                ? isEs
-                                  ? 'Todas'
-                                  : 'All'
-                                : opt === 'pares'
-                                  ? isEs
-                                    ? 'Pares'
-                                    : 'Even'
-                                  : opt === 'impares'
-                                    ? isEs
-                                      ? 'Impares'
-                                      : 'Odd'
-                                    : isEs
-                                      ? 'Rango'
-                                      : 'Range'}
+                              {opt === 'original'
+                                ? '🎨 Color'
+                                : opt === 'grayscale'
+                                  ? '⚪ Grises'
+                                  : '■ B/N'}
                             </button>
-                          ))}
-                        </div>
-                        {pageScope === 'rango' && (
-                          <input
-                            type="text"
-                            value={pageRange}
-                            onChange={(e) => setPageRange(e.target.value)}
-                            placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'}
-                            className="w-full bg-zinc-900 border border-white/15 text-white text-[10px] font-mono placeholder-zinc-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-white/40 transition"
-                          />
+                          ),
                         )}
                       </div>
+                    </div>
 
-                      {/* PRESERVACIÓN Y METADATOS */}
-                      <div className="space-y-1.5 pt-1">
-                        <div
-                          onClick={() => setPreserveTextVectors((v) => !v)}
-                          className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                        >
-                          <div>
-                            <p className="text-[10px] font-bold text-white">
-                              {isEs ? 'Preservar texto vectorial' : 'Preserve vector text'}
-                            </p>
-                            <p className="text-[9px] text-zinc-500 font-mono">
-                              {isEs
-                                ? 'Mantiene nitidez infinita en letras y planos'
-                                : 'Infinite crispness for text & CAD'}
-                            </p>
-                          </div>
-                          <div
-                            className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${
-                              preserveTextVectors ? 'bg-white' : 'bg-zinc-700'
+                    {/* RESOLUCIÓN DPI */}
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                        <ImageIcon className="w-3 h-3 text-zinc-400" />
+                        {isEs ? 'Resolución (DPI)' : 'Resolution (DPI)'}
+                      </label>
+                      <div className="flex gap-1.5">
+                        {(['auto', '72', '96', '150'] as DpiMode[]).map((dpi) => (
+                          <button
+                            key={dpi}
+                            type="button"
+                            onClick={() => setDpiMode(dpi)}
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
+                              dpiMode === dpi
+                                ? 'border-white bg-zinc-700 text-white'
+                                : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
                             }`}
                           >
-                            <div
-                              className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${
-                                preserveTextVectors ? 'left-4' : 'left-0.5'
-                              }`}
-                            />
-                          </div>
+                            {dpi === 'auto' ? 'Auto' : `${dpi} DPI`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* ALCANCE DE PÁGINAS */}
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                        <FileCheck2 className="w-3 h-3 text-zinc-400" />
+                        {isEs ? 'Alcance de Páginas' : 'Page Scope'}
+                      </label>
+                      <div className="grid grid-cols-4 gap-1.5 mb-1.5">
+                        {(['todas', 'pares', 'impares', 'rango'] as PageScope[]).map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setPageScope(opt)}
+                            className={`py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer border font-mono ${
+                              pageScope === opt
+                                ? 'border-white bg-zinc-700 text-white'
+                                : 'border-white/10 bg-zinc-900 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            {opt === 'todas'
+                              ? isEs
+                                ? 'Todas'
+                                : 'All'
+                              : opt === 'pares'
+                                ? isEs
+                                  ? 'Pares'
+                                  : 'Even'
+                                : opt === 'impares'
+                                  ? isEs
+                                    ? 'Impares'
+                                    : 'Odd'
+                                  : isEs
+                                    ? 'Rango'
+                                    : 'Range'}
+                          </button>
+                        ))}
+                      </div>
+                      {pageScope === 'rango' && (
+                        <input
+                          type="text"
+                          value={pageRange}
+                          onChange={(e) => setPageRange(e.target.value)}
+                          placeholder={isEs ? 'Ej: 1-3, 5, 8-12' : 'e.g. 1-3, 5, 8-12'}
+                          className="w-full bg-zinc-900 border border-white/15 text-white text-[10px] font-mono placeholder-zinc-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-white/40 transition"
+                        />
+                      )}
+                    </div>
+
+                    {/* PRESERVACIÓN Y METADATOS */}
+                    <div className="space-y-1.5 pt-1">
+                      <div
+                        onClick={() => setPreserveTextVectors((v) => !v)}
+                        className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                      >
+                        <div>
+                          <p className="text-[10px] font-bold text-white">
+                            {isEs ? 'Preservar texto vectorial' : 'Preserve vector text'}
+                          </p>
+                          <p className="text-[9px] text-zinc-500 font-mono">
+                            {isEs
+                              ? 'Mantiene nitidez infinita en letras y planos'
+                              : 'Infinite crispness for text & CAD'}
+                          </p>
                         </div>
-
                         <div
-                          onClick={() => setStripMetadata((v) => !v)}
-                          className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                          className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${
+                            preserveTextVectors ? 'bg-white' : 'bg-zinc-700'
+                          }`}
                         >
-                          <div>
-                            <p className="text-[10px] font-bold text-white">
-                              {isEs ? 'Eliminar metadatos ocultos' : 'Strip hidden metadata'}
-                            </p>
-                            <p className="text-[9px] text-zinc-500 font-mono">
-                              {isEs
-                                ? 'Limpia autor, software emisor y tags'
-                                : 'Removes author, software & tags'}
-                            </p>
-                          </div>
                           <div
-                            className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${
-                              stripMetadata ? 'bg-white' : 'bg-zinc-700'
+                            className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${
+                              preserveTextVectors ? 'left-4' : 'left-0.5'
                             }`}
-                          >
-                            <div
-                              className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${
-                                stripMetadata ? 'left-4' : 'left-0.5'
-                              }`}
-                            />
-                          </div>
+                          />
                         </div>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
 
-              {/* BOTÓN DE ACCIÓN PRINCIPAL */}
-              <div>
-                {isProcessing ? (
-                  <div className="w-full bg-[#121217] border border-zinc-700 rounded-2xl p-4 flex flex-col gap-2 font-mono">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white font-bold flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                        {progressMsg || (isEs ? 'Comprimiendo...' : 'Compressing...')}
-                      </span>
-                      <span className="text-[#FAF6EE] font-bold">{progressPercent}%</span>
-                    </div>
-                    <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
                       <div
-                        className="bg-white h-full transition-all duration-300 rounded-full"
-                        style={{ width: `${progressPercent}%` }}
-                      />
+                        onClick={() => setStripMetadata((v) => !v)}
+                        className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
+                      >
+                        <div>
+                          <p className="text-[10px] font-bold text-white">
+                            {isEs ? 'Eliminar metadatos ocultos' : 'Strip hidden metadata'}
+                          </p>
+                          <p className="text-[9px] text-zinc-500 font-mono">
+                            {isEs
+                              ? 'Limpia autor, software emisor y tags'
+                              : 'Removes author, software & tags'}
+                          </p>
+                        </div>
+                        <div
+                          className={`w-8 h-4.5 rounded-full relative transition-all cursor-pointer ${
+                            stripMetadata ? 'bg-white' : 'bg-zinc-700'
+                          }`}
+                        >
+                          <div
+                            className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-black transition-all ${
+                              stripMetadata ? 'left-4' : 'left-0.5'
+                            }`}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-zinc-500 flex justify-between">
-                      <span>
-                        {isEs
-                          ? `Archivo ${currentFileIndex} de ${totalFilesCount}`
-                          : `File ${currentFileIndex} of ${totalFilesCount}`}
-                      </span>
-                      <span>{isEs ? 'Deflate Nivel 9 Activo' : 'Deflate Level 9 Active'}</span>
-                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* BOTÓN DE ACCIÓN PRINCIPAL Y BARRA DE PROGRESO */}
+            <div>
+              {isProcessing ? (
+                <div className="w-full bg-[#121217] border border-zinc-700 rounded-2xl p-4 flex flex-col gap-2 font-mono">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white font-bold flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      {progressMsg || (isEs ? 'Comprimiendo...' : 'Compressing...')}
+                    </span>
+                    <span className="text-[#FAF6EE] font-bold">{progressPercent}%</span>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={executeCompress}
-                    className="w-full py-4 bg-white hover:bg-zinc-200 text-black font-extrabold rounded-2xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 font-sans text-sm sm:text-base uppercase tracking-wide cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
-                  >
-                    <Zap className="w-5 h-5 text-black fill-current" />
+                  <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-white h-full transition-all duration-300 rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-zinc-500 flex justify-between">
                     <span>
                       {isEs
-                        ? `COMPRIMIR AHORA (${files.length} ARCHIVO${files.length > 1 ? 'S' : ''})`
-                        : `COMPRESS NOW (${files.length} FILE${files.length > 1 ? 'S' : ''})`}
+                        ? `Archivo ${currentFileIndex} de ${totalFilesCount}`
+                        : `File ${currentFileIndex} of ${totalFilesCount}`}
                     </span>
-                  </button>
-                )}
-              </div>
+                    <span>{isEs ? 'Deflate Nivel 9 Activo' : 'Deflate Level 9 Active'}</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={executeCompress}
+                  className="w-full py-4 bg-white hover:bg-zinc-200 text-black font-extrabold rounded-2xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2 font-sans text-sm sm:text-base uppercase tracking-wide cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <Zap className="w-5 h-5 text-black fill-current" />
+                  <span>
+                    {isEs
+                      ? `COMPRIMIR AHORA (${files.length} ARCHIVO${files.length > 1 ? 'S' : ''})`
+                      : `COMPRESS NOW (${files.length} FILE${files.length > 1 ? 'S' : ''})`}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>

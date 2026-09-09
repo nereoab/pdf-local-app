@@ -31,6 +31,7 @@ import {
   FilePlus,
   Trash2,
   Plus,
+  Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -63,6 +64,11 @@ import type {
   RedactResult,
   RedactError,
 } from '../workers/pdf-redact-v3.worker';
+
+interface SlotItem {
+  id: number;
+  file: File | null;
+}
 
 interface ExtractedTextItem {
   page: number;
@@ -107,6 +113,27 @@ export default function PdfRedacter() {
   const { globalFile, setGlobalFile } = useFileStore();
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
+  // Sistema de 3 slots independientes
+  const [slots, setSlots] = useState<SlotItem[]>(() => [
+    { id: 1, file: globalFile || null },
+    { id: 2, file: null },
+    { id: 3, file: null },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+  const [zoomModalImage, setZoomModalImage] = useState<string | null>(null);
+
+  const slot1InputRef = useRef<HTMLInputElement>(null);
+  const slot2InputRef = useRef<HTMLInputElement>(null);
+  const slot3InputRef = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (idx: number) => {
+    if (idx === 0) return slot1InputRef;
+    if (idx === 1) return slot2InputRef;
+    return slot3InputRef;
+  };
+
+  const activeSlot = slots[activeSlotIndex];
+  const activeFile = activeSlot?.file || null;
   const [file, setFile] = useState<File | null>(globalFile);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [activePage, setActivePage] = useState<number>(1);
@@ -647,7 +674,7 @@ export default function PdfRedacter() {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
       if (selected.type === 'application/pdf') {
-        await cargarPdf(selected);
+        loadSingleFileIntoSlot(activeSlotIndex, selected);
       }
     }
     e.target.value = '';
@@ -661,12 +688,67 @@ export default function PdfRedacter() {
     await cargarPdf(sampleFile);
   };
 
-  // Sync file state with globalFile from store
+  // Cargar PDF activo cuando cambie activeSlotIndex o su archivo
   useEffect(() => {
-    if (globalFile && (!file || Object.keys(pageDataUrls).length === 0)) {
-      cargarPdf(globalFile);
+    if (activeFile) {
+      cargarPdf(activeFile);
+    } else {
+      setFile(null);
+      setGlobalFile(null);
+      setPageDataUrls({});
+      setExtractedTextItems([]);
+      setSensitiveMatches([]);
+      setRedactions([]);
+      setAutoRedactions([]);
     }
-  }, [globalFile]);
+  }, [activeSlotIndex, activeFile]);
+
+  const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: newFile };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+    setDownloadUrl(null);
+    setCompletedResult(null);
+    toast.success(isEs ? `PDF cargado en Caja ${slotIdx + 1}` : `PDF loaded in Box ${slotIdx + 1}`);
+  };
+
+  const handleSlotFileChange = (slotIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f && f.type === 'application/pdf') {
+      loadSingleFileIntoSlot(slotIdx, f);
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveSlot = (slotIdx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: null };
+      return next;
+    });
+    if (activeSlotIndex === slotIdx) {
+      const remainingIdx = [0, 1, 2].find((i) => i !== slotIdx && slots[i]?.file !== null);
+      if (remainingIdx !== undefined) {
+        setActiveSlotIndex(remainingIdx);
+      } else {
+        resetRedacter();
+      }
+    }
+  };
+
+  const handleRemoveAllFiles = () => {
+    setSlots([
+      { id: 1, file: null },
+      { id: 2, file: null },
+      { id: 3, file: null },
+    ]);
+    setActiveSlotIndex(0);
+    resetRedacter();
+  };
 
   const resetRedacter = () => {
     setFile(null);
@@ -1230,7 +1312,7 @@ export default function PdfRedacter() {
         )}
       </div>
 
-      {!file ? (
+      {!slots.some((s) => s.file !== null) ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1352,506 +1434,523 @@ export default function PdfRedacter() {
             onReset={() => {
               setCompletedResult(null);
               setDownloadUrl(null);
-              setFile(null);
-              setGlobalFile(null);
-              setRedactions([]);
-              setAutoRedactions([]);
-              setPageDataUrls({});
-              setPageJpegBytes({});
-              setExtractedTextItems([]);
-              setSensitiveMatches([]);
-              setAuditEntries([]);
+              handleRemoveAllFiles();
             }}
           />
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mb-6 font-sans">
-          {/* LADO IZQUIERDO: VISOR DE PDF (7 COLUMNAS) */}
-          <div className="lg:col-span-7 flex flex-col">
-            <div
-              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl overflow-hidden shadow-2xl flex flex-col relative font-mono"
-              style={{
-                height: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                maxHeight: isDesktop && previewHeight > 0 ? `${previewHeight}px` : undefined,
-                minHeight: '400px',
-              }}
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              <div className="bg-[#121217] border-b border-zinc-800 p-3.5 flex justify-between items-center z-10 flex-shrink-0 font-mono">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="bg-zinc-800 p-2 rounded-2xl border border-zinc-700 flex-shrink-0 text-white shadow-sm">
-                    <FileText className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex flex-col overflow-hidden">
-                    <span className="text-white font-bold text-xs truncate w-32 sm:w-48">
-                      {file.name}
-                    </span>
-                    <span className="text-zinc-400 text-[10px] flex items-center gap-1.5">
-                      <span>{formatFileSize(file.size)}</span>
-                      <span className="text-zinc-600">•</span>
-                      <span
-                        className={redactions.length > 0 ? 'text-white font-bold' : 'text-zinc-500'}
-                      >
-                        {redactions.length > 0
-                          ? `${redactions.length} ${isEs ? 'parche(s) activos' : 'patch(es) active'}`
-                          : isEs
-                            ? 'Sin censura'
-                            : 'No redactions'}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={resetRedacter}
-                    disabled={isProcessing}
-                    className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-zinc-700 rounded-xl transition-all cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+        /* ÁREA DE TRABAJO VERTICAL: SECCIÓN 1 (SUPERIOR) + SECCIÓN 2 (INFERIOR) */
+        <div className="flex flex-col gap-6 mb-6 font-sans">
+          {/* SECCIÓN 1: VISOR INTERACTIVO Y CAJAS DE ARCHIVOS (PARALELOS ARRIBA) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-              {/* Toolbar */}
-              <div className="bg-[#18181f] border-b border-zinc-800 px-3.5 py-2 flex items-center justify-between font-mono text-xs text-zinc-400 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveTool('draw')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition-all cursor-pointer ${activeTool === 'draw' ? 'bg-white text-black border-white font-bold shadow-sm' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'}`}
-                  >
-                    <Square className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-semibold">{isEs ? 'Dibujar' : 'Draw'}</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTool('erase')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition-all cursor-pointer ${activeTool === 'erase' ? 'bg-zinc-800 text-white border-zinc-500 font-bold shadow-sm' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white'}`}
-                  >
-                    <Eraser className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-semibold">{isEs ? 'Borrar' : 'Erase'}</span>
-                  </button>
-                  <span className="text-[10px] text-zinc-600 mx-1">|</span>
-                  {/* Undo/Redo */}
-                  <button
-                    onClick={handleUndo}
-                    disabled={undoStack.length === 0}
-                    className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 disabled:opacity-30 transition-all cursor-pointer"
-                    title={isEs ? 'Deshacer (Ctrl+Z)' : 'Undo (Ctrl+Z)'}
-                  >
-                    <ArrowLeft className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={handleRedo}
-                    disabled={redoStack.length === 0}
-                    className="p-1.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 disabled:opacity-30 transition-all cursor-pointer"
-                    title={isEs ? 'Rehacer (Ctrl+Y)' : 'Redo (Ctrl+Y)'}
-                  >
-                    <ArrowLeft className="w-3 h-3 rotate-180" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="bg-zinc-800 border border-zinc-700 px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-white font-mono shadow-sm">
-                    {totalPages} {isEs ? 'Páginas' : 'Pages'}
+            {/* Cabecera Sección 1 */}
+            <div className="flex items-center justify-between pb-3 mb-5 border-b border-zinc-800">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
+                  001 / VISOR INTERACTIVO Y DOCUMENTOS
+                </span>
+                <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
+                  {isEs ? 'PANEL DE VISTA PREVIA' : 'PREVIEW PANEL'}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="bg-zinc-900 border border-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm font-mono">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  <span>
+                    {isEs
+                      ? `Cajas Activas (${slots.filter((s) => s.file !== null).length}/3)`
+                      : `Active Slots (${slots.filter((s) => s.file !== null).length}/3)`}
                   </span>
-                  {/* Zoom */}
-                  <div className="flex items-center gap-0.5">
+                </span>
+              </div>
+            </div>
+
+            {/* Grid 2 Columnas Sección 1: Visor (50%) + 3 Cajas de Archivos (50%) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {/* LADO IZQUIERDO: VISOR INTERACTIVO CON LIENZO DE CENSURA (6/12) */}
+              <div className="lg:col-span-6 flex flex-col justify-between bg-[#0c0c0f] border border-zinc-800/80 rounded-2xl p-4 min-h-[440px]">
+                {/* Header Visor con controles de Dibujo / Borrado / Undo / Redo */}
+                <div className="flex flex-wrap items-center justify-between pb-3 border-b border-zinc-800/80 font-mono text-xs text-zinc-400 gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => setZoomLevel((z) => Math.max(40, z - 15))}
-                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 transition-all cursor-pointer flex-shrink-0"
-                      title={isEs ? 'Alejar' : 'Zoom Out'}
+                      type="button"
+                      onClick={() => setActiveTool('draw')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border transition-all cursor-pointer text-[10px] ${activeTool === 'draw' ? 'bg-white text-black border-white font-bold shadow-sm' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'}`}
                     >
-                      <ZoomOut className="w-3 h-3" />
+                      <Square className="w-3 h-3" />
+                      <span>{isEs ? 'Dibujar' : 'Draw'}</span>
                     </button>
                     <button
-                      onClick={() => setZoomLevel(100)}
-                      className="text-[10px] text-zinc-300 hover:text-white px-1.5 py-0.5 hover:bg-zinc-800 rounded tabular-nums select-none transition-colors"
-                      title={isEs ? 'Restablecer a 100%' : 'Reset to 100%'}
+                      type="button"
+                      onClick={() => setActiveTool('erase')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border transition-all cursor-pointer text-[10px] ${activeTool === 'erase' ? 'bg-zinc-800 text-white border-zinc-500 font-bold shadow-sm' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white'}`}
                     >
-                      {zoomLevel}%
+                      <Eraser className="w-3 h-3" />
+                      <span>{isEs ? 'Borrar' : 'Erase'}</span>
+                    </button>
+                    <span className="text-zinc-600 mx-0.5">|</span>
+                    <button
+                      type="button"
+                      onClick={handleUndo}
+                      disabled={undoStack.length === 0}
+                      className="p-1 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 disabled:opacity-30 cursor-pointer"
+                      title={isEs ? 'Deshacer (Ctrl+Z)' : 'Undo (Ctrl+Z)'}
+                    >
+                      <ArrowLeft className="w-3 h-3" />
                     </button>
                     <button
-                      onClick={() => setZoomLevel((z) => Math.min(250, z + 15))}
-                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 transition-all cursor-pointer flex-shrink-0"
-                      title={isEs ? 'Acercar' : 'Zoom In'}
+                      type="button"
+                      onClick={handleRedo}
+                      disabled={redoStack.length === 0}
+                      className="p-1 rounded-lg bg-zinc-800/60 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 disabled:opacity-30 cursor-pointer"
+                      title={isEs ? 'Rehacer (Ctrl+Y)' : 'Redo (Ctrl+Y)'}
                     >
-                      <ZoomIn className="w-3 h-3" />
+                      <ArrowLeft className="w-3 h-3 rotate-180" />
                     </button>
                   </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-zinc-800 text-white px-2 py-0.5 rounded border border-zinc-700">
+                      {isEs
+                        ? `Pág ${activePage} de ${totalPages}`
+                        : `Page ${activePage} of ${totalPages}`}
+                    </span>
+                    {pageDataUrls[activePage] && (
+                      <button
+                        type="button"
+                        onClick={() => setZoomModalImage(pageDataUrls[activePage])}
+                        className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded border border-zinc-700 cursor-pointer"
+                        title={isEs ? 'Ver página completa' : 'Full page view'}
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Lienzo Central de la Página Activa */}
+                <div
+                  ref={scrollContainerRef}
+                  className={`flex-1 min-h-[260px] max-h-[360px] bg-[#121215] relative overflow-y-auto p-2 rounded-xl my-3 flex items-center justify-center border border-zinc-800/80 ${activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-pointer' : 'cursor-default'}`}
+                >
+                  {isProcessing && Object.keys(pageDataUrls).length === 0 ? (
+                    <div className="flex flex-col items-center gap-2 text-zinc-500 font-mono text-xs">
+                      <Loader2 className="w-6 h-6 animate-spin text-white" />
+                      <span>{progressMsg || (isEs ? 'Renderizando...' : 'Rendering...')}</span>
+                    </div>
+                  ) : pageDataUrls[activePage] ? (
+                    (() => {
+                      const pageNum = activePage;
+                      const manualBoxes = redactions.filter((r) => r.page === pageNum);
+                      const liveAutoBoxes = autoRedactions.filter((r) => r.page === pageNum);
+                      return (
+                        <div
+                          id={`page-card-${pageNum}`}
+                          onMouseDown={(e) => handleMouseDown(pageNum, e)}
+                          onMouseMove={(e) => handleMouseMove(pageNum, e)}
+                          onMouseUp={(e) => handleMouseUp(pageNum, e)}
+                          className="relative max-h-full max-w-full flex items-center justify-center select-none"
+                        >
+                          <div className="relative inline-block" data-img-wrapper>
+                            <img
+                              src={pageDataUrls[pageNum]}
+                              alt={`Página ${pageNum}`}
+                              className="max-h-[330px] w-auto rounded border border-zinc-700 shadow-xl bg-white block object-contain pointer-events-none"
+                            />
+
+                            {/* Cajas de auto-censura encontradas */}
+                            {liveAutoBoxes.map((box) => (
+                              <div
+                                key={box.id}
+                                style={{
+                                  left: `${box.xPercent}%`,
+                                  top: `${box.yPercent}%`,
+                                  width: `${box.widthPercent}%`,
+                                  height: `${box.heightPercent}%`,
+                                }}
+                                className="absolute bg-indigo-600/80 border border-indigo-300 rounded-xs shadow-md z-20 pointer-events-none animate-pulse"
+                              />
+                            ))}
+
+                            {/* Cajas de censura manual */}
+                            {manualBoxes.map((box) => (
+                              <div
+                                key={box.id}
+                                style={{
+                                  left: `${box.xPercent}%`,
+                                  top: `${box.yPercent}%`,
+                                  width: `${box.widthPercent}%`,
+                                  height: `${box.heightPercent}%`,
+                                }}
+                                onClick={(e) => {
+                                  if (activeTool === 'erase') {
+                                    e.stopPropagation();
+                                    handleEraseClick(box.id);
+                                  }
+                                }}
+                                className={`absolute bg-black/85 border border-white/40 rounded-xs shadow-lg flex items-center justify-end px-0.5 text-white z-30 group ${activeTool === 'erase' ? 'cursor-pointer ring-2 ring-red-500/80' : 'cursor-default'}`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeRedaction(box.id);
+                                  }}
+                                  className="text-red-400 hover:text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            ))}
+
+                            {/* Vista previa de dibujo */}
+                            {drawPreview && drawPreview.page === pageNum && (
+                              <div
+                                style={{
+                                  left: `${drawPreview.xPercent}%`,
+                                  top: `${drawPreview.yPercent}%`,
+                                  width: `${drawPreview.widthPercent}%`,
+                                  height: `${drawPreview.heightPercent}%`,
+                                }}
+                                className="absolute bg-black/50 border-2 border-dashed border-white rounded-xs z-40 pointer-events-none"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 text-zinc-500 font-mono text-xs text-center p-4">
+                      <FileText className="w-8 h-8 text-zinc-600" />
+                      <span>{isEs ? 'Sin página disponible' : 'No page available'}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer del Visor: Paginación y Miniaturas */}
+                <div className="space-y-2 pt-2 border-t border-zinc-800/80 font-mono">
+                  <div className="flex items-center justify-between text-xs text-zinc-400">
+                    <button
+                      type="button"
+                      onClick={() => setActivePage((p) => Math.max(1, p - 1))}
+                      disabled={activePage <= 1}
+                      className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded text-zinc-300 disabled:opacity-30 cursor-pointer text-[11px]"
+                    >
+                      ◀ {isEs ? 'Anterior' : 'Previous'}
+                    </button>
+                    <span className="text-[11px] font-bold text-white">
+                      {activePage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActivePage((p) => Math.min(totalPages, p + 1))}
+                      disabled={activePage >= totalPages}
+                      className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded text-zinc-300 disabled:opacity-30 cursor-pointer text-[11px]"
+                    >
+                      {isEs ? 'Siguiente' : 'Next'} ▶
+                    </button>
+                  </div>
+
+                  {/* Fila compacta de miniaturas */}
+                  {totalPages > 1 && (
+                    <div className="flex gap-2 overflow-x-auto py-1 custom-scrollbar">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => (
+                        <div
+                          key={pNum}
+                          onClick={() => setActivePage(pNum)}
+                          className={`flex-shrink-0 w-12 h-16 rounded border overflow-hidden cursor-pointer transition-all ${
+                            activePage === pNum
+                              ? 'border-white ring-2 ring-white/40 scale-105'
+                              : 'border-zinc-800 opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          {pageDataUrls[pNum] ? (
+                            <img
+                              src={pageDataUrls[pNum]}
+                              alt={`Página ${pNum}`}
+                              className="w-full h-full object-cover bg-white"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[9px] bg-zinc-900 text-zinc-500 font-mono">
+                              {pNum}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div
-                ref={scrollContainerRef}
-                className={`flex-1 min-h-0 bg-[#121215] relative overflow-y-auto p-4 ${activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-pointer' : 'cursor-default'}`}
-              >
-                <div
-                  style={{ zoom: `${zoomLevel}%`, transformOrigin: '0 0' }}
-                  className="flex flex-col items-center gap-4"
-                >
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                    const manualBoxes = redactions.filter((r) => r.page === pageNum);
-                    const liveAutoBoxes = autoRedactions.filter((r) => r.page === pageNum);
-                    return (
-                      <div
-                        key={pageNum}
-                        id={`page-card-${pageNum}`}
-                        onMouseDown={(e) => handleMouseDown(pageNum, e)}
-                        onMouseMove={(e) => handleMouseMove(pageNum, e)}
-                        onMouseUp={(e) => handleMouseUp(pageNum, e)}
-                        className="w-full bg-white rounded shadow-2xl text-black p-4 min-h-[900px] relative font-serif text-xs leading-relaxed select-none border border-gray-200"
-                      >
-                        <div className="flex justify-between items-center border-b pb-1.5 mb-3 text-gray-400 text-[10px] font-mono">
-                          <span>DOCUMENTO {file.name}</span>
-                          <span className="bg-gray-100 text-gray-800 font-bold px-2 py-0.5 rounded">
-                            PÁGINA {pageNum} DE {totalPages}
-                          </span>
-                        </div>
-                        <div className="absolute top-5 left-5 text-lg font-bold text-black font-sans">
-                          {pageNum}
-                        </div>
-                        {pageDataUrls[pageNum] ? (
-                          <div className="mt-1 w-full flex justify-center relative">
-                            <div className="relative w-full max-w-full" data-img-wrapper>
-                              <img
-                                src={pageDataUrls[pageNum]}
-                                alt={`Página ${pageNum}`}
-                                className="w-full h-auto rounded shadow-sm border border-gray-200 block"
-                              />
-                              {liveAutoBoxes.map((box) => (
-                                <div
-                                  key={box.id}
-                                  style={{
-                                    left: `${box.xPercent}%`,
-                                    top: `${box.yPercent}%`,
-                                    width: `${box.widthPercent}%`,
-                                    height: `${box.heightPercent}%`,
-                                  }}
-                                  className="absolute bg-indigo-600/80 border-2 border-indigo-300 rounded-sm shadow-xl flex items-center justify-between px-1 text-white font-mono text-[9px] group transition-all z-20 cursor-pointer animate-pulse ring-2 ring-indigo-500/50"
-                                  title={
-                                    isEs ? `Coincidencia: "${box.word}"` : `Match: "${box.word}"`
-                                  }
-                                >
-                                  <span className="truncate font-extrabold text-[9px] text-white drop-shadow-md select-none">
-                                    {box.word}
+              {/* LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) (6/12) */}
+              <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                {slots.map((slot, sIdx) => {
+                  const isLoaded = slot.file !== null;
+                  const isActive = isLoaded && sIdx === activeSlotIndex;
+
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => {
+                        if (isLoaded) {
+                          setActiveSlotIndex(sIdx);
+                        } else {
+                          getSlotInputRef(sIdx).current?.click();
+                        }
+                      }}
+                      className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                        isActive
+                          ? 'bg-zinc-800/80 border-white shadow-white/10'
+                          : isLoaded
+                            ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                            : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                      }`}
+                    >
+                      <input
+                        ref={getSlotInputRef(sIdx)}
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="hidden"
+                        onChange={(e) => handleSlotFileChange(sIdx, e)}
+                      />
+
+                      {isLoaded ? (
+                        <div className="flex items-center justify-between w-full gap-3 font-mono">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                isActive
+                                  ? 'bg-white/20 border-white text-white'
+                                  : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                              }`}
+                            >
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                  {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`}
+                                </span>
+                                {isActive && (
+                                  <span className="text-[9px] px-1.5 py-0.2 bg-white/20 text-white rounded border border-white/40 font-bold">
+                                    {isEs ? 'Visualizando' : 'Viewing'}
                                   </span>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeRedaction(box.id);
-                                    }}
-                                    className="text-white hover:text-red-300 p-0.5 opacity-80 group-hover:opacity-100 transition-opacity ml-1"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
-                              {manualBoxes.map((box) => (
-                                <div
-                                  key={box.id}
-                                  style={{
-                                    left: `${box.xPercent}%`,
-                                    top: `${box.yPercent}%`,
-                                    width: `${box.widthPercent}%`,
-                                    height: `${box.heightPercent}%`,
-                                  }}
-                                  onClick={(e) => {
-                                    if (activeTool === 'erase') {
-                                      e.stopPropagation();
-                                      handleEraseClick(box.id);
-                                    }
-                                  }}
-                                  className={`absolute bg-black/70 border border-white/30 rounded-sm shadow-2xl flex items-center justify-end px-1 text-white font-mono text-[9px] group transition-all z-30 hover:border-red-500 ${activeTool === 'erase' ? 'cursor-pointer ring-2 ring-red-500/60' : 'cursor-default'}`}
-                                >
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeRedaction(box.id);
-                                    }}
-                                    className="text-red-400 hover:text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
-                              {drawPreview && drawPreview.page === pageNum && (
-                                <div
-                                  style={{
-                                    left: `${drawPreview.xPercent}%`,
-                                    top: `${drawPreview.yPercent}%`,
-                                    width: `${drawPreview.widthPercent}%`,
-                                    height: `${drawPreview.heightPercent}%`,
-                                  }}
-                                  className="absolute bg-black/40 border-2 border-dashed border-white rounded-sm z-40 pointer-events-none"
-                                />
-                              )}
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                {slot.file!.name}
+                              </p>
+                              <span className="text-[10px] text-zinc-400">
+                                {formatFileSize(slot.file!.size)}
+                              </span>
                             </div>
                           </div>
-                        ) : (
-                          <div className="mt-4 space-y-2">
-                            <h2 className="text-xs font-bold text-black font-sans border-b pb-1">
-                              PÁGINA {pageNum} - {file.name}
-                            </h2>
-                            <p className="text-[11px] text-gray-800 leading-relaxed font-mono">
-                              Cargando representación gráfica...
-                            </p>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleRemoveSlot(sIdx, e)}
+                              className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                              title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                        )}
-                        <div className="mt-6 text-[10px] text-gray-400 border-t pt-1 font-mono flex justify-between">
-                          <span>{file.name}</span>
-                          <span>Pág. {pageNum}</span>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full font-mono">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                {isEs ? `+ Cargar PDF ${sIdx + 1}` : `+ Upload PDF ${sIdx + 1}`}
+                              </p>
+                              <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                .pdf
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                            {isEs ? 'Disponible' : 'Available'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL (5 COLUMNAS - MÁS ANCHO) */}
-          <div className="lg:col-span-5 flex flex-col">
-            <div
-              ref={controlPanelRef}
-              className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 flex flex-col justify-between relative shadow-2xl font-sans overflow-hidden"
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              <div className="flex flex-col gap-3 font-sans">
-                {/* CABECERA PANEL */}
-                <div className="flex items-center justify-between mb-1 border-b border-zinc-800 pb-3 flex-shrink-0">
-                  <div>
-                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-0.5">
-                      002 / CONFIGURACIÓN
+          {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO A ANCHO COMPLETO */}
+          <div
+            ref={controlPanelRef}
+            className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden font-sans"
+          >
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+            {/* CABECERA PANEL */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 font-sans">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
+                  002 / CONFIGURACIÓN DE CENSURA
+                </span>
+                <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
+                  {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
+                </h2>
+              </div>
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
+                <SlidersHorizontal className="w-5 h-5 text-white" />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* === PANEL DE AUDITORÍA DE DATOS === */}
+              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-white" />
+                    <span className="text-xs font-bold text-white font-mono uppercase tracking-wide">
+                      {isEs ? 'Auditoría de Datos Sensibles' : 'Sensitive Data Audit'}
                     </span>
-                    <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
-                      PANEL DE CONTROL
-                    </h2>
                   </div>
-                  <div className="bg-zinc-900 p-2 rounded-xl border border-zinc-700 text-white shadow-sm">
-                    <SlidersHorizontal className="w-4 h-4 text-white" />
-                  </div>
-                </div>
-
-                {/* === PANEL DE AUDITORÍA DE DATOS === */}
-                <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5 text-white" />
-                      <span className="text-xs font-bold text-white font-mono uppercase tracking-wide">
-                        {isEs ? 'Auditoría de Datos' : 'Data Audit'}
-                      </span>
-                    </div>
-                    {sensitiveMatches.length > 0 && (
-                      <span className="text-[10px] font-mono text-white bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-lg shadow-sm">
-                        {sensitiveMatches.length} {isEs ? 'detectados' : 'detected'}
-                      </span>
-                    )}
-                  </div>
-
-                  {sensitiveMatches.length > 0 ? (
-                    <>
-                      <div className="space-y-1 max-h-[160px] overflow-y-auto mb-2 pr-1 custom-scrollbar">
-                        {sensitiveMatches.slice(0, 15).map((match) => (
-                          <div
-                            key={match.id}
-                            className="flex items-center justify-between text-[10px] bg-zinc-900/90 rounded-xl px-2.5 py-1.5 border border-zinc-800"
-                          >
-                            <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
-                              <span className="text-zinc-400 flex-shrink-0">
-                                {match.category === 'card'
-                                  ? '💳'
-                                  : match.category === 'phone'
-                                    ? '📱'
-                                    : match.category === 'email'
-                                      ? '✉️'
-                                      : '📝'}
-                              </span>
-                              <span className="truncate text-zinc-300 font-mono">
-                                {match.matchedText}
-                              </span>
-                            </div>
-                            <span className="text-zinc-500 font-mono flex-shrink-0 ml-1">
-                              P{match.page}
-                            </span>
-                          </div>
-                        ))}
-                        {sensitiveMatches.length > 15 && (
-                          <p className="text-[9px] text-zinc-500 text-center font-mono">
-                            +{sensitiveMatches.length - 15} {isEs ? 'más' : 'more'}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={censorAllDetected}
-                        className="w-full bg-white hover:bg-zinc-200 text-black font-bold text-xs py-2.5 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 font-mono shadow-sm"
-                      >
-                        <EyeOff className="w-3.5 h-3.5" />
-                        <span>
-                          {isEs
-                            ? `Censurar todo (${sensitiveMatches.length})`
-                            : `Redact all (${sensitiveMatches.length})`}
-                        </span>
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-[10px] text-zinc-500 text-center py-2 font-mono">
-                      {isEs
-                        ? 'No se detectaron datos sensibles automáticamente'
-                        : 'No sensitive data detected automatically'}
-                    </p>
+                  {sensitiveMatches.length > 0 && (
+                    <span className="text-[10px] font-mono text-white bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-lg shadow-sm">
+                      {sensitiveMatches.length} {isEs ? 'detectados' : 'detected'}
+                    </span>
                   )}
                 </div>
 
-                {/* === BÚSQUEDA MANUAL === */}
-                <div className="font-mono">
-                  <span className="text-[11px] text-zinc-400 font-medium">
-                    003 / CENSURA Y BÚSQUEDA DE TEXTO
-                  </span>
-                  <h3 className="text-base font-bold text-white tracking-tight font-sans mt-0.5">
-                    {isEs ? 'Censura Manual' : 'Manual Redaction'}
-                  </h3>
-                </div>
-                <div className="relative font-mono">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleApplyWordSearch();
+                {sensitiveMatches.length > 0 ? (
+                  <>
+                    <p className="text-[11px] text-zinc-400 font-sans mb-3 leading-relaxed">
+                      {isEs
+                        ? `Se detectaron ${sensitiveMatches.length} posibles elementos confidenciales.`
+                        : `Found ${sensitiveMatches.length} potentially sensitive items.`}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={censorAllDetected}
+                        disabled={isProcessing}
+                        className="flex-1 bg-white text-black hover:bg-zinc-200 font-bold py-2.5 px-3 rounded-xl text-xs font-mono transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-40"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>
+                          {isEs ? 'Censurar Todos los Detectados' : 'Redact All Detected'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearAllRedactions}
+                        disabled={isProcessing || redactions.length === 0}
+                        className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-mono transition-all cursor-pointer disabled:opacity-40"
+                      >
+                        {isEs ? 'Limpiar Parches' : 'Clear Patches'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-zinc-500 font-mono">
+                    {isEs
+                      ? '✓ No se detectaron patrones confidenciales obvios.'
+                      : '✓ No obvious confidential patterns found.'}
+                  </p>
+                )}
+              </div>
+
+              {/* BUSCADOR DE PALABRAS / TEXTO */}
+              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
+                <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase block">
+                  {isEs ? 'Buscar y Censurar Texto Específico' : 'Search & Redact Specific Text'}
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={
+                        isEs ? 'Escribe la palabra o frase a ocultar...' : 'Type word to redact...'
                       }
-                    }}
-                    placeholder={isEs ? 'Escribe la palabra a cubrir...' : 'Type word to cover...'}
-                    className="w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-500 rounded-xl py-2.5 pl-9 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white transition-colors"
-                  />
-                </div>
-
-                {/* Categorías rápidas */}
-                <div className="grid grid-cols-2 gap-2 font-mono text-xs">
-                  {(['text', 'card', 'phone', 'email'] as const).map((preset) => (
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                    />
+                  </div>
+                  {searchQuery.trim() && autoRedactions.length > 0 && (
                     <button
-                      key={preset}
-                      onClick={() => setSelectedPreset(preset)}
-                      className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${selectedPreset === preset ? 'bg-zinc-800 border-white text-white font-bold shadow' : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white'}`}
+                      type="button"
+                      onClick={() => {
+                        setRedactions((prev) => [...prev, ...autoRedactions]);
+                        setAutoRedactions([]);
+                        setSearchQuery('');
+                        toast.success(isEs ? 'Parches agregados' : 'Patches added');
+                      }}
+                      className="bg-white text-black font-bold px-3.5 py-2.5 rounded-xl text-xs font-mono hover:bg-zinc-200 transition-colors cursor-pointer"
                     >
-                      {preset === 'text' ? (
-                        <>
-                          <Type className="w-3.5 h-3.5" />
-                          <span>{isEs ? 'Texto Libre' : 'Custom Text'}</span>
-                        </>
-                      ) : preset === 'card' ? (
-                        <>
-                          <CreditCard className="w-3.5 h-3.5 text-amber-400" />
-                          <span>💳 CC</span>
-                        </>
-                      ) : preset === 'phone' ? (
-                        <>
-                          <Phone className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>📱 Tel</span>
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>✉️ Email</span>
-                        </>
-                      )}
+                      {isEs
+                        ? `Fijar (${autoRedactions.length})`
+                        : `Apply (${autoRedactions.length})`}
                     </button>
-                  ))}
+                  )}
+                </div>
+              </div>
+
+              {/* OPCIONES AVANZADAS DE SALIDA */}
+              <div className="bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 mb-3 uppercase">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{isEs ? 'OPCIONES DE FORMATO Y SALIDA' : 'FORMAT & OUTPUT OPTIONS'}</span>
                 </div>
 
-                <div className="flex justify-end gap-2 font-mono text-xs">
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="px-3 py-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 text-zinc-300 rounded-xl transition-all cursor-pointer text-[11px]"
-                  >
-                    {isEs ? 'Cancelar' : 'Cancel'}
-                  </button>
-                  <button
-                    onClick={handleApplyWordSearch}
-                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-1.5 text-[11px]"
-                  >
-                    <Check className="w-3.5 h-3.5 text-black" />
-                    <span>{isEs ? 'Cubrir Todo' : 'Apply'}</span>
-                  </button>
-                </div>
-
-                {/* OPCIONES AVANZADAS (SIEMPRE VISIBLES) */}
-                <div className="mt-2 space-y-3.5 bg-zinc-950/60 border border-white/10 rounded-2xl p-4 font-sans">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 uppercase">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <EyeOff className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Estilo de Parche' : 'Patch Style'}
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                      {isEs ? 'Color de Parche:' : 'Patch Color:'}
                     </label>
-                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                    <div className="flex gap-2">
                       <button
+                        type="button"
                         onClick={() => setRedactionStyle('black')}
-                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionStyle === 'black' ? 'bg-black border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionStyle === 'black' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
                       >
-                        {isEs ? '⬛ Negro Sólido' : '⬛ Solid Black'}
+                        ⬛ {isEs ? 'Negro' : 'Black'}
                       </button>
                       <button
+                        type="button"
                         onClick={() => setRedactionStyle('gray')}
-                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionStyle === 'gray' ? 'bg-zinc-700 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionStyle === 'gray' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
                       >
-                        {isEs ? '🩶 Gris' : '🩶 Gray'}
+                        ◻️ {isEs ? 'Gris' : 'Gray'}
                       </button>
                     </div>
                   </div>
-                  <div
-                    onClick={() => setExactMatch((v) => !v)}
-                    className="flex items-center justify-between p-2.5 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                  >
-                    <div>
-                      <p className="text-[11px] font-bold text-white">
-                        {isEs ? 'Coincidencia exacta' : 'Exact Case Match'}
-                      </p>
-                      <p className="text-[10px] text-zinc-500 font-mono">
-                        {isEs ? 'Sensible a mayúsculas/minúsculas' : 'Case-sensitive'}
-                      </p>
-                    </div>
-                    <div
-                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${exactMatch ? 'bg-white' : 'bg-zinc-700'}`}
-                    >
-                      <div
-                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${exactMatch ? 'left-4' : 'left-0.5'}`}
-                      />
-                    </div>
-                  </div>
+
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
-                      <Zap className="w-3 h-3 text-zinc-400" />
-                      {isEs ? 'Modo de Censura' : 'Redaction Mode'}
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                      {isEs ? 'Modo de Sanitización:' : 'Sanitization Mode:'}
                     </label>
-                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                    <div className="flex gap-2">
                       <button
+                        type="button"
                         onClick={() => setRedactionMode('precision')}
-                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionMode === 'precision' ? 'bg-emerald-500 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
-                        title={
-                          isEs
-                            ? 'Preserva texto no censurado, bookmarks y fuentes. Edita content streams nativos.'
-                            : 'Preserves non-redacted text, bookmarks and fonts. Edits native content streams.'
-                        }
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionMode === 'precision' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
                       >
-                        🎯 {isEs ? 'Precisión' : 'Precision'}
+                        🎯 {isEs ? 'Vector' : 'Vector'}
                       </button>
                       <button
+                        type="button"
                         onClick={() => setRedactionMode('raster')}
-                        className={`py-2 px-2.5 rounded-lg border font-bold transition-all cursor-pointer ${redactionMode === 'raster' ? 'bg-zinc-700 border-white text-white shadow' : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'}`}
-                        title={
-                          isEs
-                            ? 'Rasteriza cada página a JPEG. Compatible con cualquier PDF.'
-                            : 'Rasterizes each page to JPEG. Compatible with any PDF.'
-                        }
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionMode === 'raster' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
                       >
                         📸 {isEs ? 'Raster' : 'Raster'}
                       </button>
                     </div>
                   </div>
+
                   <div>
                     <label className="text-[10px] font-mono text-zinc-400 block mb-1">
                       {isEs ? 'Sufijo del archivo:' : 'Output suffix:'}
@@ -1864,82 +1963,122 @@ export default function PdfRedacter() {
                     />
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Barra de progreso */}
-                <AnimatePresence>
-                  {isProcessing && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="font-mono"
-                    >
-                      <div className="flex justify-between items-center text-xs text-zinc-300 mb-1.5">
-                        <span className="truncate mr-2">{progressMsg}</span>
-                        <span className="font-bold tabular-nums">{progressPercent}%</span>
-                      </div>
-                      <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden border border-white/10">
-                        <motion.div
-                          className="bg-gradient-to-r from-emerald-500 to-emerald-300 h-full rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progressPercent}%` }}
-                          transition={{ ease: 'easeInOut', duration: 0.3 }}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            {/* BARRA DE PROGRESO + BOTÓN DE ACCIÓN */}
+            <div>
+              <AnimatePresence>
+                {isProcessing && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="font-mono mb-3"
+                  >
+                    <div className="flex justify-between items-center text-xs text-zinc-300 mb-1.5">
+                      <span className="truncate mr-2">{progressMsg}</span>
+                      <span className="font-bold tabular-nums">{progressPercent}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden border border-white/10">
+                      <motion.div
+                        className="bg-gradient-to-r from-emerald-500 to-emerald-300 h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPercent}%` }}
+                        transition={{ ease: 'easeInOut', duration: 0.3 }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                {/* Advertencia de seguridad */}
-                <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5 mt-1">
-                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-amber-200 font-sans leading-snug">
-                    {isEs
-                      ? 'True Redaction: el contenido censurado se destruye permanentemente. No se puede recuperar.'
-                      : 'True Redaction: redacted content is permanently destroyed. Cannot be recovered.'}
-                  </p>
-                </div>
+              {/* Advertencia de seguridad */}
+              <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3 flex items-start gap-2.5 mb-3">
+                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-200 font-sans leading-snug">
+                  {isEs
+                    ? 'True Redaction: el contenido censurado se destruye permanentemente y de manera irreversible.'
+                    : 'True Redaction: redacted content is permanently and irreversibly destroyed.'}
+                </p>
               </div>
 
-              {/* BOTÓN DE ACCIÓN */}
-              <div className="pt-3 border-t border-white/10 mt-2 flex-shrink-0">
-                <button
-                  onClick={executeRedact}
-                  disabled={isProcessing || redactions.length + autoRedactions.length === 0}
-                  className="w-full bg-white text-black hover:bg-zinc-200 font-extrabold text-xs py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl group disabled:opacity-40"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-black" />
-                      <span>{isEs ? 'Censurando...' : 'Redacting...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff className="w-4 h-4 text-black" />
-                      <span>
-                        {redactions.length > 0
-                          ? `${isEs ? 'Censurar PDF' : 'Redact PDF'} (${redactions.length} ${isEs ? 'parches' : 'patches'})`
-                          : isEs
-                            ? 'Censurar PDF'
-                            : 'Redact PDF'}
-                      </span>
-                    </>
-                  )}
-                </button>
-                <div className="pt-2 flex items-center justify-between font-mono text-xs text-zinc-400">
-                  <span className="flex items-center gap-1.5 text-[10px]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    {isEs ? 'Web Worker Activo' : 'Web Worker Active'}
-                  </span>
-                  <span className="flex items-center gap-1 text-white">
-                    <Database className="w-3 h-3" />
-                    {isEs ? '100% Local' : '100% Local'}
-                  </span>
-                </div>
+              <button
+                onClick={executeRedact}
+                disabled={isProcessing || redactions.length + autoRedactions.length === 0}
+                className="w-full bg-white text-black hover:bg-zinc-200 font-extrabold text-xs py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-40"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-black" />
+                    <span>{isEs ? 'Censurando...' : 'Redacting...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="w-4 h-4 text-black" />
+                    <span>
+                      {redactions.length > 0
+                        ? `${isEs ? 'Censurar PDF' : 'Redact PDF'} (${redactions.length} ${isEs ? 'parches' : 'patches'})`
+                        : isEs
+                          ? 'Censurar PDF'
+                          : 'Redact PDF'}
+                    </span>
+                  </>
+                )}
+              </button>
+
+              <div className="pt-2 flex items-center justify-between font-mono text-xs text-zinc-400 mt-2 border-t border-white/10">
+                <span className="flex items-center gap-1.5 text-[10px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {isEs ? 'Web Worker Activo' : 'Web Worker Active'}
+                </span>
+                <span className="flex items-center gap-1 text-white">
+                  <Database className="w-3 h-3" />
+                  {isEs ? '100% Local' : '100% Local'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL DE ZOOM DE PÁGINA */}
+      <AnimatePresence>
+        {zoomModalImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setZoomModalImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl max-h-[90vh] bg-[#121217] border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900/60">
+                <span className="text-xs font-mono font-bold text-zinc-300">
+                  {isEs ? `Página ${activePage}` : `Page ${activePage}`}
+                </span>
+                <button
+                  onClick={() => setZoomModalImage(null)}
+                  className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-4 overflow-auto flex items-center justify-center bg-black/50">
+                <img
+                  src={zoomModalImage}
+                  alt="Zoom preview"
+                  className="max-h-[75vh] w-auto object-contain rounded border border-zinc-800 bg-white"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

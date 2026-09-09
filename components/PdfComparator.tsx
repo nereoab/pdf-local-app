@@ -27,6 +27,8 @@ import {
   SlidersHorizontal,
   ArrowLeft,
   Trash2,
+  Maximize2,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -36,6 +38,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type { CompareResult, CompareProgress, StructuralDiff } from '../workers/pdf-compare.worker';
+
+// Sistema de slots unificado
+interface SlotItem {
+  id: number;
+  file: File | null;
+}
 
 export default function PdfComparator() {
   const { lang } = useLanguage();
@@ -52,8 +60,84 @@ export default function PdfComparator() {
   const { globalFile } = useFileStore();
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
+  // Sistema de 3 slots independientes
+  const [slots, setSlots] = useState<SlotItem[]>(() => [
+    { id: 1, file: globalFile || null },
+    { id: 2, file: null },
+    { id: 3, file: null },
+  ]);
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number>(0);
+  const [zoomModalImage, setZoomModalImage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'split' | 'doc1' | 'doc2'>('split');
+
+  const slot1InputRef = useRef<HTMLInputElement>(null);
+  const slot2InputRef = useRef<HTMLInputElement>(null);
+  const slot3InputRef = useRef<HTMLInputElement>(null);
+
+  const getSlotInputRef = (idx: number) => {
+    if (idx === 0) return slot1InputRef;
+    if (idx === 1) return slot2InputRef;
+    return slot3InputRef;
+  };
+
   const [file1, setFile1] = useState<File | null>(() => globalFile || null);
   const [file2, setFile2] = useState<File | null>(null);
+
+  // Sincronizar slots con file1 y file2 para el motor de comparación
+  useEffect(() => {
+    const f1 = slots[0]?.file || null;
+    const f2 = slots[1]?.file || slots[2]?.file || null;
+    setFile1(f1);
+    setFile2(f2);
+  }, [slots]);
+
+  const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: newFile };
+      return next;
+    });
+    setActiveSlotIndex(slotIdx);
+    setCompareResult(null);
+    setCompletedResult(null);
+    toast.success(isEs ? `PDF cargado en Caja ${slotIdx + 1}` : `PDF loaded in Box ${slotIdx + 1}`);
+  };
+
+  const handleSlotFileChange = (slotIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      loadSingleFileIntoSlot(slotIdx, f);
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveSlot = (slotIdx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], file: null };
+      return next;
+    });
+    setCompareResult(null);
+    setCompletedResult(null);
+    if (activeSlotIndex === slotIdx) {
+      const remainingIdx = [0, 1, 2].find((i) => i !== slotIdx && slots[i]?.file !== null);
+      if (remainingIdx !== undefined) {
+        setActiveSlotIndex(remainingIdx);
+      }
+    }
+  };
+
+  const handleRemoveAllFiles = () => {
+    setSlots([
+      { id: 1, file: null },
+      { id: 2, file: null },
+      { id: 3, file: null },
+    ]);
+    setActiveSlotIndex(0);
+    reset();
+  };
+
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
   const [canvas1Urls, setCanvas1Urls] = useState<Record<number, string>>({});
@@ -428,6 +512,12 @@ export default function PdfComparator() {
   }, [isComparing, file1, file2, compareResult, activeDiffIdx, allDiffWords]);
 
   const reset = () => {
+    setSlots([
+      { id: 1, file: null },
+      { id: 2, file: null },
+      { id: 3, file: null },
+    ]);
+    setActiveSlotIndex(0);
     setFile1(null);
     setFile2(null);
     setCanvas1Urls({});
@@ -751,16 +841,18 @@ export default function PdfComparator() {
             </h1>
           </div>
         </div>
-        {(file1 || file2) && (
+        {slots.some((s) => s.file !== null) && (
           <div className="flex items-center gap-2 font-mono">
             <div className="bg-zinc-900 border border-zinc-700 px-3 py-2 rounded-xl text-xs text-white">
               <FileText className="w-3.5 h-3.5 inline mr-1.5 text-zinc-300" />
-              <span className="font-bold">{file1 && file2 ? '2 docs' : '1 doc'}</span>
+              <span className="font-bold">
+                {slots.filter((s) => s.file !== null).length} / 3 docs
+              </span>
             </div>
             <button
-              onClick={reset}
+              onClick={handleRemoveAllFiles}
               className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
-              title={isEs ? 'Reiniciar' : 'Reset'}
+              title={isEs ? 'Eliminar todos los archivos' : 'Remove all files'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -768,126 +860,67 @@ export default function PdfComparator() {
         )}
       </div>
 
-      {!file1 || !file2 ? (
-        <div className="w-full flex flex-col items-center gap-8">
-          <div className="text-center flex flex-col items-center gap-3">
-            <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-700 shadow-2xl">
-              <GitCompare className="w-10 h-10 text-white" />
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-sans uppercase">
-              {isEs ? 'Comparar y Detectar Diferencias' : 'Compare and Detect Differences'}
-            </h2>
-            <p className="text-zinc-400 text-xs sm:text-sm max-w-md font-mono">
-              {isEs
-                ? 'Sube dos versiones de un PDF para detectar automáticamente texto modificado, añadido o eliminado.'
-                : 'Upload two versions of a PDF to detect changes.'}
-            </p>
+      {!slots.some((s) => s.file !== null) ? (
+        /* DROPZONE INICIAL DE PANTALLA COMPLETA */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => slot1InputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const dropped = Array.from(e.dataTransfer.files).filter(
+              (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'),
+            );
+            if (dropped.length > 0) {
+              setSlots([
+                { id: 1, file: dropped[0] || null },
+                { id: 2, file: dropped[1] || null },
+                { id: 3, file: dropped[2] || null },
+              ]);
+              setActiveSlotIndex(0);
+              setCompareResult(null);
+              setCompletedResult(null);
+              toast.success(
+                isEs
+                  ? `${dropped.length} archivo(s) cargado(s)`
+                  : `${dropped.length} file(s) loaded`,
+              );
+            } else {
+              toast.error(isEs ? 'Solo archivos PDF' : 'Only PDF files');
+            }
+          }}
+          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+        >
+          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+          <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
+            <UploadCloud className="w-12 h-12 text-white" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-            <div
-              onClick={() => file1InputRef.current?.click()}
-              onDragOver={(e) => hdrOver(e, 1)}
-              onDragLeave={(e) => hdrLeave(e, 1)}
-              onDrop={(e) => hdrDrop(e, 1)}
-              className={`bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border-2 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all min-h-[280px] group shadow-2xl relative overflow-hidden ${dragOver1 ? 'border-white bg-zinc-900 scale-[1.02]' : file1 ? 'border-zinc-500' : 'border-zinc-600 hover:border-white'}`}
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              {file1 ? (
-                <div className="flex flex-col items-center gap-3 text-center font-mono">
-                  <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-700 text-white">
-                    <FileText className="w-10 h-10 text-white" />
-                  </div>
-                  <span className="text-white font-bold text-sm truncate max-w-[220px]">
-                    {file1.name}
-                  </span>
-                  <span className="text-zinc-400 text-[10px]">{fmtSize(file1.size)}</span>
-                  <span className="text-white font-bold text-xs bg-zinc-800 border border-zinc-600 px-3 py-1 rounded-full">
-                    Doc A (Original)
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className={`p-4 rounded-2xl border transition-all ${dragOver1 ? 'bg-zinc-800 border-white scale-110' : 'bg-zinc-900 border-zinc-700 group-hover:border-white group-hover:scale-105'}`}
-                  >
-                    <UploadCloud className="w-10 h-10 text-white" />
-                  </div>
-                  <div className="text-center font-sans">
-                    <h3 className="text-white font-bold text-lg uppercase">
-                      {isEs ? 'A. Documento Original' : 'A. Original Document'}
-                    </h3>
-                    <p className="text-zinc-400 text-xs font-mono mt-1">
-                      {dragOver1
-                        ? isEs
-                          ? 'Suelta aquí'
-                          : 'Drop here'
-                        : isEs
-                          ? 'Click o arrastra archivo PDF'
-                          : 'Click or drag PDF file'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="bg-white text-black hover:bg-zinc-100 font-bold px-6 py-2 rounded-full font-sans text-xs transition-all shadow-sm"
-                  >
-                    {isEs ? 'Seleccionar Doc A' : 'Select Doc A'}
-                  </button>
-                </>
-              )}
-            </div>
-            <div
-              onClick={() => file2InputRef.current?.click()}
-              onDragOver={(e) => hdrOver(e, 2)}
-              onDragLeave={(e) => hdrLeave(e, 2)}
-              onDrop={(e) => hdrDrop(e, 2)}
-              className={`bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border-2 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all min-h-[280px] group shadow-2xl relative overflow-hidden ${dragOver2 ? 'border-white bg-zinc-900 scale-[1.02]' : file2 ? 'border-zinc-500' : 'border-zinc-600 hover:border-white'}`}
-            >
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-              {file2 ? (
-                <div className="flex flex-col items-center gap-3 text-center font-mono">
-                  <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-700 text-white">
-                    <FileText className="w-10 h-10 text-white" />
-                  </div>
-                  <span className="text-white font-bold text-sm truncate max-w-[220px]">
-                    {file2.name}
-                  </span>
-                  <span className="text-zinc-400 text-[10px]">{fmtSize(file2.size)}</span>
-                  <span className="text-white font-bold text-xs bg-zinc-800 border border-zinc-600 px-3 py-1 rounded-full">
-                    Doc B (Modificado)
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className={`p-4 rounded-2xl border transition-all ${dragOver2 ? 'bg-zinc-800 border-white scale-110' : 'bg-zinc-900 border-zinc-700 group-hover:border-white group-hover:scale-105'}`}
-                  >
-                    <UploadCloud className="w-10 h-10 text-white" />
-                  </div>
-                  <div className="text-center font-sans">
-                    <h3 className="text-white font-bold text-lg uppercase">
-                      {isEs ? 'B. Documento Modificado' : 'B. Modified Document'}
-                    </h3>
-                    <p className="text-zinc-400 text-xs font-mono mt-1">
-                      {dragOver2
-                        ? isEs
-                          ? 'Suelta aquí'
-                          : 'Drop here'
-                        : isEs
-                          ? 'Click o arrastra archivo PDF'
-                          : 'Click or drag PDF file'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="bg-white text-black hover:bg-zinc-100 font-bold px-6 py-2 rounded-full font-sans text-xs transition-all shadow-sm"
-                  >
-                    {isEs ? 'Seleccionar Doc B' : 'Select Doc B'}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full shadow-sm">
+
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+            {isEs
+              ? 'COMPARAR Y DETECTAR DIFERENCIAS EN DOCUMENTOS PDF'
+              : 'COMPARE AND DETECT DIFFERENCES IN PDF DOCUMENTS'}
+          </h2>
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+            {isEs
+              ? 'Sube dos versiones de un PDF para detectar automáticamente texto modificado, añadido o eliminado de forma 100% local.'
+              : 'Upload two versions of a PDF to automatically detect modified, added or removed text 100% locally.'}
+          </p>
+
+          <button
+            type="button"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-black" />
+            {isEs ? 'Seleccionar Documentos PDF' : 'Select PDF Documents'}
+          </button>
+
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
             <ShieldCheck className="w-3.5 h-3.5 text-white" />
             <span>
               {isEs
@@ -895,7 +928,7 @@ export default function PdfComparator() {
                 : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
             </span>
           </div>
-        </div>
+        </motion.div>
       ) : completedResult ? (
         /* PANTALLA DE ÉXITO Y DESCARGA */
         <motion.div
@@ -904,7 +937,7 @@ export default function PdfComparator() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE COMPARACIÓN (ESTILO PÁGINA DE INICIO) */}
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE COMPARACIÓN */}
           <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
@@ -982,7 +1015,8 @@ export default function PdfComparator() {
           />
         </motion.div>
       ) : (
-        <div className="w-full flex flex-col gap-4">
+        /* ÁREA DE TRABAJO VERTICAL: SECCIÓN 1 (SUPERIOR) + SECCIÓN 2 (INFERIOR) */
+        <div className="flex flex-col gap-6 mb-6 font-sans">
           {/* BANNER DE DESCARGA COMPLETADA */}
           <AnimatePresence>
             {downloadBanner && (
@@ -1022,731 +1056,1148 @@ export default function PdfComparator() {
               </motion.div>
             )}
           </AnimatePresence>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            <div className="lg:col-span-8 flex flex-col gap-4">
-              {/* TOOLBAR */}
-              <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 font-mono shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex flex-wrap items-center gap-3 text-xs">
-                  <button
-                    onClick={() => file1InputRef.current?.click()}
-                    className="flex items-center gap-2 bg-[#121217] hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-500 px-3.5 py-2 rounded-2xl text-white transition-all cursor-pointer shadow-inner"
-                  >
-                    <FileText className="w-4 h-4 text-white" />
-                    <span className="font-bold truncate max-w-[140px]">{file1?.name}</span>
-                  </button>
-                  <span className="text-zinc-500 font-bold">VS</span>
-                  <button
-                    onClick={() => file2InputRef.current?.click()}
-                    className="flex items-center gap-2 bg-[#121217] hover:bg-zinc-900 border border-zinc-700/80 hover:border-zinc-500 px-3.5 py-2 rounded-2xl text-white transition-all cursor-pointer shadow-inner"
-                  >
-                    <FileText className="w-4 h-4 text-white" />
-                    <span className="font-bold truncate max-w-[140px]">{file2?.name}</span>
-                  </button>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => setZoomLevel((p) => Math.min(p + 25, 300))}
-                    title="Zoom in"
-                    className="p-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-lg text-zinc-400 hover:text-white transition-all cursor-pointer"
-                  >
-                    <ZoomIn className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-[10px] text-zinc-400 min-w-[40px] text-center font-mono">
-                    {zoomLevel}%
-                  </span>
-                  <button
-                    onClick={() => setZoomLevel((p) => Math.max(p - 25, 25))}
-                    title="Zoom out"
-                    className="p-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-lg text-zinc-400 hover:text-white transition-all cursor-pointer"
-                  >
-                    <ZoomOut className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setShowOnlyChanges(!showOnlyChanges)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs border transition-all cursor-pointer ${showOnlyChanges ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-zinc-900/50 border-white/10 text-zinc-400 hover:text-white'}`}
-                  >
-                    <Filter className="w-3 h-3" />
-                    <span>{isEs ? 'Solo cambios' : 'Changes only'}</span>
-                  </button>
-                  <button
-                    onClick={() => setScrollSync(!scrollSync)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border transition-all cursor-pointer ${scrollSync ? 'bg-zinc-900 border-white text-white font-bold' : 'bg-zinc-900/50 border-white/10 text-zinc-400 hover:text-white'}`}
-                  >
-                    <SplitSquareVertical className="w-3.5 h-3.5" />
-                    <span className="text-xs">Sync</span>
-                  </button>
-                  <button
-                    onClick={() => setShowShortcuts(!showShortcuts)}
-                    title="Shortcuts"
-                    className="p-1.5 bg-zinc-900 border border-white/10 hover:border-white/30 rounded-lg text-zinc-400 hover:text-white transition-all cursor-pointer"
-                  >
-                    <Keyboard className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={reset}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-white/10 hover:border-red-500/50 text-xs text-zinc-300 hover:text-red-400 rounded-full transition-all cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Reset' : 'Reset'}</span>
-                  </button>
-                </div>
+
+          {/* SECCIÓN 1: VISOR INTERACTIVO Y CAJAS DE ARCHIVOS (PARALELOS ARRIBA) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+            {/* Cabecera Sección 1 */}
+            <div className="flex items-center justify-between pb-3 mb-5 border-b border-zinc-800">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
+                  001 / VISOR INTERACTIVO Y DOCUMENTOS
+                </span>
+                <h2 className="text-lg font-bold text-white tracking-tight font-sans uppercase">
+                  {isEs ? 'PANEL DE VISTA PREVIA' : 'PREVIEW PANEL'}
+                </h2>
               </div>
-              <AnimatePresence>
-                {showShortcuts && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="w-full bg-[#09090b] border border-white/10 rounded-xl p-4 font-mono text-xs"
-                  >
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        ['Ctrl+Enter', isEs ? 'Comparar' : 'Compare'],
-                        ['Esc', isEs ? 'Cancelar' : 'Cancel'],
-                        ['Ctrl+Left/Right', isEs ? 'Navegar' : 'Navigate'],
-                        ['Ctrl++/-/0', isEs ? 'Zoom' : 'Zoom'],
-                        ['Ctrl+S', isEs ? 'Scroll sync' : 'Scroll sync'],
-                        ['Ctrl+F', isEs ? 'Buscar' : 'Search'],
-                        ['Ctrl+D', isEs ? 'Descargar TXT' : 'Download TXT'],
-                      ].map(([k, d]) => (
-                        <div key={k} className="flex items-center gap-2">
-                          <kbd className="bg-zinc-800 border border-white/10 px-2 py-0.5 rounded text-white font-bold text-[10px]">
-                            {k}
-                          </kbd>
-                          <span className="text-zinc-400">{d}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div className="flex items-center gap-4 flex-wrap">
-                {!isComparing ? (
-                  <button
-                    onClick={executeCompare}
-                    disabled={isRendering}
-                    className="bg-white text-black hover:bg-zinc-200 font-bold py-2.5 px-6 rounded-full text-sm transition-all flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-40"
-                  >
-                    <GitCompare className="w-4 h-4" />
-                    <span>
-                      {compareResult
-                        ? isEs
-                          ? 'Re-comparar'
-                          : 'Re-compare'
-                        : isEs
-                          ? 'Comparar'
-                          : 'Compare'}
-                    </span>
-                  </button>
-                ) : (
-                  <>
-                    <div className="flex-1 bg-zinc-900 border border-white/10 rounded-full h-2.5 overflow-hidden">
-                      <motion.div
-                        className="h-full bg-white rounded-full"
-                        animate={{ width: `${progressPercent}%` }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    </div>
-                    <span className="text-xs text-zinc-400 font-mono min-w-[60px]">
-                      {progressPercent}%
-                    </span>
-                    <button
-                      onClick={cancel}
-                      className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold py-2 px-4 rounded-full text-xs transition-all flex items-center gap-2 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      <span>{isEs ? 'Cancelar' : 'Cancel'}</span>
-                    </button>
-                  </>
-                )}
-                {estSeconds > 0 && !isComparing && !compareResult && (
-                  <span className="text-xs text-zinc-500 font-mono flex items-center gap-1">
-                    <Clock className="w-3 h-3" />~{estSeconds}s
-                  </span>
-                )}
-              </div>
-              {isComparing && (
-                <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
+              <div className="flex items-center gap-2">
+                <span className="bg-zinc-900 border border-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm font-mono">
                   <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  <span>{phaseLabels[progressPhase] || progressMsg}</span>
-                </div>
-              )}
-              {compareResult && allDiffWords.length > 0 && (
-                <div className="flex items-center gap-3 bg-zinc-900 border border-white/15 rounded-xl px-4 py-2.5 font-mono text-xs shadow-lg">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={gotoPrevDiff}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 hover:text-white transition-all cursor-pointer"
-                      title="Prev (Ctrl+Left)"
-                    >
-                      <ChevronUp className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold">{isEs ? 'Anterior' : 'Prev'}</span>
-                    </button>
-                    <button
-                      onClick={gotoNextDiff}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 hover:text-white transition-all cursor-pointer"
-                      title="Next (Ctrl+Right)"
-                    >
-                      <span className="text-[10px] font-bold">{isEs ? 'Siguiente' : 'Next'}</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <span className="text-white font-bold bg-zinc-950 px-2.5 py-1 rounded-md border border-white/10">
-                    {activeDiffIdx >= 0
-                      ? `${isEs ? 'Diferencia' : 'Diff'} ${activeDiffIdx + 1} / ${allDiffWords.length}`
-                      : `${allDiffWords.length} ${isEs ? 'diferencias' : 'differences'}`}
+                  <span>
+                    {isEs
+                      ? `Cajas Activas (${slots.filter((s) => s.file !== null).length}/3)`
+                      : `Active Slots (${slots.filter((s) => s.file !== null).length}/3)`}
                   </span>
-                  {activeWord && (
-                    <span
-                      className={`px-2.5 py-1 rounded-md font-bold truncate max-w-[200px] sm:max-w-[300px] ${
-                        activeWord.type === 'removed'
-                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                          : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                </span>
+              </div>
+            </div>
+
+            {/* Grid 2 Columnas Sección 1: Visor (50%) + 3 Cajas de Archivos (50%) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              {/* LADO IZQUIERDO: VISOR INTERACTIVO COMPARATIVO (6/12) */}
+              <div className="lg:col-span-6 flex flex-col justify-between bg-[#0c0c0f] border border-zinc-800/80 rounded-2xl p-4 min-h-[460px]">
+                {/* Header Visor con Tabs de Vista y Controles de Zoom */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80 font-mono text-xs text-zinc-400 flex-wrap gap-2">
+                  <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-0.5 rounded-full">
+                    {file1 && file2 && (
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('split')}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                          viewMode === 'split'
+                            ? 'bg-white text-black shadow-sm'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                      >
+                        {isEs ? 'Dividida (A vs B)' : 'Split (A vs B)'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('doc1')}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                        viewMode === 'doc1' || (!file2 && file1)
+                          ? 'bg-white text-black shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
                       }`}
                     >
-                      {activeWord.type === 'removed' ? '- ' : '+ '}
-                      {activeWord.text}
+                      Doc A {file1 ? `(${totalPages1}p)` : ''}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('doc2')}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                        viewMode === 'doc2' || (!file1 && file2)
+                          ? 'bg-white text-black shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      Doc B {file2 ? `(${totalPages2}p)` : ''}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setZoomLevel((p) => Math.max(p - 25, 25))}
+                      className="p-1.5 bg-zinc-900 hover:bg-zinc-800 rounded border border-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer"
+                      title={isEs ? 'Reducir zoom' : 'Zoom out'}
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[10px] font-mono text-zinc-400 min-w-[36px] text-center">
+                      {zoomLevel}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setZoomLevel((p) => Math.min(p + 25, 300))}
+                      className="p-1.5 bg-zinc-900 hover:bg-zinc-800 rounded border border-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer"
+                      title={isEs ? 'Aumentar zoom' : 'Zoom in'}
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScrollSync(!scrollSync)}
+                      className={`p-1.5 rounded border transition-all cursor-pointer ${
+                        scrollSync
+                          ? 'bg-white/10 border-white text-white'
+                          : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                      }`}
+                      title={isEs ? 'Sincronizar scroll' : 'Sync scroll'}
+                    >
+                      <SplitSquareVertical className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url =
+                          viewMode === 'doc2'
+                            ? canvas2Urls[1] || null
+                            : canvas1Urls[1] || canvas2Urls[1] || null;
+                        if (url) setZoomModalImage(url);
+                      }}
+                      className="p-1.5 bg-zinc-900 hover:bg-zinc-800 rounded border border-zinc-800 text-zinc-300 hover:text-white transition-all cursor-pointer"
+                      title={isEs ? 'Zoom pantalla completa' : 'Fullscreen preview'}
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Contenido Central del Visor */}
+                <div className="flex-1 my-3 relative min-h-[300px]">
+                  {file1 && file2 && viewMode === 'split' ? (
+                    /* VISTA DIVIDIDA (SIDE-BY-SIDE) */
+                    <div className="grid grid-cols-2 gap-3 h-[52vh]">
+                      {/* PANEL DOC A */}
+                      <div className="bg-[#09090b] border border-white/10 rounded-xl overflow-hidden flex flex-col h-full shadow-inner">
+                        <div className="bg-zinc-900 border-b border-white/10 px-2.5 py-1.5 flex items-center gap-1.5 flex-shrink-0">
+                          <span className="w-2 h-2 rounded-full bg-red-400" />
+                          <span className="text-[11px] font-bold text-red-400 font-mono uppercase truncate">
+                            {isEs ? 'Doc A (Original)' : 'Doc A (Original)'}
+                          </span>
+                          <span className="text-[10px] text-zinc-500 ml-auto font-mono">
+                            {totalPages1}p
+                          </span>
+                        </div>
+                        <div
+                          ref={panel1Ref}
+                          onScroll={() => handlePanelScroll(1)}
+                          className="flex-1 bg-[#121215] overflow-y-auto p-2 flex flex-col items-center gap-2.5 custom-scrollbar"
+                        >
+                          {Array.from({ length: maxPages }, (_, i) => i + 1)
+                            .filter(
+                              (p) =>
+                                !showOnlyChanges ||
+                                (compareResult?.pageDiffs.find((pd) => pd.page === p)
+                                  ?.removedCount || 0) +
+                                  (compareResult?.pageDiffs.find((pd) => pd.page === p)
+                                    ?.addedCount || 0) >
+                                  0,
+                            )
+                            .map((pageNum) => (
+                              <div
+                                key={pageNum}
+                                id={`compare-page-${pageNum}`}
+                                className="w-full relative flex flex-col items-center"
+                                data-observe="doc1"
+                                data-page={pageNum}
+                              >
+                                {compareResult &&
+                                  pageNum <= totalPages1 &&
+                                  (() => {
+                                    const wds =
+                                      compareResult.pageDiffs
+                                        .find((pd) => pd.page === pageNum)
+                                        ?.words.filter((w) => w.type === 'removed') || [];
+                                    return wds.length > 0 ? (
+                                      <div className="absolute inset-0 z-10 pointer-events-none">
+                                        {wds.map((w, idx) => (
+                                          <div
+                                            key={idx}
+                                            className={`absolute bg-red-500/40 border border-red-400/60 rounded-sm transition-all ${activeDiffIdx >= 0 && allDiffWords[activeDiffIdx] === w ? 'ring-2 ring-red-400 bg-red-500/70 scale-105 z-20' : ''}`}
+                                            style={
+                                              w.bbox
+                                                ? {
+                                                    left: w.bbox.x * (zoomLevel / 100),
+                                                    top: w.bbox.y * (zoomLevel / 100),
+                                                    width: w.bbox.width * (zoomLevel / 100),
+                                                    height: w.bbox.height * (zoomLevel / 100),
+                                                  }
+                                                : {
+                                                    left: '5%',
+                                                    top: `${5 + (idx % 8) * 10}%`,
+                                                    width: '90%',
+                                                    height: '8%',
+                                                  }
+                                            }
+                                            title={w.text}
+                                          />
+                                        ))}
+                                      </div>
+                                    ) : null;
+                                  })()}
+                                {canvas1Urls[pageNum] ? (
+                                  <img
+                                    src={canvas1Urls[pageNum]}
+                                    alt={`Doc A Page ${pageNum}`}
+                                    className="w-full h-auto rounded shadow-sm border border-gray-700 bg-white"
+                                  />
+                                ) : pageNum <= totalPages1 ? (
+                                  <div className="w-full h-48 bg-zinc-800 rounded flex items-center justify-center text-zinc-500 text-xs font-mono">
+                                    {isEs ? 'Cargando...' : 'Loading...'}
+                                  </div>
+                                ) : null}
+                                <span className="text-[9px] text-zinc-600 mt-1 font-mono">
+                                  Pág. {pageNum}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* PANEL DOC B */}
+                      <div className="bg-[#09090b] border border-white/10 rounded-xl overflow-hidden flex flex-col h-full shadow-inner">
+                        <div className="bg-zinc-900 border-b border-white/10 px-2.5 py-1.5 flex items-center gap-1.5 flex-shrink-0">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                          <span className="text-[11px] font-bold text-emerald-400 font-mono uppercase truncate">
+                            {isEs ? 'Doc B (Modificado)' : 'Doc B (Modified)'}
+                          </span>
+                          <span className="text-[10px] text-zinc-500 ml-auto font-mono">
+                            {totalPages2}p
+                          </span>
+                        </div>
+                        <div
+                          ref={panel2Ref}
+                          onScroll={() => handlePanelScroll(2)}
+                          className="flex-1 bg-[#121215] overflow-y-auto p-2 flex flex-col items-center gap-2.5 custom-scrollbar"
+                        >
+                          {Array.from({ length: maxPages }, (_, i) => i + 1)
+                            .filter(
+                              (p) =>
+                                !showOnlyChanges ||
+                                (compareResult?.pageDiffs.find((pd) => pd.page === p)
+                                  ?.removedCount || 0) +
+                                  (compareResult?.pageDiffs.find((pd) => pd.page === p)
+                                    ?.addedCount || 0) >
+                                  0,
+                            )
+                            .map((pageNum) => (
+                              <div
+                                key={pageNum}
+                                className="w-full relative flex flex-col items-center"
+                                data-observe="doc2"
+                                data-page={pageNum}
+                              >
+                                {compareResult &&
+                                  pageNum <= totalPages2 &&
+                                  (() => {
+                                    const wds =
+                                      compareResult.pageDiffs
+                                        .find((pd) => pd.page === pageNum)
+                                        ?.words.filter((w) => w.type === 'added') || [];
+                                    return wds.length > 0 ? (
+                                      <div className="absolute inset-0 z-10 pointer-events-none">
+                                        {wds.map((w, idx) => (
+                                          <div
+                                            key={idx}
+                                            className={`absolute bg-emerald-500/40 border border-emerald-400/60 rounded-sm transition-all ${activeDiffIdx >= 0 && allDiffWords[activeDiffIdx] === w ? 'ring-2 ring-emerald-400 bg-emerald-500/70 scale-105 z-20' : ''}`}
+                                            style={
+                                              w.bbox
+                                                ? {
+                                                    left: w.bbox.x * (zoomLevel / 100),
+                                                    top: w.bbox.y * (zoomLevel / 100),
+                                                    width: w.bbox.width * (zoomLevel / 100),
+                                                    height: w.bbox.height * (zoomLevel / 100),
+                                                  }
+                                                : {
+                                                    left: '5%',
+                                                    top: `${5 + (idx % 8) * 10}%`,
+                                                    width: '90%',
+                                                    height: '8%',
+                                                  }
+                                            }
+                                            title={w.text}
+                                          />
+                                        ))}
+                                      </div>
+                                    ) : null;
+                                  })()}
+                                {canvas2Urls[pageNum] ? (
+                                  <img
+                                    src={canvas2Urls[pageNum]}
+                                    alt={`Doc B Page ${pageNum}`}
+                                    className="w-full h-auto rounded shadow-sm border border-gray-700 bg-white"
+                                  />
+                                ) : pageNum <= totalPages2 ? (
+                                  <div className="w-full h-48 bg-zinc-800 rounded flex items-center justify-center text-zinc-500 text-xs font-mono">
+                                    {isEs ? 'Cargando...' : 'Loading...'}
+                                  </div>
+                                ) : null}
+                                <span className="text-[9px] text-zinc-600 mt-1 font-mono">
+                                  Pág. {pageNum}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : viewMode === 'doc2' || (!file1 && file2) ? (
+                    /* VISTA INDIVIDUAL DOC B */
+                    <div className="bg-[#09090b] border border-white/10 rounded-xl overflow-hidden flex flex-col h-[52vh] shadow-inner">
+                      <div className="bg-zinc-900 border-b border-white/10 px-3 py-1.5 flex items-center gap-2 flex-shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="text-xs font-bold text-emerald-400 font-mono uppercase">
+                          {isEs ? 'Doc B (Modificado)' : 'Doc B (Modified)'}
+                        </span>
+                        <span className="text-[10px] text-zinc-400 ml-auto font-mono">
+                          {totalPages2} {isEs ? 'páginas' : 'pages'}
+                        </span>
+                      </div>
+                      <div className="flex-1 bg-[#121215] overflow-y-auto p-4 flex flex-col items-center gap-4 custom-scrollbar">
+                        {Array.from({ length: totalPages2 || 1 }, (_, i) => i + 1).map(
+                          (pageNum) => (
+                            <div
+                              key={pageNum}
+                              className="w-full max-w-md relative flex flex-col items-center"
+                              data-observe="doc2"
+                              data-page={pageNum}
+                            >
+                              {canvas2Urls[pageNum] ? (
+                                <img
+                                  src={canvas2Urls[pageNum]}
+                                  alt={`Doc B Page ${pageNum}`}
+                                  className="w-full h-auto rounded shadow-sm border border-gray-700 bg-white"
+                                />
+                              ) : (
+                                <div className="w-full h-64 bg-zinc-800 rounded flex items-center justify-center text-zinc-500 text-xs font-mono">
+                                  {isEs ? 'Cargando...' : 'Loading...'}
+                                </div>
+                              )}
+                              <span className="text-[9px] text-zinc-600 mt-1 font-mono">
+                                Pág. {pageNum}
+                              </span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* VISTA INDIVIDUAL DOC A */
+                    <div className="bg-[#09090b] border border-white/10 rounded-xl overflow-hidden flex flex-col h-[52vh] shadow-inner">
+                      <div className="bg-zinc-900 border-b border-white/10 px-3 py-1.5 flex items-center gap-2 flex-shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-red-400" />
+                        <span className="text-xs font-bold text-red-400 font-mono uppercase">
+                          {isEs ? 'Doc A (Original)' : 'Doc A (Original)'}
+                        </span>
+                        <span className="text-[10px] text-zinc-400 ml-auto font-mono">
+                          {totalPages1} {isEs ? 'páginas' : 'pages'}
+                        </span>
+                      </div>
+                      <div className="flex-1 bg-[#121215] overflow-y-auto p-4 flex flex-col items-center gap-4 custom-scrollbar">
+                        {Array.from({ length: totalPages1 || 1 }, (_, i) => i + 1).map(
+                          (pageNum) => (
+                            <div
+                              key={pageNum}
+                              className="w-full max-w-md relative flex flex-col items-center"
+                              data-observe="doc1"
+                              data-page={pageNum}
+                            >
+                              {canvas1Urls[pageNum] ? (
+                                <img
+                                  src={canvas1Urls[pageNum]}
+                                  alt={`Doc A Page ${pageNum}`}
+                                  className="w-full h-auto rounded shadow-sm border border-gray-700 bg-white"
+                                />
+                              ) : (
+                                <div className="w-full h-64 bg-zinc-800 rounded flex items-center justify-center text-zinc-500 text-xs font-mono">
+                                  {isEs ? 'Cargando...' : 'Loading...'}
+                                </div>
+                              )}
+                              <span className="text-[9px] text-zinc-600 mt-1 font-mono">
+                                Pág. {pageNum}
+                              </span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer del visor */}
+                <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                  <div className="flex items-center gap-3">
+                    <span className="truncate max-w-[160px] sm:max-w-[200px]">
+                      A: {file1 ? file1.name : isEs ? 'Pendiente' : 'Pending'}
+                    </span>
+                    <span>•</span>
+                    <span className="truncate max-w-[160px] sm:max-w-[200px]">
+                      B: {file2 ? file2.name : isEs ? 'Pendiente' : 'Pending'}
+                    </span>
+                  </div>
+                  {compareResult && (
+                    <span className="text-white font-bold bg-zinc-900 border border-zinc-700 px-2 py-0.5 rounded">
+                      {compareResult.globalSimilarityPercent}% {isEs ? 'similitud' : 'similarity'}
                     </span>
                   )}
-                  <span className="text-zinc-500 text-[11px] ml-auto flex-shrink-0">
-                    {isEs ? 'Pág.' : 'Pg.'} {activeWord?.page || '1'}
-                  </span>
                 </div>
-              )}
-              {compareResult && (
-                <span className="text-xs text-zinc-400 font-mono">{compareResult.summary}</span>
-              )}
+              </div>
 
-              {/* SIDE-BY-SIDE PANELS */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col h-[70vh] shadow-2xl">
-                  <div className="bg-zinc-900 border-b border-white/10 px-3 py-2 flex items-center gap-2 flex-shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-red-400" />
-                    <span className="text-xs font-bold text-red-400 font-mono uppercase">
-                      {isEs ? 'Original' : 'Original'}
-                    </span>
-                    <span className="text-[10px] text-zinc-500 ml-auto">{totalPages1}p</span>
-                  </div>
-                  <div
-                    ref={panel1Ref}
-                    onScroll={() => handlePanelScroll(1)}
-                    className="flex-1 bg-[#121215] overflow-y-auto p-3 flex flex-col items-center gap-3"
-                  >
-                    {Array.from({ length: maxPages }, (_, i) => i + 1)
-                      .filter(
-                        (p) =>
-                          !showOnlyChanges ||
-                          (compareResult?.pageDiffs.find((pd) => pd.page === p)?.removedCount ||
-                            0) +
-                            (compareResult?.pageDiffs.find((pd) => pd.page === p)?.addedCount ||
-                              0) >
-                            0,
-                      )
-                      .map((pageNum) => (
-                        <div
-                          key={pageNum}
-                          id={`compare-page-${pageNum}`}
-                          className="w-full relative flex flex-col items-center"
-                          data-observe="doc1"
-                          data-page={pageNum}
-                        >
-                          {compareResult &&
-                            pageNum <= totalPages1 &&
-                            (() => {
-                              const wds =
-                                compareResult.pageDiffs
-                                  .find((pd) => pd.page === pageNum)
-                                  ?.words.filter((w) => w.type === 'removed') || [];
-                              return wds.length > 0 ? (
-                                <div className="absolute inset-0 z-10 pointer-events-none">
-                                  {wds.map((w, idx) => (
-                                    <div
-                                      key={idx}
-                                      className={`absolute bg-red-500/40 border border-red-400/60 rounded-sm transition-all ${activeDiffIdx >= 0 && allDiffWords[activeDiffIdx] === w ? 'ring-2 ring-red-400 bg-red-500/70 scale-105 z-20' : ''}`}
-                                      style={
-                                        w.bbox
-                                          ? {
-                                              left: w.bbox.x * (zoomLevel / 100),
-                                              top: w.bbox.y * (zoomLevel / 100),
-                                              width: w.bbox.width * (zoomLevel / 100),
-                                              height: w.bbox.height * (zoomLevel / 100),
-                                            }
-                                          : {
-                                              left: '5%',
-                                              top: `${5 + (idx % 8) * 10}%`,
-                                              width: '90%',
-                                              height: '8%',
-                                            }
-                                      }
-                                      title={w.text}
-                                    />
-                                  ))}
-                                </div>
-                              ) : null;
-                            })()}
-                          {canvas1Urls[pageNum] ? (
-                            <img
-                              src={canvas1Urls[pageNum]}
-                              className="w-full h-auto rounded shadow-sm border border-gray-700 bg-white"
-                            />
-                          ) : pageNum <= totalPages1 ? (
-                            <div className="w-full h-64 bg-zinc-800 rounded flex items-center justify-center text-zinc-500 text-xs">
-                              Loading...
+              {/* LADO DERECHO: 3 CAJAS INDEPENDIENTES (AISLAMIENTO ESTRICTO) (6/12) */}
+              <div className="lg:col-span-6 flex flex-col justify-between gap-3 h-full">
+                {slots.map((slot, sIdx) => {
+                  const isLoaded = slot.file !== null;
+                  const isActive = isLoaded && sIdx === activeSlotIndex;
+                  const slotLabel =
+                    sIdx === 0
+                      ? isEs
+                        ? 'Doc A (Original)'
+                        : 'Doc A (Original)'
+                      : sIdx === 1
+                        ? isEs
+                          ? 'Doc B (Modificado)'
+                          : 'Doc B (Modified)'
+                        : isEs
+                          ? 'Doc C (Adicional)'
+                          : 'Doc C (Additional)';
+
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => {
+                        if (isLoaded) {
+                          setActiveSlotIndex(sIdx);
+                          if (sIdx === 0) setViewMode('doc1');
+                          else if (sIdx === 1) setViewMode('doc2');
+                        } else {
+                          getSlotInputRef(sIdx).current?.click();
+                        }
+                      }}
+                      className={`flex-1 rounded-2xl border-2 transition-all p-3.5 flex items-center justify-between cursor-pointer min-h-[95px] relative group shadow-sm ${
+                        isActive
+                          ? 'bg-zinc-800/80 border-white shadow-white/10'
+                          : isLoaded
+                            ? 'bg-[#121217] border-zinc-700/80 hover:border-zinc-500'
+                            : 'bg-[#0e0e12] border-dashed border-zinc-800 hover:border-zinc-600 hover:bg-[#121218]'
+                      }`}
+                    >
+                      <input
+                        ref={getSlotInputRef(sIdx)}
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        className="hidden"
+                        onChange={(e) => handleSlotFileChange(sIdx, e)}
+                      />
+
+                      {isLoaded ? (
+                        <div className="flex items-center justify-between w-full gap-3 font-mono">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`p-2.5 rounded-xl border flex-shrink-0 ${
+                                isActive
+                                  ? 'bg-white/20 border-white text-white'
+                                  : 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                              }`}
+                            >
+                              <FileText className="w-5 h-5 text-white" />
                             </div>
-                          ) : null}
-                          <span className="text-[9px] text-zinc-600 mt-1 font-mono">
-                            Pg {pageNum}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase">
+                                  {isEs ? `Caja ${sIdx + 1}` : `Box ${sIdx + 1}`} • {slotLabel}
+                                </span>
+                                {isActive && (
+                                  <span className="text-[9px] px-1.5 py-0.2 bg-white/20 text-white rounded border border-white/40 font-bold">
+                                    {isEs ? 'Visualizando' : 'Viewing'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px] font-sans">
+                                {slot.file!.name}
+                              </p>
+                              <span className="text-[10px] text-zinc-400">
+                                {fmtSize(slot.file!.size)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleRemoveSlot(sIdx, e)}
+                              className="p-1.5 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+                              title={isEs ? 'Eliminar de esta caja' : 'Remove from this box'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between w-full font-mono">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 group-hover:text-zinc-300 group-hover:border-zinc-700 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-zinc-400 group-hover:text-zinc-200 transition-colors font-sans">
+                                {isEs
+                                  ? `+ Cargar PDF ${sIdx + 1} (${slotLabel})`
+                                  : `+ Upload PDF ${sIdx + 1} (${slotLabel})`}
+                              </p>
+                              <span className="text-[10px] text-zinc-600 group-hover:text-zinc-500">
+                                .pdf
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-zinc-600 bg-zinc-900/60 px-2 py-1 rounded border border-zinc-800/80">
+                            {isEs ? 'Disponible' : 'Available'}
                           </span>
                         </div>
-                      ))}
-                  </div>
-                </div>
-                <div className="bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col h-[70vh] shadow-2xl">
-                  <div className="bg-zinc-900 border-b border-white/10 px-3 py-2 flex items-center gap-2 flex-shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span className="text-xs font-bold text-emerald-400 font-mono uppercase">
-                      {isEs ? 'Modificado' : 'Modified'}
-                    </span>
-                    <span className="text-[10px] text-zinc-500 ml-auto">{totalPages2}p</span>
-                  </div>
-                  <div
-                    ref={panel2Ref}
-                    onScroll={() => handlePanelScroll(2)}
-                    className="flex-1 bg-[#121215] overflow-y-auto p-3 flex flex-col items-center gap-3"
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Botón Eliminar Todos y Badges */}
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={handleRemoveAllFiles}
+                    className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-red-400 font-mono transition-colors cursor-pointer px-2 py-1 rounded hover:bg-red-500/10"
                   >
-                    {Array.from({ length: maxPages }, (_, i) => i + 1)
-                      .filter(
-                        (p) =>
-                          !showOnlyChanges ||
-                          (compareResult?.pageDiffs.find((pd) => pd.page === p)?.removedCount ||
-                            0) +
-                            (compareResult?.pageDiffs.find((pd) => pd.page === p)?.addedCount ||
-                              0) >
-                            0,
-                      )
-                      .map((pageNum) => (
-                        <div
-                          key={pageNum}
-                          className="w-full relative flex flex-col items-center"
-                          data-observe="doc2"
-                          data-page={pageNum}
-                        >
-                          {compareResult &&
-                            pageNum <= totalPages2 &&
-                            (() => {
-                              const wds =
-                                compareResult.pageDiffs
-                                  .find((pd) => pd.page === pageNum)
-                                  ?.words.filter((w) => w.type === 'added') || [];
-                              return wds.length > 0 ? (
-                                <div className="absolute inset-0 z-10 pointer-events-none">
-                                  {wds.map((w, idx) => (
-                                    <div
-                                      key={idx}
-                                      className={`absolute bg-emerald-500/40 border border-emerald-400/60 rounded-sm transition-all ${activeDiffIdx >= 0 && allDiffWords[activeDiffIdx] === w ? 'ring-2 ring-emerald-400 bg-emerald-500/70 scale-105 z-20' : ''}`}
-                                      style={
-                                        w.bbox
-                                          ? {
-                                              left: w.bbox.x * (zoomLevel / 100),
-                                              top: w.bbox.y * (zoomLevel / 100),
-                                              width: w.bbox.width * (zoomLevel / 100),
-                                              height: w.bbox.height * (zoomLevel / 100),
-                                            }
-                                          : {
-                                              left: '5%',
-                                              top: `${5 + (idx % 8) * 10}%`,
-                                              width: '90%',
-                                              height: '8%',
-                                            }
-                                      }
-                                      title={w.text}
-                                    />
-                                  ))}
-                                </div>
-                              ) : null;
-                            })()}
-                          {canvas2Urls[pageNum] ? (
-                            <img
-                              src={canvas2Urls[pageNum]}
-                              className="w-full h-auto rounded shadow-sm border border-gray-700 bg-white"
-                            />
-                          ) : pageNum <= totalPages2 ? (
-                            <div className="w-full h-64 bg-zinc-800 rounded flex items-center justify-center text-zinc-500 text-xs">
-                              Loading...
-                            </div>
-                          ) : null}
-                          <span className="text-[9px] text-zinc-600 mt-1 font-mono">
-                            Pg {pageNum}
-                          </span>
-                        </div>
-                      ))}
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isEs ? 'Eliminar todos los archivos' : 'Remove all files'}</span>
+                  </button>
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
+                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>{isEs ? '100% Local y Seguro' : '100% Local & Secure'}</span>
                   </div>
                 </div>
               </div>
             </div>
-            {/* SIDEBAR */}
-            <div className="lg:col-span-4 flex flex-col">
-              <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 flex flex-col shadow-2xl min-h-[400px] relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-                <div className="flex items-center justify-between mb-4 border-b border-zinc-800 pb-3">
-                  <div>
-                    <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase block mb-1">
-                      002 / REPORT
-                    </span>
-                    <h2 className="text-xl font-bold text-white uppercase">
-                      {isEs ? 'RESULTADOS' : 'RESULTS'}
-                    </h2>
-                  </div>
-                  <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
-                    <GitCompare className="w-5 h-5 text-white" />
-                  </div>
-                </div>
+          </div>
 
-                {compareResult ? (
-                  <>
-                    <div className="mb-3 flex flex-col gap-1.5">
-                      <div className="flex items-center gap-1.5 text-[9px] font-mono">
-                        <Hash className="w-3 h-3 text-zinc-400" />
-                        <span className="text-zinc-500">A:</span>
-                        <span className="text-zinc-300 font-bold">
-                          {compareResult.checksum1.slice(0, 12)}...
-                        </span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(compareResult.checksum1);
-                            toast.success('Copied');
-                          }}
-                          className="ml-auto text-zinc-500 hover:text-white cursor-pointer"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[9px] font-mono">
-                        <Hash className="w-3 h-3 text-zinc-400" />
-                        <span className="text-zinc-500">B:</span>
-                        <span className="text-zinc-300 font-bold">
-                          {compareResult.checksum2.slice(0, 12)}...
-                        </span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(compareResult.checksum2);
-                            toast.success('Copied');
-                          }}
-                          className="ml-auto text-zinc-500 hover:text-white cursor-pointer"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mb-4 text-xs font-mono">
-                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
-                        <span className="font-bold text-lg block text-white">
-                          {compareResult.globalSimilarityPercent}%
-                        </span>
-                        <span className="text-zinc-400 text-[10px]">
-                          {isEs ? 'Similitud' : 'Similarity'}
-                        </span>
-                      </div>
-                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
-                        <span className="text-white font-bold text-lg block">
-                          {compareResult.totalRemovals + compareResult.totalAdditions}
-                        </span>
-                        <span className="text-zinc-400 text-[10px]">
-                          {isEs ? 'Cambios' : 'Changes'}
-                        </span>
-                      </div>
-                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
-                        <span className="text-white font-bold text-lg block">
-                          {
-                            compareResult.pageDiffs.filter((p) => p.removedCount + p.addedCount > 0)
-                              .length
-                          }
-                        </span>
-                        <span className="text-zinc-400 text-[10px]">
-                          {isEs ? 'Pags Modif' : 'Mod Pages'}
-                        </span>
-                      </div>
-                      <div className="rounded-2xl p-3 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
-                        <span className="text-white font-bold text-lg block">
-                          {compareResult.pagesWithVisualChanges || 0}
-                        </span>
-                        <span className="text-zinc-400 text-[10px]">
-                          {isEs ? 'Cambios Visuales' : 'Visual Changes'}
-                        </span>
-                      </div>
-                    </div>
-                    {compareResult.structuralDiffs.length > 0 && (
-                      <div className="mb-4">
-                        <button
-                          onClick={() => setShowStructuralDiffs(!showStructuralDiffs)}
-                          className="w-full flex items-center justify-between bg-[#121217] border border-zinc-700/80 rounded-2xl px-3.5 py-2.5 text-xs font-mono text-zinc-300 hover:text-white hover:border-zinc-500 transition-all cursor-pointer shadow-inner"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5 text-zinc-400" />
-                            {isEs ? 'Cambios Estructurales' : 'Structural Changes'} (
-                            {compareResult.structuralDiffs.length})
-                          </span>
-                          <ChevronDown
-                            className={`w-3.5 h-3.5 transition-transform ${showStructuralDiffs ? 'rotate-180' : ''}`}
-                          />
-                        </button>
-                        <AnimatePresence>
-                          {showStructuralDiffs && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="mt-2 space-y-1 max-h-[120px] overflow-y-auto">
-                                {compareResult.structuralDiffs.map((sd, i) => (
-                                  <div
-                                    key={i}
-                                    className="text-[9px] font-mono text-zinc-300 bg-zinc-950/60 border border-zinc-800 rounded-xl px-2.5 py-1.5"
-                                  >
-                                    <span className="font-bold text-white">[{sd.category}]</span>{' '}
-                                    {sd.description}
-                                  </div>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    )}
+          {/* SECCIÓN 2: CONFIGURACIÓN Y ACCIÓN (PANEL DE CONTROL INFERIOR A ANCHO COMPLETO 100%) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-                    {/* OPCIONES AVANZADAS DE COMPARACIÓN (SIEMPRE VISIBLES DEBAJO DE CAMBIOS ESTRUCTURALES) */}
-                    <div className="mb-4 bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 font-sans space-y-3.5 shadow-inner">
-                      <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-zinc-800 pb-2 uppercase">
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-white" />
-                        <span>{isEs ? 'OPCIONES AVANZADAS' : 'ADVANCED OPTIONS'}</span>
-                      </div>
-
-                      {/* Sensibilidad */}
-                      <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase">
-                          {isEs ? 'Sensibilidad de Análisis' : 'Analysis Sensitivity'}
-                        </label>
-                        <div className="grid grid-cols-3 gap-1.5 font-mono text-[10px]">
-                          {(['strict', 'normal', 'loose'] as const).map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => setCompareSensitivity(s)}
-                              className={`py-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
-                                compareSensitivity === s
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                              }`}
-                            >
-                              {s === 'strict'
-                                ? isEs
-                                  ? 'Estricta'
-                                  : 'Strict'
-                                : s === 'normal'
-                                  ? isEs
-                                    ? 'Normal'
-                                    : 'Normal'
-                                  : isEs
-                                    ? 'Flexible'
-                                    : 'Loose'}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Toggles de configuración */}
-                      <div className="space-y-2 text-xs font-sans">
-                        <div
-                          onClick={() => setEnableVisualDiff((v) => !v)}
-                          className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                        >
-                          <div>
-                            <p className="text-[11px] font-bold text-white">
-                              {isEs ? 'Detección visual de imágenes' : 'Visual pixel diff'}
-                            </p>
-                            <p className="text-[9px] text-zinc-500 font-mono">
-                              {isEs
-                                ? 'Compara capas gráficas y fotos'
-                                : 'Compare graphics & photo layers'}
-                            </p>
-                          </div>
-                          <div
-                            className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableVisualDiff ? 'bg-white' : 'bg-zinc-700'}`}
-                          >
-                            <div
-                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableVisualDiff ? 'left-4' : 'left-0.5'}`}
-                            />
-                          </div>
-                        </div>
-
-                        <div
-                          onClick={() => setIgnoreCase((v) => !v)}
-                          className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                        >
-                          <div>
-                            <p className="text-[11px] font-bold text-white">
-                              {isEs ? 'Ignorar mayúsculas / minúsculas' : 'Ignore case differences'}
-                            </p>
-                            <p className="text-[9px] text-zinc-500 font-mono">
-                              {isEs
-                                ? 'No resalta diferencias de capitalización'
-                                : 'Disregard letter casing'}
-                            </p>
-                          </div>
-                          <div
-                            className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${ignoreCase ? 'bg-white' : 'bg-zinc-700'}`}
-                          >
-                            <div
-                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${ignoreCase ? 'left-4' : 'left-0.5'}`}
-                            />
-                          </div>
-                        </div>
-
-                        <div
-                          onClick={() => setIgnorePunctuation((v) => !v)}
-                          className="flex items-center justify-between p-2 bg-zinc-900 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition"
-                        >
-                          <div>
-                            <p className="text-[11px] font-bold text-white">
-                              {isEs ? 'Ignorar signos de puntuación' : 'Ignore punctuation'}
-                            </p>
-                            <p className="text-[9px] text-zinc-500 font-mono">
-                              {isEs
-                                ? 'Omite comas, puntos y guiones'
-                                : 'Skip commas, periods & hyphens'}
-                            </p>
-                          </div>
-                          <div
-                            className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${ignorePunctuation ? 'bg-white' : 'bg-zinc-700'}`}
-                          >
-                            <div
-                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${ignorePunctuation ? 'left-4' : 'left-0.5'}`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="relative mb-4 font-mono">
-                      <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        id="cmp-search"
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={isEs ? 'Filtrar...' : 'Filter...'}
-                        className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
-                      />
-                    </div>
-                    <div className="flex-1 overflow-y-auto max-h-[40vh] space-y-2 pr-1">
-                      <span className="text-[10px] font-bold text-zinc-400 block font-mono tracking-widest uppercase mb-2">
-                        Changes ({filtDiffs.filter((p) => p.removedCount + p.addedCount > 0).length}
-                        )
-                      </span>
-                      {filtDiffs
-                        .filter((p) => p.removedCount + p.addedCount > 0)
-                        .slice(0, 30)
-                        .map((pd) => (
-                          <div
-                            key={pd.page}
-                            className="bg-zinc-950/60 border border-white/8 rounded-lg p-2.5 text-[10px]"
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-white font-bold font-mono">Page {pd.page}</span>
-                              <div className="flex gap-1.5">
-                                {pd.removedCount > 0 && (
-                                  <span className="text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
-                                    -{pd.removedCount}
-                                  </span>
-                                )}
-                                {pd.addedCount > 0 && (
-                                  <span className="text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                    +{pd.addedCount}
-                                  </span>
-                                )}
-                                {pd.hasVisualChanges && (
-                                  <span className="text-amber-400 text-[8px]">IMG</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="space-y-0.5 max-h-[80px] overflow-y-auto">
-                              {(pd.blocks?.length
-                                ? pd.blocks
-                                : pd.words.filter((w) => w.type !== 'equal')
-                              )
-                                .slice(0, 3)
-                                .map((b: any, bi: number) => (
-                                  <div key={bi} className="flex items-start gap-1">
-                                    <span
-                                      className={`flex-shrink-0 mt-0.5 font-bold ${(b.type || 'removed') === 'removed' ? 'text-red-400' : 'text-emerald-400'}`}
-                                    >
-                                      {(b.type || 'removed') === 'removed' ? '-' : '+'}
-                                    </span>
-                                    <span className="text-zinc-300 truncate">
-                                      {(b.text || b).toString().slice(0, 40)}
-                                    </span>
-                                  </div>
-                                ))}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                    <div className="pt-4 border-t border-white/10 mt-4 flex flex-col gap-2">
-                      <button
-                        onClick={downloadPdfReport}
-                        disabled={isGeneratingPdfReport}
-                        className="w-full bg-white hover:bg-zinc-200 text-black font-extrabold text-sm py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-50"
-                      >
-                        {isGeneratingPdfReport ? (
-                          <>
-                            <span className="w-3.5 h-3.5 rounded-full border-2 border-black border-t-transparent animate-spin" />
-                            <span>{isEs ? 'Generando PDF...' : 'Generating PDF...'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <FileDown className="w-4 h-4 text-black" />
-                            <span>{isEs ? 'Descargar PDF' : 'Download PDF'}</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={downloadReport}
-                        className="w-full bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 text-zinc-300 hover:text-white font-bold text-xs py-2.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer"
-                      >
-                        <span>{isEs ? 'Descargar TXT' : 'Download TXT'}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono">Ctrl+D</span>
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-center">
-                    <div className="text-zinc-500 font-mono text-xs space-y-2">
-                      <GitCompare className="w-8 h-8 mx-auto text-zinc-600" />
-                      <p>{isEs ? 'Click en Comparar para iniciar.' : 'Click Compare to start.'}</p>
-                      <p className="text-[10px] text-zinc-600">Ctrl+Enter</p>
-                    </div>
-                  </div>
-                )}
+            {/* Cabecera Sección 2 */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-800">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-0.5">
+                  002 / CONFIGURACIÓN Y ACCIÓN
+                </span>
+                <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase flex items-center gap-2">
+                  <GitCompare className="w-5 h-5 text-white" />
+                  <span>
+                    {isEs ? 'PANEL DE CONTROL DE COMPARACIÓN' : 'COMPARISON CONTROL PANEL'}
+                  </span>
+                </h2>
               </div>
-              <div className="pt-2 flex items-center justify-between font-mono text-xs text-zinc-400 mt-2">
+              <div className="flex items-center gap-2 font-mono text-xs text-zinc-400">
                 <span className="flex items-center gap-1.5 text-[10px]">
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${isComparing ? 'bg-yellow-400 animate-pulse' : 'bg-emerald-400'}`}
                   />
                   {isComparing
                     ? isEs
-                      ? 'Procesando...'
-                      : 'Processing...'
+                      ? 'Comparando...'
+                      : 'Comparing...'
                     : isEs
-                      ? 'Activo'
-                      : 'Active'}
+                      ? 'Motor Listo'
+                      : 'Engine Ready'}
                 </span>
-                <span className="flex items-center gap-1 text-white">
+                <span className="flex items-center gap-1 text-white ml-3">
                   <Database className="w-3 h-3" />
                   100% Local
                 </span>
               </div>
             </div>
+
+            {/* RESULTADOS SI EXISTE COMPARACIÓN */}
+            {compareResult && (
+              <div className="mb-6 space-y-4">
+                {/* Hashes SHA-256 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 font-mono text-xs shadow-inner">
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-3.5 h-3.5 text-zinc-400" />
+                    <span className="text-zinc-500">Doc A:</span>
+                    <span className="text-zinc-200 font-bold truncate">
+                      {compareResult.checksum1.slice(0, 16)}...
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(compareResult.checksum1);
+                        toast.success('SHA-256 A copiado');
+                      }}
+                      className="ml-auto text-zinc-500 hover:text-white cursor-pointer"
+                      title="Copiar Hash A"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-3.5 h-3.5 text-zinc-400" />
+                    <span className="text-zinc-500">Doc B:</span>
+                    <span className="text-zinc-200 font-bold truncate">
+                      {compareResult.checksum2.slice(0, 16)}...
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(compareResult.checksum2);
+                        toast.success('SHA-256 B copiado');
+                      }}
+                      className="ml-auto text-zinc-500 hover:text-white cursor-pointer"
+                      title="Copiar Hash B"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Métricas en Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+                  <div className="rounded-2xl p-3.5 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                    <span className="font-bold text-2xl block text-white">
+                      {compareResult.globalSimilarityPercent}%
+                    </span>
+                    <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
+                      {isEs ? 'Similitud Global' : 'Global Similarity'}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl p-3.5 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                    <span className="text-white font-bold text-2xl block">
+                      {compareResult.totalRemovals + compareResult.totalAdditions}
+                    </span>
+                    <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
+                      {isEs ? 'Cambios Totales' : 'Total Changes'}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl p-3.5 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                    <span className="text-white font-bold text-2xl block">
+                      {
+                        compareResult.pageDiffs.filter((p) => p.removedCount + p.addedCount > 0)
+                          .length
+                      }
+                    </span>
+                    <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
+                      {isEs ? 'Páginas Modificadas' : 'Modified Pages'}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl p-3.5 text-center border border-zinc-700/80 bg-[#121217] shadow-inner">
+                    <span className="text-white font-bold text-2xl block">
+                      {compareResult.pagesWithVisualChanges || 0}
+                    </span>
+                    <span className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider">
+                      {isEs ? 'Cambios Visuales' : 'Visual Changes'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Barra de Navegación entre diferencias */}
+                {allDiffWords.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-[#121217] border border-zinc-700/80 rounded-2xl px-4 py-3 font-mono text-xs shadow-inner">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={gotoPrevDiff}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 hover:text-white transition-all cursor-pointer"
+                          title="Anterior (Ctrl+Left)"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                          <span className="text-[11px] font-bold">
+                            {isEs ? 'Anterior' : 'Previous'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={gotoNextDiff}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300 hover:text-white transition-all cursor-pointer"
+                          title="Siguiente (Ctrl+Right)"
+                        >
+                          <span className="text-[11px] font-bold">
+                            {isEs ? 'Siguiente' : 'Next'}
+                          </span>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <span className="text-white font-bold bg-zinc-950 px-3 py-1.5 rounded-xl border border-white/10">
+                        {activeDiffIdx >= 0
+                          ? `${isEs ? 'Diferencia' : 'Diff'} ${activeDiffIdx + 1} / ${allDiffWords.length}`
+                          : `${allDiffWords.length} ${isEs ? 'diferencias' : 'differences'}`}
+                      </span>
+                    </div>
+
+                    {activeWord && (
+                      <span
+                        className={`px-3 py-1.5 rounded-xl font-bold truncate max-w-[280px] sm:max-w-[400px] ${
+                          activeWord.type === 'removed'
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}
+                      >
+                        {activeWord.type === 'removed' ? '- ' : '+ '}
+                        {activeWord.text}
+                      </span>
+                    )}
+
+                    <span className="text-zinc-500 text-[11px]">
+                      {isEs ? 'Página' : 'Page'} {activeWord?.page || '1'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Desplegable de Cambios Estructurales */}
+                {compareResult.structuralDiffs.length > 0 && (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowStructuralDiffs(!showStructuralDiffs)}
+                      className="w-full flex items-center justify-between bg-[#121217] border border-zinc-700/80 rounded-2xl px-4 py-3 text-xs font-mono text-zinc-300 hover:text-white hover:border-zinc-500 transition-all cursor-pointer shadow-inner"
+                    >
+                      <span className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-zinc-400" />
+                        <span className="font-bold">
+                          {isEs
+                            ? 'Cambios Estructurales Detectados'
+                            : 'Structural Changes Detected'}
+                        </span>{' '}
+                        ({compareResult.structuralDiffs.length})
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${showStructuralDiffs ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                    <AnimatePresence>
+                      {showStructuralDiffs && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-2 space-y-1.5 max-h-[140px] overflow-y-auto custom-scrollbar p-1">
+                            {compareResult.structuralDiffs.map((sd, i) => (
+                              <div
+                                key={i}
+                                className="text-[10px] font-mono text-zinc-300 bg-zinc-950/60 border border-zinc-800 rounded-xl px-3 py-2"
+                              >
+                                <span className="font-bold text-white">[{sd.category}]</span>{' '}
+                                {sd.description}
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* GRID DE CONFIGURACIÓN Y PARÁMETROS AVANZADOS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* OPCIONES AVANZADAS DE COMPARACIÓN */}
+              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-5 font-sans space-y-4 shadow-inner">
+                <div className="flex items-center gap-2 text-xs font-bold text-white font-mono tracking-wider border-b border-zinc-800 pb-3 uppercase">
+                  <SlidersHorizontal className="w-4 h-4 text-white" />
+                  <span>{isEs ? 'OPCIONES AVANZADAS DE COMPARACIÓN' : 'ADVANCED OPTIONS'}</span>
+                </div>
+
+                {/* Sensibilidad */}
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase">
+                    {isEs ? 'Sensibilidad de Análisis' : 'Analysis Sensitivity'}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+                    {(['strict', 'normal', 'loose'] as const).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setCompareSensitivity(s)}
+                        className={`py-2 px-3 rounded-xl border font-bold transition-all cursor-pointer text-center ${
+                          compareSensitivity === s
+                            ? 'bg-white text-black border-white shadow-sm'
+                            : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:border-zinc-600'
+                        }`}
+                      >
+                        {s === 'strict'
+                          ? isEs
+                            ? 'Estricta'
+                            : 'Strict'
+                          : s === 'normal'
+                            ? isEs
+                              ? 'Normal'
+                              : 'Normal'
+                            : isEs
+                              ? 'Flexible'
+                              : 'Loose'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Toggles de configuración */}
+                <div className="space-y-2.5 text-xs font-sans">
+                  <div
+                    onClick={() => setEnableVisualDiff((v) => !v)}
+                    className="flex items-center justify-between p-3 bg-zinc-900/80 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition shadow-sm"
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {isEs ? 'Detección visual de imágenes' : 'Visual pixel diff'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                        {isEs
+                          ? 'Compara capas gráficas y fotos'
+                          : 'Compare graphics & photo layers'}
+                      </p>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${enableVisualDiff ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${enableVisualDiff ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setIgnoreCase((v) => !v)}
+                    className="flex items-center justify-between p-3 bg-zinc-900/80 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition shadow-sm"
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {isEs ? 'Ignorar mayúsculas / minúsculas' : 'Ignore case differences'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                        {isEs
+                          ? 'No resalta diferencias de capitalización'
+                          : 'Disregard letter casing'}
+                      </p>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${ignoreCase ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${ignoreCase ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setIgnorePunctuation((v) => !v)}
+                    className="flex items-center justify-between p-3 bg-zinc-900/80 rounded-xl border border-white/8 cursor-pointer hover:border-white/20 transition shadow-sm"
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {isEs ? 'Ignorar signos de puntuación' : 'Ignore punctuation'}
+                      </p>
+                      <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                        {isEs ? 'Omite comas, puntos y guiones' : 'Skip commas, periods & hyphens'}
+                      </p>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full relative transition-all cursor-pointer ${ignorePunctuation ? 'bg-white' : 'bg-zinc-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-black transition-all ${ignorePunctuation ? 'left-4' : 'left-0.5'}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* BÚSQUEDA Y LISTA DE CAMBIOS DETALLADOS */}
+              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-5 font-sans space-y-4 shadow-inner flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-white font-mono tracking-wider uppercase">
+                      <Search className="w-4 h-4 text-white" />
+                      <span>{isEs ? 'EXPLORADOR DE CAMBIOS' : 'CHANGES EXPLORER'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowOnlyChanges(!showOnlyChanges)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono border transition-all cursor-pointer ${
+                        showOnlyChanges
+                          ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 font-bold'
+                          : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <Filter className="w-3 h-3" />
+                      <span>{isEs ? 'Solo cambios' : 'Changes only'}</span>
+                    </button>
+                  </div>
+
+                  {/* Input de Búsqueda */}
+                  <div className="relative mb-3 font-mono">
+                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      id="cmp-search"
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={isEs ? 'Buscar texto o cambio...' : 'Search text or diff...'}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
+                    />
+                  </div>
+
+                  {/* Lista de páginas con cambios */}
+                  <div className="overflow-y-auto max-h-[190px] space-y-2 pr-1 custom-scrollbar">
+                    {compareResult ? (
+                      filtDiffs.filter((p) => p.removedCount + p.addedCount > 0).length > 0 ? (
+                        filtDiffs
+                          .filter((p) => p.removedCount + p.addedCount > 0)
+                          .slice(0, 30)
+                          .map((pd) => (
+                            <div
+                              key={pd.page}
+                              className="bg-zinc-950/60 border border-white/8 rounded-xl p-2.5 text-[10px] font-mono"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-white font-bold">
+                                  {isEs ? 'Página' : 'Page'} {pd.page}
+                                </span>
+                                <div className="flex gap-1.5">
+                                  {pd.removedCount > 0 && (
+                                    <span className="text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                                      -{pd.removedCount}
+                                    </span>
+                                  )}
+                                  {pd.addedCount > 0 && (
+                                    <span className="text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                      +{pd.addedCount}
+                                    </span>
+                                  )}
+                                  {pd.hasVisualChanges && (
+                                    <span className="text-amber-400 text-[8px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                      IMG
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="space-y-0.5 max-h-[70px] overflow-y-auto custom-scrollbar">
+                                {(pd.blocks?.length
+                                  ? pd.blocks
+                                  : pd.words.filter((w) => w.type !== 'equal')
+                                )
+                                  .slice(0, 3)
+                                  .map((b: any, bi: number) => (
+                                    <div key={bi} className="flex items-start gap-1">
+                                      <span
+                                        className={`flex-shrink-0 mt-0.5 font-bold ${(b.type || 'removed') === 'removed' ? 'text-red-400' : 'text-emerald-400'}`}
+                                      >
+                                        {(b.type || 'removed') === 'removed' ? '-' : '+'}
+                                      </span>
+                                      <span className="text-zinc-300 truncate">
+                                        {(b.text || b).toString().slice(0, 50)}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="text-center py-6 text-zinc-500 font-mono text-xs">
+                          {isEs ? 'Sin diferencias coincidentes' : 'No matching differences'}
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-6 text-zinc-500 font-mono text-xs space-y-1">
+                        <p>
+                          {isEs
+                            ? 'Inicia la comparación para ver los cambios página por página.'
+                            : 'Start comparison to view page by page changes.'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Atajos de teclado */}
+                <div className="pt-2 border-t border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowShortcuts(!showShortcuts)}
+                    className="flex items-center gap-1.5 text-zinc-400 hover:text-white text-[11px] font-mono transition-colors cursor-pointer"
+                  >
+                    <Keyboard className="w-3.5 h-3.5" />
+                    <span>{isEs ? 'Ver atajos de teclado' : 'View keyboard shortcuts'}</span>
+                  </button>
+                  <AnimatePresence>
+                    {showShortcuts && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden mt-2"
+                      >
+                        <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 font-mono text-[10px]">
+                          {[
+                            ['Ctrl+Enter', isEs ? 'Comparar' : 'Compare'],
+                            ['Esc', isEs ? 'Cancelar' : 'Cancel'],
+                            ['Ctrl+←/→', isEs ? 'Navegar diffs' : 'Navigate diffs'],
+                            ['Ctrl+S', isEs ? 'Sync scroll' : 'Sync scroll'],
+                            ['Ctrl+F', isEs ? 'Buscar' : 'Search'],
+                            ['Ctrl+D', isEs ? 'Descargar TXT' : 'Download TXT'],
+                          ].map(([k, d]) => (
+                            <div key={k} className="flex items-center gap-1.5">
+                              <kbd className="bg-zinc-800 border border-white/10 px-1.5 py-0.5 rounded text-white font-bold text-[9px]">
+                                {k}
+                              </kbd>
+                              <span className="text-zinc-400">{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
+
+            {/* BARRA DE PROGRESO */}
+            {isComparing && (
+              <div className="mb-6 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3 font-mono">
+                <div className="flex items-center justify-between text-xs text-white">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                    <span className="font-bold">
+                      {phaseLabels[progressPhase] ||
+                        progressMsg ||
+                        (isEs ? 'Comparando documentos...' : 'Comparing documents...')}
+                    </span>
+                  </div>
+                  <span className="font-bold">{progressPercent}%</span>
+                </div>
+                <div className="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden">
+                  <motion.div
+                    className="h-full bg-white rounded-full"
+                    animate={{ width: `${progressPercent}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={cancel}
+                    className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold py-1.5 px-4 rounded-full text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>{isEs ? 'Cancelar' : 'Cancel'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ZONA DE BOTONES DE ACCIÓN PRINCIPALES */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-zinc-800">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={executeCompare}
+                  disabled={!file1 || !file2 || isRendering || isComparing}
+                  className="w-full sm:w-auto bg-white text-black hover:bg-zinc-200 font-bold py-3 px-8 rounded-full text-sm transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-lg disabled:opacity-40"
+                >
+                  <GitCompare className="w-4 h-4" />
+                  <span>
+                    {compareResult
+                      ? isEs
+                        ? 'Re-comparar Documentos'
+                        : 'Re-compare Documents'
+                      : isEs
+                        ? 'Comparar Documentos'
+                        : 'Compare Documents'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="px-4 py-3 bg-zinc-900 border border-zinc-700 hover:border-zinc-500 text-zinc-300 hover:text-white rounded-full text-xs font-mono transition-all cursor-pointer flex items-center gap-1.5"
+                  title={isEs ? 'Reiniciar' : 'Reset'}
+                >
+                  <X className="w-4 h-4" />
+                  <span>{isEs ? 'Reiniciar' : 'Reset'}</span>
+                </button>
+              </div>
+
+              {/* Botones de Descarga cuando hay resultados */}
+              {compareResult && (
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={downloadReport}
+                    className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-white/30 text-zinc-200 hover:text-white font-bold text-xs py-3 px-5 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer font-mono"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    <span>{isEs ? 'Descargar TXT' : 'Download TXT'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={downloadPdfReport}
+                    disabled={isGeneratingPdfReport}
+                    className="w-full sm:w-auto bg-white hover:bg-zinc-100 text-black font-extrabold text-xs py-3 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-50 font-mono"
+                  >
+                    {isGeneratingPdfReport ? (
+                      <>
+                        <span className="w-3.5 h-3.5 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                        <span>{isEs ? 'Generando PDF...' : 'Generating PDF...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="w-4 h-4 text-black" />
+                        <span>{isEs ? 'Descargar Reporte PDF' : 'Download PDF Report'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE PREVIEW EN PANTALLA COMPLETA (ZOOM MODAL) */}
+      {zoomModalImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setZoomModalImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-zinc-950 border border-zinc-700 rounded-2xl p-2 overflow-auto shadow-2xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setZoomModalImage(null)}
+              className="absolute top-3 right-3 p-2 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-full border border-zinc-700 transition-all cursor-pointer z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={zoomModalImage}
+              alt="Zoom Preview"
+              className="max-h-[80vh] w-auto object-contain rounded-lg bg-white"
+            />
           </div>
         </div>
       )}

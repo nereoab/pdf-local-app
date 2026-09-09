@@ -1131,6 +1131,12 @@ export default function ExcelPdfConverter({
             let s = rawStr.trim();
             if (!s) return { isNum: false };
 
+            // Preservar códigos de catálogo/partida con ceros a la izquierda (ej. "0101010003", "0240020001")
+            // o identificadores numéricos de longitud fija que deben mantenerse como texto
+            if (/^0\d{4,}$/.test(s)) {
+              return { isNum: false };
+            }
+
             // Limpiar monedas habituales
             s = s
               .replace(/^S\/\.?\s*/i, '')
@@ -1146,6 +1152,12 @@ export default function ExcelPdfConverter({
             }
 
             const cleanCommas = s.replace(/,/g, '');
+
+            // Códigos de catálogo o series muy largas (12+ dígitos sin decimales)
+            if (/^\d{12,}$/.test(cleanCommas)) {
+              return { isNum: false };
+            }
+
             if (/^-?\d+(\.\d+)?$/.test(cleanCommas)) {
               const n = parseFloat(cleanCommas);
               if (!isNaN(n)) {
@@ -1211,7 +1223,6 @@ export default function ExcelPdfConverter({
               .sort((a, b) => b - a);
 
             const pageChunksByRow: LineChunk[][] = [];
-            const allAnchors: number[] = [];
 
             sortedYKeys.forEach((yKey) => {
               // Ordenar elementos en la línea de izquierda a derecha
@@ -1235,12 +1246,15 @@ export default function ExcelPdfConverter({
                   const gap = x0 - curr.x1;
                   const isNumCurr = parseAccountingCell(curr.text).isNum;
                   const isNumNext = parseAccountingCell(str).isNum;
+                  const isCurrCode = /^\d{5,}$/.test(curr.text.trim());
+                  const isNextLetter = /^[A-Za-zÁÉÍÓÚáéíóúñÑ]/.test(str);
 
-                  // Si la separación es pequeña y no mezcla texto con número separado, se concatena
+                  // Si la separación es pequeña y no mezcla un código de dígitos con texto ni número con texto separado, se concatena
                   if (
-                    gap < 14 &&
-                    !(isNumCurr && !isNumNext) &&
-                    !(!isNumCurr && isNumNext && gap > 7)
+                    gap < 12 &&
+                    !(isCurrCode && isNextLetter) &&
+                    !(isNumCurr && !isNumNext && gap > 5) &&
+                    !(!isNumCurr && isNumNext && gap > 6)
                   ) {
                     curr.text = curr.text + ' ' + str;
                     curr.x1 = Math.max(curr.x1, x1);
@@ -1267,34 +1281,59 @@ export default function ExcelPdfConverter({
 
               if (lineChunks.length > 0) {
                 pageChunksByRow.push(lineChunks);
-                // Si la fila tiene 2 o más fragmentos, aporta anclajes de columna a la grilla de la página
-                if (lineChunks.length >= 2) {
-                  for (const c of lineChunks) {
-                    // Si es número, el anclaje real es su borde derecho x1; si es texto, su borde izquierdo x0
-                    allAnchors.push(c.isNum ? c.x1 : c.x0);
-                  }
-                }
               }
             });
 
-            // 2. Agrupar anclajes globales en columnas unificadas para esta página
-            allAnchors.sort((a, b) => a - b);
-            const columnBins: { center: number; points: number[] }[] = [];
-            const binTol = 28;
+            // 2. Determinar la cuadrícula de columnas de la página con split points precisos
+            const tableMultiRows = pageChunksByRow.filter((r) => r.length >= 3);
+            let refRow: LineChunk[] | null = null;
+            const headerKeywords = [
+              'código',
+              'codigo',
+              'descripción',
+              'descripcion',
+              'unidad',
+              'cuadrilla',
+              'cantidad',
+              'precio',
+              'parcial',
+              'total',
+              'importe',
+              'detalle',
+              'concepto',
+              'item',
+            ];
 
-            for (const a of allAnchors) {
-              const existing = columnBins.find((bin) => Math.abs(bin.center - a) <= binTol);
-              if (existing) {
-                existing.points.push(a);
-                existing.center =
-                  existing.points.reduce((s, p) => s + p, 0) / existing.points.length;
-              } else {
-                columnBins.push({ center: a, points: [a] });
+            if (tableMultiRows.length > 0) {
+              // Buscar fila con encabezado explícito
+              for (const r of tableMultiRows) {
+                const texts = r.map((c) => c.text.toLowerCase());
+                const matches = texts.filter((t) =>
+                  headerKeywords.some((kw) => t.includes(kw)),
+                ).length;
+                if (matches >= 2) {
+                  refRow = r;
+                  break;
+                }
+              }
+              // Si no hay fila de encabezado explícita, tomar la de mayor número de columnas
+              if (!refRow) {
+                refRow = tableMultiRows.reduce(
+                  (prev, curr) => (curr.length > prev.length ? curr : prev),
+                  tableMultiRows[0],
+                );
               }
             }
 
-            columnBins.sort((a, b) => a.center - b.center);
-            const totalCols = Math.max(1, columnBins.length);
+            const splitPoints: number[] = [];
+            if (refRow && refRow.length >= 2) {
+              const sortedRef = [...refRow].sort((a, b) => a.x0 - b.x0);
+              for (let i = 0; i < sortedRef.length - 1; i++) {
+                splitPoints.push((sortedRef[i].x1 + sortedRef[i + 1].x0) / 2.0);
+              }
+            }
+
+            const totalCols = splitPoints.length > 0 ? splitPoints.length + 1 : 1;
 
             // 3. Mapear cada fila a la cuadrícula de columnas detectada
             const pageRows: Array<Array<string | number>> = [];
@@ -1305,28 +1344,28 @@ export default function ExcelPdfConverter({
               // Si es un título o párrafo único que empieza a la izquierda, ponerlo directo en la columna 0
               if (rowChunks.length === 1 && !rowChunks[0].isNum && rowChunks[0].x0 < 250) {
                 rowCells[0] = rowChunks[0].text;
+              } else if (splitPoints.length === 0) {
+                rowChunks.forEach((c, cIdx) => {
+                  if (cIdx < totalCols) {
+                    rowCells[cIdx] = c.isNum && c.numVal !== undefined ? c.numVal : c.text;
+                  }
+                });
               } else {
                 for (const c of rowChunks) {
-                  const anchor = c.isNum ? c.x1 : c.x0;
-                  let bestIdx = 0;
-                  let minDiff = Infinity;
-                  for (let i = 0; i < columnBins.length; i++) {
-                    const diff = Math.abs(columnBins[i].center - anchor);
-                    if (diff < minDiff) {
-                      minDiff = diff;
-                      bestIdx = i;
+                  const mid = (c.x0 + c.x1) / 2.0;
+                  let colIdx = 0;
+                  for (const sp of splitPoints) {
+                    if (mid > sp) {
+                      colIdx++;
+                    } else {
+                      break;
                     }
                   }
 
-                  // Si la columna ya está ocupada en esta misma fila, buscar la siguiente columna libre
-                  while (bestIdx < totalCols - 1 && rowCells[bestIdx] !== '') {
-                    bestIdx++;
-                  }
-
-                  if (c.isNum && c.numVal !== undefined) {
-                    rowCells[bestIdx] = c.numVal;
+                  if (rowCells[colIdx] === '') {
+                    rowCells[colIdx] = c.isNum && c.numVal !== undefined ? c.numVal : c.text;
                   } else {
-                    rowCells[bestIdx] = c.text;
+                    rowCells[colIdx] = `${rowCells[colIdx]} ${c.text}`;
                   }
                 }
               }

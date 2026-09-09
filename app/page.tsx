@@ -901,7 +901,7 @@ export default function DashboardPage() {
 
                       {/* QUÉ SUCEDE A TU ARCHIVO */}
                       <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                        <strong className="text-white font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
                           <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                           {isEs
                             ? 'Proceso Binario y Seguridad en EDITAR:'
@@ -1024,7 +1024,7 @@ export default function DashboardPage() {
 
                       {/* QUÉ SUCEDE A TU ARCHIVO */}
                       <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                        <strong className="text-white font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
                           <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                           {isEs
                             ? 'Proceso Binario y Seguridad en ORGANIZAR:'
@@ -1149,7 +1149,7 @@ export default function DashboardPage() {
 
                       {/* QUÉ SUCEDE A TU ARCHIVO */}
                       <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                        <strong className="text-white font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
                           <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                           {isEs
                             ? 'Proceso Binario y Seguridad en CONVERTIR:'
@@ -1274,7 +1274,7 @@ export default function DashboardPage() {
 
                       {/* QUÉ SUCEDE A TU ARCHIVO */}
                       <div className="bg-zinc-900/90 border border-zinc-700 rounded-2xl p-4 mb-4 font-mono text-xs text-zinc-200 space-y-2 shadow-sm">
-                        <strong className="text-white block font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
+                        <strong className="text-white font-sans font-bold text-xs flex items-center gap-1.5 border-b border-zinc-700 pb-2">
                           <Lock className="w-3.5 h-3.5 text-white" aria-hidden="true" />
                           {isEs
                             ? 'Proceso Binario y Seguridad en OPTIMIZAR:'

@@ -251,7 +251,7 @@ export default function PdfToPowerPoint() {
                 className="space-y-4 mb-6 border-t border-slate-800 pt-4"
               >
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Layout className="w-3.5 h-3.5 text-orange-400" />
                     {isEs ? 'Relación de Aspecto' : 'Aspect Ratio'}
                   </label>

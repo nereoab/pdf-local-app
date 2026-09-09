@@ -1,8 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  AlignLeft, FileDown, Loader2, X, Sliders, ChevronDown, ChevronUp, Sparkles 
+import {
+  AlignLeft,
+  FileDown,
+  Loader2,
+  X,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
 } from 'lucide-react';
 import { TextIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -46,7 +53,9 @@ export default function PdfToText() {
     if (!file) return;
 
     setIsProcessing(true);
-    toast.info(isEs ? 'Extrayendo texto plano con opciones...' : 'Extracting plain text with options...');
+    toast.info(
+      isEs ? 'Extrayendo texto plano con opciones...' : 'Extracting plain text with options...',
+    );
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
@@ -59,7 +68,7 @@ export default function PdfToText() {
       for (let p = 1; p <= pdf.numPages; p++) {
         const page = await pdf.getPage(p);
         const textContent = await page.getTextContent();
-        
+
         if (addPageSeparators) {
           textOutput += `=== ${isEs ? 'PÁGINA' : 'PAGE'} ${p} DE ${pdf.numPages} ===\n\n`;
         }
@@ -76,10 +85,12 @@ export default function PdfToText() {
             }
           });
 
-          const sortedYs = Object.keys(rows).map(Number).sort((a, b) => b - a);
-          sortedYs.forEach(y => {
+          const sortedYs = Object.keys(rows)
+            .map(Number)
+            .sort((a, b) => b - a);
+          sortedYs.forEach((y) => {
             const lineItems = rows[y].sort((a, b) => a.x - b.x);
-            textOutput += lineItems.map(i => i.text).join('  ') + '\n';
+            textOutput += lineItems.map((i) => i.text).join('  ') + '\n';
           });
           textOutput += '\n';
         } else {
@@ -98,7 +109,7 @@ export default function PdfToText() {
 
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${file.name.replace(/\.[^/.]+$/, "")}.txt`;
+      link.download = `${file.name.replace(/\.[^/.]+$/, '')}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -118,14 +129,26 @@ export default function PdfToText() {
         <div className="p-4 rounded-2xl mb-4">
           <TextIcon className="w-16 h-16 rounded-2xl shadow-xl" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">{isEs ? 'PDF a Texto Plano (Con Opciones Avanzadas)' : 'PDF to Plain Text (With Advanced Options)'}</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {isEs
+            ? 'PDF a Texto Plano (Con Opciones Avanzadas)'
+            : 'PDF to Plain Text (With Advanced Options)'}
+        </h2>
         <p className="text-slate-400 text-xs mb-6 max-w-md">
-          {isEs ? 'Extrae todo el texto de tu PDF manteniendo alineación espacial o separadores de página.' : 'Extract all text from your PDF maintaining spatial alignment or page separators.'}
+          {isEs
+            ? 'Extrae todo el texto de tu PDF manteniendo alineación espacial o separadores de página.'
+            : 'Extract all text from your PDF maintaining spatial alignment or page separators.'}
         </p>
-        
+
         <label className="bg-white text-black hover:bg-slate-200 px-8 py-3.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-lg hover:scale-105 active:scale-95">
           {isEs ? 'Seleccionar archivo PDF' : 'Select PDF file'}
-          <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} disabled={isProcessing} />
+          <input
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={isProcessing}
+          />
         </label>
       </div>
     );
@@ -139,7 +162,15 @@ export default function PdfToText() {
             <TextIcon className="w-5 h-5 rounded-sm" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); setExtractedText(''); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
+          <button
+            onClick={() => {
+              setFile(null);
+              setDownloadUrl(null);
+              setExtractedText('');
+            }}
+            disabled={isProcessing}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -153,7 +184,9 @@ export default function PdfToText() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center">
             <TextIcon className="w-16 h-16 rounded-2xl shadow-2xl mb-3" />
-            <span className="text-slate-400 text-xs font-mono">{isEs ? 'Haz clic en Extraer Texto para comenzar' : 'Click Extract Text to start'}</span>
+            <span className="text-slate-400 text-xs font-mono">
+              {isEs ? 'Haz clic en Extraer Texto para comenzar' : 'Click Extract Text to start'}
+            </span>
           </div>
         )}
       </div>
@@ -161,17 +194,25 @@ export default function PdfToText() {
       <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Extraer Texto' : 'Extract Text'}</h3>
+            <h3 className="text-xl font-bold text-white">
+              {isEs ? 'Extraer Texto' : 'Extract Text'}
+            </h3>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Configura la estructura y formato del archivo .txt final.' : 'Configure file structure & formatting of final .txt file.'}
+            {isEs
+              ? 'Configura la estructura y formato del archivo .txt final.'
+              : 'Configure file structure & formatting of final .txt file.'}
           </p>
 
           <AnimatePresence>
@@ -183,7 +224,7 @@ export default function PdfToText() {
                 className="space-y-4 mb-6 border-t border-slate-800 pt-4"
               >
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <AlignLeft className="w-3.5 h-3.5 text-indigo-400" />
                     {isEs ? 'Codificación' : 'Encoding'}
                   </label>
@@ -205,7 +246,9 @@ export default function PdfToText() {
                       onChange={(e) => setAddPageSeparators(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-700 bg-slate-950 accent-indigo-500"
                     />
-                    <span>{isEs ? 'Incluir marcas === PÁGINA N ===' : 'Include === PAGE N === marks'}</span>
+                    <span>
+                      {isEs ? 'Incluir marcas === PÁGINA N ===' : 'Include === PAGE N === marks'}
+                    </span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
                     <input
@@ -216,7 +259,9 @@ export default function PdfToText() {
                     />
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                      {isEs ? 'Agrupar líneas por coordenada Y (Diseño espacial)' : 'Cluster lines by Y coordinate (Spatial layout)'}
+                      {isEs
+                        ? 'Agrupar líneas por coordenada Y (Diseño espacial)'
+                        : 'Cluster lines by Y coordinate (Spatial layout)'}
                     </span>
                   </label>
                 </div>
@@ -237,8 +282,10 @@ export default function PdfToText() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm">{isEs ? 'Extrayendo...' : 'Extracting...'}</span>
                 </>
+              ) : isEs ? (
+                'Extraer Texto (.txt)'
               ) : (
-                isEs ? 'Extraer Texto (.txt)' : 'Extract Text (.txt)'
+                'Extract Text (.txt)'
               )}
             </button>
           ) : (

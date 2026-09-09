@@ -155,6 +155,8 @@ export default function PdfToWord() {
   const buildLocalDocx = async (fileToConvert: File): Promise<Blob> => {
     try {
       return await convertPdfToWordWithApi(fileToConvert, {
+        layoutMode,
+        includeImages,
         onProgress: (pct, msg) => {
           setProgressPct(pct);
           setProgressMsg(msg);
@@ -342,7 +344,7 @@ export default function PdfToWord() {
 
           {/* LADO DERECHO: PANEL DE CONTROL */}
           <div className="lg:col-span-5 flex flex-col">
-            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans min-h-[580px]">
+            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans min-h-[580px]">
               <div className="flex flex-col gap-4">
                 {/* Cabecera del Panel */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -368,7 +370,7 @@ export default function PdfToWord() {
 
                   {/* Modo de Maquetación */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <AlignLeft className="w-3 h-3 text-blue-400" />
                       {isEs ? 'Modo de Maquetación' : 'Layout Mode'}
                     </label>
@@ -400,7 +402,7 @@ export default function PdfToWord() {
 
                   {/* Formato de Salida */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <FileText className="w-3 h-3 text-blue-400" />
                       {isEs ? 'Formato de Salida' : 'Output Format'}
                     </label>

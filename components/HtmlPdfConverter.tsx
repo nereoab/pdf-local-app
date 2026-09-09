@@ -330,45 +330,26 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      processSelectedFile(e.target.files[0]);
-    }
-    e.target.value = '';
+  const handleClearAllSlots = () => {
+    setSlots([
+      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+    ]);
+    setActiveSlotIndex(0);
+    setFile(null);
+    setCompletedResult(null);
   };
 
-  const processSelectedFile = (selected: File) => {
-    const name = selected.name.toLowerCase();
-    const isPdf = name.endsWith('.pdf');
-    const isHtml = name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.zip');
-
-    if (mode === 'html-to-pdf') {
-      if (isHtml) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(isEs ? 'Archivo HTML cargado' : 'HTML file loaded');
-      } else {
-        toast.error(
-          isEs
-            ? 'Por favor selecciona un archivo HTML (.html/.htm)'
-            : 'Please select an HTML file (.html/.htm)',
-        );
-      }
-    } else {
-      if (isPdf) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(
-          isEs ? 'Archivo PDF cargado para exportar a HTML' : 'PDF file loaded for HTML export',
-        );
-      } else {
-        toast.error(
-          isEs ? 'Por favor selecciona un archivo PDF (.pdf)' : 'Please select a PDF file (.pdf)',
-        );
-      }
-    }
+  const handleSwitchMode = (newMode: ConversionDirection) => {
+    cancelRenderRef.current = true;
+    handleClearAllSlots();
+    setMode(newMode);
+    setGlobalFile(null);
+    setDownloadUrl(null);
+    setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -377,17 +358,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  };
-
-  const handleSwitchMode = (newMode: ConversionDirection) => {
-    cancelRenderRef.current = true;
-    setMode(newMode);
-    setFile(null);
-    setGlobalFile(null);
-    setDownloadUrl(null);
-    setDownloadFilename('');
-    setCompletedResult(null);
-    setHeaderHidden(false);
   };
 
   // CARGA AISLADA DE UN ARCHIVO EN UNA CAJA ESPECÍFICA (SIN DUPLICAR)
@@ -498,23 +468,111 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     }
   };
 
-  const handleClearAllSlots = () => {
-    setSlots([
-      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
-      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
-      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
-    ]);
-    setActiveSlotIndex(0);
-    setFile(null);
+  const loadFilesIntoSlots = (fileList: FileList | File[], specificSlotIndex?: number) => {
+    const filesArray = Array.from(fileList);
+    const validFiles: File[] = [];
+
+    // Auto-detección inteligente de modo
+    let currentMode = mode;
+    const hasHtml = filesArray.some((f) => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.html') || n.endsWith('.htm') || n.endsWith('.zip');
+    });
+    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+
+    if (mode === 'html-to-pdf' && !hasHtml && hasPdf) {
+      currentMode = 'pdf-to-html';
+      setMode('pdf-to-html');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a PDF a HTML' : 'Switched to PDF to HTML mode',
+      );
+    } else if (mode === 'pdf-to-html' && !hasPdf && hasHtml) {
+      currentMode = 'html-to-pdf';
+      setMode('html-to-pdf');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a HTML a PDF' : 'Switched to HTML to PDF mode',
+      );
+    }
+
+    for (const f of filesArray) {
+      const name = f.name.toLowerCase();
+      const isPdf = name.endsWith('.pdf');
+      const isHtml = name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.zip');
+
+      if (currentMode === 'html-to-pdf' && isHtml) {
+        validFiles.push(f);
+      } else if (currentMode === 'pdf-to-html' && isPdf) {
+        validFiles.push(f);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      toast.error(
+        currentMode === 'html-to-pdf'
+          ? isEs
+            ? 'Por favor selecciona archivos HTML (.html/.htm)'
+            : 'Please select HTML files (.html/.htm)'
+          : isEs
+            ? 'Por favor selecciona archivos PDF (.pdf)'
+            : 'Please select PDF files (.pdf)',
+      );
+      return;
+    }
+
+    if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+      loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
+    } else {
+      let validIdx = 0;
+      for (let i = 0; i < 3; i++) {
+        if (validIdx >= validFiles.length) break;
+        if (!slots[i].file) {
+          loadSingleFileIntoSlot(i, validFiles[validIdx]);
+          validIdx++;
+        }
+      }
+      if (validIdx === 0 && validFiles.length > 0) {
+        validFiles.slice(0, 3).forEach((f, idx) => {
+          loadSingleFileIntoSlot(idx, f);
+        });
+      }
+      setActiveSlotIndex(0);
+    }
+
+    setGlobalFile(validFiles[0]);
+    setDownloadUrl(null);
     setCompletedResult(null);
+
+    toast.success(
+      isEs
+        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+        : `${validFiles.length} file(s) ready in boxes`,
+    );
   };
 
-  const loadFilesIntoSlots = (fileList: FileList | File[]) => {
-    const arr = Array.from(fileList).slice(0, 3);
-    arr.forEach((f, idx) => {
-      loadSingleFileIntoSlot(idx, f);
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      loadFilesIntoSlots(e.target.files);
+    }
+    e.target.value = '';
   };
+
+  const processSelectedFile = (selected: File) => {
+    loadFilesIntoSlots([selected]);
+  };
+
+  const initialGlobalFileLoadedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!globalFile || initialGlobalFileLoadedRef.current) return;
+    const name = globalFile.name.toLowerCase();
+    const isPdf = name.endsWith('.pdf');
+    const isHtml = name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.zip');
+
+    if ((defaultMode === 'pdf-to-html' && isPdf) || (defaultMode === 'html-to-pdf' && isHtml)) {
+      initialGlobalFileLoadedRef.current = true;
+      loadFilesIntoSlots([globalFile], 0);
+    }
+  }, [globalFile, defaultMode]);
 
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;
@@ -1235,6 +1293,7 @@ ${p.html}
     >
       <input
         type="file"
+        multiple
         accept={mode === 'html-to-pdf' ? '.html, .htm, .zip, text/html' : '.pdf, application/pdf'}
         className="hidden"
         onChange={handleFileChange}
@@ -1423,6 +1482,17 @@ ${p.html}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  loadFilesIntoSlots(e.dataTransfer.files);
+                }
+              }}
               className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
@@ -2008,7 +2078,7 @@ ${p.html}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-3">
                         <div>
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <Layout className="w-4 h-4 text-amber-400" />
                             {isEs ? 'Tema Visual HTML5' : 'HTML5 Visual Theme'}
                           </label>
@@ -2034,7 +2104,7 @@ ${p.html}
                         </div>
 
                         <div>
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <Grid className="w-4 h-4 text-amber-400" />
                             {isEs ? 'Estructura de Archivo' : 'File Structure'}
                           </label>
@@ -2124,7 +2194,7 @@ ${p.html}
                     {/* COLUMNA 1: ORIENTACIÓN */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-2">
-                        <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                        <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                           <Layout className="w-4 h-4 text-amber-400" />
                           {isEs ? 'Orientación de Página' : 'Page Orientation'}
                         </label>
@@ -2158,7 +2228,7 @@ ${p.html}
                     {/* COLUMNA 2: TAMAÑO DE PAPEL */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-2">
-                        <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                        <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                           <Sliders className="w-4 h-4 text-amber-400" />
                           {isEs ? 'Tamaño de Papel' : 'Paper Size'}
                         </label>

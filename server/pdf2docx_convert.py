@@ -83,6 +83,8 @@ def normalize_font(font_name, default_font="Calibri"):
     cleaned = clean_font_name(font_name)
     fn = cleaned.lower()
     
+    if "gotham" in fn or "century gothic" in fn:
+        return "Century Gothic"
     if "aptos" in fn:
         return "Aptos"
     if "segoe" in fn:
@@ -121,6 +123,7 @@ def normalize_font(font_name, default_font="Calibri"):
 FONT_WIDTH_RATIOS = {
     'Arial': 0.52,
     'Calibri': 0.48,
+    'Century Gothic': 0.53,
     'Times New Roman': 0.45,
     'Georgia': 0.50,
     'Aptos': 0.49,
@@ -374,6 +377,7 @@ def classify_vector_drawings(page, page_w, page_h, table_bboxes, current_drawing
 def extract_safe_image_bytes(doc, xref):
     """
     Extrae la imagen del PDF garantizando conversión limpia a sRGB (PNG o JPEG).
+    Optimiza a JPEG (85% calidad) si no tiene canal alfa para reducir el tamaño del DOCX.
     Maneja espacios de color CMYK y máscaras alfa de transparencia (/SMask).
     """
     try:
@@ -385,7 +389,7 @@ def extract_safe_image_bytes(doc, xref):
         if pix.alpha:
             return pix.tobytes("png"), "png"
         else:
-            return pix.tobytes("jpeg"), "jpeg"
+            return pix.tobytes("jpeg", jpg_quality=85), "jpeg"
     except Exception:
         try:
             base_img = doc.extract_image(xref)
@@ -433,9 +437,60 @@ def is_safe_hyphen_break(prev_text, next_text):
     
     return True
 
-def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flowing", include_images=True, primary_font="Calibri", add_page_breaks=True, include_header=True):
-    doc = fitz.open(pdf_path)
+def is_valid_borderless_table(page, t, raw_cells):
+    """
+    Valida si una tabla sin bordes detectada por strategy='text' es legítima
+    y no una distribución libre de texto/diapositiva/brochure dividida arbitrariamente.
+    """
+    if not t or not raw_cells:
+        return False
     
+    col_count = t.col_count if hasattr(t, 'col_count') and t.col_count else len(raw_cells[0])
+    row_count = len(raw_cells)
+    
+    # En documentos y folletos, una tabla sin bordes legítima rara vez supera 6 columnas.
+    # Matrices de 7 o más columnas sin líneas suelen ser texto libre segmentado por espacios.
+    if col_count > 6 or col_count < 2 or row_count < 2:
+        return False
+        
+    # Si cubre la mayor parte de la página en ambas dimensiones, es el layout general, no una tabla
+    page_w, page_h = page.rect.width, page.rect.height
+    t_w = t.bbox[2] - t.bbox[0]
+    t_h = t.bbox[3] - t.bbox[1]
+    if (t_w > page_w * 0.82) and (t_h > page_h * 0.65):
+        return False
+        
+    # Densidad de celdas con contenido
+    total_cells = col_count * row_count
+    filled_cells = sum(1 for r in raw_cells for c in r if c and str(c).strip())
+    if filled_cells / max(1, total_cells) < 0.35:
+        return False
+        
+    # Verificar si los cortes verticales de columna parten palabras reales por la mitad
+    try:
+        words = page.get_text("words")
+        col_x_bounds = set()
+        for r in t.rows:
+            for c in r.cells:
+                if c is not None:
+                    col_x_bounds.add(round(c[0], 1))
+                    col_x_bounds.add(round(c[2], 1))
+        
+        sliced_count = 0
+        for w in words:
+            if len(w[4]) < 2:
+                continue
+            for cx in col_x_bounds:
+                if (w[0] + 1.8) < cx < (w[2] - 1.8):
+                    sliced_count += 1
+                    if sliced_count > 1:
+                        return False
+    except Exception:
+        pass
+
+    return True
+
+def _do_convert(doc, output_docx_path, pages=None, layout_mode="flowing", include_images=True, primary_font="Calibri", add_page_breaks=True, include_header=True):
     media_files = {}
     image_hash_to_rid = {}
     link_uri_to_rid = {}
@@ -545,7 +600,7 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
                 if tabs_text and tabs_text.tables:
                     for t in tabs_text.tables:
                         raw_cells = t.extract()
-                        if not raw_cells:
+                        if not raw_cells or not is_valid_borderless_table(page, t, raw_cells):
                             continue
                         
                         max_cols_candidate = max(len([c for c in row if c and str(c).strip()]) for row in raw_cells) if raw_cells else 0
@@ -659,14 +714,24 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
                                     continue
                                 
                                 span_cols = 1
-                                if cell_geom is not None:
-                                    while (c_idx + span_cols < col_count and 
-                                           row_cells_geom and 
-                                           (c_idx + span_cols < len(row_cells_geom)) and 
-                                           row_cells_geom[c_idx + span_cols] is None and
-                                           (c_idx + span_cols < len(row)) and
-                                           row[c_idx + span_cols] is None):
+                                norm_val = str(cell_val).strip() if cell_val is not None else ""
+                                while (c_idx + span_cols < col_count and c_idx + span_cols < len(row)):
+                                    next_val = row[c_idx + span_cols]
+                                    next_norm_val = str(next_val).strip() if next_val is not None else ""
+                                    next_geom = row_cells_geom[c_idx + span_cols] if (row_cells_geom and c_idx + span_cols < len(row_cells_geom)) else None
+                                    
+                                    # Criterio de unión horizontal (gridSpan):
+                                    # 1. La siguiente celda es None o texto vacío
+                                    # 2. O la siguiente celda repite exactamente el mismo texto
+                                    # 3. O la siguiente celda tiene la misma geometría que la actual
+                                    is_dup_text = (norm_val != "" and next_norm_val == norm_val)
+                                    is_empty = (next_val is None or not next_norm_val)
+                                    is_same_geom = (cell_geom is not None and next_geom is not None and next_geom == cell_geom)
+                                    
+                                    if (is_dup_text or is_empty or is_same_geom):
                                         span_cols += 1
+                                    else:
+                                        break
                                 
                                 is_vmerge_start = False
                                 if cell_geom and r_idx + 1 < len(tbl_rows):
@@ -817,8 +882,13 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
                     for d_rect in merged_diagram_rects:
                         diagram_bboxes.append(d_rect)
                         pix = page.get_pixmap(clip=d_rect, dpi=220)
-                        img_bytes = pix.tobytes("png")
-                        img_name = f"diagram{image_counter}.png"
+                        if pix.alpha:
+                            img_bytes = pix.tobytes("png")
+                            diag_ext = "png"
+                        else:
+                            img_bytes = pix.tobytes("jpeg", jpg_quality=85)
+                            diag_ext = "jpeg"
+                        img_name = f"diagram{image_counter}.{diag_ext}"
                         image_counter += 1
                         r_id = f"rId{rel_counter}"
                         rel_counter += 1
@@ -1194,8 +1264,24 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
                 
             prev_page_geometry = current_geom
 
-    # ── MODO 2: RÉPLICA EXACTA (DTP ABSOLUTO) ──
+    # ── MODO 2: RÉPLICA EXACTA / CANVAS HÍBRIDO DE ALTA FIDELIDAD ──
     else:
+        doc_bg = None
+        try:
+            doc_bg = fitz.open(doc.name) if (hasattr(doc, 'name') and doc.name and os.path.exists(doc.name)) else None
+            if doc_bg:
+                for p_bg in doc_bg:
+                    try:
+                        c_xrefs = p_bg.get_contents()
+                        for x in c_xrefs:
+                            stream = doc_bg.xref_stream(x)
+                            clean_stream = re.sub(rb'BT[\s\S]*?ET', b'', stream)
+                            doc_bg.update_stream(x, clean_stream)
+                    except Exception:
+                        pass
+        except Exception:
+            doc_bg = None
+
         for idx_num, page_idx in enumerate(target_page_indices):
             if page_idx < 0 or page_idx >= len(doc):
                 continue
@@ -1203,98 +1289,75 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
             rect = page.rect
             page_w = rect.width
             page_h = rect.height
-            
-            page_dict = page.get_text("dict")
-            blocks = page_dict.get("blocks", [])
-            has_text = False
-            
+
+            # 1. Renderizar capa de fondo gráfico sin texto (vectores + imágenes con recorte exacto)
             if include_images:
                 try:
-                    for img_info in page.get_images(full=True):
-                        xref = img_info[0]
-                        img_bytes, img_ext = extract_safe_image_bytes(doc, xref)
-                        if img_bytes:
-                            rects = page.get_image_rects(xref)
-                            img_rect = rects[0] if rects else None
-                            if img_rect:
-                                img_name = f"image{image_counter}.{img_ext}"
-                                image_counter += 1
-                                r_id = f"rId{rel_counter}"
-                                rel_counter += 1
-                                
-                                media_files[f"word/media/{img_name}"] = img_bytes
-                                doc_rels.append((r_id, f"media/{img_name}", 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'))
-                                
-                                ix_emu = pt_to_emu(img_rect.x0)
-                                iy_emu = pt_to_emu(img_rect.y0)
-                                iw_emu = pt_to_emu(img_rect.width)
-                                ih_emu = pt_to_emu(img_rect.height)
-                                d_id = drawing_id
-                                drawing_id += 1
-                                
-                                img_dtp_xml = f"""<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251658240" behindDoc="1" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:posOffset>{ix_emu}</wp:posOffset></wp:positionH><wp:positionV relativeFrom="page"><wp:posOffset>{iy_emu}</wp:posOffset></wp:positionV><wp:extent cx="{iw_emu}" cy="{ih_emu}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="{d_id}" name="Picture {d_id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="{d_id}" name="Picture {d_id}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="{r_id}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{iw_emu}" cy="{ih_emu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r></w:p>"""
-                                body_elements.append(img_dtp_xml)
-                    # Si la página es puramente gráfica/vectorial sin imágenes incrustadas ni texto
-                    text_blocks = [b for b in blocks if b.get("type") == 0]
-                    if len(text_blocks) == 0 and len(page.get_images()) == 0 and len(page.get_drawings()) > 10:
-                        pix = page.get_pixmap(dpi=200)
-                        img_bytes = pix.tobytes("png")
-                        img_name = f"image{image_counter}.png"
-                        image_counter += 1
-                        r_id = f"rId{rel_counter}"
-                        rel_counter += 1
-                        media_files[f"word/media/{img_name}"] = img_bytes
-                        doc_rels.append((r_id, f"media/{img_name}", 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'))
-                        
-                        iw_emu = pt_to_emu(page_w)
-                        ih_emu = pt_to_emu(page_h)
-                        d_id = drawing_id
-                        drawing_id += 1
-                        vec_page_xml = f"""<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251658240" behindDoc="1" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="{iw_emu}" cy="{ih_emu}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="{d_id}" name="VectorCanvas {d_id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="{d_id}" name="VectorCanvas {d_id}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="{r_id}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{iw_emu}" cy="{ih_emu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r></w:p>"""
-                        body_elements.append(vec_page_xml)
+                    if doc_bg and page_idx < len(doc_bg):
+                        pix = doc_bg[page_idx].get_pixmap(dpi=150)
+                    else:
+                        pix = page.get_pixmap(dpi=150)
+
+                    img_bytes = pix.tobytes("jpeg", jpg_quality=88)
+                    img_name = f"bg_canvas_{idx_num + 1}.jpeg"
+                    r_id = f"rId{rel_counter}"
+                    rel_counter += 1
+                    media_files[f"word/media/{img_name}"] = img_bytes
+                    doc_rels.append((r_id, f"media/{img_name}", 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'))
+
+                    w_emu = pt_to_emu(page_w)
+                    h_emu = pt_to_emu(page_h)
+                    d_id = drawing_id
+                    drawing_id += 1
+                    bg_xml = f"""<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="0" behindDoc="1" locked="1" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="{w_emu}" cy="{h_emu}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="{d_id}" name="Canvas_Bg_{idx_num + 1}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="{d_id}" name="Canvas_Bg_{idx_num + 1}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="{r_id}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{w_emu}" cy="{h_emu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r></w:p>"""
+                    body_elements.append(bg_xml)
                 except Exception:
                     pass
-            
+
+            # 2. Extraer y superponer bloques de texto editable
+            page_dict = page.get_text("dict")
+            blocks = page_dict.get("blocks", [])
+
             for b in blocks:
                 if b.get("type") == 0:
                     bx0, by0, bx1, by1 = b.get("bbox")
                     bw = max(20, (bx1 - bx0) + 6)
                     bh = max(12, (by1 - by0) + 4)
-                    
+
                     paras_xml = []
                     for line in b.get("lines", []):
                         spans_xml = []
                         prev_span_bbox = None
-                        
+
                         for span in line.get("spans", []):
                             txt = span.get("text", "")
                             if not txt or not txt.strip():
                                 continue
-                            has_text = True
                             txt_norm = normalize_unicode(txt)
-                            f_size = max(7, span.get("size", body_font_size))
+                            f_size = max(6, span.get("size", body_font_size))
                             raw_font = span.get("font", "")
                             f_name = normalize_font(raw_font, primary_font)
-                            f_color = int_to_hex_color(span.get("color", 0))
+                            col = span.get("color", 0)
+                            f_color = int_to_hex_color(col)
                             flags = span.get("flags", 0)
-                            is_bold = bool(flags & 2 ** 4) or "bold" in raw_font.lower()
+                            is_bold = bool(flags & 2 ** 4) or "bold" in raw_font.lower() or "black" in raw_font.lower() or "ultra" in raw_font.lower()
                             is_italic = bool(flags & 2 ** 1) or "italic" in raw_font.lower()
-                            
+
                             span_bbox = span.get("bbox", (0, 0, 0, 0))
                             if prev_span_bbox is not None and spans_xml:
                                 if span_bbox[0] - prev_span_bbox[2] > (f_size * 0.25):
                                     txt_norm = ' ' + txt_norm
                             prev_span_bbox = span_bbox
-                            
+
                             bold_xml = "<w:b/>" if is_bold else ""
                             italic_xml = "<w:i/>" if is_italic else ""
-                            
+
                             r_xml = f"""<w:r><w:rPr><w:rFonts w:ascii="{escape_xml(f_name)}" w:hAnsi="{escape_xml(f_name)}"/><w:color w:val="{f_color}"/><w:sz w:val="{int(round(f_size * 2))}"/><w:szCs w:val="{int(round(f_size * 2))}"/>{bold_xml}{italic_xml}</w:rPr>{serialize_text_to_openxml(txt_norm)}</w:r>"""
                             spans_xml.append(r_xml)
-                        
+
                         if spans_xml:
                             paras_xml.append(f"""<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>{''.join(spans_xml)}</w:p>""")
-                    
+
                     if paras_xml:
                         bx_emu = pt_to_emu(bx0)
                         by_emu = pt_to_emu(by0)
@@ -1302,20 +1365,26 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
                         bh_emu = pt_to_emu(bh)
                         d_id = drawing_id
                         drawing_id += 1
-                        
+
                         tb_xml = f"""<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><mc:AlternateContent><mc:Choice Requires="wps"><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="251658241" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="page"><wp:posOffset>{bx_emu}</wp:posOffset></wp:positionH><wp:positionV relativeFrom="page"><wp:posOffset>{by_emu}</wp:posOffset></wp:positionV><wp:extent cx="{bw_emu}" cy="{bh_emu}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="{d_id}" name="Textbox {d_id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:cNvPr id="{d_id}" name="Textbox {d_id}"/><wps:cNvSpPr txBox="1"/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{bw_emu}" cy="{bh_emu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr><wps:txbx><w:txbxContent>{''.join(paras_xml)}</w:txbxContent></wps:txbx><wps:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0"><a:noAutofit/></wps:bodyPr></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice><mc:Fallback/></mc:AlternateContent></w:r></w:p>"""
                         body_elements.append(tb_xml)
-            
+
             p_w_dxa = pt_to_dxa(page_w)
             p_h_dxa = pt_to_dxa(page_h)
             orient = "landscape" if page_w > page_h else "portrait"
             is_last = (idx_num == total_targets - 1)
-            sect_xml = f"""<w:sectPr><w:pgSz w:w="{p_w_dxa}" w:h="{p_h_dxa}" w:orient="{orient}"/><w:pgMar w:top="0" w:right="0" w:bottom="0" w:left="0" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>"""
-            
+            sect_xml = f"""<w:sectPr><w:headerReference w:type="default" r:id="rId5"/><w:footerReference w:type="default" r:id="rId6"/><w:pgSz w:w="{p_w_dxa}" w:h="{p_h_dxa}" w:orient="{orient}"/><w:pgMar w:top="0" w:right="0" w:bottom="0" w:left="0" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>"""
+
             if not is_last:
                 body_elements.append(f"""<w:p><w:pPr>{sect_xml}</w:pPr></w:p>""")
             else:
                 body_elements.append(sect_xml)
+
+        if doc_bg:
+            try:
+                doc_bg.close()
+            except Exception:
+                pass
 
     doc.close()
     
@@ -1515,6 +1584,7 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
 
     font_table_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:font w:name="Century Gothic"><w:pitch w:val="variable"/></w:font>
   <w:font w:name="Calibri"><w:pitch w:val="variable"/></w:font>
   <w:font w:name="Arial"><w:pitch w:val="variable"/></w:font>
   <w:font w:name="Times New Roman"><w:pitch w:val="variable"/></w:font>
@@ -1593,6 +1663,26 @@ def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flo
             zf.writestr(m_path, m_bytes)
 
     return True, None
+
+def convert_pdf_to_docx(pdf_path, output_docx_path, pages=None, layout_mode="flowing", include_images=True, primary_font="Calibri", add_page_breaks=True, include_header=True):
+    doc = fitz.open(pdf_path)
+    try:
+        return _do_convert(
+            doc,
+            output_docx_path,
+            pages=pages,
+            layout_mode=layout_mode,
+            include_images=include_images,
+            primary_font=primary_font,
+            add_page_breaks=add_page_breaks,
+            include_header=include_header
+        )
+    finally:
+        try:
+            if doc and not doc.is_closed:
+                doc.close()
+        except Exception:
+            pass
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PDF to DOCX Ultra Fast High-Precision Converter')

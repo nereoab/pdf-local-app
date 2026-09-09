@@ -884,7 +884,7 @@ export default function PdfOcr() {
 
             {/* Language */}
             <div className="font-mono">
-              <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+              <label className="text-[11px] text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Globe className="w-3.5 h-3.5 text-white" />{' '}
                 {isEs ? 'Idioma del Documento' : 'Document Language'}
               </label>
@@ -903,7 +903,7 @@ export default function PdfOcr() {
 
             {/* Output format */}
             <div className="font-mono">
-              <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+              <label className="text-[11px] text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-white" />{' '}
                 {isEs ? 'Formato de Salida' : 'Output Format'}
               </label>
@@ -925,7 +925,7 @@ export default function PdfOcr() {
 
             {/* Page scope */}
             <div className="font-mono">
-              <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+              <label className="text-[11px] text-zinc-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <LayoutGrid className="w-3.5 h-3.5 text-white" />{' '}
                 {isEs ? 'Páginas a Procesar' : 'Pages to Process'}
               </label>
@@ -972,7 +972,7 @@ export default function PdfOcr() {
 
             {/* Pre-processing */}
             <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5 font-mono">
-              <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold flex items-center gap-1.5">
+              <label className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold flex items-center gap-1.5">
                 <Contrast className="w-3.5 h-3.5 text-white" />{' '}
                 {isEs ? 'Pre-procesamiento' : 'Pre-Processing'}
               </label>
@@ -1025,7 +1025,7 @@ export default function PdfOcr() {
 
             {/* PDF Metadata */}
             <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5 font-mono">
-              <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold flex items-center gap-1.5">
+              <label className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-white" />{' '}
                 {isEs ? 'Metadatos del PDF Resultante' : 'Output PDF Metadata'}
               </label>

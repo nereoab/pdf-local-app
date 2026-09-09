@@ -357,7 +357,7 @@ export default function PowerPointPdfConverter({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const topHeaderRef = useRef<HTMLDivElement>(null);
   const cancelRenderRef = useRef<boolean>(false);
-  const { globalFile } = useFileStore();
+  const { globalFile, setGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
 
@@ -701,21 +701,47 @@ export default function PowerPointPdfConverter({
     const validFiles: File[] = [];
     const filesArray = Array.from(fileList);
 
+    // Auto-detección inteligente de modo
+    let currentMode = mode;
+    const hasPpt = filesArray.some((f) => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.pptx') || n.endsWith('.ppt');
+    });
+    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+
+    if (mode === 'powerpoint-to-pdf' && !hasPpt && hasPdf) {
+      currentMode = 'pdf-to-powerpoint';
+      setMode('pdf-to-powerpoint');
+      toast.info(
+        isEs
+          ? 'Modo cambiado automáticamente a PDF a PowerPoint'
+          : 'Switched to PDF to PowerPoint mode',
+      );
+    } else if (mode === 'pdf-to-powerpoint' && !hasPdf && hasPpt) {
+      currentMode = 'powerpoint-to-pdf';
+      setMode('powerpoint-to-pdf');
+      toast.info(
+        isEs
+          ? 'Modo cambiado automáticamente a PowerPoint a PDF'
+          : 'Switched to PowerPoint to PDF mode',
+      );
+    }
+
     for (const f of filesArray) {
       const name = f.name.toLowerCase();
       const isPdf = name.endsWith('.pdf');
       const isPpt = name.endsWith('.pptx') || name.endsWith('.ppt');
 
-      if (mode === 'powerpoint-to-pdf' && isPpt) {
+      if (currentMode === 'powerpoint-to-pdf' && isPpt) {
         validFiles.push(f);
-      } else if (mode === 'pdf-to-powerpoint' && isPdf) {
+      } else if (currentMode === 'pdf-to-powerpoint' && isPdf) {
         validFiles.push(f);
       }
     }
 
     if (validFiles.length === 0) {
       toast.error(
-        mode === 'powerpoint-to-pdf'
+        currentMode === 'powerpoint-to-pdf'
           ? isEs
             ? 'Por favor selecciona archivos PowerPoint (.pptx/.ppt)'
             : 'Please select PowerPoint files (.pptx/.ppt)'
@@ -781,9 +807,40 @@ export default function PowerPointPdfConverter({
             validIdx++;
           }
         }
+
+        if (validIdx === 0 && validFiles.length > 0) {
+          for (let i = 0; i < Math.min(3, validFiles.length); i++) {
+            const f = validFiles[i];
+            const prevUrl = next[i].previewUrl;
+            if (prevUrl) URL.revokeObjectURL(prevUrl);
+
+            next[i] = {
+              id: i,
+              file: f,
+              previewUrl: null,
+              thumbnailUrl: null,
+              totalPages: 1,
+              activePage: 1,
+              pageDataUrls: {},
+              extractedSlideCount: 0,
+              extractedSlides: [],
+              isRendering: true,
+            };
+
+            if (f.name.toLowerCase().endsWith('.pdf')) {
+              loadPdfMetadataForSlot(i, f);
+            } else {
+              loadPptxMetadataForSlot(i, f);
+            }
+          }
+        }
       }
       return next;
     });
+
+    if (validFiles.length > 0) {
+      setGlobalFile(validFiles[0]);
+    }
 
     if (specificSlotIndex !== undefined) {
       setActiveSlotIndex(specificSlotIndex);
@@ -2472,7 +2529,7 @@ export default function PowerPointPdfConverter({
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-3">
                         <div>
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <Layout className="w-4 h-4 text-orange-400" />
                             {isEs ? 'Proporción de Diapositiva' : 'Slide Aspect Ratio'}
                           </label>
@@ -2503,7 +2560,7 @@ export default function PowerPointPdfConverter({
                         </div>
 
                         <div>
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <Grid className="w-4 h-4 text-orange-400" />
                             {isEs ? 'Ajuste de Página' : 'Page Fitting'}
                           </label>
@@ -2631,7 +2688,7 @@ export default function PowerPointPdfConverter({
                     {/* COLUMNA 1: RELACIÓN DE ASPECTO */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-3">
-                        <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1.5">
+                        <label className="text-zinc-300 font-bold mb-1 flex items-center gap-1.5">
                           <Layout className="w-4 h-4 text-orange-400" />
                           {isEs ? 'Relación de Aspecto' : 'Aspect Ratio'}
                         </label>
@@ -2665,7 +2722,7 @@ export default function PowerPointPdfConverter({
                     {/* COLUMNA 2: DIAPOSITIVAS POR PÁGINA */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-2">
-                        <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1.5">
+                        <label className="text-zinc-300 font-bold mb-1 flex items-center gap-1.5">
                           <Grid className="w-4 h-4 text-orange-400" />
                           {isEs ? 'Diapositivas por Página' : 'Slides per Page'}
                         </label>

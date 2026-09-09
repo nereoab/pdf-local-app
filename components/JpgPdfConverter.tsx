@@ -402,10 +402,31 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     }
   }, [activeSlotIndex, activePage, file]);
 
-  // CARGA DE ARCHIVOS EN LAS CAJAS
   const loadFilesIntoSlots = (fileList: File[] | FileList, specificSlotIndex?: number) => {
     const validFiles: File[] = [];
     const filesArray = Array.from(fileList);
+
+    // Auto-detección inteligente de modo
+    let currentMode = mode;
+    const hasImg = filesArray.some((f) => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.png') || n.endsWith('.webp');
+    });
+    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+
+    if (mode === 'jpg-to-pdf' && !hasImg && hasPdf) {
+      currentMode = 'pdf-to-jpg';
+      setMode('pdf-to-jpg');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a PDF a JPG' : 'Switched to PDF to JPG mode',
+      );
+    } else if (mode === 'pdf-to-jpg' && !hasPdf && hasImg) {
+      currentMode = 'jpg-to-pdf';
+      setMode('jpg-to-pdf');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a JPG a PDF' : 'Switched to JPG to PDF mode',
+      );
+    }
 
     for (const f of filesArray) {
       const name = f.name.toLowerCase();
@@ -416,16 +437,16 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
         name.endsWith('.png') ||
         name.endsWith('.webp');
 
-      if (mode === 'jpg-to-pdf' && isImg) {
+      if (currentMode === 'jpg-to-pdf' && isImg) {
         validFiles.push(f);
-      } else if (mode === 'pdf-to-jpg' && isPdf) {
+      } else if (currentMode === 'pdf-to-jpg' && isPdf) {
         validFiles.push(f);
       }
     }
 
     if (validFiles.length === 0) {
       toast.error(
-        mode === 'jpg-to-pdf'
+        currentMode === 'jpg-to-pdf'
           ? isEs
             ? 'Por favor selecciona imágenes válidas (JPG, PNG, WebP)'
             : 'Please select valid images (JPG, PNG, WebP)'
@@ -491,9 +512,41 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             validIdx++;
           }
         }
+
+        if (validIdx === 0 && validFiles.length > 0) {
+          for (let i = 0; i < Math.min(3, validFiles.length); i++) {
+            const f = validFiles[i];
+            const prevUrl = next[i].previewUrl;
+            if (prevUrl && !next[i].file?.name.toLowerCase().endsWith('.pdf')) {
+              URL.revokeObjectURL(prevUrl);
+            }
+
+            const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf')
+              ? null
+              : URL.createObjectURL(f);
+            next[i] = {
+              id: i,
+              file: f,
+              previewUrl: newPreviewUrl,
+              thumbnailUrl: newPreviewUrl,
+              totalPages: 1,
+              activePage: 1,
+              pageDataUrls: {},
+              isRendering: f.name.toLowerCase().endsWith('.pdf'),
+            };
+
+            if (f.name.toLowerCase().endsWith('.pdf')) {
+              loadPdfMetadataForSlot(i, f);
+            }
+          }
+        }
       }
       return next;
     });
+
+    if (validFiles.length > 0) {
+      setGlobalFile(validFiles[0]);
+    }
 
     if (specificSlotIndex !== undefined) {
       setActiveSlotIndex(specificSlotIndex);
@@ -1919,7 +1972,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-3">
                         <div>
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <ImageIcon className="w-4 h-4 text-purple-400" />
                             {isEs ? 'Formato de Imagen' : 'Image Format'}
                           </label>
@@ -1935,7 +1988,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                         </div>
 
                         <div>
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <Sparkles className="w-4 h-4 text-purple-400" />
                             {isEs ? 'Densidad y Resolución' : 'DPI Density'}
                           </label>
@@ -2030,7 +2083,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                     {/* COLUMNA 1: MÁRGENES DE PÁGINA */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-2">
-                        <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                        <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                           <Grid className="w-4 h-4 text-purple-400" />
                           {isEs ? 'Márgenes de Página' : 'Page Margins'}
                         </label>
@@ -2055,7 +2108,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                     {/* COLUMNA 2: ORIENTACIÓN AUTOMÁTICA */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-2">
-                        <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                        <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                           <Compass className="w-4 h-4 text-purple-400" />
                           {isEs ? 'Orientación de Página' : 'Orientation'}
                         </label>

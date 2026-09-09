@@ -42,9 +42,7 @@ def extract_docx_images(doc):
         pass
     return images
 
-def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation='portrait', margin='normal', font_family='helvetica', font_size=11, line_spacing=1.35, add_page_numbers=True, include_header=False):
-    doc = docx.Document(docx_path)
-    pdf = fitz.open()
+def _do_convert_docx(doc, pdf, docx_path, output_pdf_path, page_size='a4', orientation='portrait', margin='normal', font_family='helvetica', font_size=11, line_spacing=1.35, add_page_numbers=True, include_header=False):
 
     # Dimensiones estándar
     if page_size.lower() == 'letter':
@@ -152,14 +150,14 @@ def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation=
             elif p.alignment == WD_ALIGN_PARAGRAPH.JUSTIFY:
                 align_css = "text-align:justify;"
 
-            # Estilos de encabezado
-            is_title = "title" in style_name
-            is_subtitle = "subtitle" in style_name
-            is_h1 = "heading 1" in style_name
-            is_h2 = "heading 2" in style_name
-            is_h3 = "heading 3" in style_name or "heading 4" in style_name
-            is_bullet = "list bullet" in style_name or "bullet" in style_name
-            is_number = "list number" in style_name
+            # Estilos de encabezado con soporte en español e inglés
+            is_title = any(k in style_name for k in ["title", "título", "titulo"])
+            is_subtitle = any(k in style_name for k in ["subtitle", "subtítulo", "subtitulo"])
+            is_h1 = any(k in style_name for k in ["heading 1", "título 1", "titulo 1", "encabezado 1"])
+            is_h2 = any(k in style_name for k in ["heading 2", "título 2", "titulo 2", "encabezado 2"])
+            is_h3 = any(k in style_name for k in ["heading 3", "heading 4", "título 3", "titulo 3", "encabezado 3"])
+            is_bullet = any(k in style_name for k in ["list bullet", "bullet", "viñeta", "vineta", "párrafo con viñetas"])
+            is_number = any(k in style_name for k in ["list number", "number", "número", "numero", "lista"])
 
             if is_title:
                 h_size = font_size + 9
@@ -177,14 +175,14 @@ def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation=
                 h_size = font_size + 1
                 html = f'<h3 style="font-family:{font_css_family};font-size:{h_size}pt;color:#334155;font-weight:bold;margin:4pt 0 2pt 0;line-height:1.2;{align_css}">{p_text}</h3>{img_html}'
             elif is_bullet:
-                html = f'<div style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:2pt 0 2pt 16pt;display:flex;align-items:flex-start;"><span style="color:#2563eb;margin-right:6pt;font-weight:bold;">•</span><span>{p_text}</span></div>{img_html}'
+                html = f'<table style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:2pt 0 2pt 0;width:100%;border-collapse:collapse;border:none;"><tr><td style="width:14pt;vertical-align:top;color:#2563eb;font-weight:bold;padding:0;border:none;">•</td><td style="vertical-align:top;padding:0;border:none;{align_css}">{p_text}</td></tr></table>{img_html}'
             elif is_number:
-                html = f'<div style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:2pt 0 2pt 16pt;">{p_text}</div>{img_html}'
+                html = f'<div style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:2pt 0 2pt 16pt;{align_css}">{p_text}</div>{img_html}'
             else:
                 html = f'<p style="font-family:{font_css_family};font-size:{font_size}pt;line-height:{line_spacing};margin:0 0 4pt 0;color:#1e293b;{align_css}">{p_text}</p>{img_html}'
 
             avail_h = (page_h - margin_b) - current_y
-            if avail_h < (font_size * 2):
+            if avail_h < (font_size * 2.2):
                 current_page = pdf.new_page(width=page_w, height=page_h)
                 page_num += 1
                 current_y = margin_t
@@ -193,15 +191,17 @@ def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation=
             rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
             rem_h, placed = current_page.insert_htmlbox(rect, html)
 
-            if placed < 0.99 or rem_h <= 0:
+            # Si el elemento no cupo completamente y no estábamos en la cabecera de una nueva página,
+            # mover a una página nueva para evitar texto duplicado
+            if placed < 0.99 and current_y > (margin_t + 15):
                 current_page = pdf.new_page(width=page_w, height=page_h)
                 page_num += 1
                 current_y = margin_t
                 rect = fitz.Rect(margin_l, current_y, margin_l + usable_w, page_h - margin_b)
                 rem_h, placed = current_page.insert_htmlbox(rect, html)
 
-            used_h = rect.height - rem_h
-            current_y += max(font_size + 1, used_h)
+            used_h = max(0.0, rect.height - rem_h)
+            current_y += max(font_size + 2, used_h)
 
         elif tag_name == 'tbl':
             # Tabla
@@ -257,8 +257,32 @@ def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation=
                 p.draw_line((margin_l, 30), (page_w - margin_r, 30), color=(0.85, 0.85, 0.85), width=0.5)
 
     pdf.save(output_pdf_path, garbage=4, deflate=True)
-    pdf.close()
     return True
+
+def convert_docx_to_pdf(docx_path, output_pdf_path, page_size='a4', orientation='portrait', margin='normal', font_family='helvetica', font_size=11, line_spacing=1.35, add_page_numbers=True, include_header=False):
+    doc = docx.Document(docx_path)
+    pdf = fitz.open()
+    try:
+        return _do_convert_docx(
+            doc,
+            pdf,
+            docx_path,
+            output_pdf_path,
+            page_size=page_size,
+            orientation=orientation,
+            margin=margin,
+            font_family=font_family,
+            font_size=font_size,
+            line_spacing=line_spacing,
+            add_page_numbers=add_page_numbers,
+            include_header=include_header
+        )
+    finally:
+        try:
+            if pdf and not pdf.is_closed:
+                pdf.close()
+        except Exception:
+            pass
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert DOCX to high-precision PDF')

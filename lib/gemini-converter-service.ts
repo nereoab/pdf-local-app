@@ -215,8 +215,16 @@ export async function convertPdfToExcelWithGemini(
     );
   }
 
-  const pdfDoc = await PDFDocument.load(pdfBuffer);
-  const totalPages = pdfDoc.getPageCount();
+  let totalPages = 1;
+  try {
+    const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+    totalPages = pdfDoc.getPageCount();
+  } catch (pdfErr) {
+    console.warn(
+      '[GeminiConverter] Could not load PDF structure with pdf-lib to get page count:',
+      pdfErr,
+    );
+  }
 
   const prompt = `Eres un motor de visión artificial e inteligencia artificial de máxima precisión especializado en la transcripción, estructuración y reconstrucción fiel de documentos PDF a Microsoft Excel (.xlsx).
 

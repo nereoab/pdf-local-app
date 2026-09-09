@@ -19,7 +19,7 @@ async function extractSelectedPages(
     return { buffer: originalBuffer, pageCount: 0, isSubSet: false };
   }
   try {
-    const srcDoc = await PDFDocument.load(originalBuffer);
+    const srcDoc = await PDFDocument.load(originalBuffer, { ignoreEncryption: true });
     const totalPages = srcDoc.getPageCount();
     const targetIndices: number[] = [];
     const parts = pagesStr.split(',');
@@ -195,10 +195,12 @@ export async function POST(req: NextRequest) {
 
     await fs.promises.writeFile(tempInputPath, activeBuffer);
 
-    // 4. Motor Local Avanzado: pdf2docx Oficial (Tablas complejas, columnas y maquetación nativa)
-    if (engine === 'local' || engine === 'pdf2docx' || engine === 'auto') {
+    // 4. Motor de Alta Fidelidad Geométrica (pdf2docx Oficial para flujos de tablas estándar)
+    if (layoutMode !== 'exact') {
       try {
-        console.log('[PDF-to-Word] Converting with official pdf2docx (Tables & Columns engine)...');
+        console.log(
+          '[PDF-to-Word] Converting with official pdf2docx (High Visual Fidelity layout)...',
+        );
         const officialScriptPath = path.join(
           process.cwd(),
           'server',
@@ -222,16 +224,17 @@ export async function POST(req: NextRequest) {
           officialStderr += data.toString();
         });
 
+        const timeoutDuration = Math.max(300000, (effectivePageCount || 60) * 4000);
         const officialExitCode = await new Promise<number>((resolve) => {
           const timeout = setTimeout(() => {
             try {
               pyOfficialProcess.kill();
             } catch {}
             console.warn(
-              '[PDF-to-Word] pdf2docx timed out after 45s, falling back to fast PyMuPDF engine',
+              `[PDF-to-Word] pdf2docx timed out after ${timeoutDuration / 1000}s, falling back to fast PyMuPDF engine`,
             );
             resolve(1);
-          }, 45000);
+          }, timeoutDuration);
 
           pyOfficialProcess.on('close', (code) => {
             clearTimeout(timeout);

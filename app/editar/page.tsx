@@ -399,7 +399,7 @@ function EditarContent() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs text-zinc-300 leading-relaxed">
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs flex items-center gap-2 font-mono">
                     <HardDrive className="w-4 h-4 text-white" />
                     {isEs ? 'Procesamiento 100% local' : '100% local processing'}
                   </strong>
@@ -410,7 +410,7 @@ function EditarContent() {
                   </p>
                 </SpotlightCard>
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs flex items-center gap-2 font-mono">
                     <Lock className="w-4 h-4 text-white" />
                     {isEs ? 'Seguridad y confidencialidad' : 'Security & confidentiality'}
                   </strong>
@@ -421,7 +421,7 @@ function EditarContent() {
                   </p>
                 </SpotlightCard>
                 <SpotlightCard className="bg-zinc-800/80 p-5 rounded-2xl border border-zinc-600 space-y-2 shadow-md">
-                  <strong className="text-white font-bold text-xs block flex items-center gap-2 font-mono">
+                  <strong className="text-white font-bold text-xs flex items-center gap-2 font-mono">
                     <Sparkles className="w-4 h-4 text-white" />
                     {isEs ? 'Descarga directa' : 'Direct download'}
                   </strong>

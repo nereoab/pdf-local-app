@@ -1,8 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  FileDown, Loader2, X, Sliders, ChevronDown, ChevronUp, Grid, Image as ImageIcon 
+import {
+  FileDown,
+  Loader2,
+  X,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Grid,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { JpgIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -33,7 +40,9 @@ export default function PdfToJpg() {
         setDownloadUrl(null);
         toast.success(isEs ? 'Archivo cargado correctamente' : 'File successfully loaded');
       } else {
-        toast.error(isEs ? 'Por favor, selecciona un archivo PDF válido' : 'Please select a valid PDF file');
+        toast.error(
+          isEs ? 'Por favor, selecciona un archivo PDF válido' : 'Please select a valid PDF file',
+        );
       }
     }
     e.target.value = '';
@@ -43,7 +52,9 @@ export default function PdfToJpg() {
     if (!file) return;
 
     setIsProcessing(true);
-    toast.info(isEs ? 'Renderizando páginas PDF a imágenes HD...' : 'Rendering PDF pages to HD images...');
+    toast.info(
+      isEs ? 'Renderizando páginas PDF a imágenes HD...' : 'Rendering PDF pages to HD images...',
+    );
 
     try {
       const pdfjsLib = await import('pdfjs-dist');
@@ -53,8 +64,8 @@ export default function PdfToJpg() {
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
       const page = await pdf.getPage(1);
-      
-      const scaleVal = dpiQuality === '300dpi' ? 3.0 : (dpiQuality === '72dpi' ? 1.0 : 2.0);
+
+      const scaleVal = dpiQuality === '300dpi' ? 3.0 : dpiQuality === '72dpi' ? 1.0 : 2.0;
       const viewport = page.getViewport({ scale: scaleVal });
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
@@ -62,8 +73,9 @@ export default function PdfToJpg() {
       canvas.width = viewport.width;
 
       if (context) {
-        await (page.render({ canvasContext: context, viewport, canvas } as any)).promise;
-        const mimeType = imgFormat === 'png' ? 'image/png' : (imgFormat === 'webp' ? 'image/webp' : 'image/jpeg');
+        await page.render({ canvasContext: context, viewport, canvas } as any).promise;
+        const mimeType =
+          imgFormat === 'png' ? 'image/png' : imgFormat === 'webp' ? 'image/webp' : 'image/jpeg';
         const dataUrl = canvas.toDataURL(mimeType, 0.92);
         const res = await fetch(dataUrl);
         const blob = await res.blob();
@@ -73,16 +85,24 @@ export default function PdfToJpg() {
         const ext = imgFormat === 'jpeg' ? 'jpg' : imgFormat;
         const link = document.createElement('a');
         link.href = localUrl;
-        link.download = `${file.name.replace(/\.[^/.]+$/, "")}_Pagina1.${ext}`;
+        link.download = `${file.name.replace(/\.[^/.]+$/, '')}_Pagina1.${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
 
-        toast.success(isEs ? `¡Imagen ${ext.toUpperCase()} generada con éxito!` : `Generated ${ext.toUpperCase()} image successfully!`);
+        toast.success(
+          isEs
+            ? `¡Imagen ${ext.toUpperCase()} generada con éxito!`
+            : `Generated ${ext.toUpperCase()} image successfully!`,
+        );
       }
     } catch (error) {
       console.error(error);
-      toast.error(isEs ? 'Ocurrió un error al convertir las imágenes.' : 'An error occurred converting images.');
+      toast.error(
+        isEs
+          ? 'Ocurrió un error al convertir las imágenes.'
+          : 'An error occurred converting images.',
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -94,14 +114,24 @@ export default function PdfToJpg() {
         <div className="p-4 rounded-2xl mb-4">
           <JpgIcon className="w-16 h-16 rounded-2xl shadow-xl" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">{isEs ? 'PDF a Imagen (Con Opciones Avanzadas)' : 'PDF to Image (With Advanced Options)'}</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {isEs ? 'PDF a Imagen (Con Opciones Avanzadas)' : 'PDF to Image (With Advanced Options)'}
+        </h2>
         <p className="text-slate-400 text-xs mb-6 max-w-md">
-          {isEs ? 'Extrae láminas PDF a formato de imagen (JPG, PNG, WebP) con resolución DPI ajustable.' : 'Extract PDF pages to image format (JPG, PNG, WebP) with adjustable DPI.'}
+          {isEs
+            ? 'Extrae láminas PDF a formato de imagen (JPG, PNG, WebP) con resolución DPI ajustable.'
+            : 'Extract PDF pages to image format (JPG, PNG, WebP) with adjustable DPI.'}
         </p>
-        
+
         <label className="bg-white text-black hover:bg-slate-200 px-8 py-3.5 rounded-full cursor-pointer font-bold text-sm transition-all shadow-lg hover:scale-105 active:scale-95">
           {isEs ? 'Seleccionar archivo PDF' : 'Select PDF file'}
-          <input type="file" accept=".pdf" className="hidden" onChange={handleFileChange} disabled={isProcessing} />
+          <input
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileChange}
+            disabled={isProcessing}
+          />
         </label>
       </div>
     );
@@ -115,7 +145,14 @@ export default function PdfToJpg() {
             <JpgIcon className="w-5 h-5 rounded-sm" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
+          <button
+            onClick={() => {
+              setFile(null);
+              setDownloadUrl(null);
+            }}
+            disabled={isProcessing}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -129,17 +166,25 @@ export default function PdfToJpg() {
       <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Convertir a Imagen' : 'Convert to Image'}</h3>
+            <h3 className="text-xl font-bold text-white">
+              {isEs ? 'Convertir a Imagen' : 'Convert to Image'}
+            </h3>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="text-xs text-pink-400 hover:text-pink-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Selecciona formato y resolución de imagen.' : 'Select format & image resolution.'}
+            {isEs
+              ? 'Selecciona formato y resolución de imagen.'
+              : 'Select format & image resolution.'}
           </p>
 
           <AnimatePresence>
@@ -151,7 +196,7 @@ export default function PdfToJpg() {
                 className="space-y-4 mb-6 border-t border-slate-800 pt-4"
               >
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <ImageIcon className="w-3.5 h-3.5 text-pink-400" />
                     {isEs ? 'Formato de Imagen' : 'Image Format'}
                   </label>
@@ -167,7 +212,7 @@ export default function PdfToJpg() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Grid className="w-3.5 h-3.5 text-pink-400" />
                     {isEs ? 'Calidad DPI' : 'DPI Quality'}
                   </label>
@@ -196,10 +241,14 @@ export default function PdfToJpg() {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm">{isEs ? 'Generando imágenes...' : 'Generating images...'}</span>
+                  <span className="text-sm">
+                    {isEs ? 'Generando imágenes...' : 'Generating images...'}
+                  </span>
                 </>
+              ) : isEs ? (
+                'Convertir a Imagen'
               ) : (
-                isEs ? 'Convertir a Imagen' : 'Convert to Image'
+                'Convert to Image'
               )}
             </button>
           ) : (

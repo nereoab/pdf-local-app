@@ -51,6 +51,8 @@ scratch/
 *.traineddata
 tess-out.json
 *.pdf
+*.xlsx
+*.docx
 
 # python cache
 __pycache__/

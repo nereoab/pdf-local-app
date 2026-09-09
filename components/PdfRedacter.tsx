@@ -1499,7 +1499,7 @@ export default function PdfRedacter() {
                         onMouseUp={(e) => handleMouseUp(pageNum, e)}
                         className="w-full bg-white rounded shadow-2xl text-black p-4 min-h-[900px] relative font-serif text-xs leading-relaxed select-none border border-gray-200"
                       >
-                        <div className="flex justify-between items-center border-b pb-1.5 mb-3 font-sans text-gray-400 text-[10px] font-mono">
+                        <div className="flex justify-between items-center border-b pb-1.5 mb-3 text-gray-400 text-[10px] font-mono">
                           <span>DOCUMENTO {file.name}</span>
                           <span className="bg-gray-100 text-gray-800 font-bold px-2 py-0.5 rounded">
                             PÁGINA {pageNum} DE {totalPages}
@@ -1783,7 +1783,7 @@ export default function PdfRedacter() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <EyeOff className="w-3 h-3 text-zinc-400" />
                       {isEs ? 'Estilo de Parche' : 'Patch Style'}
                     </label>
@@ -1823,7 +1823,7 @@ export default function PdfRedacter() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Zap className="w-3 h-3 text-zinc-400" />
                       {isEs ? 'Modo de Censura' : 'Redaction Mode'}
                     </label>

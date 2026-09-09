@@ -1301,7 +1301,7 @@ export default function PdfSigner() {
 
               {/* SELECCIÓN DE ALCANCE DE PÁGINAS (PÁGINA ACTUAL VS TODAS) */}
               <div className="mb-5 p-3 rounded-xl border border-white/10 bg-zinc-950 font-mono">
-                <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block mb-2 font-bold flex items-center gap-1.5">
+                <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider mb-2 font-bold flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-white" />
                   {isEs ? 'Estampar firma en:' : 'Stamp signature on:'}
                 </label>

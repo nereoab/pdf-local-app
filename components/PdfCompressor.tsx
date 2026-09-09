@@ -1479,7 +1479,7 @@ export default function PdfCompressor() {
                     >
                       {/* MODO DE COLOR */}
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                        <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
                           <Target className="w-3 h-3 text-zinc-400" />
                           {isEs ? 'Modo de Color' : 'Color Mode'}
                         </label>
@@ -1509,7 +1509,7 @@ export default function PdfCompressor() {
 
                       {/* RESOLUCIÓN DPI */}
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                        <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
                           <ImageIcon className="w-3 h-3 text-zinc-400" />
                           {isEs ? 'Resolución (DPI)' : 'Resolution (DPI)'}
                         </label>
@@ -1533,7 +1533,7 @@ export default function PdfCompressor() {
 
                       {/* ALCANCE DE PÁGINAS */}
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                        <label className="text-[10px] font-bold text-zinc-400 mb-1 font-mono tracking-widest uppercase flex items-center gap-1.5">
                           <FileCheck2 className="w-3 h-3 text-zinc-400" />
                           {isEs ? 'Alcance de Páginas' : 'Page Scope'}
                         </label>

@@ -706,7 +706,7 @@ export default function PdfWatermarkRemover() {
 
               {/* 2. TEXTO A BUSCAR Y ELIMINAR */}
               <div className="mb-5 font-mono">
-                <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2 flex items-center justify-between">
+                <label className="text-[11px] text-zinc-400 uppercase tracking-wider mb-2 flex items-center justify-between">
                   <span>{isEs ? 'Texto a Buscar y Eliminar:' : 'Text to Search & Remove:'}</span>
                   <Search className="w-3.5 h-3.5 text-zinc-400" />
                 </label>

@@ -1,9 +1,16 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { 
-  FileDown, Loader2, X, FilePlus, 
-  Sliders, ChevronDown, ChevronUp, Grid, Type 
+import {
+  FileDown,
+  Loader2,
+  X,
+  FilePlus,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Grid,
+  Type,
 } from 'lucide-react';
 import { TextIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -36,7 +43,10 @@ export default function TextToPdf() {
       const selected = e.target.files[0];
       setFile(selected);
       setDownloadUrl(null);
-      selected.text().then(txt => setManualText(txt)).catch(() => {});
+      selected
+        .text()
+        .then((txt) => setManualText(txt))
+        .catch(() => {});
       toast.success(isEs ? 'Archivo de texto cargado' : 'Text file loaded');
     }
     e.target.value = '';
@@ -45,12 +55,16 @@ export default function TextToPdf() {
   const executeConversion = async () => {
     const textToUse = manualText || (file ? await file.text() : '');
     if (!textToUse.trim()) {
-      toast.error(isEs ? 'Escribe o sube un texto para convertir' : 'Write or upload text to convert');
+      toast.error(
+        isEs ? 'Escribe o sube un texto para convertir' : 'Write or upload text to convert',
+      );
       return;
     }
 
     setIsProcessing(true);
-    toast.info(isEs ? 'Generando PDF con formato personalizado...' : 'Generating PDF with custom format...');
+    toast.info(
+      isEs ? 'Generando PDF con formato personalizado...' : 'Generating PDF with custom format...',
+    );
 
     try {
       const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
@@ -64,8 +78,13 @@ export default function TextToPdf() {
 
       let w = 595.28;
       let h = 841.89;
-      if (pageSize === 'letter') { w = 612; h = 792; }
-      else if (pageSize === 'legal') { w = 612; h = 1008; }
+      if (pageSize === 'letter') {
+        w = 612;
+        h = 792;
+      } else if (pageSize === 'legal') {
+        w = 612;
+        h = 1008;
+      }
 
       const margin = 50;
       const maxChars = Math.floor((w - margin * 2) / (fontSize * 0.6));
@@ -77,13 +96,19 @@ export default function TextToPdf() {
 
       lines.forEach((line) => {
         const regex = new RegExp(`.{1,${maxChars}}`, 'g');
-        const wrapped = line.match(regex) || [""];
+        const wrapped = line.match(regex) || [''];
         wrapped.forEach((subLine) => {
           if (y < margin + 20) {
             page = pdfDoc.addPage([w, h]);
             y = h - margin;
           }
-          page.drawText(subLine, { x: margin, y, size: fontSize, font, color: rgb(0.15, 0.15, 0.15) });
+          page.drawText(subLine, {
+            x: margin,
+            y,
+            size: fontSize,
+            font,
+            color: rgb(0.15, 0.15, 0.15),
+          });
           y -= lineHeight;
         });
       });
@@ -106,7 +131,7 @@ export default function TextToPdf() {
       const localUrl = URL.createObjectURL(blob);
       setDownloadUrl(localUrl);
 
-      const filename = file ? file.name.replace(/\.[^/.]+$/, "") : "Texto";
+      const filename = file ? file.name.replace(/\.[^/.]+$/, '') : 'Texto';
       const link = document.createElement('a');
       link.href = localUrl;
       link.download = `${filename}.pdf`;
@@ -130,11 +155,22 @@ export default function TextToPdf() {
           <div className="flex items-center gap-3">
             <TextIcon className="w-5 h-5 rounded-sm" />
             <span className="font-bold text-white text-sm">
-              {file ? file.name : (isEs ? 'Escribe o pega tu texto plano' : 'Type or paste plain text')}
+              {file
+                ? file.name
+                : isEs
+                  ? 'Escribe o pega tu texto plano'
+                  : 'Type or paste plain text'}
             </span>
           </div>
           {file && (
-            <button onClick={() => { setFile(null); setManualText(''); setDownloadUrl(null); }} className="text-slate-400 hover:text-red-400 p-1 cursor-pointer">
+            <button
+              onClick={() => {
+                setFile(null);
+                setManualText('');
+                setDownloadUrl(null);
+              }}
+              className="text-slate-400 hover:text-red-400 p-1 cursor-pointer"
+            >
               <X className="w-5 h-5" />
             </button>
           )}
@@ -142,7 +178,7 @@ export default function TextToPdf() {
 
         <textarea
           value={manualText}
-          onChange={e => setManualText(e.target.value)}
+          onChange={(e) => setManualText(e.target.value)}
           placeholder={isEs ? 'Escribe tu contenido aquí...' : 'Write your content here...'}
           className="flex-1 w-full bg-slate-950 p-4 rounded-2xl border border-white/10 text-white font-mono text-xs outline-none resize-none focus:border-indigo-500/50 transition-colors min-h-[280px]"
         />
@@ -151,7 +187,13 @@ export default function TextToPdf() {
           <label className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer border border-white/10 transition-colors">
             <FilePlus className="w-4 h-4 text-indigo-400" />
             {isEs ? 'Subir archivo .TXT' : 'Upload .TXT file'}
-            <input type="file" accept=".txt" className="hidden" onChange={handleFileChange} ref={fileInputRef} />
+            <input
+              type="file"
+              accept=".txt"
+              className="hidden"
+              onChange={handleFileChange}
+              ref={fileInputRef}
+            />
           </label>
         </div>
       </div>
@@ -165,11 +207,17 @@ export default function TextToPdf() {
               className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Personaliza tipografía, tamaño e interlineado del PDF.' : 'Customize font, size & line spacing.'}
+            {isEs
+              ? 'Personaliza tipografía, tamaño e interlineado del PDF.'
+              : 'Customize font, size & line spacing.'}
           </p>
 
           <AnimatePresence>
@@ -181,7 +229,7 @@ export default function TextToPdf() {
                 className="space-y-4 mb-6 border-t border-slate-800 pt-4 text-xs"
               >
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Type className="w-3.5 h-3.5 text-indigo-400" />
                     {isEs ? 'Tipografía' : 'Font Family'}
                   </label>
@@ -229,7 +277,7 @@ export default function TextToPdf() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Grid className="w-3.5 h-3.5 text-indigo-400" />
                     {isEs ? 'Tamaño de Papel' : 'Paper Size'}
                   </label>
@@ -252,7 +300,9 @@ export default function TextToPdf() {
                       onChange={(e) => setAddPageNumbers(e.target.checked)}
                       className="w-4 h-4 rounded border-slate-700 bg-slate-950 accent-indigo-500"
                     />
-                    <span>{isEs ? 'Numeración de páginas en pie de página' : 'Footer page numbers'}</span>
+                    <span>
+                      {isEs ? 'Numeración de páginas en pie de página' : 'Footer page numbers'}
+                    </span>
                   </label>
                 </div>
               </motion.div>
@@ -272,8 +322,10 @@ export default function TextToPdf() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm">{isEs ? 'Generando PDF...' : 'Generating PDF...'}</span>
                 </>
+              ) : isEs ? (
+                'Convertir a PDF'
               ) : (
-                isEs ? 'Convertir a PDF' : 'Convert to PDF'
+                'Convert to PDF'
               )}
             </button>
           ) : (

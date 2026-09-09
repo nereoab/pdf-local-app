@@ -768,43 +768,27 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      processSelectedFile(e.target.files[0]);
-    }
-    e.target.value = '';
+  const handleClearAllSlots = () => {
+    setSlots([
+      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
+      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
+    ]);
+    setActiveSlotIndex(0);
+    setFile(null);
+    setCompletedResult(null);
   };
 
-  const processSelectedFile = (selected: File) => {
-    const name = selected.name.toLowerCase();
-    const isPdf = name.endsWith('.pdf');
-    const isWord = name.endsWith('.docx') || name.endsWith('.doc');
-
-    if (mode === 'word-to-pdf') {
-      if (isWord) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(isEs ? 'Documento Word (.docx) cargado' : 'Word document (.docx) loaded');
-      } else {
-        toast.error(
-          isEs
-            ? 'Por favor selecciona un archivo de Microsoft Word (.docx o .doc)'
-            : 'Please select a Microsoft Word file (.docx or .doc)',
-        );
-      }
-    } else {
-      if (isPdf) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(isEs ? 'Archivo PDF cargado' : 'PDF file loaded');
-      } else {
-        toast.error(
-          isEs ? 'Por favor selecciona un archivo PDF (.pdf)' : 'Please select a PDF file (.pdf)',
-        );
-      }
-    }
+  const handleSwitchMode = (newMode: ConversionDirection) => {
+    cancelRenderRef.current = true;
+    handleClearAllSlots();
+    setMode(newMode);
+    setGlobalFile(null);
+    setDownloadUrl(null);
+    setDownloadFilename('');
+    setParsedWordDoc(null);
+    setCompletedResult(null);
+    setHeaderHidden(false);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -813,18 +797,6 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  };
-
-  const handleSwitchMode = (newMode: ConversionDirection) => {
-    cancelRenderRef.current = true;
-    setMode(newMode);
-    setFile(null);
-    setGlobalFile(null);
-    setDownloadUrl(null);
-    setDownloadFilename('');
-    setParsedWordDoc(null);
-    setCompletedResult(null);
-    setHeaderHidden(false);
   };
 
   // CARGA AISLADA DE UN ARCHIVO EN UNA CAJA ESPECÍFICA (SIN DUPLICAR)
@@ -934,23 +906,111 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     }
   };
 
-  const handleClearAllSlots = () => {
-    setSlots([
-      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
-      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
-      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
-    ]);
-    setActiveSlotIndex(0);
-    setFile(null);
+  const loadFilesIntoSlots = (fileList: FileList | File[], specificSlotIndex?: number) => {
+    const filesArray = Array.from(fileList);
+    const validFiles: File[] = [];
+
+    // Auto-detección inteligente de modo
+    let currentMode = mode;
+    const hasWord = filesArray.some((f) => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.docx') || n.endsWith('.doc');
+    });
+    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+
+    if (mode === 'word-to-pdf' && !hasWord && hasPdf) {
+      currentMode = 'pdf-to-word';
+      setMode('pdf-to-word');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a PDF a Word' : 'Switched to PDF to Word mode',
+      );
+    } else if (mode === 'pdf-to-word' && !hasPdf && hasWord) {
+      currentMode = 'word-to-pdf';
+      setMode('word-to-pdf');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a Word a PDF' : 'Switched to Word to PDF mode',
+      );
+    }
+
+    for (const f of filesArray) {
+      const name = f.name.toLowerCase();
+      const isPdf = name.endsWith('.pdf');
+      const isWord = name.endsWith('.docx') || name.endsWith('.doc');
+
+      if (currentMode === 'word-to-pdf' && isWord) {
+        validFiles.push(f);
+      } else if (currentMode === 'pdf-to-word' && isPdf) {
+        validFiles.push(f);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      toast.error(
+        currentMode === 'word-to-pdf'
+          ? isEs
+            ? 'Por favor selecciona archivos de Word (.docx o .doc)'
+            : 'Please select Word files (.docx or .doc)'
+          : isEs
+            ? 'Por favor selecciona archivos PDF (.pdf)'
+            : 'Please select PDF files (.pdf)',
+      );
+      return;
+    }
+
+    if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+      loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
+    } else {
+      let validIdx = 0;
+      for (let i = 0; i < 3; i++) {
+        if (validIdx >= validFiles.length) break;
+        if (!slots[i].file) {
+          loadSingleFileIntoSlot(i, validFiles[validIdx]);
+          validIdx++;
+        }
+      }
+      if (validIdx === 0 && validFiles.length > 0) {
+        validFiles.slice(0, 3).forEach((f, idx) => {
+          loadSingleFileIntoSlot(idx, f);
+        });
+      }
+      setActiveSlotIndex(0);
+    }
+
+    setGlobalFile(validFiles[0]);
+    setDownloadUrl(null);
     setCompletedResult(null);
+
+    toast.success(
+      isEs
+        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+        : `${validFiles.length} file(s) ready in boxes`,
+    );
   };
 
-  const loadFilesIntoSlots = (fileList: FileList | File[]) => {
-    const arr = Array.from(fileList).slice(0, 3);
-    arr.forEach((f, idx) => {
-      loadSingleFileIntoSlot(idx, f);
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      loadFilesIntoSlots(e.target.files);
+    }
+    e.target.value = '';
   };
+
+  const processSelectedFile = (selected: File) => {
+    loadFilesIntoSlots([selected]);
+  };
+
+  const initialGlobalFileLoadedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!globalFile || initialGlobalFileLoadedRef.current) return;
+    const name = globalFile.name.toLowerCase();
+    const isPdf = name.endsWith('.pdf');
+    const isWord = name.endsWith('.docx') || name.endsWith('.doc');
+
+    if ((defaultMode === 'pdf-to-word' && isPdf) || (defaultMode === 'word-to-pdf' && isWord)) {
+      initialGlobalFileLoadedRef.current = true;
+      loadFilesIntoSlots([globalFile], 0);
+    }
+  }, [globalFile, defaultMode]);
 
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;
@@ -1314,6 +1374,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     >
       <input
         type="file"
+        multiple
         accept={
           mode === 'word-to-pdf'
             ? '.docx, .doc, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/msword'
@@ -1502,6 +1563,17 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  loadFilesIntoSlots(e.dataTransfer.files);
+                }
+              }}
               className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
@@ -2117,7 +2189,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                         {/* TAMAÑO Y ORIENTACIÓN */}
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                            <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1 text-[11px]">
                               <Layout className="w-3.5 h-3.5 text-blue-400" />
                               {isEs ? 'Tamaño' : 'Page Size'}
                             </label>
@@ -2133,7 +2205,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                           </div>
 
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                            <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1 text-[11px]">
                               <Compass className="w-3.5 h-3.5 text-blue-400" />
                               {isEs ? 'Orientación' : 'Orientation'}
                             </label>
@@ -2167,7 +2239,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                         {/* TIPOGRAFÍA PDF Y MÁRGENES */}
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                            <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1 text-[11px]">
                               <Type className="w-3.5 h-3.5 text-blue-400" />
                               {isEs ? 'Tipografía' : 'Font'}
                             </label>
@@ -2183,7 +2255,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                           </div>
 
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1 text-[11px]">
+                            <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1 text-[11px]">
                               <Grid className="w-3.5 h-3.5 text-blue-400" />
                               {isEs ? 'Márgenes' : 'Margins'}
                             </label>
@@ -2211,7 +2283,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                         {/* TAMAÑO DE FUENTE E INTERLINEADO */}
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[10px]">
+                            <label className="text-zinc-300 font-bold mb-1 flex items-center gap-1 text-[10px]">
                               <AlignLeft className="w-3 h-3 text-blue-400" />
                               {isEs ? 'Fuente' : 'Font Size'}
                             </label>
@@ -2234,7 +2306,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                           </div>
 
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[10px]">
+                            <label className="text-zinc-300 font-bold mb-1 flex items-center gap-1 text-[10px]">
                               <AlignLeft className="w-3 h-3 text-blue-400" />
                               {isEs ? 'Interlineado' : 'Spacing'}
                             </label>
@@ -2595,7 +2667,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                       <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
                         {/* MODO DE MAQUETACIÓN */}
                         <div>
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5 text-[11px]">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5 text-[11px]">
                             <Layout className="w-3.5 h-3.5 text-blue-400" />
                             {isEs ? 'Modo de Maquetación' : 'Layout Mode'}
                           </label>
@@ -2609,7 +2681,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                                   : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
                               }`}
                             >
-                              {isEs ? '✨ Réplica Exacta' : '✨ Exact Replica'}
+                              {isEs ? '✨ Diseño Visual (Folleto)' : '✨ Visual Replica (Brochure)'}
                             </button>
                             <button
                               type="button"
@@ -2620,7 +2692,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                                   : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
                               }`}
                             >
-                              {isEs ? '📝 Texto Fluido' : '📝 Flowing Text'}
+                              {isEs ? '📝 Texto Fluido (Doc)' : '📝 Flowing Text (Doc)'}
                             </button>
                           </div>
                         </div>
@@ -2628,7 +2700,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                         {/* FORMATO DE SALIDA Y TIPOGRAFÍA BASE */}
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[11px]">
+                            <label className="text-zinc-300 font-bold mb-1 flex items-center gap-1 text-[11px]">
                               <FileText className="w-3.5 h-3.5 text-blue-400" />
                               {isEs ? 'Formato' : 'Format'}
                             </label>
@@ -2643,7 +2715,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                           </div>
 
                           <div>
-                            <label className="text-zinc-300 font-bold block mb-1 flex items-center gap-1 text-[11px]">
+                            <label className="text-zinc-300 font-bold mb-1 flex items-center gap-1 text-[11px]">
                               <Type className="w-3.5 h-3.5 text-blue-400" />
                               {isEs ? 'Tipografía' : 'Font'}
                             </label>

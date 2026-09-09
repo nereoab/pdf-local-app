@@ -1,9 +1,17 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { 
-  FileDown, Loader2, X, ShieldCheck, FilePlus, 
-  Sliders, ChevronDown, ChevronUp, Layout, Grid 
+import {
+  FileDown,
+  Loader2,
+  X,
+  ShieldCheck,
+  FilePlus,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Layout,
+  Grid,
 } from 'lucide-react';
 import { HtmlIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -40,7 +48,9 @@ export default function HtmlToPdf() {
         setDownloadUrl(null);
         toast.success(isEs ? 'Archivo HTML cargado' : 'HTML file loaded');
       } else {
-        toast.error(isEs ? 'Selecciona un archivo HTML (.html/.htm)' : 'Select an HTML file (.html/.htm)');
+        toast.error(
+          isEs ? 'Selecciona un archivo HTML (.html/.htm)' : 'Select an HTML file (.html/.htm)',
+        );
       }
     }
     e.target.value = '';
@@ -59,17 +69,21 @@ export default function HtmlToPdf() {
           formData.append('File', file);
           formData.append('StoreFile', 'false');
 
-          const response = await fetch(`https://v2.convertapi.com/convert/html/to/pdf?Secret=${API_SECRET}`, {
-            method: 'POST',
-            body: formData,
-          });
+          const response = await fetch(
+            `https://v2.convertapi.com/convert/html/to/pdf?Secret=${API_SECRET}`,
+            {
+              method: 'POST',
+              body: formData,
+            },
+          );
 
           const data = await response.json();
           if (data.Files && data.Files.length > 0) {
             const base64Data = data.Files[0].FileData;
             const byteCharacters = atob(base64Data);
             const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+            for (let i = 0; i < byteCharacters.length; i++)
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
             const byteArray = new Uint8Array(byteNumbers);
             const blob = new Blob([byteArray], { type: 'application/pdf' });
             const localUrl = URL.createObjectURL(blob);
@@ -77,7 +91,7 @@ export default function HtmlToPdf() {
 
             const link = document.createElement('a');
             link.href = localUrl;
-            link.download = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
+            link.download = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -85,11 +99,16 @@ export default function HtmlToPdf() {
             toast.success(isEs ? '¡PDF generado con éxito!' : 'PDF generated successfully!');
             return;
           }
-        } catch (err) { console.warn("ConvertAPI fallback local", err); }
+        } catch (err) {
+          console.warn('ConvertAPI fallback local', err);
+        }
       }
 
       const htmlText = await file.text();
-      const cleanText = htmlText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const cleanText = htmlText
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
       const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
       const pdfDoc = await PDFDocument.create();
@@ -98,17 +117,30 @@ export default function HtmlToPdf() {
 
       let w = 595.28;
       let h = 841.89;
-      if (pageSize === 'letter') { w = 612; h = 792; }
-      else if (pageSize === 'legal') { w = 612; h = 1008; }
+      if (pageSize === 'letter') {
+        w = 612;
+        h = 792;
+      } else if (pageSize === 'legal') {
+        w = 612;
+        h = 1008;
+      }
 
       if (orientation === 'landscape') {
-        const temp = w; w = h; h = temp;
+        const temp = w;
+        w = h;
+        h = temp;
       }
 
       const page = pdfDoc.addPage([w, h]);
-      page.drawText(`Documento Web HTML: ${file.name}`, { x: 50, y: h - 60, size: 16, font: fontBold, color: rgb(0.9, 0.35, 0.1) });
+      page.drawText(`Documento Web HTML: ${file.name}`, {
+        x: 50,
+        y: h - 60,
+        size: 16,
+        font: fontBold,
+        color: rgb(0.9, 0.35, 0.1),
+      });
 
-      const lines = cleanText.match(/.{1,75}/g) || ["Contenido del archivo HTML"];
+      const lines = cleanText.match(/.{1,75}/g) || ['Contenido del archivo HTML'];
       let y = h - 90;
       lines.slice(0, 35).forEach((line) => {
         if (y > 50) {
@@ -118,7 +150,13 @@ export default function HtmlToPdf() {
       });
 
       if (addHeaderFooter) {
-        page.drawText(new Date().toLocaleDateString(), { x: w - 120, y: 25, size: 9, font: fontRegular, color: rgb(0.5, 0.5, 0.5) });
+        page.drawText(new Date().toLocaleDateString(), {
+          x: w - 120,
+          y: 25,
+          size: 9,
+          font: fontRegular,
+          color: rgb(0.5, 0.5, 0.5),
+        });
       }
 
       const pdfBytes = await pdfDoc.save();
@@ -128,12 +166,14 @@ export default function HtmlToPdf() {
 
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
+      link.download = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(isEs ? '¡PDF generado desde HTML con éxito!' : 'PDF generated from HTML successfully!');
+      toast.success(
+        isEs ? '¡PDF generado desde HTML con éxito!' : 'PDF generated from HTML successfully!',
+      );
     } catch (error) {
       console.error(error);
       toast.error(isEs ? 'Error al convertir HTML a PDF.' : 'Error converting HTML to PDF.');
@@ -163,13 +203,22 @@ export default function HtmlToPdf() {
             {isEs ? 'HTML a PDF (Con Opciones Avanzadas)' : 'HTML to PDF (With Advanced Options)'}
           </h2>
           <p className="text-orange-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-            {isEs ? 'Convierte páginas HTML a PDF con gráficos de fondo y formato de página' : 'Convert HTML pages to PDF with background graphics & paper size'}
+            {isEs
+              ? 'Convierte páginas HTML a PDF con gráficos de fondo y formato de página'
+              : 'Convert HTML pages to PDF with background graphics & paper size'}
           </p>
         </div>
 
         <label className="flex items-center justify-center gap-2.5 bg-white text-black hover:bg-slate-200 px-8 py-3.5 rounded-full font-black text-sm shadow-lg group-hover:scale-105 transition-all mt-1 cursor-pointer">
           <FilePlus className="w-4 h-4 text-black" /> {isEs ? 'Seleccionar HTML' : 'Select HTML'}
-          <input type="file" accept=".html,.htm" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
+          <input
+            type="file"
+            accept=".html,.htm"
+            className="hidden"
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            disabled={isProcessing}
+          />
         </label>
 
         <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-emerald-400 text-xs font-extrabold mt-1 font-mono">
@@ -188,31 +237,48 @@ export default function HtmlToPdf() {
             <HtmlIcon className="w-5 h-5 rounded-sm" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
+          <button
+            onClick={() => {
+              setFile(null);
+              setDownloadUrl(null);
+            }}
+            disabled={isProcessing}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex flex-col items-center mt-12">
           <HtmlIcon className="w-20 h-20 rounded-2xl shadow-2xl mb-4" />
-          <span className="text-xs text-orange-400 font-mono">✓ Archivo HTML cargado correctamente</span>
+          <span className="text-xs text-orange-400 font-mono">
+            ✓ Archivo HTML cargado correctamente
+          </span>
         </div>
       </div>
 
       <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Convertir a PDF' : 'Convert to PDF'}</h3>
+            <h3 className="text-xl font-bold text-white">
+              {isEs ? 'Convertir a PDF' : 'Convert to PDF'}
+            </h3>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Configura orientación, tamaño de papel y gráficos CSS.' : 'Configure orientation, paper size & CSS graphics.'}
+            {isEs
+              ? 'Configura orientación, tamaño de papel y gráficos CSS.'
+              : 'Configure orientation, paper size & CSS graphics.'}
           </p>
 
           <AnimatePresence>
@@ -224,7 +290,7 @@ export default function HtmlToPdf() {
                 className="space-y-4 mb-6 border-t border-slate-800 pt-4"
               >
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Layout className="w-3.5 h-3.5 text-orange-400" />
                     {isEs ? 'Orientación' : 'Orientation'}
                   </label>
@@ -255,7 +321,7 @@ export default function HtmlToPdf() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Grid className="w-3.5 h-3.5 text-orange-400" />
                     {isEs ? 'Tamaño de Papel' : 'Paper Size'}
                   </label>
@@ -307,8 +373,10 @@ export default function HtmlToPdf() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm">{isEs ? 'Generando PDF...' : 'Generating PDF...'}</span>
                 </>
+              ) : isEs ? (
+                'Convertir a PDF'
               ) : (
-                isEs ? 'Convertir a PDF' : 'Convert to PDF'
+                'Convert to PDF'
               )}
             </button>
           ) : (

@@ -1380,7 +1380,7 @@ export default function PdfRepairer() {
 
                   {/* PRIORIDAD */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Target className="w-3 h-3 text-zinc-400" />
                       {isEs ? 'Prioridad de Recuperación' : 'Recovery Priority'}
                     </label>
@@ -1403,7 +1403,7 @@ export default function PdfRepairer() {
 
                   {/* ALCANCE */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <FileCheck2 className="w-3 h-3 text-zinc-400" />
                       {isEs ? 'Alcance de Páginas' : 'Page Scope'}
                     </label>
@@ -1445,7 +1445,7 @@ export default function PdfRepairer() {
 
                   {/* COMPRESIÓN */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Archive className="w-3 h-3 text-zinc-400" />
                       {isEs ? 'Compresión de Salida' : 'Output Compression'}
                     </label>
@@ -1471,7 +1471,7 @@ export default function PdfRepairer() {
 
                   {/* ACCIÓN EN PÁGINAS DAÑADAS */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <AlertTriangle className="w-3 h-3 text-zinc-400" />
                       {isEs ? 'Acción ante Páginas Dañadas' : 'Action on Corrupted Pages'}
                     </label>

@@ -1,9 +1,19 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { 
-  FileSpreadsheet, FileDown, Loader2, X, ShieldCheck, FilePlus, 
-  Sliders, ChevronDown, ChevronUp, Layout, Grid, Sparkles 
+import {
+  FileSpreadsheet,
+  FileDown,
+  Loader2,
+  X,
+  ShieldCheck,
+  FilePlus,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Layout,
+  Grid,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -28,13 +38,20 @@ export default function ExcelToPdf() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
-      const isExcel = selected.name.endsWith('.xlsx') || selected.name.endsWith('.xls') || selected.name.endsWith('.csv');
+      const isExcel =
+        selected.name.endsWith('.xlsx') ||
+        selected.name.endsWith('.xls') ||
+        selected.name.endsWith('.csv');
       if (isExcel) {
         setFile(selected);
         setDownloadUrl(null);
         toast.success(isEs ? 'Hoja de cálculo cargada' : 'Spreadsheet loaded');
       } else {
-        toast.error(isEs ? 'Selecciona una hoja de cálculo (.xlsx/.xls/.csv)' : 'Select a spreadsheet (.xlsx/.xls/.csv)');
+        toast.error(
+          isEs
+            ? 'Selecciona una hoja de cálculo (.xlsx/.xls/.csv)'
+            : 'Select a spreadsheet (.xlsx/.xls/.csv)',
+        );
       }
     }
     e.target.value = '';
@@ -44,7 +61,9 @@ export default function ExcelToPdf() {
     if (!file) return;
 
     setIsProcessing(true);
-    toast.info(isEs ? 'Generando PDF con opciones avanzadas...' : 'Generating PDF with advanced options...');
+    toast.info(
+      isEs ? 'Generando PDF con opciones avanzadas...' : 'Generating PDF with advanced options...',
+    );
 
     try {
       const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
@@ -84,25 +103,33 @@ export default function ExcelToPdf() {
         color: primaryColor,
       });
 
-      page.drawText(file.name.replace(/\.[^/.]+$/, "").toUpperCase(), { 
-        x: 55, 
-        y: height - 58, 
-        size: 14, 
-        font: fontBold, 
-        color: headerTextColor 
+      page.drawText(file.name.replace(/\.[^/.]+$/, '').toUpperCase(), {
+        x: 55,
+        y: height - 58,
+        size: 14,
+        font: fontBold,
+        color: headerTextColor,
       });
 
-      page.drawText(isEs ? `Reporte generado • ${orientation === 'landscape' ? 'Horizontal' : 'Vertical'} • ${pageSize.toUpperCase()}` : `Report generated • ${orientation.toUpperCase()} • ${pageSize.toUpperCase()}`, {
-        x: 55,
-        y: height - 72,
-        size: 9,
-        font: fontRegular,
-        color: rgb(0.85, 0.85, 0.85)
-      });
+      page.drawText(
+        isEs
+          ? `Reporte generado • ${orientation === 'landscape' ? 'Horizontal' : 'Vertical'} • ${pageSize.toUpperCase()}`
+          : `Report generated • ${orientation.toUpperCase()} • ${pageSize.toUpperCase()}`,
+        {
+          x: 55,
+          y: height - 72,
+          size: 9,
+          font: fontRegular,
+          color: rgb(0.85, 0.85, 0.85),
+        },
+      );
 
       if (file.name.endsWith('.csv')) {
         const text = await file.text();
-        const lines = text.split('\n').filter(l => l.trim()).slice(0, 25);
+        const lines = text
+          .split('\n')
+          .filter((l) => l.trim())
+          .slice(0, 25);
         let currentY = height - 110;
 
         lines.forEach((line, idx) => {
@@ -131,20 +158,25 @@ export default function ExcelToPdf() {
               y: currentY - 10,
               size: 9,
               font: idx === 0 ? fontBold : fontRegular,
-              color: idx === 0 ? rgb(0, 0, 0) : rgb(0.2, 0.2, 0.2)
+              color: idx === 0 ? rgb(0, 0, 0) : rgb(0.2, 0.2, 0.2),
             });
 
             currentY -= 22;
           }
         });
       } else {
-        page.drawText(isEs ? "Tabla de hoja de cálculo convertida exitosamente a informe PDF." : "Spreadsheet table successfully converted into PDF report.", { 
-          x: 50, 
-          y: height - 120, 
-          size: 11, 
-          font: fontRegular, 
-          color: rgb(0.2, 0.2, 0.2) 
-        });
+        page.drawText(
+          isEs
+            ? 'Tabla de hoja de cálculo convertida exitosamente a informe PDF.'
+            : 'Spreadsheet table successfully converted into PDF report.',
+          {
+            x: 50,
+            y: height - 120,
+            size: 11,
+            font: fontRegular,
+            color: rgb(0.2, 0.2, 0.2),
+          },
+        );
       }
 
       const pdfBytes = await pdfDoc.save();
@@ -154,7 +186,7 @@ export default function ExcelToPdf() {
 
       const link = document.createElement('a');
       link.href = localUrl;
-      link.download = `${file.name.replace(/\.[^/.]+$/, "")}.pdf`;
+      link.download = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -162,7 +194,9 @@ export default function ExcelToPdf() {
       toast.success(isEs ? '¡PDF generado correctamente!' : 'PDF generated successfully!');
     } catch (error) {
       console.error(error);
-      toast.error(isEs ? 'Error al convertir la hoja de cálculo.' : 'Error converting spreadsheet.');
+      toast.error(
+        isEs ? 'Error al convertir la hoja de cálculo.' : 'Error converting spreadsheet.',
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -189,13 +223,23 @@ export default function ExcelToPdf() {
             {isEs ? 'Excel a PDF (Con Opciones Avanzadas)' : 'Excel to PDF (With Advanced Options)'}
           </h2>
           <p className="text-emerald-400 text-sm font-semibold flex items-center justify-center gap-1.5">
-            {isEs ? 'Convierte hojas de cálculo (.xlsx / .csv) con orientación, tamaño de papel y tema personalizable' : 'Convert spreadsheets (.xlsx / .csv) with customizable orientation, paper size & theme'}
+            {isEs
+              ? 'Convierte hojas de cálculo (.xlsx / .csv) con orientación, tamaño de papel y tema personalizable'
+              : 'Convert spreadsheets (.xlsx / .csv) with customizable orientation, paper size & theme'}
           </p>
         </div>
 
         <label className="flex items-center justify-center gap-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 px-8 py-3.5 rounded-full font-black text-sm shadow-[0_0_25px_rgba(16,185,129,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_35px_rgba(16,185,129,0.7)] transition-all mt-1 cursor-pointer border border-emerald-300/40">
-          <FilePlus className="w-4 h-4 text-slate-950" /> {isEs ? 'Seleccionar Excel' : 'Select Excel'}
-          <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} ref={fileInputRef} disabled={isProcessing} />
+          <FilePlus className="w-4 h-4 text-slate-950" />{' '}
+          {isEs ? 'Seleccionar Excel' : 'Select Excel'}
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            disabled={isProcessing}
+          />
         </label>
 
         <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 text-xs font-extrabold mt-1">
@@ -208,14 +252,20 @@ export default function ExcelToPdf() {
 
   return (
     <div className="w-full flex flex-col lg:flex-row gap-6 items-start font-sans">
-      
       <div className="flex-1 bg-slate-900/80 p-6 rounded-3xl border border-slate-800 min-h-[440px] flex flex-col items-center justify-center relative w-full">
         <div className="absolute top-4 left-4 right-4 bg-slate-800/80 backdrop-blur-sm p-3 rounded-2xl border border-white/10 flex justify-between items-center shadow-sm">
           <div className="flex items-center gap-3 overflow-hidden">
             <FileSpreadsheet className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <span className="font-semibold text-white truncate text-sm">{file.name}</span>
           </div>
-          <button onClick={() => { setFile(null); setDownloadUrl(null); }} disabled={isProcessing} className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer">
+          <button
+            onClick={() => {
+              setFile(null);
+              setDownloadUrl(null);
+            }}
+            disabled={isProcessing}
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -232,17 +282,25 @@ export default function ExcelToPdf() {
       <div className="w-full lg:w-96 bg-slate-900/90 border border-slate-800 p-6 rounded-3xl flex flex-col justify-between h-auto shadow-2xl">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white">{isEs ? 'Convertir a PDF' : 'Convert to PDF'}</h3>
+            <h3 className="text-xl font-bold text-white">
+              {isEs ? 'Convertir a PDF' : 'Convert to PDF'}
+            </h3>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-mono cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
           <p className="text-slate-400 text-xs leading-relaxed mb-4">
-            {isEs ? 'Personaliza la orientación, tamaño y formato de cuadrículas del PDF.' : 'Customize page orientation, size & gridlines for PDF.'}
+            {isEs
+              ? 'Personaliza la orientación, tamaño y formato de cuadrículas del PDF.'
+              : 'Customize page orientation, size & gridlines for PDF.'}
           </p>
 
           <AnimatePresence>
@@ -254,7 +312,7 @@ export default function ExcelToPdf() {
                 className="space-y-4 mb-6 border-t border-slate-800 pt-4"
               >
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Layout className="w-3.5 h-3.5 text-emerald-400" />
                     {isEs ? 'Orientación de Página' : 'Page Orientation'}
                   </label>
@@ -285,7 +343,7 @@ export default function ExcelToPdf() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Grid className="w-3.5 h-3.5 text-emerald-400" />
                     {isEs ? 'Tamaño de Papel' : 'Paper Size'}
                   </label>
@@ -301,18 +359,26 @@ export default function ExcelToPdf() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-300 font-bold block mb-1 flex items-center gap-1.5">
+                  <label className="text-xs text-slate-300 font-bold mb-1 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                     {isEs ? 'Estilo de Tabla' : 'Table Style'}
                   </label>
                   <select
                     value={tableTheme}
-                    onChange={(e) => setTableTheme(e.target.value as 'emerald' | 'dark' | 'minimal')}
+                    onChange={(e) =>
+                      setTableTheme(e.target.value as 'emerald' | 'dark' | 'minimal')
+                    }
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl py-2 px-3 text-white text-xs font-mono focus:border-emerald-400 focus:outline-none"
                   >
-                    <option value="emerald">{isEs ? 'Verde Esmeralda (Excel)' : 'Emerald Green (Excel)'}</option>
-                    <option value="dark">{isEs ? 'Profesional Oscuro' : 'Professional Dark'}</option>
-                    <option value="minimal">{isEs ? 'Minimalista Monocromo' : 'Minimal Monochrome'}</option>
+                    <option value="emerald">
+                      {isEs ? 'Verde Esmeralda (Excel)' : 'Emerald Green (Excel)'}
+                    </option>
+                    <option value="dark">
+                      {isEs ? 'Profesional Oscuro' : 'Professional Dark'}
+                    </option>
+                    <option value="minimal">
+                      {isEs ? 'Minimalista Monocromo' : 'Minimal Monochrome'}
+                    </option>
                   </select>
                 </div>
 
@@ -344,8 +410,10 @@ export default function ExcelToPdf() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm">{isEs ? 'Generando PDF...' : 'Generating PDF...'}</span>
                 </>
+              ) : isEs ? (
+                'Convertir a PDF'
               ) : (
-                isEs ? 'Convertir a PDF' : 'Convert to PDF'
+                'Convert to PDF'
               )}
             </button>
           ) : (

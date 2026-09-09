@@ -1263,7 +1263,7 @@ export default function PdfUnlocker() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Shield className="w-3 h-3 text-zinc-400" />
                       {isEs ? 'Ajustes de Salida' : 'Output Settings'}
                     </label>
@@ -1292,7 +1292,7 @@ export default function PdfUnlocker() {
                     </div>
 
                     <div className="mt-3">
-                      <label className="text-[10px] font-bold text-zinc-400 block mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                      <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase flex items-center gap-1.5">
                         <Unlock className="w-3 h-3 text-emerald-400" />
                         {isEs ? 'Permisos que se liberarán' : 'Permissions to be unlocked'}
                       </label>

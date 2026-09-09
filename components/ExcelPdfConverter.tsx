@@ -53,6 +53,8 @@ interface ExcelPdfConverterProps {
 interface PdfTextItem {
   str?: string;
   transform?: number[];
+  width?: number;
+  height?: number;
 }
 
 interface CompletedResult {
@@ -184,8 +186,8 @@ export default function ExcelPdfConverter({
 
   // MOTOR DE CONVERSIÓN
   const [conversionEngine, setConversionEngine] = useState<
-    'adobe' | 'cloudconvert' | 'local' | 'gemini'
-  >('gemini');
+    'local' | 'adobe' | 'cloudconvert' | 'gemini'
+  >('local');
 
   // Opciones Avanzadas - Excel a PDF
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
@@ -409,45 +411,28 @@ export default function ExcelPdfConverter({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      processSelectedFile(e.target.files[0]);
-    }
-    e.target.value = '';
+  const handleClearAllSlots = () => {
+    setSlots([
+      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0, excelSheets: [] },
+      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0, excelSheets: [] },
+      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0, excelSheets: [] },
+    ]);
+    setActiveSlotIndex(0);
+    setFile(null);
+    setCompletedResult(null);
   };
 
-  const processSelectedFile = (selected: File) => {
-    const name = selected.name.toLowerCase();
-    const isPdf = name.endsWith('.pdf');
-    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv');
-
-    if (mode === 'excel-to-pdf') {
-      if (isExcel) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(isEs ? 'Hoja de cálculo Excel cargada' : 'Excel spreadsheet loaded');
-      } else {
-        toast.error(
-          isEs
-            ? 'Por favor selecciona un archivo Excel (.xlsx/.xls/.csv)'
-            : 'Please select an Excel file (.xlsx/.xls/.csv)',
-        );
-      }
-    } else {
-      if (isPdf) {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        toast.success(
-          isEs ? 'Archivo PDF cargado para tablas Excel' : 'PDF file loaded for Excel tables',
-        );
-      } else {
-        toast.error(
-          isEs ? 'Por favor selecciona un archivo PDF (.pdf)' : 'Please select a PDF file (.pdf)',
-        );
-      }
-    }
+  const handleSwitchMode = (newMode: ConversionDirection) => {
+    cancelRenderRef.current = true;
+    handleClearAllSlots();
+    setMode(newMode);
+    setGlobalFile(null);
+    setDownloadUrl(null);
+    setDownloadFilename('');
+    setCompletedResult(null);
+    setHeaderHidden(false);
+    setExcelSheets([]);
+    setActiveSheetIndex(0);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -456,19 +441,6 @@ export default function ExcelPdfConverter({
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  };
-
-  const handleSwitchMode = (newMode: ConversionDirection) => {
-    cancelRenderRef.current = true;
-    setMode(newMode);
-    setFile(null);
-    setGlobalFile(null);
-    setDownloadUrl(null);
-    setDownloadFilename('');
-    setCompletedResult(null);
-    setHeaderHidden(false);
-    setExcelSheets([]);
-    setActiveSheetIndex(0);
   };
 
   // CARGA AISLADA DE UN ARCHIVO EN UNA CAJA ESPECÍFICA (SIN DUPLICAR)
@@ -600,23 +572,111 @@ export default function ExcelPdfConverter({
     }
   };
 
-  const handleClearAllSlots = () => {
-    setSlots([
-      { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0, excelSheets: [] },
-      { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0, excelSheets: [] },
-      { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0, excelSheets: [] },
-    ]);
-    setActiveSlotIndex(0);
-    setFile(null);
+  const loadFilesIntoSlots = (fileList: FileList | File[], specificSlotIndex?: number) => {
+    const filesArray = Array.from(fileList);
+    const validFiles: File[] = [];
+
+    // Auto-detección inteligente de modo
+    let currentMode = mode;
+    const hasExcel = filesArray.some((f) => {
+      const n = f.name.toLowerCase();
+      return n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.csv');
+    });
+    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+
+    if (mode === 'excel-to-pdf' && !hasExcel && hasPdf) {
+      currentMode = 'pdf-to-excel';
+      setMode('pdf-to-excel');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a PDF a Excel' : 'Switched to PDF to Excel mode',
+      );
+    } else if (mode === 'pdf-to-excel' && !hasPdf && hasExcel) {
+      currentMode = 'excel-to-pdf';
+      setMode('excel-to-pdf');
+      toast.info(
+        isEs ? 'Modo cambiado automáticamente a Excel a PDF' : 'Switched to Excel to PDF mode',
+      );
+    }
+
+    for (const f of filesArray) {
+      const name = f.name.toLowerCase();
+      const isPdf = name.endsWith('.pdf');
+      const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv');
+
+      if (currentMode === 'excel-to-pdf' && isExcel) {
+        validFiles.push(f);
+      } else if (currentMode === 'pdf-to-excel' && isPdf) {
+        validFiles.push(f);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      toast.error(
+        currentMode === 'excel-to-pdf'
+          ? isEs
+            ? 'Por favor selecciona archivos Excel (.xlsx/.xls/.csv)'
+            : 'Please select Excel files (.xlsx/.xls/.csv)'
+          : isEs
+            ? 'Por favor selecciona archivos PDF (.pdf)'
+            : 'Please select PDF files (.pdf)',
+      );
+      return;
+    }
+
+    if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+      loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
+    } else {
+      let validIdx = 0;
+      for (let i = 0; i < 3; i++) {
+        if (validIdx >= validFiles.length) break;
+        if (!slots[i].file) {
+          loadSingleFileIntoSlot(i, validFiles[validIdx]);
+          validIdx++;
+        }
+      }
+      if (validIdx === 0 && validFiles.length > 0) {
+        validFiles.slice(0, 3).forEach((f, idx) => {
+          loadSingleFileIntoSlot(idx, f);
+        });
+      }
+      setActiveSlotIndex(0);
+    }
+
+    setGlobalFile(validFiles[0]);
+    setDownloadUrl(null);
     setCompletedResult(null);
+
+    toast.success(
+      isEs
+        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+        : `${validFiles.length} file(s) ready in boxes`,
+    );
   };
 
-  const loadFilesIntoSlots = (fileList: FileList | File[]) => {
-    const arr = Array.from(fileList).slice(0, 3);
-    arr.forEach((f, idx) => {
-      loadSingleFileIntoSlot(idx, f);
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      loadFilesIntoSlots(e.target.files);
+    }
+    e.target.value = '';
   };
+
+  const processSelectedFile = (selected: File) => {
+    loadFilesIntoSlots([selected]);
+  };
+
+  const initialGlobalFileLoadedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!globalFile || initialGlobalFileLoadedRef.current) return;
+    const name = globalFile.name.toLowerCase();
+    const isPdf = name.endsWith('.pdf');
+    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv');
+
+    if ((defaultMode === 'pdf-to-excel' && isPdf) || (defaultMode === 'excel-to-pdf' && isExcel)) {
+      initialGlobalFileLoadedRef.current = true;
+      loadFilesIntoSlots([globalFile], 0);
+    }
+  }, [globalFile, defaultMode]);
 
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;
@@ -1009,16 +1069,26 @@ export default function ExcelPdfConverter({
             : 'Extracting tables with selected engine...',
         );
 
+        // Si el motor seleccionado es un servicio externo (CloudConvert, Adobe, Gemini), llamar a la API
         if (
           conversionEngine === 'adobe' ||
           conversionEngine === 'cloudconvert' ||
           conversionEngine === 'gemini'
         ) {
           try {
+            const extraParams: Record<string, string> = {
+              engine: conversionEngine,
+              sheetStructure: sheetStructure === 'per_page' ? 'per_page' : 'single_sheet',
+              autoFormat: autoFormatNumbers ? 'true' : 'false',
+            };
+            if (targetPages.length < totalPages && targetPages.length > 0) {
+              extraParams.pages = targetPages.join(',');
+            }
+
             resultBlob = await convertWithApi(
               '/api/convert/pdf-to-excel',
               file,
-              { engine: conversionEngine },
+              extraParams,
               (pct, msg) => {
                 setProgressPercent(pct);
                 setProgressMsg(msg);
@@ -1027,21 +1097,22 @@ export default function ExcelPdfConverter({
             if (downloadUrl) URL.revokeObjectURL(downloadUrl);
             localUrl = URL.createObjectURL(resultBlob);
           } catch (apiErr: any) {
-            console.warn('API conversion error:', apiErr);
+            console.warn('API conversion error, falling back to client-side extractor:', apiErr);
             if (conversionEngine === 'gemini') {
               throw new Error(apiErr?.message || 'Error en la transcripción con Gemini AI.');
             }
           }
         }
 
+        // MOTOR LOCAL SHEETJS HIGH-FIDELITY (Ejecuta directamente si engine === 'local' o como fallback)
         if (!resultBlob) {
           setProgressMsg(
             isEs
-              ? `Analizando grilla y tablas de ${totalToConvert} páginas...`
-              : `Analyzing grid & tables of ${totalToConvert} pages...`,
+              ? `Analizando grilla y tablas de ${totalToConvert} páginas con SheetJS High-Fidelity...`
+              : `Analyzing grid & tables of ${totalToConvert} pages with SheetJS High-Fidelity...`,
           );
           await new Promise((r) => setTimeout(r, 60));
-          setProgressPercent(15);
+          setProgressPercent(10);
 
           const pdfjsLib = await import('pdfjs-dist');
           pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -1053,6 +1124,55 @@ export default function ExcelPdfConverter({
             cMapPacked: true,
           }).promise;
 
+          // Helper contable: analiza y convierte cadenas numéricas incluyendo negativos con paréntesis y moneda
+          const parseAccountingCell = (
+            rawStr: string,
+          ): { isNum: boolean; val?: number; fmt?: string } => {
+            let s = rawStr.trim();
+            if (!s) return { isNum: false };
+
+            // Limpiar monedas habituales
+            s = s
+              .replace(/^S\/\.?\s*/i, '')
+              .replace(/^\$\s*/, '')
+              .replace(/%$/, '')
+              .trim();
+
+            // Detección de negativos contables entre paréntesis: (134,457) -> -134457
+            let isNegative = false;
+            if (s.startsWith('(') && s.endsWith(')')) {
+              isNegative = true;
+              s = s.substring(1, s.length - 1).trim();
+            }
+
+            const cleanCommas = s.replace(/,/g, '');
+            if (/^-?\d+(\.\d+)?$/.test(cleanCommas)) {
+              const n = parseFloat(cleanCommas);
+              if (!isNaN(n)) {
+                const finalVal = isNegative ? -n : n;
+                const fmt = Number.isInteger(finalVal)
+                  ? '#,##0;(#,##0);"-";@'
+                  : '#,##0.00;(#,##0.00);"-";@';
+                return { isNum: true, val: finalVal, fmt };
+              }
+            }
+
+            // Guión como cero contable
+            if (s === '-' || s === '–' || s === '—') {
+              return { isNum: true, val: 0, fmt: '#,##0;(#,##0);"-";@' };
+            }
+
+            return { isNum: false };
+          };
+
+          interface LineChunk {
+            x0: number;
+            x1: number;
+            text: string;
+            isNum: boolean;
+            numVal?: number;
+          }
+
           const pagesData: Array<{ pageNum: number; rows: Array<Array<string | number>> }> = [];
 
           for (let idx = 0; idx < totalToConvert; idx++) {
@@ -1062,120 +1182,170 @@ export default function ExcelPdfConverter({
                 ? `Extrayendo tablas de pág. ${idx + 1} de ${totalToConvert} (Pág. ${pageNum})...`
                 : `Extracting tables from page ${idx + 1} of ${totalToConvert} (Page ${pageNum})...`,
             );
-            setProgressPercent(15 + Math.round(((idx + 1) / totalToConvert) * 65));
+            setProgressPercent(10 + Math.round(((idx + 1) / totalToConvert) * 75));
 
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
 
+            const rawItems = (textContent.items as PdfTextItem[]).filter(
+              (it) => it.str && it.str.trim() && it.transform,
+            );
+
+            // 1. Agrupar items por línea Y con tolerancia adaptativa de 3.8 pt
+            const linesMap: { [yKey: number]: PdfTextItem[] } = {};
+            const yTol = 3.8;
+
+            rawItems.forEach((item) => {
+              const itemY = item.transform![5];
+              const existingKey = Object.keys(linesMap)
+                .map(Number)
+                .find((k) => Math.abs(k - itemY) <= yTol);
+              const key = existingKey !== undefined ? existingKey : Math.round(itemY * 10) / 10;
+              if (!linesMap[key]) linesMap[key] = [];
+              linesMap[key].push(item);
+            });
+
+            // Ordenar de arriba hacia abajo (en PDF.js el origen Y está abajo, por lo que orden descendente)
+            const sortedYKeys = Object.keys(linesMap)
+              .map(Number)
+              .sort((a, b) => b - a);
+
+            const pageChunksByRow: LineChunk[][] = [];
+            const allAnchors: number[] = [];
+
+            sortedYKeys.forEach((yKey) => {
+              // Ordenar elementos en la línea de izquierda a derecha
+              const itemsInLine = linesMap[yKey].sort((a, b) => a.transform![4] - b.transform![4]);
+              const lineChunks: LineChunk[] = [];
+              let curr: LineChunk | null = null;
+
+              for (const item of itemsInLine) {
+                const str = sanitizeCellString(item.str || '').trim();
+                if (!str) continue;
+                // Ignorar líneas divisorias puramente decorativas (como ________ o ========)
+                if (/^[_\-=\s]{3,}$/.test(str)) continue;
+
+                const x0 = item.transform![4];
+                const width = item.width || str.length * 5.5;
+                const x1 = x0 + width;
+
+                if (!curr) {
+                  curr = { x0, x1, text: str, isNum: false };
+                } else {
+                  const gap = x0 - curr.x1;
+                  const isNumCurr = parseAccountingCell(curr.text).isNum;
+                  const isNumNext = parseAccountingCell(str).isNum;
+
+                  // Si la separación es pequeña y no mezcla texto con número separado, se concatena
+                  if (
+                    gap < 14 &&
+                    !(isNumCurr && !isNumNext) &&
+                    !(!isNumCurr && isNumNext && gap > 7)
+                  ) {
+                    curr.text = curr.text + ' ' + str;
+                    curr.x1 = Math.max(curr.x1, x1);
+                  } else {
+                    const numCheck = autoFormatNumbers
+                      ? parseAccountingCell(curr.text)
+                      : { isNum: false };
+                    curr.isNum = numCheck.isNum;
+                    curr.numVal = numCheck.val;
+                    lineChunks.push(curr);
+                    curr = { x0, x1, text: str, isNum: false };
+                  }
+                }
+              }
+
+              if (curr) {
+                const numCheck = autoFormatNumbers
+                  ? parseAccountingCell(curr.text)
+                  : { isNum: false };
+                curr.isNum = numCheck.isNum;
+                curr.numVal = numCheck.val;
+                lineChunks.push(curr);
+              }
+
+              if (lineChunks.length > 0) {
+                pageChunksByRow.push(lineChunks);
+                // Si la fila tiene 2 o más fragmentos, aporta anclajes de columna a la grilla de la página
+                if (lineChunks.length >= 2) {
+                  for (const c of lineChunks) {
+                    // Si es número, el anclaje real es su borde derecho x1; si es texto, su borde izquierdo x0
+                    allAnchors.push(c.isNum ? c.x1 : c.x0);
+                  }
+                }
+              }
+            });
+
+            // 2. Agrupar anclajes globales en columnas unificadas para esta página
+            allAnchors.sort((a, b) => a - b);
+            const columnBins: { center: number; points: number[] }[] = [];
+            const binTol = 28;
+
+            for (const a of allAnchors) {
+              const existing = columnBins.find((bin) => Math.abs(bin.center - a) <= binTol);
+              if (existing) {
+                existing.points.push(a);
+                existing.center =
+                  existing.points.reduce((s, p) => s + p, 0) / existing.points.length;
+              } else {
+                columnBins.push({ center: a, points: [a] });
+              }
+            }
+
+            columnBins.sort((a, b) => a.center - b.center);
+            const totalCols = Math.max(1, columnBins.length);
+
+            // 3. Mapear cada fila a la cuadrícula de columnas detectada
             const pageRows: Array<Array<string | number>> = [];
 
-            if (extractionStrategy === 'smart') {
-              const rawItems = (textContent.items as PdfTextItem[]).filter(
-                (it) => it.str && it.str.trim() && it.transform,
-              );
+            for (const rowChunks of pageChunksByRow) {
+              const rowCells: Array<string | number> = new Array(totalCols).fill('');
 
-              // 1. Detectar rangos de columnas globales en la página (Column Clustering)
-              const xPositions: number[] = rawItems
-                .map((it) => it.transform![4])
-                .sort((a, b) => a - b);
-
-              const columnBins: number[] = [];
-              const binTolerance = 22; // tolerancia de agrupación horizontal en pt
-              xPositions.forEach((x) => {
-                const existing = columnBins.find((bin) => Math.abs(bin - x) <= binTolerance);
-                if (existing === undefined) {
-                  columnBins.push(x);
-                }
-              });
-              columnBins.sort((a, b) => a - b);
-
-              // 2. Agrupar items por coordenadas Y con tolerancia vertical
-              const rowsMap: { [yKey: number]: PdfTextItem[] } = {};
-              const yTolerance = 7; // tolerancia vertical de fila
-
-              rawItems.forEach((item) => {
-                const rawY = item.transform![5];
-                // Encontrar clave Y existente cercana o crear una nueva
-                const existingYKey = Object.keys(rowsMap)
-                  .map(Number)
-                  .find((k) => Math.abs(k - rawY) <= yTolerance);
-
-                const finalYKey = existingYKey !== undefined ? existingYKey : Math.round(rawY);
-                if (!rowsMap[finalYKey]) rowsMap[finalYKey] = [];
-                rowsMap[finalYKey].push(item);
-              });
-
-              const sortedYKeys = Object.keys(rowsMap)
-                .map(Number)
-                .sort((a, b) => b - a);
-
-              sortedYKeys.forEach((yKey) => {
-                const itemsInRow = rowsMap[yKey];
-                // Inicializar fila con el número exacto de columnas detectadas (evita desfasamiento)
-                const rowCells: Array<string | number> = new Array(
-                  Math.max(1, columnBins.length),
-                ).fill('');
-
-                itemsInRow.forEach((item) => {
-                  const itemX = item.transform![4];
-                  // Encontrar la columna más cercana
-                  let bestColIdx = 0;
+              // Si es un título o párrafo único que empieza a la izquierda, ponerlo directo en la columna 0
+              if (rowChunks.length === 1 && !rowChunks[0].isNum && rowChunks[0].x0 < 250) {
+                rowCells[0] = rowChunks[0].text;
+              } else {
+                for (const c of rowChunks) {
+                  const anchor = c.isNum ? c.x1 : c.x0;
+                  let bestIdx = 0;
                   let minDiff = Infinity;
-                  columnBins.forEach((binX, bIdx) => {
-                    const diff = Math.abs(binX - itemX);
+                  for (let i = 0; i < columnBins.length; i++) {
+                    const diff = Math.abs(columnBins[i].center - anchor);
                     if (diff < minDiff) {
                       minDiff = diff;
-                      bestColIdx = bIdx;
-                    }
-                  });
-
-                  const cellText = sanitizeCellString(item.str || '');
-                  if (!cellText) return;
-
-                  if (autoFormatNumbers) {
-                    const cleanedNum = cellText.replace(/,/g, '').replace(/\$/g, '').trim();
-                    if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
-                      rowCells[bestColIdx] = Number(cleanedNum);
-                      return;
+                      bestIdx = i;
                     }
                   }
 
-                  const prev = rowCells[bestColIdx];
-                  rowCells[bestColIdx] = prev ? `${prev} ${cellText}` : cellText;
-                });
+                  // Si la columna ya está ocupada en esta misma fila, buscar la siguiente columna libre
+                  while (bestIdx < totalCols - 1 && rowCells[bestIdx] !== '') {
+                    bestIdx++;
+                  }
 
-                // Limpiar celdas vacías del final de la fila
-                let lastNonEmpty = rowCells.length - 1;
-                while (
-                  lastNonEmpty >= 0 &&
-                  (rowCells[lastNonEmpty] === '' || rowCells[lastNonEmpty] === null)
-                ) {
-                  lastNonEmpty--;
-                }
-
-                if (lastNonEmpty >= 0) {
-                  const trimmedRow = rowCells.slice(0, lastNonEmpty + 1);
-                  if (!trimEmptyRows || trimmedRow.some((c) => c !== '')) {
-                    pageRows.push(trimmedRow);
+                  if (c.isNum && c.numVal !== undefined) {
+                    rowCells[bestIdx] = c.numVal;
+                  } else {
+                    rowCells[bestIdx] = c.text;
                   }
                 }
-              });
-            } else {
-              (textContent.items as PdfTextItem[]).forEach((item) => {
-                if (item.str && item.str.trim()) {
-                  const text = sanitizeCellString(item.str);
-                  if (text) {
-                    if (autoFormatNumbers) {
-                      const cleanedNum = text.replace(/,/g, '').replace(/\$/g, '').trim();
-                      if (cleanedNum !== '' && !isNaN(Number(cleanedNum))) {
-                        pageRows.push([Number(cleanedNum)]);
-                        return;
-                      }
-                    }
-                    pageRows.push([text]);
-                  }
+              }
+
+              // Limpiar celdas vacías del extremo derecho de la fila
+              let lastNonEmpty = rowCells.length - 1;
+              while (
+                lastNonEmpty >= 0 &&
+                (rowCells[lastNonEmpty] === '' || rowCells[lastNonEmpty] === null)
+              ) {
+                lastNonEmpty--;
+              }
+
+              if (lastNonEmpty >= 0) {
+                const trimmedRow = rowCells.slice(0, lastNonEmpty + 1);
+                if (!trimEmptyRows || trimmedRow.some((cell) => cell !== '')) {
+                  pageRows.push(trimmedRow);
                 }
-              });
+              }
             }
 
             pagesData.push({
@@ -1192,105 +1362,120 @@ export default function ExcelPdfConverter({
                     ],
             });
 
-            await new Promise((r) => setTimeout(r, 10));
+            await new Promise((r) => setTimeout(r, 5));
           }
 
           setProgressMsg(
             isEs
-              ? 'Construyendo libro de Microsoft Excel (.xlsx)...'
-              : 'Building Microsoft Excel workbook (.xlsx)...',
+              ? 'Construyendo libro de Microsoft Excel (.xlsx) de alta fidelidad...'
+              : 'Building high-fidelity Microsoft Excel workbook (.xlsx)...',
           );
-          setProgressPercent(85);
+          setProgressPercent(90);
 
           if (outputFormat === 'xlsx') {
-            // CREACIÓN DE LIBRO OPENXML BINARIO NATIVO (.xlsx) CON SHEETJS
             const wb = XLSX.utils.book_new();
 
             if (sheetStructure === 'per_page') {
-              // UNA HOJA POR CADA PÁGINA DEL PDF
+              // UNA HOJA POR CADA PÁGINA DEL PDF CON NÚMEROS Y ANCHOS NATIVOS
               pagesData.forEach((pData) => {
-                const sheetData: Array<Array<string | number>> = [];
-                if (includeHeaders) {
-                  sheetData.push([
-                    'Fila',
-                    'Columna A',
-                    'Columna B',
-                    'Columna C',
-                    'Columna D',
-                    'Columna E',
-                  ]);
-                }
+                const ws: XLSX.WorkSheet = {};
+                const maxCol = pData.rows.reduce((m, r) => Math.max(m, r.length), 0);
+                const colWidths: number[] = new Array(maxCol).fill(10);
+
                 pData.rows.forEach((row, rIdx) => {
-                  sheetData.push([rIdx + 1, ...row]);
+                  row.forEach((cellVal, cIdx) => {
+                    if (cellVal === '' || cellVal === null || cellVal === undefined) return;
+                    const cellRef = XLSX.utils.encode_cell({ r: rIdx, c: cIdx });
+
+                    if (typeof cellVal === 'number') {
+                      const isInt = Math.floor(cellVal) === cellVal;
+                      const numFmt = isInt ? '#,##0;(#,##0);"-";@' : '#,##0.00;(#,##0.00);"-";@';
+                      ws[cellRef] = { t: 'n', v: cellVal, z: numFmt };
+                      colWidths[cIdx] = Math.max(colWidths[cIdx], 14);
+                    } else {
+                      const str = String(cellVal);
+                      ws[cellRef] = { t: 's', v: str };
+                      colWidths[cIdx] = Math.max(colWidths[cIdx], Math.min(str.length + 2, 70));
+                    }
+                  });
                 });
 
-                const ws = XLSX.utils.aoa_to_sheet(sheetData);
-                // Auto-ajustar anchos de columnas
-                ws['!cols'] = [
-                  { wch: 8 },
-                  { wch: 25 },
-                  { wch: 25 },
-                  { wch: 20 },
-                  { wch: 20 },
-                  { wch: 20 },
-                ];
+                const range: XLSX.Range = {
+                  s: { r: 0, c: 0 },
+                  e: { r: Math.max(0, pData.rows.length - 1), c: Math.max(0, maxCol - 1) },
+                };
+                ws['!ref'] = XLSX.utils.encode_range(range);
+                ws['!cols'] = colWidths.map((w) => ({ wch: w }));
+                ws['!views'] = [{ showGridLines: true }];
+
                 XLSX.utils.book_append_sheet(wb, ws, `Pág ${pData.pageNum}`);
               });
             } else {
-              // UNA SOLA HOJA CONSOLIDADA
-              const consolidatedData: Array<Array<string | number>> = [];
-              if (includeHeaders) {
-                consolidatedData.push([
-                  'Página PDF',
-                  'Fila',
-                  'Dato 1',
-                  'Dato 2',
-                  'Dato 3',
-                  'Dato 4',
-                  'Dato 5',
-                ]);
-              }
-              pagesData.forEach((pData) => {
-                pData.rows.forEach((row, rIdx) => {
-                  consolidatedData.push([`Pág ${pData.pageNum}`, rIdx + 1, ...row]);
+              // HOJA CONSOLIDADA LIMPIA
+              const ws: XLSX.WorkSheet = {};
+              let currentRowIdx = 0;
+              let maxCol = 0;
+              const colWidths: number[] = [];
+
+              pagesData.forEach((pData, pIdx) => {
+                if (pIdx > 0) {
+                  const sepRef = XLSX.utils.encode_cell({ r: currentRowIdx, c: 0 });
+                  ws[sepRef] = { t: 's', v: `=== Página ${pData.pageNum} ===` };
+                  currentRowIdx++;
+                }
+
+                pData.rows.forEach((row) => {
+                  maxCol = Math.max(maxCol, row.length);
+                  while (colWidths.length < maxCol) colWidths.push(10);
+
+                  row.forEach((cellVal, cIdx) => {
+                    if (cellVal === '' || cellVal === null || cellVal === undefined) return;
+                    const cellRef = XLSX.utils.encode_cell({ r: currentRowIdx, c: cIdx });
+
+                    if (typeof cellVal === 'number') {
+                      const isInt = Math.floor(cellVal) === cellVal;
+                      const numFmt = isInt ? '#,##0;(#,##0);"-";@' : '#,##0.00;(#,##0.00);"-";@';
+                      ws[cellRef] = { t: 'n', v: cellVal, z: numFmt };
+                      colWidths[cIdx] = Math.max(colWidths[cIdx], 14);
+                    } else {
+                      const str = String(cellVal);
+                      ws[cellRef] = { t: 's', v: str };
+                      colWidths[cIdx] = Math.max(colWidths[cIdx], Math.min(str.length + 2, 70));
+                    }
+                  });
+                  currentRowIdx++;
                 });
               });
 
-              const ws = XLSX.utils.aoa_to_sheet(consolidatedData);
-              ws['!cols'] = [
-                { wch: 12 },
-                { wch: 8 },
-                { wch: 30 },
-                { wch: 25 },
-                { wch: 20 },
-                { wch: 20 },
-                { wch: 20 },
-              ];
-              XLSX.utils.book_append_sheet(wb, ws, 'Datos Extraídos');
+              const range: XLSX.Range = {
+                s: { r: 0, c: 0 },
+                e: { r: Math.max(0, currentRowIdx - 1), c: Math.max(0, maxCol - 1) },
+              };
+              ws['!ref'] = XLSX.utils.encode_range(range);
+              ws['!cols'] = colWidths.map((w) => ({ wch: w }));
+              ws['!views'] = [{ showGridLines: true }];
+
+              XLSX.utils.book_append_sheet(wb, ws, 'Reporte Consolidado');
             }
 
-            // Generar buffer binario OpenXML
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             resultBlob = new Blob([wbout], {
               type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             });
             localUrl = URL.createObjectURL(resultBlob);
           } else {
-            // FORMATO CSV (COMAS O PUNTO Y COMA)
+            // FORMATO CSV LIMPIO (SIN COLUMNAS ARTIFICIALES)
             const delimiter = outputFormat === 'csv_semicolon' ? ';' : ',';
-            let csvContent = '\uFEFF'; // BOM para UTF-8 en Excel
-
-            if (includeHeaders) {
-              csvContent += `Pagina_PDF${delimiter}Fila${delimiter}Dato_1${delimiter}Dato_2${delimiter}Dato_3\n`;
-            }
+            let csvContent = '\uFEFF';
 
             pagesData.forEach((pData) => {
-              pData.rows.forEach((row, rIdx) => {
+              pData.rows.forEach((row) => {
                 const formattedCells = row.map((cell) => {
+                  if (cell === null || cell === undefined || cell === '') return '';
                   const str = String(cell).replace(/"/g, '""');
                   return `"${str}"`;
                 });
-                csvContent += `"${pData.pageNum}"${delimiter}${rIdx + 1}${delimiter}${formattedCells.join(delimiter)}\n`;
+                csvContent += `${formattedCells.join(delimiter)}\n`;
               });
             });
 
@@ -1332,10 +1517,11 @@ export default function ExcelPdfConverter({
       }
 
       setProgressPercent(100);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast.error(
-        isEs ? 'Error en la conversión de hoja de cálculo.' : 'Spreadsheet conversion error.',
+        error?.message ||
+          (isEs ? 'Error en la conversión de hoja de cálculo.' : 'Spreadsheet conversion error.'),
       );
     } finally {
       setIsProcessing(false);
@@ -1350,6 +1536,7 @@ export default function ExcelPdfConverter({
     >
       <input
         type="file"
+        multiple
         accept={
           mode === 'excel-to-pdf'
             ? '.xlsx, .xls, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel'
@@ -1541,6 +1728,17 @@ export default function ExcelPdfConverter({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  loadFilesIntoSlots(e.dataTransfer.files);
+                }
+              }}
               className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
@@ -2174,10 +2372,34 @@ export default function ExcelPdfConverter({
 
                     {/* COL 2: FORMATO, ESTRUCTURA Y ESTRATEGIA */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner flex flex-col justify-between">
-                      {/* FORMATO Y ESTRUCTURA DE HOJAS */}
                       <div className="space-y-3">
                         <div className="bg-zinc-950 p-3 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
+                            <Cpu className="w-4 h-4 text-emerald-400" />
+                            {isEs ? 'Motor de Conversión' : 'Conversion Engine'}
+                          </label>
+                          <select
+                            value={conversionEngine}
+                            onChange={(e) =>
+                              setConversionEngine(
+                                e.target.value as 'local' | 'adobe' | 'cloudconvert' | 'gemini',
+                              )
+                            }
+                            className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2.5 text-white text-xs font-mono focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="local">
+                              {isEs
+                                ? '⚡ PDFBlack Local (Tablas Reales & Offline)'
+                                : '⚡ PDFBlack Local (Native Tables & Offline)'}
+                            </option>
+                            <option value="adobe">Adobe Acrobat Services</option>
+                            <option value="gemini">Gemini AI Structural Engine</option>
+                            <option value="cloudconvert">CloudConvert API v2</option>
+                          </select>
+                        </div>
+
+                        <div className="bg-zinc-950 p-3 rounded-xl border border-white/10">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                             {isEs ? 'Formato de Salida' : 'Output Format'}
                           </label>
@@ -2197,7 +2419,7 @@ export default function ExcelPdfConverter({
                         </div>
 
                         <div className="bg-zinc-950 p-3 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <Layout className="w-4 h-4 text-emerald-400" />
                             {isEs ? 'Organización de Hojas' : 'Sheet Organization'}
                           </label>
@@ -2228,7 +2450,7 @@ export default function ExcelPdfConverter({
                         </div>
 
                         <div className="bg-zinc-950 p-3 rounded-xl border border-white/10">
-                          <label className="text-zinc-300 font-bold block mb-1.5 flex items-center gap-1.5">
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
                             <Grid className="w-4 h-4 text-emerald-400" />
                             {isEs ? 'Estrategia de Detección' : 'Detection Strategy'}
                           </label>
@@ -2325,7 +2547,7 @@ export default function ExcelPdfConverter({
                   /* MODO EXCEL A PDF */
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
-                      <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                      <label className="text-zinc-300 font-bold mb-2 flex items-center gap-1.5">
                         <Layout className="w-4 h-4 text-emerald-400" />
                         {isEs ? 'Orientación del Reporte' : 'Report Orientation'}
                       </label>
@@ -2356,7 +2578,7 @@ export default function ExcelPdfConverter({
                     </div>
 
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 font-mono text-xs shadow-inner">
-                      <label className="text-zinc-300 font-bold block mb-2 flex items-center gap-1.5">
+                      <label className="text-zinc-300 font-bold mb-2 flex items-center gap-1.5">
                         <Sliders className="w-4 h-4 text-emerald-400" />
                         {isEs ? 'Tamaño de Papel' : 'Paper Size'}
                       </label>

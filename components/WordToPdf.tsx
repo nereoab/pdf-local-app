@@ -461,7 +461,7 @@ export default function WordToPdf() {
 
           {/* LADO DERECHO: PANEL DE CONTROL (5 COLUMNAS - OPCIONES SIEMPRE VISIBLES) */}
           <div className="lg:col-span-5 flex flex-col">
-            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 bg-zinc-900/80 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans min-h-[580px]">
+            <div className="bg-[#09090b] border border-white ring-2 ring-white/20 rounded-2xl p-5 flex flex-col justify-between relative shadow-2xl font-sans min-h-[580px]">
               <div className="flex flex-col gap-4">
                 {/* Cabecera del Panel */}
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -487,7 +487,7 @@ export default function WordToPdf() {
 
                   {/* Orientación */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Layout className="w-3 h-3 text-blue-400" />
                       {isEs ? 'Orientación de Página' : 'Page Orientation'}
                     </label>
@@ -519,7 +519,7 @@ export default function WordToPdf() {
 
                   {/* Tamaño de Papel */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Grid className="w-3 h-3 text-blue-400" />
                       {isEs ? 'Tamaño de Papel' : 'Paper Size'}
                     </label>
@@ -536,7 +536,7 @@ export default function WordToPdf() {
 
                   {/* Márgenes */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Compass className="w-3 h-3 text-blue-400" />
                       {isEs ? 'Márgenes' : 'Margins'}
                     </label>
@@ -553,7 +553,7 @@ export default function WordToPdf() {
 
                   {/* Marca de agua */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-zinc-400 mb-1.5 font-mono tracking-widest uppercase flex items-center gap-1.5">
                       <Sparkles className="w-3 h-3 text-blue-400" />
                       {isEs ? 'Marca de Agua (Opcional)' : 'Watermark (Optional)'}
                     </label>

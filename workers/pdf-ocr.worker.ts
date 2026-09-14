@@ -346,7 +346,7 @@ export interface OcrWorkerOptions {
   filePrefix: string;
   pdfBuffer: ArrayBuffer;
   ocrLang: string;
-  outputFormat: 'pdf' | 'txt' | 'json';
+  outputFormat: 'pdf' | 'docx' | 'txt' | 'json';
   pageScope: 'all' | 'custom';
   customPageRange: string;
   totalPages: number;
@@ -910,6 +910,10 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
         );
       }
       filename = `${originalName}_OCR_Buscable.pdf`;
+    } else if (opts.outputFormat === 'docx') {
+      const enc = new TextEncoder().encode(fullTextAccumulator);
+      outputBuffer = enc.buffer.slice(enc.byteOffset, enc.byteOffset + enc.byteLength);
+      filename = `${originalName}_OCR_Editable.docx`;
     } else if (opts.outputFormat === 'json') {
       const jsonStr = JSON.stringify(
         {

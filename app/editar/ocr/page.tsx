@@ -156,7 +156,7 @@ export default function OcrPage() {
       'Soporte multilingüe en más de 10 idiomas (Español, Inglés, Francés, Alemán y más)',
       'Preprocesamiento adaptativo de imagen con mejora de contraste y binarización',
       'Alineación milimétrica de palabras mediante coordenadas HOCR y TSV',
-      'Exportación versátil a PDF Buscable, texto plano .TXT y estructura .JSON',
+      'Exportación versátil a PDF Buscable, Microsoft Word editable (.DOCX), texto plano .TXT y estructura .JSON',
       'Desbloqueo seguro de documentos PDF protegidos con contraseña en memoria',
       'Procesamiento 100% en memoria RAM local sin subida a servidores (Zero-Knowledge)',
     ],

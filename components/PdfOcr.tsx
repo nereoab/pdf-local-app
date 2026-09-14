@@ -39,6 +39,7 @@ import {
   Compass,
   FileCheck,
   Cpu,
+  FileDown,
 } from 'lucide-react';
 import { useFileStore } from '@/store/useFileStore';
 import { useLanguage } from '@/context/LanguageContext';
@@ -48,6 +49,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { OcrWorkerOptions, OcrWorkerResult } from '@/workers/pdf-ocr.worker';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import { createDocxFromOcrText } from '@/utils/ocr-docx-exporter';
 
 // ── Language map ──
 const LANG_LABELS: Record<string, { es: string; en: string }> = {
@@ -89,9 +91,10 @@ export default function PdfOcr() {
   // Options & Enterprise settings
   const [ocrEngine, setOcrEngine] = useState<'tesseract' | 'paddleocr'>('tesseract');
   const [ocrLang, setOcrLang] = useState('spa');
-  const [outputFormat, setOutputFormat] = useState<'pdf' | 'txt' | 'json'>('pdf');
+  const [outputFormat, setOutputFormat] = useState<'pdf' | 'docx' | 'txt' | 'json'>('pdf');
   const [extractedText, setExtractedText] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
 
   const [pageScope, setPageScope] = useState<'all' | 'custom'>('all');
   const [customPageRange, setCustomPageRange] = useState('1');
@@ -110,7 +113,7 @@ export default function PdfOcr() {
     downloadUrl: string;
     filename: string;
     fileSize?: string;
-    outputFormat: 'pdf' | 'txt' | 'json';
+    outputFormat: 'pdf' | 'docx' | 'txt' | 'json';
     rawBlob?: Blob;
     processedPagesCount?: number;
     ocrLanguageName?: string;
@@ -409,6 +412,46 @@ export default function PdfOcr() {
     }
   };
 
+  const handleDownloadWord = async () => {
+    if (!extractedText) {
+      toast.error(
+        isEs
+          ? 'No hay texto reconocido disponible para Word.'
+          : 'No recognized text available for Word.',
+      );
+      return;
+    }
+    setIsGeneratingDocx(true);
+    try {
+      const filePrefix = file?.name.replace(/\.[^/.]+$/, '') || 'Documento';
+      const docxBlob = await createDocxFromOcrText(extractedText, {
+        title: metaTitle || filePrefix,
+        author: metaAuthor || 'PDFBlack',
+        subject:
+          metaSubject || (isEs ? 'Reconocimiento Óptico OCR' : 'Optical Character Recognition'),
+        engineName: ocrEngine === 'paddleocr' ? 'PaddleOCR AI' : 'Tesseract v5',
+      });
+      const url = URL.createObjectURL(docxBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filePrefix}_OCR_Editable.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast.success(
+        isEs
+          ? '¡Documento Word (.docx) descargado con éxito!'
+          : 'Word (.docx) document downloaded successfully!',
+      );
+    } catch (err) {
+      console.error('Error al generar DOCX:', err);
+      toast.error(isEs ? 'Error al generar documento Word' : 'Error generating Word document');
+    } finally {
+      setIsGeneratingDocx(false);
+    }
+  };
+
   const parseSelectedPages = useCallback((): Set<number> => {
     const selected = new Set<number>();
     if (pageScope === 'all') {
@@ -462,7 +505,7 @@ export default function PdfOcr() {
       });
       workerRef.current = worker;
 
-      worker.onmessage = (ev: MessageEvent<OcrWorkerResult>) => {
+      worker.onmessage = async (ev: MessageEvent<OcrWorkerResult>) => {
         const msg = ev.data;
         if (msg.type === 'progress') {
           setProgressPercent(msg.percent);
@@ -488,12 +531,37 @@ export default function PdfOcr() {
           // Save result for authorized download card
           const mimeMap: Record<string, string> = {
             pdf: 'application/pdf',
+            docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             txt: 'text/plain;charset=utf-8',
             json: 'application/json',
           };
-          const blob = new Blob([msg.outputBuffer], {
-            type: mimeMap[msg.outputFormat] ?? 'application/octet-stream',
-          });
+
+          let blob: Blob;
+          let downloadFilename = msg.filename;
+
+          if (msg.outputFormat === 'docx') {
+            try {
+              blob = await createDocxFromOcrText(msg.extractedText, {
+                title: metaTitle || filePrefix,
+                author: metaAuthor || 'PDFBlack',
+                subject:
+                  metaSubject ||
+                  (isEs ? 'Reconocimiento Óptico OCR' : 'Optical Character Recognition'),
+                engineName: ocrEngine === 'paddleocr' ? 'PaddleOCR AI' : 'Tesseract v5',
+              });
+              downloadFilename = `${filePrefix}_OCR_Editable.docx`;
+            } catch (docErr) {
+              console.error('Error empacando DOCX:', docErr);
+              blob = new Blob([msg.outputBuffer], {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              });
+            }
+          } else {
+            blob = new Blob([msg.outputBuffer], {
+              type: mimeMap[msg.outputFormat] ?? 'application/octet-stream',
+            });
+          }
+
           const url = URL.createObjectURL(blob);
           const sizeMb = (blob.size / (1024 * 1024)).toFixed(2) + ' MB';
           const processedCount = selectedPagesSet.size;
@@ -501,7 +569,7 @@ export default function PdfOcr() {
 
           setCompletedResult({
             downloadUrl: url,
-            filename: msg.filename,
+            filename: downloadFilename,
             fileSize: sizeMb,
             outputFormat: msg.outputFormat as any,
             rawBlob: blob,
@@ -891,7 +959,54 @@ export default function PdfOcr() {
             rawBlob={completedResult.rawBlob}
             currentToolId="ocr"
             onReset={() => setCompletedResult(null)}
-          />
+          >
+            {/* PANEL MULTI-FORMATO: DESCARGAR EN WORD / PDF / TXT */}
+            <div className="mt-4 pt-4 border-t border-zinc-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-mono text-xs">
+              <div className="flex items-center gap-2 text-zinc-300">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span className="font-bold text-white">
+                  {isEs ? 'Formatos Adicionales de Descarga:' : 'Additional Download Formats:'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {completedResult.outputFormat !== 'docx' && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadWord}
+                    disabled={isGeneratingDocx}
+                    className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border border-blue-500/40 hover:border-blue-400 rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                    title={
+                      isEs
+                        ? 'Generar y descargar documento Word editable (.docx)'
+                        : 'Generate and download editable Word document (.docx)'
+                    }
+                  >
+                    {isGeneratingDocx ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                    ) : (
+                      <FileDown className="w-3.5 h-3.5 text-blue-400" />
+                    )}
+                    <span>{isEs ? 'Descargar en Word (.DOCX)' : 'Download in Word (.DOCX)'}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleCopyText}
+                  className="px-3.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {copied ? (isEs ? 'Copiado' : 'Copied') : isEs ? 'Copiar Texto' : 'Copy Text'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </DownloadSuccessCard>
         </motion.div>
       ) : (
         /* ══════════════════════════════════════════════════════════════════════════
@@ -1354,7 +1469,15 @@ export default function PdfOcr() {
                 </span>
                 <span className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold">
                   .{outputFormat.toUpperCase()}{' '}
-                  {outputFormat === 'pdf' ? (isEs ? 'Sandwich' : 'Sandwich') : ''}
+                  {outputFormat === 'pdf'
+                    ? isEs
+                      ? 'Sandwich'
+                      : 'Sandwich'
+                    : outputFormat === 'docx'
+                      ? isEs
+                        ? 'Word Editable'
+                        : 'Editable Word'
+                      : ''}
                 </span>
               </div>
             </div>
@@ -1567,8 +1690,8 @@ export default function PdfOcr() {
                   <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5 font-bold">
                     {isEs ? 'Formato de Salida:' : 'Output Format:'}
                   </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(['pdf', 'txt', 'json'] as const).map((fmt) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {(['pdf', 'docx', 'txt', 'json'] as const).map((fmt) => (
                       <button
                         key={fmt}
                         type="button"
@@ -1580,6 +1703,7 @@ export default function PdfOcr() {
                         }`}
                       >
                         {fmt === 'pdf' && <FileText className="w-3.5 h-3.5" />}
+                        {fmt === 'docx' && <FileText className="w-3.5 h-3.5 text-blue-400" />}
                         {fmt === 'txt' && <FileSearch className="w-3.5 h-3.5" />}
                         {fmt === 'json' && <FileCode className="w-3.5 h-3.5" />}
                         <span>.{fmt.toUpperCase()}</span>

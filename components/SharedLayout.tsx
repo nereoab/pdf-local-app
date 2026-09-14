@@ -202,7 +202,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   },
                   {
                     label: isZh ? '解密 PDF' : isEs ? 'Desbloquear PDF' : 'Unlock PDF',
-                    path: '/optimizar/desbloquear',
+                    path: '/desbloquear',
                   },
                   {
                     label: isZh ? '加密 PDF' : isEs ? 'Proteger PDF' : 'Protect PDF',

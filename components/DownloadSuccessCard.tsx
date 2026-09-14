@@ -22,6 +22,10 @@ import {
   Eraser,
   Copy,
   EyeOff,
+  Archive,
+  Loader2,
+  FileDown,
+  Check,
 } from 'lucide-react';
 import {
   AnimatedCheckmark,
@@ -34,6 +38,29 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
+export interface OptimizationMetrics {
+  originalSize: string;
+  compressedSize: string;
+  savedSpace?: string;
+  reductionPercent?: number;
+  categoryTitle?: string;
+  categorySubtitle?: string;
+  badgeLabel?: string;
+  badgeValue?: string;
+  labelOriginal?: string;
+  labelCompressed?: string;
+  labelSaved?: string;
+}
+
+export interface BatchDownloadItem {
+  fileName: string;
+  originalSize?: number | string;
+  compressedSize?: number | string;
+  reductionPercent?: number;
+  downloadUrl: string;
+  rawBlob?: Blob;
+}
+
 export interface DownloadSuccessCardProps {
   downloadUrl: string | null;
   filename: string;
@@ -43,6 +70,21 @@ export interface DownloadSuccessCardProps {
   rawBlob?: Blob;
   currentToolId?: string;
   title?: string;
+  metrics?: OptimizationMetrics;
+  batchItems?: BatchDownloadItem[];
+  onDownloadAllZip?: () => void;
+  isCreatingZip?: boolean;
+  children?: React.ReactNode;
+}
+
+function formatBatchSize(bytes: number | string | undefined): string {
+  if (bytes === undefined || bytes === null) return '';
+  if (typeof bytes === 'string') return bytes;
+  if (bytes === 0) return '0 KB';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 export default function DownloadSuccessCard({
@@ -54,6 +96,11 @@ export default function DownloadSuccessCard({
   rawBlob,
   currentToolId,
   title,
+  metrics,
+  batchItems,
+  onDownloadAllZip,
+  isCreatingZip = false,
+  children,
 }: DownloadSuccessCardProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -61,6 +108,13 @@ export default function DownloadSuccessCard({
   const setGlobalFile = useFileStore((s) => s.setGlobalFile);
 
   const [downloaded, setDownloaded] = useState(false);
+  const [selectedBatchIndex, setSelectedBatchIndex] = useState(0);
+
+  const isBatch = !!(batchItems && batchItems.length > 1);
+  const activeItem = isBatch ? batchItems[selectedBatchIndex] : null;
+  const activeFilename = activeItem ? activeItem.fileName : filename;
+  const activeRawBlob = activeItem ? activeItem.rawBlob : rawBlob;
+  const activeDownloadUrl = activeItem ? activeItem.downloadUrl : downloadUrl;
 
   const handleManualDownload = () => {
     if (!downloadUrl) return;
@@ -76,22 +130,22 @@ export default function DownloadSuccessCard({
 
   const handleNavigateToTool = async (targetPath: string) => {
     try {
-      if (outputFormat === 'pdf' && (downloadUrl || rawBlob)) {
+      if (outputFormat === 'pdf' && (activeDownloadUrl || activeRawBlob)) {
         let fileToPass: File;
-        if (rawBlob) {
-          fileToPass = new File([rawBlob], filename, { type: 'application/pdf' });
-        } else if (downloadUrl) {
-          const res = await fetch(downloadUrl);
+        if (activeRawBlob) {
+          fileToPass = new File([activeRawBlob], activeFilename, { type: 'application/pdf' });
+        } else if (activeDownloadUrl) {
+          const res = await fetch(activeDownloadUrl);
           const blob = await res.blob();
-          fileToPass = new File([blob], filename, { type: 'application/pdf' });
+          fileToPass = new File([blob], activeFilename, { type: 'application/pdf' });
         } else {
-          fileToPass = new File([], filename, { type: 'application/pdf' });
+          fileToPass = new File([], activeFilename, { type: 'application/pdf' });
         }
         setGlobalFile(fileToPass);
         toast.info(
           isEs
-            ? `Cargando ${filename} en la siguiente herramienta...`
-            : `Loading ${filename} into next tool...`,
+            ? `Cargando ${activeFilename} en la siguiente herramienta...`
+            : `Loading ${activeFilename} into next tool...`,
         );
       }
       router.push(targetPath);
@@ -206,7 +260,13 @@ export default function DownloadSuccessCard({
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] font-bold text-[11px] font-mono rounded-full shadow-sm">
                   <Sparkles className="w-3 h-3 text-[#FAF6EE]" />
-                  {isEs ? 'PROCESO COMPLETADO' : 'PROCESS COMPLETED'}
+                  {isBatch
+                    ? isEs
+                      ? `${batchItems.length} ARCHIVOS OPTIMIZADOS`
+                      : `${batchItems.length} FILES OPTIMIZED`
+                    : isEs
+                      ? 'PROCESO COMPLETADO'
+                      : 'PROCESS COMPLETED'}
                 </span>
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-900 border border-[#E8DFCF]/30 rounded-full text-[#E8DFCF] text-[11px] font-mono shadow-sm">
                   <span className="relative flex h-1.5 w-1.5">
@@ -217,7 +277,14 @@ export default function DownloadSuccessCard({
                 </span>
               </div>
               <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
-                {title || (isEs ? 'Tu archivo está listo' : 'Your file is ready')}
+                {title ||
+                  (isBatch
+                    ? isEs
+                      ? `¡${batchItems.length} archivos listos!`
+                      : `¡${batchItems.length} files ready!`
+                    : isEs
+                      ? 'Tu archivo está listo'
+                      : 'Your file is ready')}
               </h2>
             </div>
           </div>
@@ -228,90 +295,342 @@ export default function DownloadSuccessCard({
               className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3 py-1.5 rounded-xl text-xs font-mono border border-zinc-700 hover:border-[#E8DFCF]/50 transition-all cursor-pointer shadow-sm flex-shrink-0"
             >
               <RotateCcw className="w-3.5 h-3.5 text-white" />
-              <span>{isEs ? 'Procesar otro archivo' : 'Process another file'}</span>
+              <span>
+                {isBatch
+                  ? isEs
+                    ? 'Procesar otros archivos'
+                    : 'Process other files'
+                  : isEs
+                    ? 'Procesar otro archivo'
+                    : 'Process another file'}
+              </span>
             </button>
           )}
         </div>
 
-        {/* FILE INFO CARD + BOTÓN PRINCIPAL DE DESCARGA */}
-        <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 relative z-10 overflow-hidden shadow-inner">
-          <div className="flex items-center gap-3.5 overflow-hidden min-w-0">
-            <div className="bg-zinc-800 border border-zinc-600 p-2.5 sm:p-3 rounded-xl flex-shrink-0 shadow-md">
-              {outputFormat === 'pdf' && <FileText className="w-6 h-6 text-white" />}
-              {outputFormat === 'txt' && <FileSearch className="w-6 h-6 text-white" />}
-              {outputFormat === 'json' && <FileCode className="w-6 h-6 text-white" />}
-              {outputFormat !== 'pdf' && outputFormat !== 'txt' && outputFormat !== 'json' && (
-                <Layers className="w-6 h-6 text-white" />
+        {/* DASHBOARD DE MÉTRICAS DE OPTIMIZACIÓN (SI SE PROPORCIONAN) */}
+        {metrics && (
+          <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 sm:p-4 relative z-10 font-mono shadow-inner">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-2.5 border-b border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 sm:p-2 bg-zinc-800 border border-zinc-700 rounded-xl text-[#FAF6EE] shadow-sm">
+                  <Zap className="w-4 h-4 text-[#FAF6EE]" />
+                </div>
+                <div>
+                  <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider block">
+                    {metrics.categoryTitle ||
+                      (isEs ? 'Rendimiento del Proceso' : 'Process Performance')}
+                  </span>
+                  <span className="text-xs sm:text-sm font-extrabold text-white font-sans uppercase tracking-tight">
+                    {metrics.categorySubtitle ||
+                      (isEs ? 'Ahorro de espacio obtenido' : 'Space savings achieved')}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-xl">
+                <span className="text-zinc-400 text-xs font-bold font-mono">
+                  {metrics.badgeLabel || (isEs ? 'Ahorro:' : 'Saved:')}
+                </span>
+                <span className="text-[#FAF6EE] font-extrabold text-xs sm:text-sm flex items-center gap-1 font-mono">
+                  {metrics.badgeValue ||
+                    (metrics.reductionPercent !== undefined
+                      ? `↓ ${metrics.reductionPercent}%`
+                      : 'OK')}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2.5 text-xs">
+              <div className="bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/90 flex flex-col">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
+                  {metrics.labelOriginal || (isEs ? 'Tamaño Original' : 'Original Size')}
+                </span>
+                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
+                  {metrics.originalSize}
+                </span>
+              </div>
+              <div className="bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/90 flex flex-col">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400 text-[9px] uppercase font-bold">
+                    {metrics.labelCompressed || (isEs ? 'Tamaño Final' : 'Final Size')}
+                  </span>
+                  {metrics.reductionPercent !== undefined && (
+                    <span className="text-[8px] px-1.5 py-0.2 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] rounded font-mono font-bold">
+                      -{metrics.reductionPercent}%
+                    </span>
+                  )}
+                </div>
+                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
+                  {metrics.compressedSize}
+                </span>
+              </div>
+              <div className="bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800/90 flex flex-col">
+                <span className="text-zinc-400 text-[9px] uppercase font-bold">
+                  {metrics.labelSaved || (isEs ? 'Espacio Reducido' : 'Space Reduced')}
+                </span>
+                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
+                  {metrics.savedSpace || '—'}
+                </span>
+              </div>
+            </div>
+
+            {/* Barra de progreso */}
+            <div className="w-full bg-zinc-900 rounded-full h-1.5 mt-2.5 overflow-hidden border border-zinc-800">
+              <div
+                className="bg-gradient-to-r from-[#DFD5C2] to-[#FAF6EE] h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(250,246,238,0.5)]"
+                style={{
+                  width: `${Math.min(Math.max(metrics.reductionPercent ?? 100, 6), 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* CONTENIDO PRINCIPAL DE DESCARGA: MODO BATCH O MODO INDIVIDUAL */}
+        {isBatch ? (
+          <div className="space-y-3 relative z-10">
+            {/* HERO CTA PARA EL PAQUETE ZIP */}
+            <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 overflow-hidden shadow-inner">
+              <div className="flex items-center gap-3.5 overflow-hidden min-w-0">
+                <div className="bg-zinc-800 border border-zinc-600 p-2.5 sm:p-3 rounded-xl flex-shrink-0 shadow-md">
+                  <Archive className="w-6 h-6 text-[#FAF6EE]" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-bold text-sm sm:text-base truncate font-mono">
+                      {isEs
+                        ? `Paquete Completo Comprimido (${batchItems.length} archivos)`
+                        : `Complete Compressed Package (${batchItems.length} files)`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 text-xs text-zinc-400 font-mono mt-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[#FAF6EE] font-bold uppercase">
+                      ZIP
+                    </span>
+                    {metrics && <span>• {metrics.compressedSize}</span>}
+                    <span className="text-[#E8DFCF] flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#FAF6EE]" />
+                      {isEs ? 'Sin carga a servidor' : 'Zero server upload'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTÓN HERO PRINCIPAL: DESCARGAR ZIP */}
+              {onDownloadAllZip && (
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onDownloadAllZip}
+                  disabled={isCreatingZip}
+                  className="relative overflow-hidden flex items-center justify-center gap-3 px-8 py-4 rounded-full font-sans font-extrabold text-sm sm:text-base transition-all cursor-pointer flex-shrink-0 bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black shadow-[0_0_30px_rgba(232,223,207,0.35)] hover:shadow-[0_0_40px_rgba(250,246,238,0.6)] border border-[#FAF6EE]/80 group"
+                >
+                  <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+                  {isCreatingZip ? (
+                    <Loader2 className="w-5 h-5 text-black animate-spin" />
+                  ) : (
+                    <Archive className="w-5 h-5 text-black group-hover:scale-110 transition-transform" />
+                  )}
+                  <span>
+                    {isCreatingZip
+                      ? isEs
+                        ? 'Creando archivo ZIP...'
+                        : 'Creating ZIP file...'
+                      : isEs
+                        ? 'Descargar todos (.ZIP)'
+                        : 'Download all (.ZIP)'}
+                  </span>
+                </motion.button>
               )}
             </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-white font-bold text-sm sm:text-base truncate max-w-[240px] sm:max-w-[400px] font-mono">
-                  {filename}
+
+            {/* LISTADO DE ARCHIVOS DEL LOTE */}
+            <div className="bg-[#121217]/70 border border-zinc-800 rounded-2xl p-3 sm:p-4 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1 pb-1">
+                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
+                  {isEs
+                    ? `Archivos procesados en este lote (${batchItems.length})`
+                    : `Processed files in this batch (${batchItems.length})`}
                 </span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(filename);
-                    toast.success(isEs ? 'Nombre copiado' : 'Filename copied');
-                  }}
-                  className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
-                  title={isEs ? 'Copiar nombre' : 'Copy filename'}
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  {isEs
+                    ? 'Haz clic en un archivo para seleccionarlo al encadenar:'
+                    : 'Click a file to select it for chaining:'}
+                </span>
               </div>
-              <div className="flex items-center gap-2.5 text-xs text-zinc-400 font-mono mt-1.5 flex-wrap">
-                <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-200 font-bold uppercase">
-                  {outputFormat}
-                </span>
-                {fileSize && <span>• {fileSize}</span>}
-                <span className="text-[#E8DFCF] flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#FAF6EE]" />
-                  {isEs ? 'Sin carga a servidor' : 'Zero server upload'}
-                </span>
+
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {batchItems.map((item, idx) => {
+                  const isSelected = selectedBatchIndex === idx;
+                  const itemOrigSize = formatBatchSize(item.originalSize);
+                  const itemCompSize = formatBatchSize(item.compressedSize);
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedBatchIndex(idx)}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-zinc-800/90 border-[#E8DFCF]/70 shadow-[0_0_15px_rgba(232,223,207,0.12)] ring-1 ring-[#FAF6EE]/20'
+                          : 'bg-[#15151c]/80 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 max-w-full sm:max-w-[55%]">
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs border ${
+                            isSelected
+                              ? 'border-[#FAF6EE] bg-[#FAF6EE] text-black font-bold'
+                              : 'border-zinc-700 bg-zinc-900 text-zinc-500'
+                          }`}
+                        >
+                          {isSelected ? (
+                            <Check className="w-3 h-3 text-black stroke-[3]" />
+                          ) : (
+                            idx + 1
+                          )}
+                        </div>
+                        <FileText className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                        <div className="truncate">
+                          <span className="text-white text-xs font-mono font-medium block truncate">
+                            {item.fileName}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[9px] text-[#FAF6EE] font-mono block font-bold">
+                              {isEs ? '● Seleccionado para encadenar' : '● Selected for chaining'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3 pl-7 sm:pl-0">
+                        {(itemOrigSize || itemCompSize) && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                            {itemOrigSize && (
+                              <span className="text-zinc-500 line-through">{itemOrigSize}</span>
+                            )}
+                            {itemOrigSize && itemCompSize && (
+                              <span className="text-zinc-600">→</span>
+                            )}
+                            {itemCompSize && (
+                              <strong className="text-[#FAF6EE] font-extrabold">
+                                {itemCompSize}
+                              </strong>
+                            )}
+                            {item.reductionPercent !== undefined && (
+                              <span className="text-[9px] px-1.5 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] rounded font-bold ml-1">
+                                -{item.reductionPercent}%
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <a
+                          href={item.downloadUrl}
+                          download={item.fileName}
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white hover:text-[#FAF6EE] font-mono font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 border border-zinc-700 flex-shrink-0 cursor-pointer shadow-sm"
+                        >
+                          <FileDown className="w-3.5 h-3.5" />
+                          <span>{isEs ? 'Descargar' : 'Download'}</span>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
+        ) : (
+          /* MODO ARCHIVO ÚNICO */
+          <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 relative z-10 overflow-hidden shadow-inner">
+            <div className="flex items-center gap-3.5 overflow-hidden min-w-0">
+              <div className="bg-zinc-800 border border-zinc-600 p-2.5 sm:p-3 rounded-xl flex-shrink-0 shadow-md">
+                {outputFormat === 'pdf' && <FileText className="w-6 h-6 text-white" />}
+                {outputFormat === 'txt' && <FileSearch className="w-6 h-6 text-white" />}
+                {outputFormat === 'json' && <FileCode className="w-6 h-6 text-white" />}
+                {outputFormat !== 'pdf' && outputFormat !== 'txt' && outputFormat !== 'json' && (
+                  <Layers className="w-6 h-6 text-white" />
+                )}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-bold text-sm sm:text-base truncate max-w-[240px] sm:max-w-[400px] font-mono">
+                    {filename}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(filename);
+                      toast.success(isEs ? 'Nombre copiado' : 'Filename copied');
+                    }}
+                    className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                    title={isEs ? 'Copiar nombre' : 'Copy filename'}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2.5 text-xs text-zinc-400 font-mono mt-1.5 flex-wrap">
+                  <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-200 font-bold uppercase">
+                    {outputFormat}
+                  </span>
+                  {fileSize && <span>• {fileSize}</span>}
+                  <span className="text-[#E8DFCF] flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#FAF6EE]" />
+                    {isEs ? 'Sin carga a servidor' : 'Zero server upload'}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-          {/* BOTÓN PRINCIPAL DE DESCARGA (RUBIO PLATINADO / WHITE GOLD EDITION) */}
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={handleManualDownload}
-            className={`relative overflow-hidden flex items-center justify-center gap-3 px-8 py-4 rounded-full font-sans font-extrabold text-sm sm:text-base transition-all cursor-pointer flex-shrink-0 group ${
-              downloaded
-                ? 'bg-gradient-to-r from-[#FAF6EE] to-[#E8DFCF] text-black border border-[#FAF6EE] shadow-[0_0_35px_rgba(250,246,238,0.5)]'
-                : 'bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black shadow-[0_0_30px_rgba(232,223,207,0.35)] hover:shadow-[0_0_40px_rgba(250,246,238,0.6)] border border-[#FAF6EE]/80'
-            }`}
-          >
-            {/* Shimmer sweep infinito de luz platino */}
-            <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
-            {downloaded ? (
-              <CheckCircle2 className="w-5 h-5 text-black" />
-            ) : (
-              <Download className="w-5 h-5 text-black group-hover:translate-y-0.5 transition-transform" />
-            )}
-            <span>
-              {downloaded
-                ? isEs
-                  ? '¡Descargado! Descargar de nuevo'
-                  : 'Downloaded! Download again'
-                : isEs
-                  ? 'Descargar Archivo Listo'
-                  : 'Download Ready File'}
-            </span>
-          </motion.button>
-        </div>
+            {/* BOTÓN PRINCIPAL DE DESCARGA (RUBIO PLATINADO / WHITE GOLD EDITION) */}
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleManualDownload}
+              className={`relative overflow-hidden flex items-center justify-center gap-3 px-8 py-4 rounded-full font-sans font-extrabold text-sm sm:text-base transition-all cursor-pointer flex-shrink-0 group ${
+                downloaded
+                  ? 'bg-gradient-to-r from-[#FAF6EE] to-[#E8DFCF] text-black border border-[#FAF6EE] shadow-[0_0_35px_rgba(250,246,238,0.5)]'
+                  : 'bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black shadow-[0_0_30px_rgba(232,223,207,0.35)] hover:shadow-[0_0_40px_rgba(250,246,238,0.6)] border border-[#FAF6EE]/80'
+              }`}
+            >
+              {/* Shimmer sweep infinito de luz platino */}
+              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+              {downloaded ? (
+                <CheckCircle2 className="w-5 h-5 text-black" />
+              ) : (
+                <Download className="w-5 h-5 text-black group-hover:translate-y-0.5 transition-transform" />
+              )}
+              <span>
+                {downloaded
+                  ? isEs
+                    ? '¡Descargado! Descargar de nuevo'
+                    : 'Downloaded! Download again'
+                  : isEs
+                    ? 'Descargar Archivo Listo'
+                    : 'Download Ready File'}
+              </span>
+            </motion.button>
+          </div>
+        )}
+
+        {/* CONTENIDO SUPLEMENTARIO OPCIONAL (AUDITORÍA, ACCIONES SECUNDARIAS) */}
+        {children && <div className="relative z-10 pt-1">{children}</div>}
 
         {/* SECCIÓN DE ENCADENAMIENTO DE HERRAMIENTAS RECOMENDADAS */}
         <div className="pt-2.5 border-t border-zinc-800/80 space-y-2 font-mono relative z-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <span className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider font-sans">
-              <Sparkles className="w-3.5 h-3.5 text-[#FAF6EE]" />
-              {isEs
-                ? '002 / ¿DESEAS CONTINUAR EDITANDO ESTE DOCUMENTO?'
-                : '002 / WANT TO KEEP EDITING THIS DOCUMENT?'}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider font-sans">
+                <Sparkles className="w-3.5 h-3.5 text-[#FAF6EE]" />
+                {isEs
+                  ? '002 / ¿DESEAS CONTINUAR EDITANDO ESTE DOCUMENTO?'
+                  : '002 / WANT TO KEEP EDITING THIS DOCUMENT?'}
+              </span>
+              {isBatch && (
+                <span className="px-2 py-0.5 bg-zinc-800 border border-[#E8DFCF]/30 text-[#FAF6EE] rounded-full text-[10px] font-mono truncate max-w-[200px] sm:max-w-[320px]">
+                  {activeFilename}
+                </span>
+              )}
+            </div>
             <span className="text-[9px] sm:text-[10px] text-zinc-400 font-mono">
               {isEs
                 ? 'Encadena otra acción sin recargar el archivo:'

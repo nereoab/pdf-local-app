@@ -2,12 +2,14 @@ import { PDFDocument, PDFName, PDFDict, PDFArray, PDFRef, PDFStream, PDFRawStrea
 
 export interface WatermarkRemoveWorkerOptions {
   filePrefix: string;
-  cleanMode: 'smart' | 'layers';
+  cleanMode: 'smart' | 'deep' | 'custom';
   targetText: string;
   removeAnnots: boolean;
   removeBackgrounds: boolean;
-  pageScope: 'all' | 'custom';
+  removeOcgLayers?: boolean;
+  pageScope: 'all' | 'custom' | 'odds' | 'evens';
   customPageRange: string;
+  skipFirstPage?: boolean;
   metadata?: {
     title?: string;
     author?: string;
@@ -27,8 +29,11 @@ export type WatermarkRemoveWorkerMessageOut =
   | { type: 'result'; buffer: ArrayBuffer; totalPages: number }
   | { type: 'error'; message: string };
 
-// Helper recursivo para obtener TODOS los flujos de contenido de una página (incluso en PDFRef de PDFArray)
-const getContentStreams = (pdfDoc: PDFDocument, pageNode: PDFDict): (PDFStream | PDFRawStream)[] => {
+// Helper recursivo para obtener todos los flujos de contenido de una página
+const getContentStreams = (
+  pdfDoc: PDFDocument,
+  pageNode: PDFDict,
+): (PDFStream | PDFRawStream)[] => {
   const streams: (PDFStream | PDFRawStream)[] = [];
   const contents = pageNode.get(PDFName.of('Contents'));
 
@@ -48,7 +53,7 @@ const getContentStreams = (pdfDoc: PDFDocument, pageNode: PDFDict): (PDFStream |
   return streams;
 };
 
-// Helper para convertir cadenas hexadecimales de PDF (<52455345525641444F>) a texto ASCII
+// Helper para decodificar cadenas hexadecimales de PDF (<52455345525641444F>)
 const decodeHex = (hexStr: string): string => {
   const cleanHex = hexStr.replace(/[^0-9A-Fa-f]/g, '');
   let str = '';
@@ -63,35 +68,44 @@ const decodeHex = (hexStr: string): string => {
 
 // Algoritmo de limpieza profunda de contenido vectorial, Apryse, Marked Content y PDF-Lib
 const cleanContentStreamText = (
-  contents: string, 
-  keywords: string[], 
-  removeBackgrounds: boolean
+  contents: string,
+  keywords: string[],
+  removeBackgrounds: boolean,
+  isDeep: boolean,
 ): { newContents: string; modified: boolean } => {
   let newContents = contents;
   let modified = false;
 
-  // 1. ELIMINAR BLOQUES MARKED CONTENT DE MARCAS DE AGUA (/Watermark BDC ... EMC, /Apryse, etc.)
-  const bdcRegex = /\/(?:Watermark|Artifact|WM|PieceInfo|PDFBLACK_WM|Apryse)\b[^\n\r]*?BDC[\s\S]*?EMC/gi;
+  // 1. ELIMINAR BLOQUES MARKED CONTENT DE MARCAS DE AGUA (/Watermark BDC ... EMC, /Artifact, /Apryse, etc.)
+  const bdcRegex =
+    /\/(?:Watermark|Artifact|WM|PieceInfo|PDFBLACK_WM|Apryse|Background)\b[^\n\r]*?BDC[\s\S]*?EMC/gi;
   if (bdcRegex.test(newContents)) {
     newContents = newContents.replace(bdcRegex, '');
     modified = true;
   }
 
-  // 2. ELIMINAR BLOQUES DE TEXTO BT...ET QUE CONTIENEN PALABRAS CLAVE (Apryse, Reservado, Confidencial, etc.)
+  // BMC ... EMC para marcas simples
+  const bmcRegex = /\/(?:Watermark|Artifact|WM|Apryse)\s+BMC[\s\S]*?EMC/gi;
+  if (bmcRegex.test(newContents)) {
+    newContents = newContents.replace(bmcRegex, '');
+    modified = true;
+  }
+
+  // 2. ELIMINAR BLOQUES DE TEXTO BT...ET QUE CONTIENEN PALABRAS CLAVE
   const btBlockRegex = /BT[\s\S]*?ET/gi;
   newContents = newContents.replace(btBlockRegex, (match) => {
     const matchLower = match.toLowerCase();
     for (const kw of keywords) {
       if (matchLower.includes(kw)) {
         modified = true;
-        return ''; // Eliminar únicamente el bloque de texto del sello
+        return ''; // Suprimir el bloque completo del sello
       }
     }
     return match;
   });
 
   // 3. REMOVER OPERADORES Tj / TJ INDIVIDUALES QUE CONTENGAN PALABRAS CLAVE
-  // A) Cadenas literales: (CONFIDENCIAL) Tj o (RESERVADO) TJ
+  // A) Cadenas literales: (CONFIDENCIAL) Tj
   const tjStringRegex = /\((?:[^)\\]|\\.)*\)\s*(?:Tj|TJ|tj)/gi;
   newContents = newContents.replace(tjStringRegex, (match) => {
     const matchLower = match.toLowerCase();
@@ -118,7 +132,7 @@ const cleanContentStreamText = (
     return match;
   });
 
-  // C) Arrays de texto fraccionado con posicionamiento: [(R) 10 (E) -5 (S) 0 (E) (R) (V) (A) (D) (O)] TJ
+  // C) Arrays de texto fraccionado con espaciado: [(C) 10 (O) -5 (P) 0 (I) (A)] TJ
   const tjArrayRegex = /\[([^\]]+)\]\s*(?:TJ|Tj|tj)/gi;
   newContents = newContents.replace(tjArrayRegex, (match, inner) => {
     const fragments: string[] = [];
@@ -146,8 +160,8 @@ const cleanContentStreamText = (
   });
 
   // 4. ELIMINAR LLAMADAS A XOBJECTS DE SELLO (/WM0 Do, /Apryse Do, etc.)
-  if (removeBackgrounds) {
-    const doRegex = /\/(?:wm\d*|apryse\d*|watermark\d*|fm\d*)\s+Do/gi;
+  if (removeBackgrounds || isDeep) {
+    const doRegex = /\/(?:wm\d*|apryse\d*|watermark\d*|fm\d*|stamp\d*)\s+Do/gi;
     if (doRegex.test(newContents)) {
       newContents = newContents.replace(doRegex, '');
       modified = true;
@@ -164,10 +178,14 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
 
   try {
     const postProgress = (percent: number, message: string) => {
-      (self as unknown as Worker).postMessage({ type: 'progress', percent, message } as WatermarkRemoveWorkerMessageOut);
+      (self as unknown as Worker).postMessage({
+        type: 'progress',
+        percent,
+        message,
+      } as WatermarkRemoveWorkerMessageOut);
     };
 
-    postProgress(10, 'Cargando estructura del documento PDF...');
+    postProgress(10, 'Cargando estructura y diccionarios del documento PDF...');
 
     const loadOptions: any = {};
     if (password) {
@@ -184,9 +202,21 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
       throw new Error('El documento PDF no contiene páginas válidas para procesar.');
     }
 
-    const { targetText, removeAnnots, removeBackgrounds, pageScope, customPageRange, metadata } = options;
+    const {
+      cleanMode = 'smart',
+      targetText = '',
+      removeAnnots = true,
+      removeBackgrounds = true,
+      removeOcgLayers = true,
+      pageScope = 'all',
+      customPageRange = '',
+      skipFirstPage = false,
+      metadata,
+    } = options;
 
-    postProgress(20, 'Escaneando catálogo, marcas Apryse y capas OCG...');
+    const isDeep = cleanMode === 'deep';
+
+    postProgress(20, 'Escaneando catálogo, capas OCG y metadatos forenses...');
 
     if (metadata) {
       if (metadata.title) pdfDoc.setTitle(metadata.title);
@@ -194,35 +224,67 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
       if (metadata.subject) pdfDoc.setSubject(metadata.subject);
     }
 
-    // 1. Limpieza de capas globales OCG y metadatos de marcas en el Catálogo (Apryse, Adobe, iLovePDF, etc.)
-    if (pdfDoc.catalog.has(PDFName.of('OCProperties'))) {
-      pdfDoc.catalog.delete(PDFName.of('OCProperties'));
+    // 1. Limpieza de capas globales OCG (Optional Content Groups) y PieceInfo en el Catálogo
+    if (removeOcgLayers || isDeep) {
+      if (pdfDoc.catalog.has(PDFName.of('OCProperties'))) {
+        pdfDoc.catalog.delete(PDFName.of('OCProperties'));
+      }
     }
     if (pdfDoc.catalog.has(PDFName.of('PieceInfo'))) {
       pdfDoc.catalog.delete(PDFName.of('PieceInfo'));
     }
 
-    // LISTA MAESTRA DE PALABRAS CLAVE (Incluye Apryse, marcas corporativas y entrada de usuario)
+    // LISTA MAESTRA DE PALABRAS CLAVE
     const userKeywords = targetText
       .split(',')
-      .map(k => k.trim().toLowerCase())
+      .map((k) => k.trim().toLowerCase())
       .filter(Boolean);
 
     const defaultKeywords = [
-      'apryse', 'reservado', 'confidencial', 'borrador', 'copia', 'watermark', 'draft', 
-      'confidential', 'copy', 'sample', 'ejemplo', 'anulado', 'prohibido',
-      'pdfblack', 'ilovepdf', 'smallpdf', 'do not copy'
+      'apryse',
+      'reservado',
+      'confidencial',
+      'borrador',
+      'copia',
+      'watermark',
+      'draft',
+      'confidential',
+      'copy',
+      'sample',
+      'ejemplo',
+      'anulado',
+      'prohibido',
+      'pdfblack',
+      'ilovepdf',
+      'smallpdf',
+      'sejda',
+      'camscanner',
+      'wondershare',
+      'nitro',
+      'foxit',
+      'trial',
+      'evaluation',
+      'demo',
+      'unregistered',
+      'preview',
+      'do not copy',
+      'copia no controlada',
+      'uso interno',
     ];
 
     const allKeywords = Array.from(new Set([...userKeywords, ...defaultKeywords]));
 
-    // Helper para interpretar páginas seleccionadas
+    // Determinar páginas objetivo
     const targetPages = new Set<number>();
     if (pageScope === 'all') {
       for (let i = 1; i <= totalPages; i++) targetPages.add(i);
+    } else if (pageScope === 'odds') {
+      for (let i = 1; i <= totalPages; i += 2) targetPages.add(i);
+    } else if (pageScope === 'evens') {
+      for (let i = 2; i <= totalPages; i += 2) targetPages.add(i);
     } else {
       const parts = customPageRange.split(',');
-      parts.forEach(part => {
+      parts.forEach((part) => {
         const trimmed = part.trim();
         if (trimmed.includes('-')) {
           const [start, end] = trimmed.split('-').map(Number);
@@ -240,23 +302,57 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
       });
     }
 
+    if (skipFirstPage) {
+      targetPages.delete(1);
+    }
+
     for (let i = 0; i < pages.length; i++) {
       const pageNum = i + 1;
       if (!targetPages.has(pageNum)) continue;
 
       const currentPercent = 20 + Math.floor(((i + 1) / totalPages) * 65);
-      postProgress(currentPercent, `Depurando marcas Apryse y sellos de agua en página ${pageNum} de ${totalPages}...`);
+      postProgress(
+        currentPercent,
+        `Depurando marcas de agua y sellos en página ${pageNum} de ${totalPages}...`,
+      );
 
       const page = pages[i];
       const node = page.node;
 
-      // 2. Eliminar anotaciones y marcas de metadatos (/Annots y /PieceInfo)
-      if (removeAnnots) {
-        if (node.has(PDFName.of('Annots'))) node.delete(PDFName.of('Annots'));
-        if (node.has(PDFName.of('PieceInfo'))) node.delete(PDFName.of('PieceInfo'));
+      // 2. Eliminar anotaciones (/Annots) de marcas de agua o sellos flotantes
+      if (removeAnnots || isDeep) {
+        if (node.has(PDFName.of('Annots'))) {
+          const annots = node.lookup(PDFName.of('Annots'), PDFArray);
+          if (annots) {
+            // Filtrado selectivo o eliminación total de sellos
+            const filteredAnnots = pdfDoc.context.obj([]);
+            for (let a = 0; a < annots.size(); a++) {
+              const annotRef = annots.get(a);
+              const annotObj = pdfDoc.context.lookup(annotRef, PDFDict);
+              if (annotObj) {
+                const subtype = annotObj.get(PDFName.of('Subtype'))?.toString().toLowerCase();
+                const isWatermarkAnnot =
+                  subtype?.includes('watermark') ||
+                  subtype?.includes('stamp') ||
+                  annotObj.get(PDFName.of('F'))?.toString() === '64';
+                if (!isWatermarkAnnot && !isDeep) {
+                  filteredAnnots.push(annotRef);
+                }
+              }
+            }
+            if (filteredAnnots.size() === 0) {
+              node.delete(PDFName.of('Annots'));
+            } else {
+              node.set(PDFName.of('Annots'), filteredAnnots);
+            }
+          }
+        }
+        if (node.has(PDFName.of('PieceInfo'))) {
+          node.delete(PDFName.of('PieceInfo'));
+        }
       }
 
-      // 3. Identificar y VACIAR los contenidos de XObjects de marcas de agua (Apryse, WM, FM)
+      // 3. Identificar y vaciar XObjects de marcas de agua (Apryse, WM, FM, Backgrounds)
       if (node.has(PDFName.of('Resources'))) {
         const resources = node.lookup(PDFName.of('Resources'), PDFDict);
         if (resources && resources.has(PDFName.of('XObject'))) {
@@ -271,11 +367,20 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
                   const streamBytes = obj.getContents();
                   const streamText = new TextDecoder('latin1').decode(streamBytes).toLowerCase();
 
-                  const isMatch = 
-                    allKeywords.some(kw => keyStr.includes(kw) || streamText.includes(kw)) ||
-                    keyStr.includes('watermark') || keyStr.includes('wm') || keyStr.includes('apryse') || keyStr.includes('fm') ||
-                    streamText.includes('apryse') || streamText.includes('watermark') ||
-                    (removeBackgrounds && (keyStr.includes('fm') || keyStr.includes('res') || streamText.includes('/ca')));
+                  const isMatch =
+                    allKeywords.some((kw) => keyStr.includes(kw) || streamText.includes(kw)) ||
+                    keyStr.includes('watermark') ||
+                    keyStr.includes('wm') ||
+                    keyStr.includes('apryse') ||
+                    keyStr.includes('fm') ||
+                    keyStr.includes('stamp') ||
+                    streamText.includes('apryse') ||
+                    streamText.includes('watermark') ||
+                    ((removeBackgrounds || isDeep) &&
+                      (keyStr.includes('fm') ||
+                        keyStr.includes('res') ||
+                        streamText.includes('/ca') ||
+                        streamText.includes('/gs')));
 
                   if (isMatch) {
                     if ('setContents' in obj && typeof (obj as any).setContents === 'function') {
@@ -284,8 +389,12 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
                       (obj as any).contents = new Uint8Array(0);
                     }
                   }
-                } catch (e) {
-                  if (allKeywords.some(kw => keyStr.includes(kw)) || keyStr.includes('apryse') || keyStr.includes('wm')) {
+                } catch {
+                  if (
+                    allKeywords.some((kw) => keyStr.includes(kw)) ||
+                    keyStr.includes('apryse') ||
+                    keyStr.includes('wm')
+                  ) {
                     if ('setContents' in obj && typeof (obj as any).setContents === 'function') {
                       (obj as any).setContents(new Uint8Array(0));
                     }
@@ -297,15 +406,20 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
         }
       }
 
-      // 4. Limpieza profunda en TODOS los flujos de contenido (Content Streams resueltos recursivamente)
+      // 4. Limpieza profunda en todos los flujos de contenido de la página
       const streams = getContentStreams(pdfDoc, node);
 
-      streams.forEach(stream => {
+      streams.forEach((stream) => {
         try {
           const bytes = stream.getContents();
           const contentsText = new TextDecoder('latin1').decode(bytes);
 
-          const { newContents, modified } = cleanContentStreamText(contentsText, allKeywords, removeBackgrounds);
+          const { newContents, modified } = cleanContentStreamText(
+            contentsText,
+            allKeywords,
+            removeBackgrounds,
+            isDeep,
+          );
 
           if (modified) {
             const newBytes = new TextEncoder().encode(newContents);
@@ -316,16 +430,16 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
             }
           }
         } catch (e) {
-          console.warn("Warn al limpiar flujo de contenido en worker:", e);
+          console.warn('Advertencia al depurar flujo de contenido en worker:', e);
         }
       });
     }
 
-    postProgress(85, 'Guardando y optimizando bytes del PDF depurado...');
+    postProgress(85, 'Optimizando estructura y guardando bytes del PDF depurado...');
     const resultBytes = await pdfDoc.save();
     const resultBuffer = resultBytes.buffer.slice(
       resultBytes.byteOffset,
-      resultBytes.byteOffset + resultBytes.byteLength
+      resultBytes.byteOffset + resultBytes.byteLength,
     ) as ArrayBuffer;
 
     postProgress(100, '¡Documento PDF depurado con éxito!');
@@ -335,7 +449,7 @@ self.onmessage = async (e: MessageEvent<WatermarkRemoveWorkerMessageIn>) => {
         buffer: resultBuffer,
         totalPages,
       } as WatermarkRemoveWorkerMessageOut,
-      [resultBuffer]
+      [resultBuffer],
     );
   } catch (error: any) {
     (self as unknown as Worker).postMessage({

@@ -1371,43 +1371,56 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                   loadFilesIntoSlots(e.dataTransfer.files);
                 }
               }}
-              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700 hover:border-zinc-500 rounded-3xl p-10 sm:p-14 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[460px]"
+              className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
-              <div className="p-6 bg-zinc-900 border border-zinc-700 rounded-2xl text-purple-400 group-hover:scale-110 group-hover:border-purple-400/50 transition-all duration-300 shadow-xl mb-4">
+              <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
                 {mode === 'jpg-to-pdf' ? (
-                  <ImageIcon className="w-12 h-12 text-purple-400" />
+                  <ImageIcon className="w-12 h-12 text-white" />
                 ) : (
                   <JpgIcon className="w-12 h-12" />
                 )}
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  {mode === 'jpg-to-pdf'
+                    ? isEs
+                      ? 'Motor de Fusión de Imágenes a PDF v5.0 • 100% Local'
+                      : 'Image to PDF Fusion Engine v5.0 • 100% Local'
+                    : isEs
+                      ? 'Motor de Extracción JPG / PNG en Alta Definición v5.0 • 100% Local'
+                      : 'HD JPG / PNG Extraction Engine v5.0 • 100% Local'}
+                </span>
+              </div>
+
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
                 {mode === 'jpg-to-pdf'
                   ? isEs
-                    ? 'Arrastra hasta 3 imágenes aquí'
-                    : 'Drop up to 3 images here'
+                    ? 'CONVERTIR IMÁGENES JPG / PNG A PDF'
+                    : 'CONVERT JPG / PNG IMAGES TO PDF'
                   : isEs
-                    ? 'Arrastra hasta 3 PDFs aquí'
-                    : 'Drop up to 3 PDFs here'}
+                    ? 'CONVERTIR PDF A IMÁGENES JPG'
+                    : 'CONVERT PDF TO JPG IMAGES'}
               </h2>
 
-              <p className="text-zinc-400 text-xs sm:text-sm font-mono max-w-md mb-6">
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
                 {mode === 'jpg-to-pdf'
                   ? isEs
-                    ? 'Admite imágenes JPG, PNG o WebP. Se habilitarán 3 cajas independientes para procesar tus archivos a la vez.'
-                    : 'Supports JPG, PNG, or WebP images. 3 independent boxes will be available to process at once.'
+                    ? 'Admite imágenes JPG, PNG o WebP. Habilita hasta 3 cajas independientes para procesar tus archivos a la vez en memoria RAM.'
+                    : 'Supports JPG, PNG, or WebP images. Process up to 3 parallel slots simultaneously directly in RAM.'
                   : isEs
-                    ? 'Sube hasta 3 archivos PDF. Previsualiza la página a mitad de tamaño y exporta a JPG/PNG.'
-                    : 'Upload up to 3 PDF files. Preview pages at half size and export to JPG/PNG.'}
+                    ? 'Convierte páginas PDF a imágenes JPG/PNG en alta definición con previsualización al 50% y máxima privacidad en RAM.'
+                    : 'Convert PDF pages to high-definition JPG/PNG images with 50% split preview and maximum in-RAM privacy.'}
               </p>
 
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 px-6 py-3 rounded-full font-sans text-xs font-bold transition-all shadow-lg hover:shadow-purple-500/20 cursor-pointer"
+                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
               >
-                <FilePlus className="w-4 h-4 text-black" />
+                <Plus className="w-4 h-4 text-black" />
                 <span>
                   {mode === 'jpg-to-pdf'
                     ? isEs
@@ -1419,13 +1432,37 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700/80 text-zinc-400 text-[11px] font-mono rounded-full mt-6 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                <span>
-                  {isEs
-                    ? '3 CAJAS INDEPENDIENTES • VISTA AL 50% • 100% LOCAL'
-                    : '3 INDEPENDENT BOXES • 50% PREVIEW • 100% LOCAL'}
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-3xl font-mono text-left">
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Extracción JPG en Alta Definición' : '✓ High-Definition JPG Export'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Exporta cada página a resolución nativa o alta fidelidad sin compresión destructiva.'
+                      : 'Export each page at native or high-definition resolution without lossy distortion.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Fusión Multi-Imagen a PDF' : '✓ Multi-Image PDF Fusion'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Combina JPG, PNG y WebP en un único documento con márgenes y orientación automáticos.'
+                      : 'Combines JPG, PNG, and WebP into a single document with automatic orientation.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Privacidad Estricta en RAM' : '✓ Strict In-RAM Privacy'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Procesamiento 100% local en tu navegador sin enviar documentos a servidores externos.'
+                      : '100% local processing in your browser without uploading documents to external servers.'}
+                  </span>
+                </div>
               </div>
             </motion.div>
           ) : (

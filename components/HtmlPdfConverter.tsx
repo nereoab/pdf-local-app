@@ -1497,29 +1497,47 @@ ${p.html}
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-                <UploadCloud className="w-12 h-12 text-white" />
+                {mode === 'html-to-pdf' ? (
+                  <HtmlIcon className="w-12 h-12" />
+                ) : (
+                  <Code className="w-12 h-12 text-white" />
+                )}
               </div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  {mode === 'html-to-pdf'
+                    ? isEs
+                      ? 'Motor de Renderizado HTML5 a PDF v5.0 • 100% Local'
+                      : 'HTML5 to PDF Rendering Engine v5.0 • 100% Local'
+                    : isEs
+                      ? 'Motor de Reconstrucción Web HTML5 v5.0 • 100% Local'
+                      : 'HTML5 Web Reconstruction Engine v5.0 • 100% Local'}
+                </span>
+              </div>
+
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
                 {mode === 'html-to-pdf'
                   ? isEs
                     ? 'CONVERTIR PÁGINA HTML A PDF'
                     : 'CONVERT HTML PAGE TO PDF'
                   : isEs
-                    ? 'CONVERTIR PDF A HTML5 (CONVERSOR DUAL 2 EN 1)'
-                    : 'CONVERT PDF TO HTML5 (2-IN-1 DUAL CONVERTER)'}
+                    ? 'CONVERTIR PDF A HTML5'
+                    : 'CONVERT PDF TO HTML5'}
               </h2>
-              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
                 {mode === 'html-to-pdf'
                   ? isEs
-                    ? 'Convierte archivos web (.html) en documentos PDF de alta fidelidad.'
-                    : 'Convert web files (.html) into high-fidelity PDF documents.'
+                    ? 'Convierte archivos web (.html) en documentos PDF de alta fidelidad con soporte de fuentes y estilos en tu memoria RAM.'
+                    : 'Convert web files (.html) into high-fidelity PDF documents with font and styling support directly in RAM.'
                   : isEs
-                    ? 'Transforma tu PDF en páginas web HTML5 responsivas con selector de páginas 100% en RAM.'
-                    : 'Transform PDF into responsive HTML5 web pages with page selector 100% in RAM.'}
+                    ? 'Transforma tu PDF en páginas web HTML5 responsivas con selector de páginas y privacidad 100% en RAM.'
+                    : 'Transform PDF into responsive HTML5 web pages with page selector and 100% in-RAM privacy.'}
               </p>
               <button
                 type="button"
-                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
               >
                 <Plus className="w-4 h-4 text-black" />
                 <span>
@@ -1533,13 +1551,37 @@ ${p.html}
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-white" />
-                <span>
-                  {isEs
-                    ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                    : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-3xl font-mono text-left">
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Renderizado CSS y WebFonts' : '✓ Modern CSS & WebFonts'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Interpreta estilos modernos, flexbox, grid y tipografías web responsivas.'
+                      : 'Interprets modern CSS layouts, flexbox, grid, and responsive web fonts.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Maquetación y Paginación A4' : '✓ Responsive HTML5 & A4'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Divide el contenido web en hojas paginadas con márgenes simétricos de impresión.'
+                      : 'Structures web content into paginated sheets with balanced print margins.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Privacidad Estricta en RAM' : '✓ Strict In-RAM Privacy'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Procesamiento 100% local en tu navegador sin enviar documentos a servidores externos.'
+                      : '100% local processing in your browser without uploading documents to external servers.'}
+                  </span>
+                </div>
               </div>
             </motion.div>
           ) : (

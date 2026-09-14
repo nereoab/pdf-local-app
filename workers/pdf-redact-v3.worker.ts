@@ -1,26 +1,25 @@
 /**
- * Web Worker v3.0 - CENSURA DE PRECISIÓN Y DESTRUCCIÓN TOTAL PARA PDFS
+ * Web Worker v3.0 / v4.0 Enterprise - CENSURA DE PRECISIÓN Y DESTRUCCIÓN TOTAL PARA PDFS
  *
- * ARQUITECTURA ROBUSTA:
+ * ARQUITECTURA ROBUSTA ENTERPRISE:
  *
  *  Modo PRECISIÓN (por defecto / recomendado):
  *    - Carga el PDF original con pdf-lib (PDFDocument.load)
- *    - Itera cada página con censuras
  *    - Mapea coordenadas con precisión geométrica (Rotación 0°, 90°, 180°, 270°, MediaBox, CropBox)
- *    - Estampa rectángulos vectoriales 100% opacos (negros o grises) usando la API nativa de pdf-lib
- *    - Sanitiza y limpia metadatos sensibles
- *    - Guarda el documento con estructura PDF 100% válida e íntegra (sin corrupción de flate streams)
+ *    - Estampa rectángulos vectoriales 100% opacos (negro, carbón, blanco o gris)
+ *    - Estampa texto superpuesto corporativo opcional ([CENSURADO], [CONFIDENCIAL], [RGPD])
+ *    - Purga profunda del árbol XML /Metadata (XMP) y /PieceInfo del catálogo
+ *    - Sanitiza y limpia diccionarios de metadatos sensibles
+ *    - Guarda el documento con estructura PDF 100% válida e íntegra (0% corrupción)
  *
  *  Modo RASTERIZADO (Destrucción total 100% Anti-Forense):
  *    - Renderiza cada página a alta resolución con pdfjs-dist / OffscreenCanvas
- *    - Quema los rectángulos de censura a nivel de píxeles
+ *    - Quema los rectángulos de censura y texto superpuesto a nivel de píxeles
  *    - Empaqueta como imágenes JPEG optimizadas en un PDF completamente nuevo
- *    - Destrucción total irreversible del texto subyacente
- *
- * Compatible con pdf-lib y pdfjs-dist. 0% de corrupción.
+ *    - Destrucción total e irreversible de glifos, trazados y capas OCR ocultas
  */
 
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, PDFName } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configurar worker de pdfjs-dist
@@ -39,11 +38,14 @@ export interface RedactionBox {
   yPercent: number;
   widthPercent: number;
   heightPercent: number;
+  overlayText?: string;
+  boxColor?: 'black' | 'dark' | 'white' | 'gray';
 }
 
 export interface RedactOptions {
   redactions: RedactionBox[];
-  redactionColor: 'black' | 'gray';
+  redactionColor: 'black' | 'dark' | 'white' | 'gray';
+  overlayText?: string;
   stripMetadata: boolean;
   customSuffix: string;
   /** Modo de redacción: 'precision' (vectorial nativo) o 'raster' (rasterizado 100% plano) */
@@ -83,8 +85,36 @@ export interface RedactError {
 
 export type WorkerMessage = RedactProgress | RedactResult | RedactError;
 
+function getPrecisionRgbColor(color?: 'black' | 'dark' | 'white' | 'gray') {
+  switch (color) {
+    case 'dark':
+      return rgb(0.09, 0.09, 0.11);
+    case 'white':
+      return rgb(1, 1, 1);
+    case 'gray':
+      return rgb(0.35, 0.35, 0.38);
+    case 'black':
+    default:
+      return rgb(0, 0, 0);
+  }
+}
+
+function getRasterHexColor(color?: 'black' | 'dark' | 'white' | 'gray') {
+  switch (color) {
+    case 'dark':
+      return '#18181b';
+    case 'white':
+      return '#ffffff';
+    case 'gray':
+      return '#52525b';
+    case 'black':
+    default:
+      return '#000000';
+  }
+}
+
 // ============================================================
-// MODO PRECISIÓN: DIBUJO VECTORIAL NATIVO + ROTACIÓN + METADATOS
+// MODO PRECISIÓN: DIBUJO VECTORIAL NATIVO + TEXTO + PURGA XMP
 // ============================================================
 
 async function redactPrecisionMode(
@@ -97,7 +127,7 @@ async function redactPrecisionMode(
     type: 'progress',
     phase: 'analyzing',
     percent: 5,
-    message: 'Modo Precisión: Cargando estructura PDF con pdf-lib...',
+    message: 'Modo Precisión: Cargando estructura PDF y fuentes vectoriales...',
   });
 
   const pdfDoc = await PDFDocument.load(new Uint8Array(fileBuffer.slice(0)), {
@@ -105,6 +135,7 @@ async function redactPrecisionMode(
     updateMetadata: false,
   });
 
+  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const totalPages = pdfDoc.getPageCount();
   const pages = pdfDoc.getPages();
 
@@ -127,8 +158,6 @@ async function redactPrecisionMode(
     message: `${totalRedactions} parches en ${pagesWithRedactions} páginas. Aplicando censura vectorial nativa...`,
     totalPages,
   });
-
-  const boxColor = options.redactionColor === 'gray' ? rgb(0.25, 0.25, 0.25) : rgb(0, 0, 0);
 
   // Procesar cada página
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
@@ -180,6 +209,10 @@ async function redactPrecisionMode(
           ry = height - ((box.yPercent + box.heightPercent) / 100) * height;
         }
 
+        const chosenColor = box.boxColor || options.redactionColor;
+        const boxColor = getPrecisionRgbColor(chosenColor);
+
+        // 1. Dibujar rectángulo de censura 100% opaco
         page.drawRectangle({
           x: rx + offsetX,
           y: ry + offsetY,
@@ -188,6 +221,33 @@ async function redactPrecisionMode(
           color: boxColor,
           opacity: 1,
         });
+
+        // 2. Estampar texto superpuesto corporativo si existe
+        const textToDraw = box.overlayText !== undefined ? box.overlayText : options.overlayText;
+        if (textToDraw && textToDraw.trim().length > 0) {
+          const isWhiteBg = chosenColor === 'white';
+          const textColor = isWhiteBg ? rgb(0.08, 0.08, 0.1) : rgb(1, 1, 1);
+
+          const maxFontSizeByHeight = Math.max(rh * 0.56, 5);
+          const textWidthAt1 = font.widthOfTextAtSize(textToDraw, 1);
+          const maxFontSizeByWidth = (rw * 0.88) / Math.max(textWidthAt1, 1);
+          const fontSize = Math.min(maxFontSizeByHeight, maxFontSizeByWidth, 12);
+
+          if (fontSize >= 4.5 && rw > 15 && rh > 6) {
+            const textWidth = font.widthOfTextAtSize(textToDraw, fontSize);
+            const textHeight = font.heightAtSize(fontSize);
+            const textX = rx + offsetX + (rw - textWidth) / 2;
+            const textY = ry + offsetY + (rh - textHeight) / 2 + fontSize * 0.15;
+
+            page.drawText(textToDraw, {
+              x: textX,
+              y: textY,
+              size: fontSize,
+              font,
+              color: textColor,
+            });
+          }
+        }
       }
     }
   }
@@ -196,7 +256,7 @@ async function redactPrecisionMode(
     type: 'progress',
     phase: 'packaging',
     percent: 92,
-    message: 'Sanitizando metadatos y empaquetando PDF...',
+    message: 'Sanitizando metadatos, purgando árbol XMP y empaquetando PDF...',
   });
 
   if (options.stripMetadata) {
@@ -204,8 +264,12 @@ async function redactPrecisionMode(
     pdfDoc.setAuthor('');
     pdfDoc.setSubject('');
     pdfDoc.setKeywords([]);
-    pdfDoc.setProducer('PDFBlack TrueRedact Engine v3.0');
+    pdfDoc.setProducer('PDFBlack TrueRedact™ Enterprise v4.0');
     pdfDoc.setCreator('PDFBlack Secure Enterprise Engine');
+    try {
+      pdfDoc.catalog.delete(PDFName.of('Metadata'));
+      pdfDoc.catalog.delete(PDFName.of('PieceInfo'));
+    } catch {}
   }
 
   const pdfBytes = await pdfDoc.save({
@@ -256,7 +320,7 @@ async function redactRasterMode(
     type: 'progress',
     phase: 'analyzing',
     percent: 5,
-    message: 'Modo Raster: Cargando documento para renderizado plano...',
+    message: 'Modo Raster: Cargando documento para renderizado plano anti-forense...',
   });
 
   const srcDoc = await pdfjsLib.getDocument({
@@ -286,7 +350,6 @@ async function redactRasterMode(
   });
 
   const outPdf = await PDFDocument.create();
-  const boxHexColor = options.redactionColor === 'gray' ? '#404040' : '#000000';
 
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     const pct = 10 + Math.floor((pageNum / totalPages) * 80);
@@ -296,7 +359,7 @@ async function redactRasterMode(
       type: 'progress',
       phase: 'redacting',
       percent: pct,
-      message: `Rasterizando y censurando página ${pageNum}/${totalPages}...`,
+      message: `Rasterizando y quemando censuras en página ${pageNum}/${totalPages}...`,
       currentPage: pageNum,
       totalPages,
     });
@@ -319,8 +382,22 @@ async function redactRasterMode(
       const ry = (box.yPercent / 100) * viewport.height;
       const rw = (box.widthPercent / 100) * viewport.width;
       const rh = (box.heightPercent / 100) * viewport.height;
-      ctx.fillStyle = boxHexColor;
+
+      const chosenColor = box.boxColor || options.redactionColor;
+      ctx.fillStyle = getRasterHexColor(chosenColor);
       ctx.fillRect(rx, ry, rw, rh);
+
+      // Texto superpuesto en OffscreenCanvas
+      const textToDraw = box.overlayText !== undefined ? box.overlayText : options.overlayText;
+      if (textToDraw && textToDraw.trim().length > 0 && rw > 25 && rh > 12) {
+        const isWhiteBg = chosenColor === 'white';
+        ctx.fillStyle = isWhiteBg ? '#0d0d12' : '#ffffff';
+        const fontSize = Math.min(Math.max(rh * 0.52, 9), 24);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(textToDraw, rx + rw / 2, ry + rh / 2);
+      }
     }
 
     const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.92 });
@@ -348,8 +425,12 @@ async function redactRasterMode(
   outPdf.setAuthor('');
   outPdf.setSubject('');
   outPdf.setKeywords([]);
-  outPdf.setProducer('PDFBlack TrueRedact Engine v3.0 (Raster Flattened)');
+  outPdf.setProducer('PDFBlack TrueRedact™ Enterprise v4.0 (Raster Flattened)');
   outPdf.setCreator('PDFBlack Redaction Worker');
+  try {
+    outPdf.catalog.delete(PDFName.of('Metadata'));
+    outPdf.catalog.delete(PDFName.of('PieceInfo'));
+  } catch {}
 
   const pdfBytes = await outPdf.save({ useObjectStreams: true, addDefaultPage: false });
 
@@ -362,7 +443,7 @@ async function redactRasterMode(
     type: 'progress',
     phase: 'packaging',
     percent: 100,
-    message: 'Censura rasterizada completada exitosamente.',
+    message: 'Censura rasterizada anti-forense completada exitosamente.',
   });
 
   return {

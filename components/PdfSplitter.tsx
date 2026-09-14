@@ -33,6 +33,8 @@ import {
   Info,
   Sparkle,
   Filter,
+  FileArchive,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -130,6 +132,7 @@ export default function PdfSplitter() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [completedResult, setCompletedResult] = useState<CompletedSplitResult | null>(null);
+  const [isDropzoneDragging, setIsDropzoneDragging] = useState<boolean>(false);
 
   // ENCRYPTION / PASSWORD STATE
   const [isEncrypted, setIsEncrypted] = useState<boolean>(false);
@@ -357,6 +360,42 @@ export default function PdfSplitter() {
       toast.success(isEs ? 'Archivo cargado con éxito' : 'File loaded successfully');
     }
     e.target.value = '';
+  };
+
+  const handleDropzoneDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropzoneDragging(true);
+  };
+
+  const handleDropzoneDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropzoneDragging(false);
+  };
+
+  const handleDropzoneDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropzoneDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const dropped = e.dataTransfer.files[0];
+      if (dropped.type !== 'application/pdf' && !dropped.name.toLowerCase().endsWith('.pdf')) {
+        toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
+        return;
+      }
+      setFile(dropped);
+      setGlobalFile(dropped);
+      setDownloadUrl(null);
+      setCreatedCount(0);
+      setIsEncrypted(false);
+      setIsUnlocked(false);
+      setUnlockedPassword(undefined);
+      setPasswordInput('');
+      setTotalPages(0);
+      inspectPdf(dropped);
+      toast.success(isEs ? 'Archivo cargado con éxito' : 'File loaded successfully');
+    }
   };
 
   const unlockFileWithPassword = async () => {
@@ -845,12 +884,12 @@ export default function PdfSplitter() {
   const gridClasses = useMemo(() => {
     switch (gridDensity) {
       case 'compact':
-        return 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-3';
+        return 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3';
       case 'large':
-        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 gap-5';
+        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
       case 'standard':
       default:
-        return 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4';
+        return 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4';
     }
   }, [gridDensity]);
 
@@ -893,11 +932,15 @@ export default function PdfSplitter() {
           <div className="hidden sm:block h-5 w-px bg-zinc-700" />
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-              {isEs ? '002 / CORTE Y DIVISIÓN DE DOCUMENTOS PDF' : '002 / PDF CUTTING & SPLITTING'}
+              {isEs
+                ? '002 / ORGANIZACIÓN Y DIVISIÓN DE ARCHIVOS PDF'
+                : '002 / PDF SPLITTING & ORGANIZATION'}
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Scissors className="w-6 h-6 text-white flex-shrink-0" />
-              {isEs ? 'DIVIDIR O EXTRAER PÁGINAS DE DOCUMENTOS PDF' : 'SPLIT OR EXTRACT PDF PAGES'}
+              {isEs
+                ? 'DIVIDIR ARCHIVOS PDF (EXTRAER PÁGINAS Y SECCIONES)'
+                : 'SPLIT PDF FILES (EXTRACT PAGES & SECTIONS)'}
             </h1>
           </div>
         </div>
@@ -1016,35 +1059,77 @@ export default function PdfSplitter() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+          onDragOver={handleDropzoneDragOver}
+          onDragLeave={handleDropzoneDragLeave}
+          onDrop={handleDropzoneDrop}
+          className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border ${
+            isDropzoneDragging
+              ? 'border-white bg-zinc-900/50'
+              : 'border-zinc-600 hover:border-white'
+          } rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]`}
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <Scissors className="w-12 h-12 text-white" />
           </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>
+              {isEs
+                ? 'Motor de División Vectorial v5.0 • 100% Local'
+                : 'Vectorial Split Engine v5.0 • 100% Local'}
+            </span>
+          </div>
+
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
             {isEs ? 'DIVIDIR O EXTRAER PÁGINAS DE DOCUMENTOS PDF' : 'SPLIT OR EXTRACT PDF PAGES'}
           </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Separa o extrae rangos de páginas de tu PDF de forma 100% confidencial y local.'
-              : 'Split or extract ranges of pages from your PDF 100% locally.'}
+              ? 'Separa páginas individuales, extrae intervalos específicos o descompone tu PDF en bloques fijos al instante, sin subir datos a la nube ni perder calidad vectorial.'
+              : 'Separate individual pages, extract specific intervals, or partition your PDF into equal chunks instantly, without cloud uploads or vector quality loss.'}
           </p>
+
           <button
             type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
           >
             <Plus className="w-4 h-4 text-black" />
             <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
-            <span>
-              {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-            </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Extracción Vectorial 100%' : '✓ 100% Lossless Vector'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Conserva tipografías incrustadas, hipervínculos y trazos matemáticos sin rasterización.'
+                  : 'Preserves embedded fonts, hyperlinks, and vector strokes losslessly without rasterization.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Rangos e Intervalos Flexibles' : '✓ Flexible Ranges & Intervals'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Rangos personalizados, páginas pares/impares, bloques fijos o exportación en archivo ZIP.'
+                  : 'Custom ranges, even/odd pages, fixed chunks, or instant ZIP archive packaging.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin subir tu información a servidores externos.'
+                  : 'Local browser RAM processing without uploading sensitive data to external servers.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : (
@@ -1052,12 +1137,45 @@ export default function PdfSplitter() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+          className="w-full flex flex-col gap-6"
         >
-          {/* LADO IZQUIERDO: REJILLA DE MINIATURAS REALES Y RANGOS DE HOJAS */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col h-[750px] lg:h-[820px] max-h-[850px] overflow-hidden relative">
+          {/* PANEL SUPERIOR: REJILLA DE MINIATURAS REALES Y VISOR (ANCHO COMPLETO) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
+            {/* DESBLOQUEO DE CONTRASEÑA SI ESTÁ CIFRADO */}
+            {isEncrypted && !isUnlocked && (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 mb-4 font-mono text-xs">
+                <div className="flex items-center gap-2 text-amber-400 font-bold">
+                  <Lock className="w-4 h-4" />
+                  <span>
+                    {isEs
+                      ? 'Este PDF está protegido con contraseña'
+                      : 'This PDF is password protected'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    placeholder={
+                      isEs ? 'Ingresa la contraseña de apertura...' : 'Enter open password...'
+                    }
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
+                    className="flex-1 bg-zinc-900 border border-white/15 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={unlockFileWithPassword}
+                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    <span>{isEs ? 'Desbloquear' : 'Unlock'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
             {/* CABECERA DE LA VISTA PREVIA CON CONTADOR Y DENSIDAD */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
@@ -1106,123 +1224,49 @@ export default function PdfSplitter() {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
-                  <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" /> 100% Local
-                </div>
-              </div>
-            </div>
-
-            {/* DETALLES DEL ARCHIVO CARGADO Y WIDGET DE CONTRASEÑA */}
-            <div className="bg-[#121217] border border-zinc-700/80 p-3.5 rounded-2xl mb-3 font-mono text-xs space-y-3 shadow-inner">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <FileText className="w-5 h-5 text-zinc-300 flex-shrink-0" />
-                  <div className="truncate">
-                    <span className="text-white font-bold block truncate">{file.name}</span>
-                    <span className="text-[10px] text-zinc-400">
-                      {formatFileSize(file.size)} • {totalPages}{' '}
-                      {isEs ? 'páginas en total' : 'total pages'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {isUnlocked && (
-                    <span className="bg-zinc-800 text-zinc-200 text-[10px] px-2.5 py-1 rounded-xl border border-zinc-600 flex items-center gap-1 shadow-sm font-bold">
-                      <Unlock className="w-3 h-3 text-white" /> {isEs ? 'Desbloqueado' : 'Unlocked'}
-                    </span>
-                  )}
+                {/* BOTÓN SELECCIONAR TODAS / INVERTIR / LIMPIAR */}
+                <div className="flex items-center gap-1.5">
                   <button
-                    onClick={removeFile}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl border border-zinc-700 transition-colors"
+                    type="button"
+                    onClick={selectAllPages}
+                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
                   >
-                    <X className="w-4 h-4" />
+                    {isEs ? 'Todas' : 'All'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={selectEvenPages}
+                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {isEs ? 'Pares' : 'Even'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={selectOddPages}
+                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {isEs ? 'Impares' : 'Odd'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={invertSelection}
+                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {isEs ? 'Invertir' : 'Invert'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
+                  >
+                    {isEs ? 'Limpiar' : 'Clear'}
                   </button>
                 </div>
-              </div>
-
-              {/* ENCRYPTED PASSWORD WIDGET */}
-              {isEncrypted && !isUnlocked && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-                    <Lock className="w-4 h-4" />
-                    <span>
-                      {isEs
-                        ? 'Este PDF está protegido con contraseña'
-                        : 'This PDF is password protected'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="password"
-                      placeholder={
-                        isEs ? 'Ingresa la contraseña de apertura...' : 'Enter open password...'
-                      }
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
-                      className="flex-1 bg-zinc-900 border border-white/15 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40"
-                    />
-                    <button
-                      onClick={unlockFileWithPassword}
-                      className="px-3 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      <Unlock className="w-3.5 h-3.5" />
-                      <span>{isEs ? 'Desbloquear' : 'Unlock'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* BARRA DE HERRAMIENTAS DE SELECCIÓN RÁPIDA */}
-            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-white/10 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] mb-4">
-              <span className="text-zinc-400 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                <Filter className="w-3 h-3 text-zinc-400" />
-                {isEs ? 'Selección Rápida:' : 'Quick Selection:'}
-              </span>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={selectAllPages}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-white hover:text-black text-zinc-300 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                >
-                  {isEs ? 'Todas' : 'All'}
-                </button>
-                <button
-                  type="button"
-                  onClick={selectEvenPages}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-white hover:text-black text-zinc-300 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                >
-                  {isEs ? 'Pares' : 'Even'}
-                </button>
-                <button
-                  type="button"
-                  onClick={selectOddPages}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-white hover:text-black text-zinc-300 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                >
-                  {isEs ? 'Impares' : 'Odd'}
-                </button>
-                <button
-                  type="button"
-                  onClick={invertSelection}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg border border-white/10 transition-colors cursor-pointer"
-                >
-                  {isEs ? 'Invertir' : 'Invert'}
-                </button>
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
-                >
-                  {isEs ? 'Limpiar' : 'Clear'}
-                </button>
               </div>
             </div>
 
             {/* VISUALIZADOR GRÁFICO DE MINIATURAS REALES EN GRILLA */}
-            <div className="flex-1 overflow-y-auto min-h-0 pr-2 font-mono custom-scrollbar">
+            <div className="w-full overflow-y-auto max-h-[580px] pr-2 font-mono custom-scrollbar">
               {isLoadingThumbnails ? (
                 <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-400">
                   <Loader2 className="w-8 h-8 animate-spin text-white" />
@@ -1313,226 +1357,389 @@ export default function PdfSplitter() {
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL (ALTURA NATURAL SIN SCROLL) */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-6 relative overflow-hidden">
+          {/* PANEL INFERIOR: PANEL DE CONTROL Y PARÁMETROS DE CORTE (ANCHO COMPLETO) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col space-y-6 relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-            <div className="space-y-4">
-              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-4 pb-3 border-b border-zinc-800">
+
+            {/* HEADER DEL PANEL DE CONTROL */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                  {isEs ? '002 / CONFIGURACIÓN DE CORTE' : '002 / SPLIT CONFIGURATION'}
                 </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
+                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5 font-sans uppercase tracking-tight">
                   <Sliders className="w-5 h-5 text-white" />
+                  <span>
+                    {isEs
+                      ? 'PARÁMETROS Y MODALIDADES DE DIVISIÓN'
+                      : 'SPLIT PARAMETERS & MODALITIES'}
+                  </span>
                 </h2>
               </div>
 
-              {/* TABS SUPERIORES [0-0] RANGO, PÁGINAS, TAMAÑO */}
-              <div className="grid grid-cols-3 border border-zinc-800 bg-[#121217] rounded-2xl overflow-hidden mb-5 p-1 gap-1 font-mono shadow-inner">
+              {/* SELECTOR DE TABS DE MODO PRINCIPAL: RANGO / PÁGINAS / BLOQUES */}
+              <div className="flex items-center border border-zinc-800 bg-[#121217] rounded-2xl p-1 gap-1 font-mono shadow-inner">
                 <button
+                  type="button"
                   onClick={() => setMainTab('rango')}
-                  className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer relative ${
+                  className={`py-2 px-3 sm:px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                     mainTab === 'rango'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <Layers3 className="w-4 h-4" />
-                  <span>{isEs ? 'Rango' : 'Range'}</span>
+                  <span>{isEs ? 'Por Rangos' : 'By Range'}</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setMainTab('paginas')}
-                  className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer relative ${
+                  className={`py-2 px-3 sm:px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                     mainTab === 'paginas'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <LayoutGrid className="w-4 h-4" />
-                  <span>{isEs ? 'Páginas' : 'Pages'}</span>
+                  <span>{isEs ? 'Por Páginas' : 'By Pages'}</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setMainTab('tamano')}
-                  className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer relative ${
+                  className={`py-2 px-3 sm:px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                     mainTab === 'tamano'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
                   <Maximize2 className="w-4 h-4" />
-                  <span>{isEs ? 'Tamaño' : 'Size'}</span>
+                  <span>{isEs ? 'Bloques Fijos' : 'Fixed Chunks'}</span>
                 </button>
               </div>
+            </div>
 
-              {/* CONTENIDO TAB 1: RANGO */}
-              {mainTab === 'rango' && (
-                <div className="space-y-4 font-mono">
-                  <div>
-                    <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">
-                      {isEs ? 'Modo de Rango:' : 'Range Mode:'}
+            {/* CUERPO DEL PANEL DE CONTROL EN 3 COLUMNAS ENTERPRISE */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
+              {/* COLUMNA 1: CONFIGURACIÓN DE MODALIDAD */}
+              <div className="space-y-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[11px] text-zinc-400 uppercase tracking-wider block font-bold">
+                      {isEs ? '1. Modalidad y Selección' : '1. Modality & Selection'}
                     </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <button
-                        onClick={() => setRangeSubMode('personalizado')}
-                        className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                          rangeSubMode === 'personalizado'
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        {isEs ? 'Personalizado' : 'Custom'}
-                      </button>
-
-                      <button
-                        onClick={() => setRangeSubMode('fijo')}
-                        className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                          rangeSubMode === 'fijo'
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        {isEs ? 'Bloques Fijos' : 'Fixed Blocks'}
-                      </button>
-
-                      <button
-                        onClick={() => setRangeSubMode('inteligente')}
-                        className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
-                          rangeSubMode === 'inteligente'
-                            ? 'bg-white text-black border-white shadow-md'
-                            : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        {isEs ? '1 pág / PDF' : '1 pg / PDF'}
-                      </button>
-                    </div>
+                    <span className="text-[10px] text-zinc-500">
+                      {mainTab === 'rango'
+                        ? isEs
+                          ? 'Rangos específicos'
+                          : 'Specific ranges'
+                        : mainTab === 'paginas'
+                          ? isEs
+                            ? 'Filtro de hojas'
+                            : 'Page filter'
+                          : isEs
+                            ? 'Partición por tamaño'
+                            : 'Chunk partition'}
+                    </span>
                   </div>
 
-                  {rangeSubMode === 'personalizado' && (
+                  {/* CONTENIDO TAB 1: RANGO */}
+                  {mainTab === 'rango' && (
                     <div className="space-y-3">
-                      {/* CONTROLES DE RANGOS PERSONALIZADOS */}
-                      <div className="space-y-2 pr-0.5">
-                        {ranges.map((r, idx) => {
-                          const color = RANGE_COLORS[idx % RANGE_COLORS.length];
-                          return (
-                            <div
-                              key={r.id}
-                              className={`bg-zinc-950 border ${color.border} p-2.5 rounded-xl space-y-1.5 transition-all`}
-                            >
-                              <div className="flex items-center justify-between text-[11px] font-bold text-white">
-                                <span className="flex items-center gap-1.5">
-                                  <span
-                                    className={`w-2 h-2 rounded-full ${color.bg} border ${color.border}`}
-                                  />
-                                  {isEs ? `Rango ${idx + 1}` : `Range ${idx + 1}`}
-                                </span>
-                                {ranges.length > 1 && (
-                                  <button
-                                    onClick={() => handleRemoveRange(r.id)}
-                                    className="text-zinc-400 hover:text-red-400 transition-colors p-1"
-                                    title={isEs ? 'Eliminar este rango' : 'Remove range'}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="flex items-center justify-between text-xs text-zinc-300 gap-2">
-                                <span className="text-[10px] text-zinc-400">
-                                  {isEs ? 'Desde pág.' : 'From pg.'}
-                                </span>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={totalPages || 100}
-                                  value={r.from}
-                                  onChange={(e) =>
-                                    handleUpdateRange(
-                                      r.id,
-                                      'from',
-                                      parseInt(e.target.value, 10) || 1,
-                                    )
-                                  }
-                                  className="w-16 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
-                                />
-                                <span className="text-[10px] text-zinc-400">
-                                  {isEs ? 'hasta' : 'to'}
-                                </span>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={totalPages || 100}
-                                  value={r.to}
-                                  onChange={(e) =>
-                                    handleUpdateRange(r.id, 'to', parseInt(e.target.value, 10) || 1)
-                                  }
-                                  className="w-16 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* BOTONES DE ACCIONES RÁPIDAS PARA RANGOS */}
                       <div className="grid grid-cols-3 gap-1.5">
                         <button
                           type="button"
-                          onClick={handleAddRange}
-                          className="border border-white/20 hover:border-white/40 bg-zinc-900 hover:bg-zinc-800 text-white py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1"
+                          onClick={() => setRangeSubMode('personalizado')}
+                          className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                            rangeSubMode === 'personalizado'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                          }`}
                         >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>{isEs ? 'Añadir' : 'Add'}</span>
+                          {isEs ? 'Personalizado' : 'Custom'}
                         </button>
 
                         <button
                           type="button"
-                          onClick={handleSplitInHalf}
-                          className="border border-white/10 hover:border-white/30 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                          title={isEs ? 'Dividir exactamente en 2 mitades' : 'Split into 2 halves'}
+                          onClick={() => setRangeSubMode('fijo')}
+                          className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                            rangeSubMode === 'fijo'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                          }`}
                         >
-                          <Split className="w-3.5 h-3.5 text-zinc-400" />
-                          <span>{isEs ? 'Mitad' : 'Half'}</span>
+                          {isEs ? 'Bloques Fijos' : 'Fixed Blocks'}
                         </button>
 
                         <button
                           type="button"
-                          onClick={handleResetRanges}
-                          className="border border-white/10 hover:border-white/30 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
-                          title={isEs ? 'Restablecer a 1 rango completo' : 'Reset ranges'}
+                          onClick={() => setRangeSubMode('inteligente')}
+                          className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                            rangeSubMode === 'inteligente'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                          }`}
                         >
-                          <RefreshCw className="w-3 h-3" />
-                          <span>{isEs ? 'Reset' : 'Reset'}</span>
+                          {isEs ? '1 pág / PDF' : '1 pg / PDF'}
                         </button>
                       </div>
 
-                      <label className="flex items-center gap-2.5 cursor-pointer text-[11px] font-bold text-zinc-300 pt-1">
-                        <input
-                          type="checkbox"
-                          checked={mergeAllRanges}
-                          onChange={(e) => setMergeAllRanges(e.target.checked)}
-                          className="accent-white w-4 h-4 rounded cursor-pointer"
-                        />
-                        <span>
-                          {isEs
-                            ? 'Unir todos los rangos en un único PDF.'
-                            : 'Merge all ranges into single PDF.'}
-                        </span>
-                      </label>
+                      {rangeSubMode === 'personalizado' && (
+                        <div className="space-y-3">
+                          {/* CONTROLES DE RANGOS PERSONALIZADOS */}
+                          <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                            {ranges.map((r, idx) => {
+                              const color = RANGE_COLORS[idx % RANGE_COLORS.length];
+                              return (
+                                <div
+                                  key={r.id}
+                                  className={`bg-zinc-950 border ${color.border} p-2.5 rounded-xl space-y-1.5 transition-all`}
+                                >
+                                  <div className="flex items-center justify-between text-[11px] font-bold text-white">
+                                    <span className="flex items-center gap-1.5">
+                                      <span
+                                        className={`w-2 h-2 rounded-full ${color.bg} border ${color.border}`}
+                                      />
+                                      {isEs ? `Rango ${idx + 1}` : `Range ${idx + 1}`}
+                                    </span>
+                                    {ranges.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveRange(r.id)}
+                                        className="text-zinc-400 hover:text-red-400 transition-colors p-1"
+                                        title={isEs ? 'Eliminar este rango' : 'Remove range'}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-xs text-zinc-300 gap-2">
+                                    <span className="text-[10px] text-zinc-400">
+                                      {isEs ? 'Desde pág.' : 'From pg.'}
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={totalPages || 100}
+                                      value={r.from}
+                                      onChange={(e) =>
+                                        handleUpdateRange(
+                                          r.id,
+                                          'from',
+                                          parseInt(e.target.value, 10) || 1,
+                                        )
+                                      }
+                                      className="w-16 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                                    />
+                                    <span className="text-[10px] text-zinc-400">
+                                      {isEs ? 'hasta' : 'to'}
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={totalPages || 100}
+                                      value={r.to}
+                                      onChange={(e) =>
+                                        handleUpdateRange(
+                                          r.id,
+                                          'to',
+                                          parseInt(e.target.value, 10) || 1,
+                                        )
+                                      }
+                                      className="w-16 bg-zinc-900 border border-white/20 rounded-lg p-1 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* BOTONES DE ACCIONES RÁPIDAS PARA RANGOS */}
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={handleAddRange}
+                              className="border border-white/20 hover:border-white/40 bg-zinc-900 hover:bg-zinc-800 text-white py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{isEs ? 'Añadir' : 'Add'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleSplitInHalf}
+                              className="border border-white/10 hover:border-white/30 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                              title={
+                                isEs ? 'Dividir exactamente en 2 mitades' : 'Split into 2 halves'
+                              }
+                            >
+                              <Split className="w-3.5 h-3.5 text-zinc-400" />
+                              <span>{isEs ? 'Mitad' : 'Half'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleResetRanges}
+                              className="border border-white/10 hover:border-white/30 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                              title={isEs ? 'Restablecer a 1 rango completo' : 'Reset ranges'}
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              <span>{isEs ? 'Reset' : 'Reset'}</span>
+                            </button>
+                          </div>
+
+                          <label className="flex items-center gap-2.5 cursor-pointer text-[11px] font-bold text-zinc-300 pt-1">
+                            <input
+                              type="checkbox"
+                              checked={mergeAllRanges}
+                              onChange={(e) => setMergeAllRanges(e.target.checked)}
+                              className="accent-white w-4 h-4 rounded cursor-pointer"
+                            />
+                            <span>
+                              {isEs
+                                ? 'Unir todos los rangos en un único PDF.'
+                                : 'Merge all ranges into single PDF.'}
+                            </span>
+                          </label>
+                        </div>
+                      )}
+
+                      {rangeSubMode === 'fijo' && (
+                        <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2.5">
+                          <label className="text-[11px] text-zinc-300 font-bold block">
+                            {isEs ? 'Bloques de páginas por PDF:' : 'Page block size per PDF:'}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-zinc-400">
+                              {isEs ? 'Dividir cada' : 'Split every'}
+                            </span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={totalPages || 100}
+                              value={chunkPageCount}
+                              onChange={(e) =>
+                                setChunkPageCount(Math.max(1, parseInt(e.target.value, 10) || 1))
+                              }
+                              className="w-20 bg-zinc-900 border border-white/20 rounded-lg p-1.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                            />
+                            <span className="text-xs text-zinc-400">
+                              {isEs ? 'página(s)' : 'page(s)'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-emerald-400 font-mono">
+                            {isEs
+                              ? `✓ Se generarán ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} archivos PDF (${createZip ? 'empaquetados en .ZIP' : 'descarga directa'})`
+                              : `✓ Will generate ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} PDF files (${createZip ? 'packaged in .ZIP' : 'direct download'})`}
+                          </p>
+                        </div>
+                      )}
+
+                      {rangeSubMode === 'inteligente' && (
+                        <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2">
+                          <span className="text-xs font-bold text-white block">
+                            🧠{' '}
+                            {isEs
+                              ? 'División Individual (1 pág / PDF)'
+                              : 'Individual Split (1 pg / PDF)'}
+                          </span>
+                          <p className="text-[11px] text-zinc-400">
+                            {isEs
+                              ? `Cada una de las ${totalPages} páginas del documento se extraerá como un archivo PDF independiente (total: ${totalPages} PDFs en 1 archivo .ZIP).`
+                              : `Each of the ${totalPages} pages will be automatically split into an independent PDF file (total: ${totalPages} PDFs in 1 .ZIP file).`}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {rangeSubMode === 'fijo' && (
-                    <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2.5">
-                      <label className="text-[11px] text-zinc-300 font-bold block">
-                        {isEs ? 'Bloques de páginas por PDF:' : 'Page block size per PDF:'}
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-zinc-400">
-                          {isEs ? 'Dividir cada' : 'Split every'}
-                        </span>
+                  {/* CONTENIDO TAB 2: PÁGINAS */}
+                  {mainTab === 'paginas' && (
+                    <div className="space-y-3 font-mono text-xs">
+                      <div className="bg-zinc-950 border border-white/10 p-3 rounded-xl space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
+                          <input
+                            type="radio"
+                            name="extractMode"
+                            checked={extractMode === 'all'}
+                            onChange={() => handleExtractModeChange('all')}
+                            className="accent-white cursor-pointer"
+                          />
+                          <span>
+                            {isEs
+                              ? 'Extraer todas las páginas (1 PDF / pág)'
+                              : 'Extract every page (1 PDF / page)'}
+                          </span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
+                          <input
+                            type="radio"
+                            name="extractMode"
+                            checked={extractMode === 'even'}
+                            onChange={() => handleExtractModeChange('even')}
+                            className="accent-white cursor-pointer"
+                          />
+                          <span>
+                            {isEs ? 'Extraer solo páginas pares' : 'Extract even pages only'}
+                          </span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
+                          <input
+                            type="radio"
+                            name="extractMode"
+                            checked={extractMode === 'odd'}
+                            onChange={() => handleExtractModeChange('odd')}
+                            className="accent-white cursor-pointer"
+                          />
+                          <span>
+                            {isEs ? 'Extraer solo páginas impares' : 'Extract odd pages only'}
+                          </span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
+                          <input
+                            type="radio"
+                            name="extractMode"
+                            checked={extractMode === 'specific'}
+                            onChange={() => handleExtractModeChange('specific')}
+                            className="accent-white cursor-pointer"
+                          />
+                          <span>
+                            {isEs ? 'Extraer páginas específicas' : 'Extract specific pages'}
+                          </span>
+                        </label>
+                      </div>
+
+                      {extractMode === 'specific' && (
+                        <div>
+                          <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
+                            {isEs
+                              ? 'Lista de páginas (separadas por coma):'
+                              : 'Pages list (comma-separated):'}
+                          </label>
+                          <input
+                            type="text"
+                            value={specificPagesInput}
+                            onChange={(e) => handleSpecificPagesInputChange(e.target.value)}
+                            placeholder="1, 3, 5"
+                            className="w-full bg-zinc-900 border border-white/20 rounded-xl p-2.5 text-white text-xs font-mono outline-none focus:border-white/50"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CONTENIDO TAB 3: TAMAÑO */}
+                  {mainTab === 'tamano' && (
+                    <div className="space-y-3 font-mono text-xs">
+                      <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2.5">
+                        <label className="text-[10px] text-zinc-400 uppercase tracking-wider block">
+                          {isEs ? 'Dividir cada N páginas:' : 'Chunk every N pages:'}
+                        </label>
                         <input
                           type="number"
                           min={1}
@@ -1541,265 +1748,190 @@ export default function PdfSplitter() {
                           onChange={(e) =>
                             setChunkPageCount(Math.max(1, parseInt(e.target.value, 10) || 1))
                           }
-                          className="w-20 bg-zinc-900 border border-white/20 rounded-lg p-1.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                          className="w-full bg-zinc-900 border border-white/20 rounded-xl p-2.5 text-white text-xs font-mono outline-none focus:border-white/50"
                         />
-                        <span className="text-xs text-zinc-400">
-                          {isEs ? 'página(s)' : 'page(s)'}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-emerald-400 font-mono">
-                        {isEs
-                          ? `✓ Se generarán ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} archivos PDF (${createZip ? 'empaquetados en .ZIP' : 'descarga directa'})`
-                          : `✓ Will generate ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} PDF files (${createZip ? 'packaged in .ZIP' : 'direct download'})`}
-                      </p>
-                    </div>
-                  )}
-
-                  {rangeSubMode === 'inteligente' && (
-                    <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2">
-                      <span className="text-xs font-bold text-white block">
-                        🧠{' '}
-                        {isEs
-                          ? 'División Individual (1 pág / PDF)'
-                          : 'Individual Split (1 pg / PDF)'}
-                      </span>
-                      <p className="text-[11px] text-zinc-400">
-                        {isEs
-                          ? `Cada una de las ${totalPages} páginas del documento se extraerá como un archivo PDF independiente (total: ${totalPages} PDFs en 1 archivo .ZIP).`
-                          : `Each of the ${totalPages} pages will be automatically split into an independent PDF file (total: ${totalPages} PDFs in 1 .ZIP file).`}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* CONTENIDO TAB 2: PÁGINAS */}
-              {mainTab === 'paginas' && (
-                <div className="space-y-3 font-mono text-xs">
-                  <div className="bg-zinc-950 border border-white/10 p-3 rounded-xl space-y-2">
-                    <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
-                      <input
-                        type="radio"
-                        name="extractMode"
-                        checked={extractMode === 'all'}
-                        onChange={() => handleExtractModeChange('all')}
-                        className="accent-white cursor-pointer"
-                      />
-                      <span>
-                        {isEs
-                          ? 'Extraer todas las páginas (1 PDF / pág)'
-                          : 'Extract every page (1 PDF / page)'}
-                      </span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
-                      <input
-                        type="radio"
-                        name="extractMode"
-                        checked={extractMode === 'even'}
-                        onChange={() => handleExtractModeChange('even')}
-                        className="accent-white cursor-pointer"
-                      />
-                      <span>{isEs ? 'Extraer solo páginas pares' : 'Extract even pages only'}</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
-                      <input
-                        type="radio"
-                        name="extractMode"
-                        checked={extractMode === 'odd'}
-                        onChange={() => handleExtractModeChange('odd')}
-                        className="accent-white cursor-pointer"
-                      />
-                      <span>
-                        {isEs ? 'Extraer solo páginas impares' : 'Extract odd pages only'}
-                      </span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-zinc-300 text-[11px]">
-                      <input
-                        type="radio"
-                        name="extractMode"
-                        checked={extractMode === 'specific'}
-                        onChange={() => handleExtractModeChange('specific')}
-                        className="accent-white cursor-pointer"
-                      />
-                      <span>{isEs ? 'Extraer páginas específicas' : 'Extract specific pages'}</span>
-                    </label>
-                  </div>
-
-                  {extractMode === 'specific' && (
-                    <div>
-                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                        {isEs
-                          ? 'Lista de páginas (separadas por coma):'
-                          : 'Pages list (comma-separated):'}
-                      </label>
-                      <input
-                        type="text"
-                        value={specificPagesInput}
-                        onChange={(e) => handleSpecificPagesInputChange(e.target.value)}
-                        placeholder="1, 3, 5"
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl p-2.5 text-white text-xs font-mono outline-none focus:border-white/50"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* CONTENIDO TAB 3: TAMAÑO */}
-              {mainTab === 'tamano' && (
-                <div className="space-y-3 font-mono text-xs">
-                  <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2.5">
-                    <label className="text-[10px] text-zinc-400 uppercase tracking-wider block">
-                      {isEs ? 'Dividir cada N páginas:' : 'Chunk every N pages:'}
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={totalPages || 100}
-                      value={chunkPageCount}
-                      onChange={(e) =>
-                        setChunkPageCount(Math.max(1, parseInt(e.target.value, 10) || 1))
-                      }
-                      className="w-full bg-zinc-900 border border-white/20 rounded-xl p-2.5 text-white text-xs font-mono outline-none focus:border-white/50"
-                    />
-                    <p className="text-[10px] text-emerald-400 font-mono">
-                      {isEs
-                        ? `✓ Generará ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} partes de ${chunkPageCount} página(s)`
-                        : `✓ Will generate ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} parts of ${chunkPageCount} page(s)`}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* OPCIONES AVANZADAS: PREFIJO Y SALIDA */}
-              <div className="pt-3 border-t border-white/10 space-y-3 font-mono">
-                <div>
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                    {isEs ? 'Prefijo de Archivos:' : 'Output File Prefix:'}
-                  </label>
-                  <input
-                    type="text"
-                    value={filePrefix}
-                    onChange={(e) => setFilePrefix(e.target.value)}
-                    placeholder="Documento_Corte"
-                    className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
-                  />
-                </div>
-
-                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'OPCIONES DE SALIDA' : 'OUTPUT OPTIONS'}
-                  </label>
-
-                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={createZip}
-                      onChange={(e) => setCreateZip(e.target.checked)}
-                      className="accent-white w-4 h-4 rounded cursor-pointer"
-                    />
-                    <span>
-                      {isEs ? 'Empaquetar en archivo .ZIP (2+ partes)' : 'Package into .ZIP file'}
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={addPageFooterNumbering}
-                      onChange={(e) => setAddPageFooterNumbering(e.target.checked)}
-                      className="accent-white w-4 h-4 rounded cursor-pointer"
-                    />
-                    <span>
-                      {isEs ? 'Re-numerar páginas en pie de página' : 'Re-number pages in footer'}
-                    </span>
-                  </label>
-                </div>
-
-                {/* METADATOS DEL DOCUMENTO RESULTANTE (PLEGABLE CON ACCORDEON) */}
-                <div className="bg-zinc-950/70 rounded-xl border border-white/10 overflow-hidden font-mono">
-                  <button
-                    type="button"
-                    onClick={() => setShowMetadata(!showMetadata)}
-                    className="w-full p-3 flex items-center justify-between text-left hover:bg-zinc-900/60 transition-colors cursor-pointer"
-                  >
-                    <span className="text-[10px] text-zinc-300 uppercase tracking-wider font-bold flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-zinc-400" />
-                      {isEs ? 'Metadatos del PDF (Opcional)' : 'PDF Metadata (Optional)'}
-                    </span>
-                    {showMetadata ? (
-                      <ChevronUp className="w-3.5 h-3.5 text-zinc-400" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-                    )}
-                  </button>
-
-                  {showMetadata && (
-                    <div className="p-3 pt-1 border-t border-white/5 space-y-2">
-                      <div>
-                        <label className="text-[10px] text-zinc-400 block mb-1">
-                          {isEs ? 'Título:' : 'Title:'}
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={isEs ? 'Ej: Documento_Fragmentado' : 'Ex: Split_Document'}
-                          value={docTitle}
-                          onChange={(e) => setDocTitle(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-zinc-400 block mb-1">
-                          {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
-                          value={docAuthor}
-                          onChange={(e) => setDocAuthor(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-zinc-400 block mb-1">
-                          {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={
-                            isEs
-                              ? 'Ej: División de expedientes corporativos'
-                              : 'Ex: Merged corporate records'
-                          }
-                          value={docSubject}
-                          onChange={(e) => setDocSubject(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                        />
+                        <p className="text-[10px] text-emerald-400 font-mono">
+                          {isEs
+                            ? `✓ Generará ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} partes de ${chunkPageCount} página(s)`
+                            : `✓ Will generate ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} parts of ${chunkPageCount} page(s)`}
+                        </p>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* COLUMNA 2: OPCIONES DE SALIDA Y EMPAQUETADO */}
+              <div className="space-y-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[11px] text-zinc-400 uppercase tracking-wider block font-bold">
+                      {isEs ? '2. Empaquetado y Exportación' : '2. Packaging & Export'}
+                    </label>
+                    <span className="text-[10px] text-zinc-500">
+                      {isEs ? 'Formato de entrega' : 'Delivery format'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
+                        {isEs ? 'Prefijo de Archivos:' : 'Output File Prefix:'}
+                      </label>
+                      <input
+                        type="text"
+                        value={filePrefix}
+                        onChange={(e) => setFilePrefix(e.target.value)}
+                        placeholder="Documento_Corte"
+                        className="w-full p-2.5 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+
+                    <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5">
+                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={createZip}
+                          onChange={(e) => setCreateZip(e.target.checked)}
+                          className="accent-white w-4 h-4 rounded cursor-pointer"
+                        />
+                        <span>
+                          {isEs
+                            ? 'Empaquetar en archivo .ZIP (2+ partes)'
+                            : 'Package into .ZIP file'}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={addPageFooterNumbering}
+                          onChange={(e) => setAddPageFooterNumbering(e.target.checked)}
+                          className="accent-white w-4 h-4 rounded cursor-pointer"
+                        />
+                        <span>
+                          {isEs
+                            ? 'Re-numerar páginas en pie de página'
+                            : 'Re-number pages in footer'}
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* TARJETA INFORMATIVA DE SALIDA ESTIMADA */}
+                    <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-3 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-zinc-300">
+                        <FileArchive className="w-4 h-4 text-sky-400" />
+                        <span className="text-[11px]">
+                          {createZip
+                            ? isEs
+                              ? 'Contenedor ZIP activado'
+                              : 'ZIP archive enabled'
+                            : isEs
+                              ? 'Descarga directa PDF'
+                              : 'Direct PDF download'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                        {isEs ? '100% Vectorial' : '100% Vector'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* COLUMNA 3: METADATOS FORMALES Y GARANTÍAS */}
+              <div className="space-y-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[11px] text-zinc-400 uppercase tracking-wider block font-bold">
+                      {isEs ? '3. Metadatos del Documento' : '3. Document Metadata'}
+                    </label>
+                    <span className="text-[10px] text-zinc-500">
+                      {isEs ? 'Opcional corporativo' : 'Optional corporate'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">
+                        {isEs ? 'Título del PDF:' : 'PDF Title:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isEs ? 'Ej: Contrato_Fragmentado' : 'Ex: Split_Contract'}
+                        value={docTitle}
+                        onChange={(e) => setDocTitle(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">
+                        {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={
+                          isEs ? 'Ej: Despacho Legal o Empresa' : 'Ex: Legal Firm or Company'
+                        }
+                        value={docAuthor}
+                        onChange={(e) => setDocAuthor(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">
+                        {isEs ? 'Asunto / Expediente:' : 'Subject / File Ref:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={
+                          isEs ? 'Ej: Autos Procesales EXP-2026' : 'Ex: Case File REF-2026'
+                        }
+                        value={docSubject}
+                        onChange={(e) => setDocSubject(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+
+                    {/* BADGES INSTITUCIONALES */}
+                    <div className="pt-2 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-950/30 border border-emerald-500/20 px-2 py-1 rounded-lg">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> ISO 32000-1
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-sky-400 bg-sky-950/30 border border-sky-500/20 px-2 py-1 rounded-lg">
+                        <Zap className="w-3.5 h-3.5 text-sky-400" /> Zero-Knowledge (RAM)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* TARJETA DE RESUMEN EN VIVO & BOTÓN PRINCIPAL */}
-            <div className="pt-4 border-t border-zinc-800 space-y-3">
-              {/* TARJETA DE RESUMEN DINÁMICO EN VIVO */}
+            {/* ÁREA INFERIOR: RESUMEN EN VIVO, BARRA DE PROGRESO Y BOTÓN ACCIÓN A ANCHO COMPLETO */}
+            <div className="pt-4 border-t border-zinc-800 space-y-4">
+              {/* TARJETA DE RESUMEN EN VIVO */}
               {liveSummary && (
-                <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-3.5 font-mono text-xs flex items-center justify-between shadow-inner">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-400 uppercase font-bold block">
-                      {isEs ? 'Resumen de corte' : 'Split summary'}
+                <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 font-mono text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider block">
+                      {isEs ? 'Resumen de Partición' : 'Split Summary'}
                     </span>
-                    <span className="text-white font-bold text-xs">
+                    <span className="text-white font-bold text-xs sm:text-sm">
                       {liveSummary.outputDescription}
                     </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-zinc-200 bg-zinc-800 border border-zinc-600 px-2.5 py-1 rounded-xl font-bold shadow-sm">
-                      {liveSummary.partsCount} {liveSummary.partsCount === 1 ? 'parte' : 'partes'}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-200 bg-zinc-800 border border-zinc-600 px-3.5 py-1.5 rounded-xl font-bold shadow-sm">
+                      {liveSummary.partsCount}{' '}
+                      {liveSummary.partsCount === 1
+                        ? isEs
+                          ? 'parte'
+                          : 'part'
+                        : isEs
+                          ? 'partes'
+                          : 'parts'}
                     </span>
                   </div>
                 </div>
@@ -1808,11 +1940,11 @@ export default function PdfSplitter() {
               {/* BARRA DE PROGRESO */}
               {isProcessing && (
                 <div className="space-y-1.5 font-mono">
-                  <div className="flex justify-between text-[10px] font-bold text-zinc-300">
-                    <span className="truncate max-w-[200px]">{progressMsg}</span>
+                  <div className="flex justify-between text-[11px] font-bold text-zinc-300">
+                    <span className="truncate max-w-[280px]">{progressMsg}</span>
                     <span>{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div className="w-full h-2.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
                     <div
                       style={{ width: `${progressPercent}%` }}
                       className="h-full bg-white transition-all duration-300"
@@ -1821,10 +1953,12 @@ export default function PdfSplitter() {
                 </div>
               )}
 
+              {/* BOTÓN PRINCIPAL DE EJECUCIÓN A ANCHO COMPLETO */}
               <button
+                type="button"
                 onClick={executeSplit}
                 disabled={isProcessing || !file || (isEncrypted && !isUnlocked)}
-                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 py-4 px-6 rounded-2xl font-sans font-bold text-base transition-all shadow-[0_0_25px_rgba(255,255,255,0.2)] hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? (
                   <Loader2 className="w-5 h-5 animate-spin text-black" />
@@ -1839,8 +1973,8 @@ export default function PdfSplitter() {
                         ? 'Selecciona un archivo PDF'
                         : 'Select a PDF file'
                       : isEs
-                        ? 'Dividir Documento (Corte) →'
-                        : 'Split Document (Cut) →'}
+                        ? `Dividir Archivo PDF (${liveSummary ? liveSummary.partsCount : 1} ${liveSummary && liveSummary.partsCount === 1 ? 'Parte' : 'Partes'}) →`
+                        : `Split PDF File (${liveSummary ? liveSummary.partsCount : 1} ${liveSummary && liveSummary.partsCount === 1 ? 'Part' : 'Parts'}) →`}
                 </span>
               </button>
             </div>

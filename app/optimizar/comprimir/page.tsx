@@ -6,13 +6,16 @@ import {
   Loader2,
   ShieldCheck,
   Zap,
-  Lock,
+  Sliders,
   ChevronDown,
   ChevronUp,
   FileText,
-  CheckCircle2,
   HelpCircle,
   HardDrive,
+  CheckCircle2,
+  Layers,
+  Sparkles,
+  FileCheck2,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -53,8 +56,12 @@ export default function ComprimirPdfPage() {
           a: 'Sí. A diferencia de otros compresores que rasterizan y pixelan los planos, PDFBlack mantiene los trazos vectoriales y aplica compresión matemática profunda sin pérdida, reduciendo megabytes de coordenadas sin alterar la precisión técnica.',
         },
         {
+          q: '¿Qué sucede si mi PDF ya está comprimido previamente?',
+          a: 'Si un archivo ya fue optimizado al límite físico, nuestro motor detectará inteligentemente que una recompresión adicional no aportaría reducción de bytes y mantendrá la integridad original sin degradar innecesariamente imágenes ni romper fuentes.',
+        },
+        {
           q: '¿Hay límite de tamaño o número de archivos a comprimir?',
-          a: 'No hay límites artificiales. Puedes subir múltiples archivos PDF a la vez y procesar documentos de cualquier tamaño de manera totalmente gratuita y sin necesidad de registro.',
+          a: 'No hay límites artificiales. Puedes subir múltiples archivos PDF a la vez y procesar documentos de cualquier tamaño de manera totalmente gratuita y sin necesidad de registro, descargándolos de forma individual o en un paquete .ZIP unificado.',
         },
       ]
     : [
@@ -75,8 +82,12 @@ export default function ComprimirPdfPage() {
           a: 'Yes. Unlike tools that rasterize and blur technical drawings, PDFBlack preserves native vector paths and applies lossless coordinate compression.',
         },
         {
+          q: 'What happens if my PDF is already heavily compressed?',
+          a: 'If a document is already compressed to its theoretical limits, our engine smartly detects that further recompression yields negligible byte reduction and keeps the original stream intact without degrading image clarity.',
+        },
+        {
           q: 'Is there a limit on file size or batch quantity?',
-          a: 'No limits. You can upload multiple PDFs at once and compress files of any size completely free with no registration required.',
+          a: 'No limits. You can upload multiple PDFs at once and compress files of any size completely free with no registration required, downloading individual files or a unified .ZIP package.',
         },
       ];
 
@@ -120,7 +131,8 @@ export default function ComprimirPdfPage() {
   };
 
   return (
-    <>
+    <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center justify-start min-h-[calc(100vh-100px)] bg-[#09090b]">
+      {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -130,120 +142,171 @@ export default function ComprimirPdfPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
 
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center justify-start min-h-[calc(100vh-100px)] bg-[#09090b]">
-        <div className="w-full max-w-7xl">
-          <PdfCompressor />
+      <div className="w-full max-w-7xl space-y-12">
+        {/* COMPONENTE PRINCIPAL */}
+        <PdfCompressor />
 
-          {/* SECCIÓN INFORMATIVA DE VALOR Y PREGUNTAS FRECUENTES (SEO) */}
-          <section className="mt-16 pt-12 border-t border-zinc-800/80 font-sans">
-            {/* CARACTERÍSTICAS DESTACADAS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-              <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white mb-4 shadow-sm">
-                  <ShieldCheck className="w-5 h-5 text-white" />
+        {/* SECCIÓN INFORMATIVA CORPORATIVA: CARACTERÍSTICAS TÉCNICAS */}
+        <section className="w-full border-t border-zinc-800 pt-12">
+          <div className="text-center mb-10">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 block mb-2">
+              {isEs ? 'INGENIERÍA DE COMPRESIÓN AVANZADA' : 'ADVANCED COMPRESSION ENGINEERING'}
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans uppercase">
+              {isEs
+                ? 'Optimización de Espacio sin Sacrificar Calidad'
+                : 'Space Optimization Without Sacrificing Quality'}
+            </h2>
+            <p className="text-zinc-400 text-xs sm:text-sm font-mono mt-2 max-w-2xl mx-auto">
+              {isEs
+                ? 'Reduce drásticamente el peso de documentos para envíos por correo, almacenamiento y carga web mediante algoritmos de compresión binaria.'
+                : 'Drastically reduce document file sizes for email delivery, storage, and web publishing via binary compression algorithms.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Deflate Nivel 9 */}
+            <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
+              <div>
+                <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
+                  <Zap className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-extrabold text-white uppercase tracking-tight mb-2">
-                  {isEs ? 'Privacidad 100% Local' : '100% Local Privacy'}
+                <h3 className="text-sm font-bold text-white font-sans uppercase mb-2">
+                  {isEs ? 'Deflate Nivel 9 de Flujos' : 'Level 9 Stream Deflate'}
                 </h3>
-                <p className="text-xs text-zinc-400 font-mono leading-relaxed">
+                <p className="text-zinc-400 text-xs leading-relaxed font-sans">
                   {isEs
-                    ? 'Tus archivos se procesan en la memoria de tu dispositivo mediante WebAssembly. Ningún dato se sube a servidores externos.'
-                    : 'Your files are processed locally via WebAssembly. No data is ever uploaded to external servers.'}
+                    ? 'Comprime matemáticamente flujos stream de contenido, fuentes tipográficas y tablas internas sin pixelar ni degradar vectores.'
+                    : 'Mathematically compresses content streams, embedded fonts, and internal tables without pixelating or degrading vectors.'}
                 </p>
               </div>
-
-              <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white mb-4 shadow-sm">
-                  <Zap className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-base font-extrabold text-white uppercase tracking-tight mb-2">
-                  {isEs ? 'Deflate Nivel 9 Inteligente' : 'Smart Deflate Level 9'}
-                </h3>
-                <p className="text-xs text-zinc-400 font-mono leading-relaxed">
-                  {isEs
-                    ? 'Algoritmo de compresión máxima que reduce el tamaño de vectores, fuentes y tablas sin pixelar letras ni degradar diagramas CAD.'
-                    : 'Maximum compression algorithm that reduces vector and font size without blurring text or technical CAD diagrams.'}
-                </p>
-              </div>
-
-              <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white mb-4 shadow-sm">
-                  <HardDrive className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-base font-extrabold text-white uppercase tracking-tight mb-2">
-                  {isEs ? 'Procesamiento en Lote (ZIP)' : 'Batch Processing (ZIP)'}
-                </h3>
-                <p className="text-xs text-zinc-400 font-mono leading-relaxed">
-                  {isEs
-                    ? 'Comprime decenas de archivos PDF en segundos y descárgalos individualmente o en un paquete ZIP unificado con un solo clic.'
-                    : 'Compress dozens of PDF files in seconds and download them individually or as a unified ZIP package.'}
-                </p>
-              </div>
+              <span className="text-[10px] font-mono text-zinc-500 mt-4 block">
+                {isEs ? 'Compresión sin pérdida' : 'Lossless compression'}
+              </span>
             </div>
 
-            {/* SECCIÓN DE PREGUNTAS FRECUENTES (FAQ) */}
-            <div className="max-w-4xl mx-auto bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-
-              <div className="flex items-center gap-3 mb-8 border-b border-zinc-800 pb-4">
-                <div className="p-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
-                  <HelpCircle className="w-5 h-5 text-white" />
+            {/* Card 2: Resampling Adaptativo */}
+            <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
+              <div>
+                <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
+                  <Sliders className="w-5 h-5" />
                 </div>
-                <div>
-                  <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-widest font-bold block">
-                    {isEs ? 'RESOLUCIÓN DE DUDAS' : 'FREQUENTLY ASKED QUESTIONS'}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-white uppercase tracking-tight">
-                    {isEs
-                      ? 'Preguntas Frecuentes sobre la Compresión de PDF'
-                      : 'Frequently Asked Questions about PDF Compression'}
-                  </h2>
-                </div>
+                <h3 className="text-sm font-bold text-white font-sans uppercase mb-2">
+                  {isEs ? 'Resampling Adaptativo DPI' : 'Adaptive DPI Resampling'}
+                </h3>
+                <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+                  {isEs
+                    ? 'Re-codifica imágenes embebidas a 72, 96 o 150 DPI según el preset elegido, ahorrando hasta un 90% de peso en documentos escaneados.'
+                    : 'Re-encodes embedded images at 72, 96, or 150 DPI per your preset, saving up to 90% file size on scanned documents.'}
+                </p>
               </div>
+              <span className="text-[10px] font-mono text-zinc-500 mt-4 block">
+                {isEs ? 'Ahorro de hasta 90%' : 'Up to 90% size reduction'}
+              </span>
+            </div>
 
-              <div className="space-y-3">
-                {faqs.map((faq, idx) => {
-                  const isOpen = openFaq === idx;
-                  return (
-                    <div
-                      key={idx}
-                      className="border border-zinc-800 rounded-2xl bg-[#121217] overflow-hidden transition-all"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenFaq(isOpen ? null : idx)}
-                        className="w-full p-4 text-left flex items-center justify-between gap-4 cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      >
-                        <span className="text-sm font-bold text-white tracking-tight">{faq.q}</span>
-                        {isOpen ? (
-                          <ChevronUp className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                        )}
-                      </button>
-                      <AnimatePresence>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="px-4 pb-4 pt-1 text-xs text-zinc-400 font-mono leading-relaxed border-t border-zinc-800/50"
-                          >
-                            {faq.a}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+            {/* Card 3: Preservación CAD y Vectorial */}
+            <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
+              <div>
+                <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
+                  <FileCheck2 className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-white font-sans uppercase mb-2">
+                  {isEs ? 'Preservación Vectorial y CAD' : 'CAD & Vector Preservation'}
+                </h3>
+                <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+                  {isEs
+                    ? 'Mantiene coordenadas de alta precisión en planos arquitectónicos, diagramas vectoriales y tipografías sin convertirlas en mapa de bits.'
+                    : 'Preserves high-precision coordinates in architectural blueprints, vector diagrams, and fonts without rasterization.'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500 mt-4 block">
+                {isEs ? 'Nitidez milimétrica' : 'Millimeter precision'}
+              </span>
+            </div>
+
+            {/* Card 4: Privacidad 100% Local */}
+            <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
+              <div>
+                <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-white font-sans uppercase mb-2">
+                  {isEs ? 'Privacidad Absoluta (Cero Servidores)' : 'Zero-Server Total Privacy'}
+                </h3>
+                <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+                  {isEs
+                    ? 'Todo el cálculo se realiza en la memoria RAM de tu equipo mediante WebAssembly y Web Workers. Ningún byte viaja por internet.'
+                    : 'All optimization runs locally in your device RAM via WebAssembly and Web Workers. No bytes are sent over the internet.'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500 mt-4 block">
+                {isEs ? 'Conforme a RGPD y DPA' : 'GDPR & DPA compliant'}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* SECCIÓN DE PREGUNTAS FRECUENTES (FAQ ACCORDION) */}
+        <section className="w-full border-t border-zinc-800 pt-12 pb-8">
+          <div className="text-center mb-8">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 block mb-2">
+              {isEs ? 'RESOLUCIÓN DE DUDAS TÉCNICAS' : 'TECHNICAL FAQ'}
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans uppercase">
+              {isEs
+                ? 'Preguntas Frecuentes sobre la Compresión de PDF'
+                : 'Frequently Asked Questions'}
+            </h2>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-3 font-sans">
+            {faqs.map((faq, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div
+                  key={idx}
+                  className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-700 rounded-2xl overflow-hidden transition-colors"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full text-left p-5 flex items-center justify-between gap-4 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <HelpCircle className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+                      <span className="text-sm font-bold text-white tracking-tight">{faq.q}</span>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
-    </>
+                    <div className="p-1 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-400">
+                      {isOpen ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </div>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-5 pb-5 pt-1 text-xs text-zinc-400 leading-relaxed font-sans border-t border-zinc-800/60 mt-1">
+                          {faq.a}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }

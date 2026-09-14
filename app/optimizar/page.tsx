@@ -66,10 +66,13 @@ function OptimizarContent() {
       tagEn: '003 / UNLOCK ACCESS',
       titleEs: 'Desbloquear PDF',
       titleEn: 'Unlock PDF',
-      descEs: 'Remueve la seguridad y contraseñas para usar y copiar tus PDFs libremente.',
-      descEn: 'Remove PDF password security, giving freedom to use your PDFs.',
+      descEs:
+        'Remueve la seguridad y contraseñas para usar y copiar tus PDFs libremente con motor vectorial.',
+      descEn: 'Remove PDF password security and permissions restrictions with vector engine.',
       icon: Unlock,
       path: '/optimizar/desbloquear',
+      badgeEs: 'HERRAMIENTA PRINCIPAL',
+      badgeEn: 'FLAGSHIP TOOL',
     },
     {
       id: 'proteger',
@@ -95,14 +98,18 @@ function OptimizarContent() {
     },
     {
       id: 'comparar',
-      tagEs: '006 / COMPARAR DIFERENCIAS',
-      tagEn: '006 / COMPARE DIFFERENCES',
+      tagEs: '006 / COMPARAR FORENSE',
+      tagEn: '006 / FORENSIC COMPARE',
       titleEs: 'Comparar PDF',
       titleEn: 'Compare PDF',
-      descEs: 'Muestra fácilmente las diferencias y cambios entre dos archivos PDF similares.',
-      descEn: 'Easily display the differences between two similar PDF files.',
+      descEs:
+        'Compara dos versiones de un documento con motor Myers Diff de espacio lineal, cortina deslizante y auditoría SHA-256.',
+      descEn:
+        'Compare two document versions with linear-space Myers Diff, interactive curtain slider and SHA-256 audit trail.',
       icon: GitCompare,
       path: '/optimizar/comparar',
+      badgeEs: 'MOTOR FORENSE v4.0',
+      badgeEn: 'FORENSIC ENGINE v4.0',
     },
   ];
 
@@ -221,10 +228,15 @@ function OptimizarContent() {
                         </div>
                       </div>
 
-                      <div className="mb-2 font-mono">
+                      <div className="mb-2 font-mono flex items-center justify-between gap-2 flex-wrap">
                         <span className="text-xs text-zinc-300 font-bold tracking-wider">
                           {isEs ? tool.tagEs : tool.tagEn}
                         </span>
+                        {tool.badgeEs && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            ★ {isEs ? tool.badgeEs : tool.badgeEn}
+                          </span>
+                        )}
                       </div>
 
                       <h2 className="text-lg font-bold text-white mb-2 tracking-tight font-sans group-hover/card:text-white">

@@ -41,12 +41,13 @@ function EditarContent() {
   const editingTools = [
     {
       id: 'texto',
-      tagEs: '001 / AGREGAR CONTENIDO',
-      tagEn: '001 / ADD CONTENT',
-      titleEs: 'Editar Texto PDF',
-      titleEn: 'Edit PDF Text',
-      descEs: 'Inserta párrafos, títulos y anotaciones con tipografías personalizadas.',
-      descEn: 'Insert paragraphs, titles, and annotations with custom fonts.',
+      tagEs: '001 / EDICIÓN NATIVA',
+      tagEn: '001 / NATIVE EDITING',
+      titleEs: 'Editar Texto e Imágenes',
+      titleEn: 'Edit Text & Images',
+      descEs:
+        'Modifica texto existente, añade párrafos, logotipos e imágenes directamente en tu PDF.',
+      descEn: 'Modify existing text, add paragraphs, logos, and images directly in your PDF.',
       icon: Type,
       path: '/editar/texto',
     },
@@ -67,8 +68,10 @@ function EditarContent() {
       tagEn: '003 / DIGITAL SIGNATURE',
       titleEs: 'Firmar PDF',
       titleEn: 'Sign PDF',
-      descEs: 'Dibuja o sube tu firma manuscrita y posiciónala en cualquier hoja.',
-      descEn: 'Draw or upload your handwritten signature and place it on any page.',
+      descEs:
+        'Dibuja, escribe o sube tu firma digital con sello de auditoría SHA-256 y rúbricas multi-página.',
+      descEn:
+        'Draw, type, or upload digital signatures with SHA-256 audit seal and multi-page initials.',
       icon: PenTool,
       path: '/editar/firmar',
     },
@@ -98,10 +101,12 @@ function EditarContent() {
       id: 'quitar-marca-agua',
       tagEs: '006 / LIMPIAR MARCAS',
       tagEn: '006 / REMOVE MARKS',
-      titleEs: 'Quitar Marca de Agua',
+      titleEs: 'Quitar Marca o Sello de Agua',
       titleEn: 'Remove Watermark',
-      descEs: 'Limpia sellos y superposiciones no deseadas de tu archivo PDF.',
-      descEn: 'Clean unwanted stamps and overlays from your PDF file.',
+      descEs:
+        'Limpia sellos de agua, textos confidenciales y marcas superpuestas sin perder calidad.',
+      descEn:
+        'Clean watermarks, stamps, confidential labels and unwanted overlays without losing quality.',
       icon: Stamp,
       path: '/editar/quitar-marca-agua',
     },

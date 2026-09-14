@@ -1782,29 +1782,43 @@ export default function ExcelPdfConverter({
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-                <UploadCloud className="w-12 h-12 text-white" />
+                <Table className="w-12 h-12 text-white" />
               </div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  {mode === 'excel-to-pdf'
+                    ? isEs
+                      ? 'Motor de Conversión Excel a PDF Vectorial v5.0 • 100% Local'
+                      : 'Excel to Vector PDF Conversion Engine v5.0 • 100% Local'
+                    : isEs
+                      ? 'Motor de Extracción Tabular XLSX v5.0 • 100% Local'
+                      : 'XLSX Tabular Extraction Engine v5.0 • 100% Local'}
+                </span>
+              </div>
+
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
                 {mode === 'excel-to-pdf'
                   ? isEs
                     ? 'CONVERTIR HOJA DE EXCEL A PDF'
                     : 'CONVERT EXCEL SHEET TO PDF'
                   : isEs
-                    ? 'EXTRAER TABLAS DE PDF A EXCEL (CONVERSOR DUAL 2 EN 1)'
-                    : 'EXTRACT PDF TABLES TO EXCEL (2-IN-1 DUAL CONVERTER)'}
+                    ? 'EXTRAER TABLAS DE PDF A EXCEL'
+                    : 'EXTRACT PDF TABLES TO EXCEL'}
               </h2>
-              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
                 {mode === 'excel-to-pdf'
                   ? isEs
-                    ? 'Transforma libros de Excel (.xlsx / .csv) en reportes PDF profesionales.'
-                    : 'Transform Excel workbooks (.xlsx / .csv) into professional PDF reports.'
+                    ? 'Transforma libros de Excel (.xlsx / .csv) en reportes PDF profesionales con maquetación matemática en tu memoria RAM.'
+                    : 'Transform Excel workbooks (.xlsx / .csv) into professional PDF reports directly in RAM.'
                   : isEs
-                    ? 'Extrae tablas vectoriales de tu PDF a Excel (.xlsx) nativo o CSV con selector de páginas 100% en RAM.'
-                    : 'Extract vector tables from PDF to native Excel (.xlsx) or CSV with page selector 100% in RAM.'}
+                    ? 'Extrae tablas vectoriales de tu PDF a Excel (.xlsx) nativo o CSV con selector de páginas y privacidad 100% en RAM.'
+                    : 'Extract vector tables from PDF to native Excel (.xlsx) or CSV with page selector and 100% in-RAM privacy.'}
               </p>
               <button
                 type="button"
-                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
               >
                 <Plus className="w-4 h-4 text-black" />
                 <span>
@@ -1818,13 +1832,37 @@ export default function ExcelPdfConverter({
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-white" />
-                <span>
-                  {isEs
-                    ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                    : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-3xl font-mono text-left">
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Fórmulas y Celdas Intactas' : '✓ Preserved Cells & Ranges'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Conversión matemática de celdas, rangos, cabeceras y formatos numéricos limpios.'
+                      : 'Mathematical conversion of cells, ranges, headers, and clean numeric formats.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Reconstrucción XLSX / PDF' : '✓ Native XLSX / PDF Output'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Genera hojas de cálculo nativas multilingües y documentos paginados estructurados.'
+                      : 'Generates multilingual native spreadsheets and structured paginated documents.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Privacidad Estricta en RAM' : '✓ Strict In-RAM Privacy'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Procesamiento 100% local en tu navegador sin enviar documentos a servidores externos.'
+                      : '100% local processing in your browser without uploading documents to external servers.'}
+                  </span>
+                </div>
               </div>
             </motion.div>
           ) : (

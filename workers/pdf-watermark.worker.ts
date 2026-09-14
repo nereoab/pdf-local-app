@@ -1,25 +1,38 @@
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
 
 export type WatermarkType = 'text' | 'image';
-export type Position9 = 
-  | 'top-left' | 'top-center' | 'top-right' 
-  | 'center-left' | 'center' | 'center-right' 
-  | 'bottom-left' | 'bottom-center' | 'bottom-right';
+export type WatermarkPattern = 'single' | 'tile';
+export type WatermarkLayer = 'over' | 'under';
+export type Position9 =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
 
 export interface WatermarkWorkerOptions {
   filePrefix: string;
-  renumberPages: boolean;
+  renumberPages?: boolean;
   wmType: WatermarkType;
+  wmPattern?: WatermarkPattern;
+  layer?: WatermarkLayer;
   wmText: string;
   imageBuffer?: ArrayBuffer;
   imageMime?: string;
+  imageScale?: number;
   position: Position9;
   rotation: number;
   opacity: number;
   fontSize: number;
   fontColor: string;
-  pageScope: 'all' | 'custom';
+  fontFamily?: 'helvetica' | 'times' | 'courier';
+  pageScope: 'all' | 'custom' | 'odds' | 'evens';
   customPageRange: string;
+  skipFirstPage?: boolean;
   metadata?: {
     title?: string;
     author?: string;
@@ -46,10 +59,14 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
 
   try {
     const postProgress = (percent: number, message: string) => {
-      (self as unknown as Worker).postMessage({ type: 'progress', percent, message } as WatermarkWorkerMessageOut);
+      (self as unknown as Worker).postMessage({
+        type: 'progress',
+        percent,
+        message,
+      } as WatermarkWorkerMessageOut);
     };
 
-    postProgress(10, 'Cargando estructura del documento PDF...');
+    postProgress(10, 'Cargando estructura y fuentes del documento PDF...');
 
     const loadOptions: any = {};
     if (password) {
@@ -59,7 +76,13 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
     }
 
     const pdfDoc = await PDFDocument.load(arrayBuffer, loadOptions);
-    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    // Selección de tipografía estándar corporativa
+    let fontName = StandardFonts.HelveticaBold;
+    if (options.fontFamily === 'times') fontName = StandardFonts.TimesRomanBold;
+    if (options.fontFamily === 'courier') fontName = StandardFonts.CourierBold;
+    const font = await pdfDoc.embedFont(fontName);
+
     const pages = pdfDoc.getPages();
     const totalPages = pages.length;
 
@@ -67,12 +90,25 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
       throw new Error('El documento PDF no contiene páginas válidas para procesar.');
     }
 
-    const { 
-      wmType, wmText, imageBuffer, imageMime, position, rotation, opacity, 
-      fontSize, fontColor, pageScope, customPageRange, metadata 
+    const {
+      wmType,
+      wmPattern = 'single',
+      wmText,
+      imageBuffer,
+      imageMime,
+      imageScale = 0.35,
+      position,
+      rotation,
+      opacity,
+      fontSize,
+      fontColor,
+      pageScope,
+      customPageRange,
+      skipFirstPage = false,
+      metadata,
     } = options;
 
-    postProgress(25, 'Incrustando recursos del sello de agua...');
+    postProgress(25, 'Incrustando recursos del sello de agua empresarial...');
 
     if (metadata) {
       if (metadata.title) pdfDoc.setTitle(metadata.title);
@@ -80,11 +116,13 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
       if (metadata.subject) pdfDoc.setSubject(metadata.subject);
     }
 
-    let colorRgb = rgb(0.85, 0.1, 0.1);
-    if (fontColor === 'dark') colorRgb = rgb(0.15, 0.15, 0.15);
+    // Paleta de color corporativo
+    let colorRgb = rgb(0.85, 0.12, 0.12); // Rojo confidencial por defecto
+    if (fontColor === 'dark') colorRgb = rgb(0.12, 0.12, 0.12);
     if (fontColor === 'blue') colorRgb = rgb(0.1, 0.35, 0.85);
     if (fontColor === 'emerald') colorRgb = rgb(0.05, 0.65, 0.35);
-    if (fontColor === 'white') colorRgb = rgb(0.95, 0.95, 0.95);
+    if (fontColor === 'amber') colorRgb = rgb(0.88, 0.58, 0.08);
+    if (fontColor === 'white') colorRgb = rgb(0.96, 0.96, 0.96);
 
     let embeddedImg: any = null;
     if (wmType === 'image' && imageBuffer) {
@@ -95,13 +133,17 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
       }
     }
 
-    // Helper para interpretar páginas seleccionadas
+    // Determinar páginas a estampar
     const targetPages = new Set<number>();
     if (pageScope === 'all') {
       for (let i = 1; i <= totalPages; i++) targetPages.add(i);
+    } else if (pageScope === 'odds') {
+      for (let i = 1; i <= totalPages; i += 2) targetPages.add(i);
+    } else if (pageScope === 'evens') {
+      for (let i = 2; i <= totalPages; i += 2) targetPages.add(i);
     } else {
-      const parts = customPageRange.split(',');
-      parts.forEach(part => {
+      const parts = (customPageRange || '').split(',');
+      parts.forEach((part) => {
         const trimmed = part.trim();
         if (trimmed.includes('-')) {
           const [start, end] = trimmed.split('-').map(Number);
@@ -119,65 +161,263 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
       });
     }
 
+    // Omitir carátula si skipFirstPage está activo
+    if (skipFirstPage) {
+      targetPages.delete(1);
+    }
+
+    const textToDraw = wmText?.trim() || 'CONFIDENCIAL';
+    const stampOpacity = Math.max(0.05, Math.min(1, opacity / 100));
+
     for (let i = 0; i < pages.length; i++) {
       const pageNum = i + 1;
       if (!targetPages.has(pageNum)) continue;
 
       const currentPercent = 25 + Math.floor(((i + 1) / totalPages) * 60);
-      postProgress(currentPercent, `Estampando sello de agua en página ${pageNum} de ${totalPages}...`);
+      postProgress(
+        currentPercent,
+        `Estampando sello de agua en página ${pageNum} de ${totalPages}...`,
+      );
 
       const page = pages[i];
       const { width, height } = page.getSize();
+      const pageRotation = (((page.getRotation()?.angle || 0) % 360) + 360) % 360;
+
+      // Dimensiones visuales considerando orientación real de la hoja
+      const visualW = pageRotation === 90 || pageRotation === 270 ? height : width;
+      const visualH = pageRotation === 90 || pageRotation === 270 ? width : height;
+
+      // Conversión de coordenadas relativas visuales a coordenadas nativas de la página con compensación
+      const transformVisualToNative = (
+        vx: number,
+        vy: number,
+        w: number,
+        h: number,
+        itemRotation: number,
+      ) => {
+        let nativeX = vx;
+        let nativeY = vy;
+        let combinedRotation = (((pageRotation + itemRotation) % 360) + 360) % 360;
+
+        if (pageRotation === 0) {
+          nativeX = vx;
+          nativeY = vy;
+        } else if (pageRotation === 90) {
+          nativeX = width - vy;
+          nativeY = vx;
+        } else if (pageRotation === 180) {
+          nativeX = width - vx - w;
+          nativeY = height - vy - h;
+        } else if (pageRotation === 270) {
+          nativeX = vy + h;
+          nativeY = height - vx - w;
+        }
+
+        return { nativeX, nativeY, combinedRotation };
+      };
 
       if (wmType === 'text') {
-        const textWidth = font.widthOfTextAtSize(wmText || 'CONFIDENCIAL', fontSize);
-        let x = (width / 2) - (textWidth / 2);
-        let y = (height / 2) - (fontSize / 2);
+        const textWidth = font.widthOfTextAtSize(textToDraw, fontSize);
+        const textHeight = fontSize;
 
-        if (position === 'top-left') { x = 40; y = height - 60; }
-        if (position === 'top-center') { x = (width / 2) - (textWidth / 2); y = height - 60; }
-        if (position === 'top-right') { x = width - textWidth - 40; y = height - 60; }
-        if (position === 'bottom-left') { x = 40; y = 40; }
-        if (position === 'bottom-center') { x = (width / 2) - (textWidth / 2); y = 40; }
-        if (position === 'bottom-right') { x = width - textWidth - 40; y = 40; }
+        if (wmPattern === 'tile') {
+          // Modo Mosaico / Patrón Repetido Anti-Filtraciones (DLP Enterprise)
+          const stepX = Math.max(textWidth + 80, 200);
+          const stepY = Math.max(fontSize * 4, 140);
 
-        page.drawText(wmText || 'CONFIDENCIAL', {
-          x,
-          y,
-          size: fontSize,
-          font,
-          color: colorRgb,
-          opacity: opacity / 100,
-          rotate: degrees(rotation),
-        });
+          for (let row = -1; row * stepY < visualH + stepY; row++) {
+            const offsetX = row % 2 === 0 ? 0 : stepX / 2;
+            for (let col = -1; col * stepX < visualW + stepX; col++) {
+              const vx = col * stepX + offsetX;
+              const vy = row * stepY;
+
+              const { nativeX, nativeY, combinedRotation } = transformVisualToNative(
+                vx,
+                vy,
+                textWidth,
+                textHeight,
+                rotation,
+              );
+
+              page.drawText(textToDraw, {
+                x: nativeX,
+                y: nativeY,
+                size: fontSize,
+                font,
+                color: colorRgb,
+                opacity: stampOpacity,
+                rotate: degrees(combinedRotation),
+              });
+            }
+          }
+        } else {
+          // Modo Sello Único en Matriz de 9 Puntos
+          let vx = (visualW - textWidth) / 2;
+          let vy = (visualH - textHeight) / 2;
+
+          const margin = 40;
+          switch (position) {
+            case 'top-left':
+              vx = margin;
+              vy = visualH - textHeight - margin;
+              break;
+            case 'top-center':
+              vx = (visualW - textWidth) / 2;
+              vy = visualH - textHeight - margin;
+              break;
+            case 'top-right':
+              vx = visualW - textWidth - margin;
+              vy = visualH - textHeight - margin;
+              break;
+            case 'center-left':
+              vx = margin;
+              vy = (visualH - textHeight) / 2;
+              break;
+            case 'center':
+              vx = (visualW - textWidth) / 2;
+              vy = (visualH - textHeight) / 2;
+              break;
+            case 'center-right':
+              vx = visualW - textWidth - margin;
+              vy = (visualH - textHeight) / 2;
+              break;
+            case 'bottom-left':
+              vx = margin;
+              vy = margin;
+              break;
+            case 'bottom-center':
+              vx = (visualW - textWidth) / 2;
+              vy = margin;
+              break;
+            case 'bottom-right':
+              vx = visualW - textWidth - margin;
+              vy = margin;
+              break;
+          }
+
+          const { nativeX, nativeY, combinedRotation } = transformVisualToNative(
+            vx,
+            vy,
+            textWidth,
+            textHeight,
+            rotation,
+          );
+
+          page.drawText(textToDraw, {
+            x: nativeX,
+            y: nativeY,
+            size: fontSize,
+            font,
+            color: colorRgb,
+            opacity: stampOpacity,
+            rotate: degrees(combinedRotation),
+          });
+        }
       } else if (wmType === 'image' && embeddedImg) {
-        const imgScaled = embeddedImg.scale(0.35);
-        let x = (width / 2) - (imgScaled.width / 2);
-        let y = (height / 2) - (imgScaled.height / 2);
+        const scaleVal = Math.max(0.05, Math.min(1, imageScale));
+        const imgScaled = embeddedImg.scale(scaleVal);
+        const imgW = imgScaled.width;
+        const imgH = imgScaled.height;
 
-        if (position === 'top-left') { x = 40; y = height - imgScaled.height - 40; }
-        if (position === 'top-center') { x = (width / 2) - (imgScaled.width / 2); y = height - imgScaled.height - 40; }
-        if (position === 'top-right') { x = width - imgScaled.width - 40; y = height - imgScaled.height - 40; }
-        if (position === 'bottom-left') { x = 40; y = 40; }
-        if (position === 'bottom-center') { x = (width / 2) - (imgScaled.width / 2); y = 40; }
-        if (position === 'bottom-right') { x = width - imgScaled.width - 40; y = 40; }
+        if (wmPattern === 'tile') {
+          // Mosaico de logotipo
+          const stepX = Math.max(imgW + 60, 180);
+          const stepY = Math.max(imgH + 60, 150);
 
-        page.drawImage(embeddedImg, {
-          x,
-          y,
-          width: imgScaled.width,
-          height: imgScaled.height,
-          opacity: opacity / 100,
-          rotate: degrees(rotation),
-        });
+          for (let row = -1; row * stepY < visualH + stepY; row++) {
+            const offsetX = row % 2 === 0 ? 0 : stepX / 2;
+            for (let col = -1; col * stepX < visualW + stepX; col++) {
+              const vx = col * stepX + offsetX;
+              const vy = row * stepY;
+
+              const { nativeX, nativeY, combinedRotation } = transformVisualToNative(
+                vx,
+                vy,
+                imgW,
+                imgH,
+                rotation,
+              );
+
+              page.drawImage(embeddedImg, {
+                x: nativeX,
+                y: nativeY,
+                width: imgW,
+                height: imgH,
+                opacity: stampOpacity,
+                rotate: degrees(combinedRotation),
+              });
+            }
+          }
+        } else {
+          // Sello de imagen único en posición 9 puntos
+          let vx = (visualW - imgW) / 2;
+          let vy = (visualH - imgH) / 2;
+
+          const margin = 40;
+          switch (position) {
+            case 'top-left':
+              vx = margin;
+              vy = visualH - imgH - margin;
+              break;
+            case 'top-center':
+              vx = (visualW - imgW) / 2;
+              vy = visualH - imgH - margin;
+              break;
+            case 'top-right':
+              vx = visualW - imgW - margin;
+              vy = visualH - imgH - margin;
+              break;
+            case 'center-left':
+              vx = margin;
+              vy = (visualH - imgH) / 2;
+              break;
+            case 'center':
+              vx = (visualW - imgW) / 2;
+              vy = (visualH - imgH) / 2;
+              break;
+            case 'center-right':
+              vx = visualW - imgW - margin;
+              vy = (visualH - imgH) / 2;
+              break;
+            case 'bottom-left':
+              vx = margin;
+              vy = margin;
+              break;
+            case 'bottom-center':
+              vx = (visualW - imgW) / 2;
+              vy = margin;
+              break;
+            case 'bottom-right':
+              vx = visualW - imgW - margin;
+              vy = margin;
+              break;
+          }
+
+          const { nativeX, nativeY, combinedRotation } = transformVisualToNative(
+            vx,
+            vy,
+            imgW,
+            imgH,
+            rotation,
+          );
+
+          page.drawImage(embeddedImg, {
+            x: nativeX,
+            y: nativeY,
+            width: imgW,
+            height: imgH,
+            opacity: stampOpacity,
+            rotate: degrees(combinedRotation),
+          });
+        }
       }
     }
 
-    postProgress(85, 'Guardando y optimizando bytes del PDF sellado...');
+    postProgress(85, 'Optimizando compresión y guardando bytes del documento sellado...');
     const resultBytes = await pdfDoc.save();
     const resultBuffer = resultBytes.buffer.slice(
       resultBytes.byteOffset,
-      resultBytes.byteOffset + resultBytes.byteLength
+      resultBytes.byteOffset + resultBytes.byteLength,
     ) as ArrayBuffer;
 
     postProgress(100, '¡Documento PDF sellado con éxito!');
@@ -187,7 +427,7 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
         buffer: resultBuffer,
         totalPages,
       } as WatermarkWorkerMessageOut,
-      [resultBuffer]
+      [resultBuffer],
     );
   } catch (error: any) {
     (self as unknown as Worker).postMessage({

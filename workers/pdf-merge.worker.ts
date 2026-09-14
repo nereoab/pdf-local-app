@@ -1,24 +1,30 @@
 /**
- * Web Worker para fusión y procesamiento asíncrono de documentos PDF.
- * 
+ * Web Worker Empresarial para fusión y procesamiento asíncrono de documentos PDF.
+ *
  * Ventajas:
  * 1. Procesa archivos pesados en un hilo secundario evitando bloquear el hilo principal (UI).
- * 2. Emite progreso en tiempo real (porcentaje y mensajes).
- * 3. Utiliza Transferable Objects para paso de ArrayBuffers con cero copia en memoria.
+ * 2. Generación opcional de Índice Corporativo Automático (Table of Contents / TOC).
+ * 3. Foliado continuo flexible (formato formal, ratio, corto, bates) y posiciones configurables.
+ * 4. Carátula ejecutiva y modo dúplex inteligente con hojas en blanco.
+ * 5. Emite progreso detallado en tiempo real (porcentaje y mensajes).
+ * 6. Utiliza Transferable Objects para paso de ArrayBuffers con cero copia en memoria RAM.
  */
 
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
 
 export type PageOrientation = 'original' | 'portrait' | 'landscape';
 export type PageSizeOption = 'original' | 'a4' | 'letter';
-export type SeparatorOption = 'none' | 'blank' | 'title_page';
+export type SeparatorOption = 'none' | 'blank' | 'title_page' | 'executive_cover';
+export type PageNumberFormat = 'ratio' | 'formal' | 'short' | 'bates';
+export type PageNumberPosition = 'bottom_center' | 'bottom_right' | 'top_right';
 
 export interface PageDetailPayload {
   pageIndex: number;
-  rotation: number; // e.g. 0, 90, 180, 270
+  rotation: number;
   included: boolean;
 }
 
@@ -45,6 +51,12 @@ export interface MergeOptions {
   pageSize: PageSizeOption;
   separatorMode: SeparatorOption;
   addPageNumbers: boolean;
+  pageNumberFormat?: PageNumberFormat;
+  pageNumberPosition?: PageNumberPosition;
+  skipFirstPageNumber?: boolean;
+  generateToc?: boolean;
+  tocTitle?: string;
+  batesPrefix?: string;
   duplexMode: boolean;
   metadata?: MergeMetadataOptions;
 }
@@ -59,6 +71,7 @@ export interface MergeResult {
   type: 'result';
   mergedBytes: ArrayBuffer;
   totalPages: number;
+  filesCount: number;
 }
 
 export interface MergeError {
@@ -99,7 +112,7 @@ function parsePageRange(rangeStr: string, totalPages: number): number[] {
   const indices: Set<number> = new Set();
   const parts = rangeStr.split(',');
 
-  parts.forEach(part => {
+  parts.forEach((part) => {
     const trimmed = part.trim();
     if (trimmed.includes('-')) {
       const [startStr, endStr] = trimmed.split('-');
@@ -121,7 +134,8 @@ function parsePageRange(rangeStr: string, totalPages: number): number[] {
 
 async function generateThumbnail(arrayBuffer: ArrayBuffer): Promise<string | undefined> {
   try {
-    const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) }).promise;
+    const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) })
+      .promise;
     const page = await pdfjsDoc.getPage(1);
     const viewport = page.getViewport({ scale: 0.3 });
 
@@ -129,7 +143,8 @@ async function generateThumbnail(arrayBuffer: ArrayBuffer): Promise<string | und
       const canvas = new OffscreenCanvas(viewport.width, viewport.height);
       const context = canvas.getContext('2d');
       if (context) {
-        await (page.render({ canvasContext: context as any, canvas: canvas as any, viewport } as any)).promise;
+        await page.render({ canvasContext: context as any, canvas: canvas as any, viewport } as any)
+          .promise;
         const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
         return new Promise<string>((resolve) => {
           const reader = new FileReader();
@@ -158,13 +173,13 @@ async function handleAnalyze(data: AnalyzeRequest) {
       id: data.id,
       name: data.name,
       pageCount,
-      thumbnailUrl
+      thumbnailUrl,
     };
     self.postMessage(resultMsg);
   } catch (err: any) {
     const errorMsg: MergeError = {
       type: 'error',
-      message: `Error al analizar ${data.name}: ${err?.message || 'Error desconocido'}`
+      message: `Error al analizar ${data.name}: ${err?.message || 'Error desconocido'}`,
     };
     self.postMessage(errorMsg);
   }
@@ -175,8 +190,8 @@ async function handleMerge(data: MergeRequest) {
   try {
     self.postMessage({
       type: 'progress',
-      percent: 10,
-      message: 'Iniciando creación de documento unificado en Web Worker...'
+      percent: 5,
+      message: 'Iniciando motor de consolidación vectorial en Web Worker...',
     } as MergeProgress);
 
     const mergedPdf = await PDFDocument.create();
@@ -184,67 +199,201 @@ async function handleMerge(data: MergeRequest) {
     const helveticaBold = await mergedPdf.embedFont(StandardFonts.HelveticaBold);
 
     const totalFiles = files.length;
+    const documentCatalog: { name: string; startPage: number; pageCount: number }[] = [];
 
+    // 1. CARÁTULA EJECUTIVA MASTER (SI ESTÁ SELECCIONADA)
+    if (options.separatorMode === 'executive_cover') {
+      self.postMessage({
+        type: 'progress',
+        percent: 10,
+        message: 'Generando carátula ejecutiva institucional...',
+      } as MergeProgress);
+
+      const coverPage = mergedPdf.addPage([595.28, 841.89]);
+      const { width, height } = coverPage.getSize();
+
+      // Marco corporativo sutil
+      coverPage.drawRectangle({
+        x: 36,
+        y: 36,
+        width: width - 72,
+        height: height - 72,
+        borderColor: rgb(0.2, 0.2, 0.25),
+        borderWidth: 1,
+        color: rgb(0.04, 0.04, 0.06),
+      });
+
+      // Línea superior decorativa
+      coverPage.drawLine({
+        start: { x: 50, y: height - 60 },
+        end: { x: width - 50, y: height - 60 },
+        thickness: 2,
+        color: rgb(0.85, 0.8, 0.7),
+      });
+
+      // Emisor / Marca
+      coverPage.drawText('EXPEDIENTE CONSOLIDADO • PDFBLACK ENTERPRISE', {
+        x: 50,
+        y: height - 90,
+        size: 9,
+        font: helveticaBold,
+        color: rgb(0.85, 0.8, 0.7),
+      });
+
+      // Título Principal
+      const mainTitle = options.metadata?.title?.trim() || 'DOCUMENTO UNIFICADO';
+      coverPage.drawText(mainTitle.toUpperCase(), {
+        x: 50,
+        y: height - 140,
+        size: 22,
+        font: helveticaBold,
+        color: rgb(0.98, 0.98, 0.98),
+      });
+
+      // Subtítulo / Asunto
+      if (options.metadata?.subject?.trim()) {
+        coverPage.drawText(options.metadata.subject.trim(), {
+          x: 50,
+          y: height - 175,
+          size: 13,
+          font: helveticaFont,
+          color: rgb(0.7, 0.7, 0.75),
+        });
+      }
+
+      // Cuadro de Resumen Técnico
+      const boxY = height - 320;
+      coverPage.drawRectangle({
+        x: 50,
+        y: boxY,
+        width: width - 100,
+        height: 110,
+        borderColor: rgb(0.3, 0.3, 0.35),
+        borderWidth: 0.8,
+        color: rgb(0.07, 0.07, 0.1),
+      });
+
+      coverPage.drawText('RESUMEN DE CONSOLIDACIÓN', {
+        x: 65,
+        y: boxY + 85,
+        size: 9,
+        font: helveticaBold,
+        color: rgb(0.7, 0.7, 0.75),
+      });
+
+      coverPage.drawText(`Total Documentos Anexados:   ${totalFiles}`, {
+        x: 65,
+        y: boxY + 60,
+        size: 11,
+        font: helveticaFont,
+        color: rgb(0.9, 0.9, 0.9),
+      });
+
+      coverPage.drawText(`Fecha y Hora de Emisión:      ${new Date().toLocaleString()}`, {
+        x: 65,
+        y: boxY + 40,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0.7, 0.7, 0.7),
+      });
+
+      coverPage.drawText(`Entorno de Procesamiento:      100% Local en RAM (Zero-Server)`, {
+        x: 65,
+        y: boxY + 20,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0.2, 0.8, 0.5),
+      });
+
+      // Pie de carátula
+      coverPage.drawText('PDFBlack Engine v4.0 • Cumplimiento Normativo RGPD / ISO 32000-1', {
+        x: 50,
+        y: 52,
+        size: 8,
+        font: helveticaFont,
+        color: rgb(0.45, 0.45, 0.5),
+      });
+    }
+
+    // 2. PROCESAMIENTO Y FUSIÓN DE CADA ARCHIVO
     for (let i = 0; i < totalFiles; i++) {
       const item = files[i];
-      const progressPercent = 10 + Math.floor(((i + 1) / totalFiles) * 75);
-      
+      const progressPercent = 12 + Math.floor(((i + 1) / totalFiles) * 70);
+
       self.postMessage({
         type: 'progress',
         percent: progressPercent,
-        message: `Procesando ${item.name} (${i + 1}/${totalFiles})...`
+        message: `Procesando ${item.name} (${i + 1}/${totalFiles})...`,
       } as MergeProgress);
 
-      // 1. CARÁTULA O SEPARADOR EN BLANCO
+      // Separador individual por documento
       if (options.separatorMode === 'title_page') {
         const sepPage = mergedPdf.addPage([595.28, 841.89]);
-        sepPage.drawText(`DOCUMENTO ${i + 1}`, {
-          x: 50,
-          y: 750,
-          size: 12,
-          font: helveticaBold,
-          color: rgb(0.6, 0.4, 1.0)
+        const { height } = sepPage.getSize();
+
+        sepPage.drawRectangle({
+          x: 40,
+          y: height - 180,
+          width: 515,
+          height: 120,
+          color: rgb(0.06, 0.06, 0.09),
+          borderColor: rgb(0.25, 0.25, 0.3),
+          borderWidth: 1,
         });
-        sepPage.drawText(item.name, {
-          x: 50,
-          y: 710,
-          size: 20,
+
+        sepPage.drawText(`SECCIÓN 00${i + 1}`, {
+          x: 60,
+          y: height - 90,
+          size: 10,
           font: helveticaBold,
-          color: rgb(1, 1, 1)
+          color: rgb(0.85, 0.8, 0.7),
         });
+
+        const safeName = item.name.length > 45 ? item.name.slice(0, 42) + '…' : item.name;
+        sepPage.drawText(safeName, {
+          x: 60,
+          y: height - 120,
+          size: 16,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+
         sepPage.drawText(`${item.pageCount} páginas en documento original`, {
-          x: 50,
-          y: 680,
-          size: 11,
+          x: 60,
+          y: height - 148,
+          size: 10,
           font: helveticaFont,
-          color: rgb(0.7, 0.7, 0.7)
+          color: rgb(0.65, 0.65, 0.7),
         });
       } else if (options.separatorMode === 'blank' && i > 0) {
         mergedPdf.addPage([595.28, 841.89]);
       }
 
-      // 2. COPIA DE PÁGINAS DEL ARCHIVO
+      // Carga y extracción de páginas
       const loadOptions: any = { ignoreEncryption: true };
       if (item.password) {
         loadOptions.password = item.password;
       }
       const pdfDoc = await PDFDocument.load(item.arrayBuffer.slice(0), loadOptions);
-      const total = pdfDoc.getPageCount();
+      const totalInDoc = pdfDoc.getPageCount();
 
       let pagesToCopy: { pageIndex: number; customRotation: number }[] = [];
 
       if (item.pagesDetail && item.pagesDetail.length > 0) {
         pagesToCopy = item.pagesDetail
-          .filter(p => p.included && p.pageIndex >= 0 && p.pageIndex < total)
-          .map(p => ({ pageIndex: p.pageIndex, customRotation: p.rotation || 0 }));
+          .filter((p) => p.included && p.pageIndex >= 0 && p.pageIndex < totalInDoc)
+          .map((p) => ({ pageIndex: p.pageIndex, customRotation: p.rotation || 0 }));
       } else {
-        const indices = parsePageRange(item.pageRange, total);
-        pagesToCopy = indices.map(idx => ({ pageIndex: idx, customRotation: 0 }));
+        const indices = parsePageRange(item.pageRange, totalInDoc);
+        pagesToCopy = indices.map((idx) => ({ pageIndex: idx, customRotation: 0 }));
       }
 
       if (pagesToCopy.length === 0) continue;
 
-      const indicesOnly = pagesToCopy.map(p => p.pageIndex);
+      // Registrar inicio en el catálogo para el Índice
+      const startPageNumber = mergedPdf.getPageCount() + 1;
+
+      const indicesOnly = pagesToCopy.map((p) => p.pageIndex);
       const copiedPages = await mergedPdf.copyPages(pdfDoc, indicesOnly);
 
       copiedPages.forEach((page, idx) => {
@@ -269,39 +418,240 @@ async function handleMerge(data: MergeRequest) {
         mergedPdf.addPage(page);
       });
 
-      if (options.duplexMode && (pagesToCopy.length % 2 !== 0)) {
+      documentCatalog.push({
+        name: item.name,
+        startPage: startPageNumber,
+        pageCount: pagesToCopy.length,
+      });
+
+      // Ajuste duplex: si las páginas agregadas son impares, añadir hoja en blanco para que el siguiente doc inicie al frente
+      if (options.duplexMode && pagesToCopy.length % 2 !== 0) {
         mergedPdf.addPage([595.28, 841.89]);
       }
     }
 
-    // 3. NUMERACIÓN CONTINUA
-    if (options.addPageNumbers) {
-      const pages = mergedPdf.getPages();
-      const totalNumPages = pages.length;
-      pages.forEach((p, idx) => {
-        const { width } = p.getSize();
-        p.drawText(`${idx + 1} / ${totalNumPages}`, {
-          x: width / 2 - 15,
-          y: 18,
-          size: 9,
+    // 3. GENERACIÓN DE ÍNDICE CORPORATIVO (TOC)
+    if (options.generateToc && documentCatalog.length > 0) {
+      self.postMessage({
+        type: 'progress',
+        percent: 85,
+        message: 'Generando tabla de contenidos e índice estructurado...',
+      } as MergeProgress);
+
+      const tocPage = mergedPdf.insertPage(
+        options.separatorMode === 'executive_cover' ? 1 : 0,
+        [595.28, 841.89],
+      );
+      const { width, height } = tocPage.getSize();
+
+      // Ajustar catálogo por el desplazamiento de la página de TOC insertada
+      const tocShift = 1;
+      documentCatalog.forEach((entry) => {
+        entry.startPage += tocShift;
+      });
+
+      // Cabecera del Índice
+      tocPage.drawLine({
+        start: { x: 50, y: height - 50 },
+        end: { x: width - 50, y: height - 50 },
+        thickness: 1.5,
+        color: rgb(0.85, 0.8, 0.7),
+      });
+
+      const tocTitle = options.tocTitle?.trim() || 'ÍNDICE GENERAL DEL EXPEDIENTE';
+      tocPage.drawText(tocTitle.toUpperCase(), {
+        x: 50,
+        y: height - 80,
+        size: 16,
+        font: helveticaBold,
+        color: rgb(0.95, 0.95, 0.95),
+      });
+
+      tocPage.drawText('Relación cronológica de documentos y página de inicio correspondiente:', {
+        x: 50,
+        y: height - 98,
+        size: 9.5,
+        font: helveticaFont,
+        color: rgb(0.6, 0.6, 0.65),
+      });
+
+      // Filas del Índice
+      let currentY = height - 130;
+      const rowHeight = 22;
+      const maxRows = Math.floor((currentY - 80) / rowHeight);
+
+      const itemsToShow = documentCatalog.slice(0, maxRows);
+
+      itemsToShow.forEach((entry, idx) => {
+        const itemNumber = String(idx + 1).padStart(2, '0');
+        const numLabel = `${itemNumber}. `;
+        const numWidth = helveticaBold.widthOfTextAtSize(numLabel, 9.5);
+
+        tocPage.drawText(numLabel, {
+          x: 50,
+          y: currentY,
+          size: 9.5,
+          font: helveticaBold,
+          color: rgb(0.85, 0.8, 0.7),
+        });
+
+        // Nombre seguro y truncado
+        let displayName = entry.name;
+        if (displayName.length > 40) {
+          displayName = displayName.slice(0, 38) + '…';
+        }
+
+        tocPage.drawText(displayName, {
+          x: 50 + numWidth,
+          y: currentY,
+          size: 9.5,
           font: helveticaFont,
-          color: rgb(0.5, 0.5, 0.5),
+          color: rgb(0.9, 0.9, 0.9),
+        });
+
+        const nameWidth = helveticaFont.widthOfTextAtSize(displayName, 9.5);
+        const startXDots = 50 + numWidth + nameWidth + 8;
+        const endXDots = width - 115;
+
+        // Línea punteada de líderes
+        if (endXDots > startXDots) {
+          const dotsText = '. '.repeat(Math.max(1, Math.floor((endXDots - startXDots) / 8)));
+          tocPage.drawText(dotsText, {
+            x: startXDots,
+            y: currentY,
+            size: 8,
+            font: helveticaFont,
+            color: rgb(0.3, 0.3, 0.35),
+          });
+        }
+
+        // Número de página
+        const pageLabel = `Pág. ${entry.startPage}`;
+        tocPage.drawText(pageLabel, {
+          x: width - 105,
+          y: currentY,
+          size: 9.5,
+          font: helveticaBold,
+          color: rgb(0.85, 0.8, 0.7),
+        });
+
+        // Cantidad de páginas en gris
+        const countLabel = `(${entry.pageCount} p.)`;
+        tocPage.drawText(countLabel, {
+          x: width - 60,
+          y: currentY,
+          size: 8.5,
+          font: helveticaFont,
+          color: rgb(0.5, 0.5, 0.55),
+        });
+
+        currentY -= rowHeight;
+      });
+
+      if (documentCatalog.length > maxRows) {
+        tocPage.drawText(
+          `... y ${documentCatalog.length - maxRows} documentos adicionales en el expediente.`,
+          {
+            x: 50,
+            y: currentY - 5,
+            size: 8.5,
+            font: helveticaFont,
+            color: rgb(0.5, 0.5, 0.55),
+          },
+        );
+      }
+
+      // Pie del Índice
+      tocPage.drawLine({
+        start: { x: 50, y: 55 },
+        end: { x: width - 50, y: 55 },
+        thickness: 0.8,
+        color: rgb(0.25, 0.25, 0.3),
+      });
+
+      tocPage.drawText('Índice autogenerado por PDFBlack Enterprise • Cero subida a servidor', {
+        x: 50,
+        y: 42,
+        size: 8,
+        font: helveticaFont,
+        color: rgb(0.45, 0.45, 0.5),
+      });
+    }
+
+    // 4. NUMERACIÓN CONTINUA / FOLIADO DE EXPEDIENTES
+    if (options.addPageNumbers) {
+      self.postMessage({
+        type: 'progress',
+        percent: 90,
+        message: 'Aplicando foliado y numeración continua a las páginas...',
+      } as MergeProgress);
+
+      const allPages = mergedPdf.getPages();
+      const totalPagesInDoc = allPages.length;
+
+      const format = options.pageNumberFormat || 'ratio';
+      const position = options.pageNumberPosition || 'bottom_center';
+      const skipFirst = !!options.skipFirstPageNumber;
+
+      const startIndex = skipFirst ? 1 : 0;
+
+      allPages.forEach((p, idx) => {
+        if (idx < startIndex) return;
+
+        const { width, height } = p.getSize();
+        const currNum = skipFirst ? idx : idx + 1;
+        const totalNum = skipFirst ? totalPagesInDoc - 1 : totalPagesInDoc;
+
+        let numText = '';
+        if (format === 'ratio') {
+          numText = `${currNum} / ${totalNum}`;
+        } else if (format === 'formal') {
+          numText = `Página ${currNum} de ${totalNum}`;
+        } else if (format === 'short') {
+          numText = `Pág. ${currNum}`;
+        } else if (format === 'bates') {
+          const prefix = options.batesPrefix?.trim() || 'EXP';
+          numText = `${prefix}-${String(currNum).padStart(5, '0')}`;
+        }
+
+        const fontSize = 8.5;
+        const textWidth = helveticaFont.widthOfTextAtSize(numText, fontSize);
+
+        let posX = width / 2 - textWidth / 2;
+        let posY = 20;
+
+        if (position === 'bottom_right') {
+          posX = width - textWidth - 36;
+          posY = 20;
+        } else if (position === 'top_right') {
+          posX = width - textWidth - 36;
+          posY = height - 25;
+        }
+
+        p.drawText(numText, {
+          x: posX,
+          y: posY,
+          size: fontSize,
+          font: helveticaFont,
+          color: rgb(0.4, 0.4, 0.45),
         });
       });
     }
 
-    // 4. METADATOS OPCIONALES
+    // 5. METADATOS CORPORATIVOS
     if (options.metadata) {
       if (options.metadata.title) mergedPdf.setTitle(options.metadata.title);
       if (options.metadata.author) mergedPdf.setAuthor(options.metadata.author);
       if (options.metadata.subject) mergedPdf.setSubject(options.metadata.subject);
       if (options.metadata.keywords) mergedPdf.setKeywords([options.metadata.keywords]);
     }
+    mergedPdf.setProducer('PDFBlack Enterprise Engine v4.0');
+    mergedPdf.setCreator('PDFBlack (https://pdf-black.com)');
 
     self.postMessage({
       type: 'progress',
-      percent: 95,
-      message: 'Compilando y optimizando bytes del PDF unificado...'
+      percent: 96,
+      message: 'Compilando y optimizando bytes del PDF unificado...',
     } as MergeProgress);
 
     const mergedBytes = await mergedPdf.save();
@@ -310,15 +660,17 @@ async function handleMerge(data: MergeRequest) {
     const resultMessage: MergeResult = {
       type: 'result',
       mergedBytes: bufferResult,
-      totalPages: mergedPdf.getPageCount()
+      totalPages: mergedPdf.getPageCount(),
+      filesCount: totalFiles,
     };
 
     // Transferir el ArrayBuffer de vuelta al hilo principal sin copiar
     (self as any).postMessage(resultMessage, [bufferResult]);
   } catch (error: any) {
+    console.error('pdf-merge.worker error:', error);
     self.postMessage({
       type: 'error',
-      message: error?.message || 'Error durante la unión de archivos en Web Worker'
+      message: error?.message || 'Error durante la unión de archivos en Web Worker',
     } as MergeError);
   }
 }

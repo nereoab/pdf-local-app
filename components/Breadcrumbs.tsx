@@ -48,7 +48,15 @@ export default function Breadcrumbs() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
-  if (pathname === '/') return null;
+  if (
+    pathname === '/' ||
+    pathname === '/organizar/recortar' ||
+    pathname === '/editar/foliar' ||
+    pathname === '/editar/marca-agua' ||
+    pathname === '/editar/quitar-marca-agua' ||
+    pathname === '/editar/ocr'
+  )
+    return null;
 
   const segments = pathname.split('/').filter(Boolean);
   const breadcrumbs: BreadcrumbSegment[] = [{ label: 'Inicio', labelEn: 'Home', href: '/' }];
@@ -81,11 +89,20 @@ export default function Breadcrumbs() {
         {breadcrumbs.map((crumb, i) => {
           const isLast = i === breadcrumbs.length - 1;
           return (
-            <li key={`${crumb.href}-${i}`} className="flex items-center gap-1" itemScope itemType="https://schema.org/ListItem">
-              {i > 0 && <ChevronRight className="w-3 h-3 text-zinc-600 flex-shrink-0" aria-hidden="true" />}
+            <li
+              key={`${crumb.href}-${i}`}
+              className="flex items-center gap-1"
+              itemScope
+              itemType="https://schema.org/ListItem"
+            >
+              {i > 0 && (
+                <ChevronRight className="w-3 h-3 text-zinc-600 flex-shrink-0" aria-hidden="true" />
+              )}
               {isLast ? (
                 <span className="text-zinc-400 font-medium" aria-current="page" itemProp="name">
-                  {i === 0 ? <Home className="w-3.5 h-3.5 inline mr-0.5" aria-hidden="true" /> : null}
+                  {i === 0 ? (
+                    <Home className="w-3.5 h-3.5 inline mr-0.5" aria-hidden="true" />
+                  ) : null}
                   {isEs ? crumb.label : crumb.labelEn}
                 </span>
               ) : (

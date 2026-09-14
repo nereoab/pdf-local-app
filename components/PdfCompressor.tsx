@@ -948,177 +948,78 @@ export default function PdfCompressor() {
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <Sliders className="w-12 h-12 text-white" />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>
+              {isEs
+                ? 'Motor de Compresión Deflate v5.0 • 100% Local'
+                : 'Deflate Compression Engine v5.0 • 100% Local'}
+            </span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
             {isEs
-              ? 'COMPRIMIR ARCHIVOS PDF (OPTIMIZAR TAMAÑO Y ESPACIO)'
-              : 'COMPRESS PDF FILES (OPTIMIZE SIZE AND SPACE)'}
+              ? 'COMPRIME Y REDUCE EL TAMAÑO DE TUS ARCHIVOS PDF'
+              : 'COMPRESS AND REDUCE THE SIZE OF YOUR PDF FILES'}
           </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Reduce el peso de tus documentos manteniendo texto vectorial nítido e imágenes optimizadas sin subir tus datos a servidores externos.'
-              : 'Reduce the file size of your PDF documents with local confidential processing.'}
+              ? 'Aplica compresión Deflate Nivel 9 y resampling adaptativo de imágenes sin subir tus archivos a internet ni comprometer la nitidez del texto.'
+              : 'Apply Level 9 Deflate compression and adaptive image resampling without uploading your files or compromising text clarity.'}
           </p>
 
           <button
             type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
           >
-            <Plus className="w-4 h-4 text-black" />{' '}
-            {isEs ? 'Seleccionar Archivos PDF' : 'Select PDF Files'}
+            <Plus className="w-4 h-4 text-black" />
+            {isEs ? 'Seleccionar Archivos PDF para Comprimir' : 'Select PDF Files to Compress'}
           </button>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
-            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full shadow-sm">
-              <ShieldCheck className="w-3.5 h-3.5 text-white" />
-              <span>{isEs ? '100% LOCAL Y CONFIDENCIAL' : '100% LOCAL & PRIVATE'}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Deflate Nivel 9' : '✓ Level 9 Deflate'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Máxima reducción de tamaño sin pérdida de calidad tipográfica ni vectorial.'
+                  : 'Maximum size reduction with zero vector or typographical loss.'}
+              </span>
             </div>
-            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full shadow-sm">
-              <Zap className="w-3.5 h-3.5 text-white" />
-              <span>
-                {isEs ? 'DEFLATE NIVEL 9 + VECTOR SHARP' : 'DEFLATE LEVEL 9 + VECTOR SHARP'}
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Resampling Adaptativo' : '✓ Adaptive Resampling'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Re-codificación inteligente de imágenes embebidas a 72, 96 o 150 DPI.'
+                  : 'Smart re-encoding of embedded images at 72, 96, or 150 DPI.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin enviar datos a servidores.'
+                  : 'Local RAM processing without sending data to servers.'}
               </span>
             </div>
           </div>
         </motion.div>
       ) : completedResult ? (
-        /* PANTALLA DEDICADA DE ÉXITO Y DESCARGA */
+        /* PANTALLA DEDICADA DE ÉXITO Y DESCARGA UNIFICADA */
         <motion.div
           ref={successContainerRef}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-2 font-sans space-y-4"
+          className="w-full max-w-4xl mx-auto my-2 font-sans"
         >
-          {/* DASHBOARD DE METRICAS DE COMPRESIÓN (COMPACTO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-2xl p-4 sm:p-5 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-zinc-800 border border-zinc-600 rounded-xl text-white shadow-md">
-                  <Zap className="w-5 h-5 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
-                </div>
-                <div>
-                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA COMPRESIÓN' : 'COMPRESSION RESULT'}
-                  </span>
-                  <h3 className="text-base sm:text-lg font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs ? '¡Documento optimizado con éxito!' : 'Document optimized successfully!'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 px-3.5 py-1.5 rounded-xl min-w-[130px] shadow-sm">
-                <div className="w-full text-right">
-                  <div className="text-[9px] text-zinc-400 font-bold">
-                    {isEs ? 'Ahorro de espacio' : 'Space saved'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm flex items-center justify-end gap-1">
-                    <span>↓ {completedResult.overallReduction}%</span>
-                  </div>
-                  <div className="w-full bg-zinc-800 rounded-full h-1 mt-1 overflow-hidden">
-                    <div
-                      className="bg-[#FAF6EE] h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(250,246,238,0.5)]"
-                      style={{
-                        width: `${Math.min(Math.max(completedResult.overallReduction, 6), 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-zinc-800 text-xs">
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Tamaño Original' : 'Original Size'}
-                </span>
-                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.totalOriginalSize)}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                    {isEs ? 'Tamaño Comprimido' : 'Compressed Size'}
-                  </span>
-                  <span className="text-[8px] px-1.5 py-0.2 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] rounded font-mono font-bold">
-                    -{completedResult.overallReduction}%
-                  </span>
-                </div>
-                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.totalCompressedSize)}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Espacio Reducido' : 'Space Reduced'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  {formatFileSize(
-                    completedResult.totalOriginalSize - completedResult.totalCompressedSize,
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* LISTADO BATCH Y BOTÓN DESCARGA ZIP */}
-            {completedResult.items.length > 1 && (
-              <div className="mt-4 pt-3 border-t border-zinc-800">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
-                    {isEs
-                      ? `Archivos procesados (${completedResult.items.length})`
-                      : `Processed files (${completedResult.items.length})`}
-                  </span>
-                  <button
-                    onClick={handleDownloadAllZip}
-                    disabled={isCreatingZip}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all shadow-md cursor-pointer"
-                  >
-                    {isCreatingZip ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Archive className="w-3 h-3" />
-                    )}
-                    <span>{isEs ? 'Descargar todos (.ZIP)' : 'Download all (.ZIP)'}</span>
-                  </button>
-                </div>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                  {completedResult.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between bg-[#121217] p-2.5 rounded-xl border border-zinc-800 text-xs"
-                    >
-                      <div className="flex items-center gap-2 truncate max-w-[50%]">
-                        <FileText className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                        <span className="truncate text-white font-mono">{item.fileName}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-zinc-400 font-mono text-[10px]">
-                          {formatFileSize(item.originalSize)} →{' '}
-                          <strong className="text-[#FAF6EE]">
-                            {formatFileSize(item.compressedSize)}
-                          </strong>
-                        </span>
-                        <a
-                          href={item.downloadUrl}
-                          download={`${item.fileName.replace(/\.[^/.]+$/, '')}${customSuffix}.pdf`}
-                          className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-lg text-[10px] transition-all flex items-center gap-1 cursor-pointer border border-zinc-700"
-                        >
-                          <FileDown className="w-3 h-3" />
-                          <span>{isEs ? 'Bajar' : 'Get'}</span>
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* TARJETA DE DESCARGA PRINCIPAL */}
           <DownloadSuccessCard
             downloadUrl={completedResult.downloadUrl}
             filename={completedResult.filename}
@@ -1126,6 +1027,37 @@ export default function PdfCompressor() {
             outputFormat="pdf"
             rawBlob={completedResult.rawBlob}
             currentToolId="comprimir"
+            title={
+              completedResult.items.length > 1
+                ? isEs
+                  ? `¡${completedResult.items.length} documentos optimizados con éxito!`
+                  : `¡${completedResult.items.length} documents optimized successfully!`
+                : isEs
+                  ? '¡Documento optimizado con éxito!'
+                  : 'Document optimized successfully!'
+            }
+            metrics={{
+              originalSize: formatFileSize(completedResult.totalOriginalSize),
+              compressedSize: formatFileSize(completedResult.totalCompressedSize),
+              savedSpace: formatFileSize(
+                completedResult.totalOriginalSize - completedResult.totalCompressedSize,
+              ),
+              reductionPercent: completedResult.overallReduction,
+            }}
+            batchItems={
+              completedResult.items.length > 1
+                ? completedResult.items.map((item) => ({
+                    fileName: `${item.fileName.replace(/\.[^/.]+$/, '')}${customSuffix}.pdf`,
+                    originalSize: item.originalSize,
+                    compressedSize: item.compressedSize,
+                    reductionPercent: item.reductionPercent,
+                    downloadUrl: item.downloadUrl,
+                    rawBlob: item.rawBlob,
+                  }))
+                : undefined
+            }
+            onDownloadAllZip={handleDownloadAllZip}
+            isCreatingZip={isCreatingZip}
             onReset={handleRemoveAllFiles}
           />
         </motion.div>

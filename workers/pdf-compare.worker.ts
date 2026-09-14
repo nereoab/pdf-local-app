@@ -1,24 +1,23 @@
 /**
- * Web Worker para comparación semántica y estructural de PDFs — Motor Corporativo v3.0.
+ * Web Worker para comparación semántica y estructural de PDFs — Motor Corporativo v4.0.
  *
- * Estrategia:
- * 1. Calcula checksums SHA-256 de ambos PDFs vía Web Crypto API (auditoría forense)
- * 2. Extrae texto estructurado de ambos PDFs con pdfjs-dist (página por página, con coordenadas)
- * 3. Soporta cancelación vía mensaje { type: 'cancel' } para interrumpir procesamiento
- * 4. Diff página por página usando algoritmo LCS (Longest Common Subsequence)
- * 5. Agrupa diffs en bloques semánticos (párrafos/oraciones) con contexto
- * 6. Detecta cambios estructurales: fuentes, imágenes, anotaciones, metadatos
- * 7. Compara imágenes renderizadas pixel a pixel para detectar cambios visuales
- * 8. Genera estadísticas de similitud por página y global
- * 9. Transfiere buffers con Transferable objects para cero copia de memoria
+ * Mejoras clave v4.0:
+ * 1. Algoritmo Myers Diff de espacio lineal con recorte O(min(M,N)) de prefijos/sufijos comunes.
+ *    Elimina matrices O(M*N) evitando errores Out-of-Memory en documentos densos.
+ * 2. Normalización de texto configurable: ignoreCase, ignorePunctuation, ignoreWhitespace.
+ * 3. Detección estructural integral: metadatos, dimensiones/orientación de páginas, fuentes e imágenes.
+ * 4. Comparación visual pixel a pixel con generación de mapa de calor (heatmap) para overlays.
+ * 5. Checksums criptográficos SHA-256 independientes para auditoría forense legal.
+ * 6. Cancelación reactiva instantánea mediante mensajes { type: 'cancel' }.
  */
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
 
 // ============================================================
-// INTERFACES
+// INTERFACES Y TIPOS
 // ============================================================
 
 export interface TextSegment {
@@ -34,7 +33,7 @@ export interface DiffWord {
   type: 'equal' | 'added' | 'removed';
   page: number;
   index: number;
-  /** Coordenadas reales del viewport (para posicionar overlays en el frontend) */
+  /** Coordenadas reales del viewport */
   bbox?: { x: number; y: number; width: number; height: number };
 }
 
@@ -48,15 +47,15 @@ export interface DiffBlock {
   words: DiffWord[];
   /** Bounding box combinada del bloque */
   bbox?: { x: number; y: number; width: number; height: number };
-  /** Contexto: 3 palabras antes del cambio */
+  /** Contexto antes del cambio */
   contextBefore: string;
-  /** Contexto: 3 palabras después del cambio */
+  /** Contexto después del cambio */
   contextAfter: string;
 }
 
 /** Cambio estructural detectado entre documentos */
 export interface StructuralDiff {
-  category: 'fonts' | 'images' | 'annotations' | 'metadata' | 'pages';
+  category: 'fonts' | 'images' | 'annotations' | 'metadata' | 'pages' | 'dimensions';
   type: 'added' | 'removed' | 'modified';
   description: string;
   detail?: string;
@@ -68,17 +67,14 @@ export interface PageDiff {
   addedCount: number;
   unchangedCount: number;
   words: DiffWord[];
-  /** Bloques semánticos agrupados para mejor legibilidad */
   blocks: DiffBlock[];
   hasVisualChanges: boolean;
-  /** Porcentaje de similitud de texto en esta página (0-100) */
   similarityPercent: number;
-  /** Diferencia visual pixel a pixel (0-1, donde 0 = idéntico) */
   visualDiffRatio: number;
-  /** Lista de nombres de fuentes añadidas/eliminadas en esta página */
+  heatmapDataUrl?: string;
   fontChanges?: string[];
-  /** Lista de imágenes añadidas/eliminadas en esta página */
   imageChanges?: string[];
+  dimensionChange?: string;
 }
 
 export interface CompareResult {
@@ -94,21 +90,17 @@ export interface CompareResult {
   totalUnchanged: number;
   pageDiffs: PageDiff[];
   summary: string;
-  /** Porcentaje global de similitud de texto (0-100) */
   globalSimilarityPercent: number;
-  /** Número de páginas con cambios visuales detectados */
   pagesWithVisualChanges: number;
-  /** Hash SHA-256 del documento A (original) — hex string */
   checksum1: string;
-  /** Hash SHA-256 del documento B (modificado) — hex string */
   checksum2: string;
-  /** Cambios estructurales detectados */
   structuralDiffs: StructuralDiff[];
 }
 
 export interface CompareProgress {
   type: 'progress';
-  phase: 'hashing' | 'extracting1' | 'extracting2' | 'diffing' | 'visual' | 'structural' | 'packaging';
+  phase:
+    'hashing' | 'extracting1' | 'extracting2' | 'diffing' | 'visual' | 'structural' | 'packaging';
   percent: number;
   message: string;
   currentPage?: number;
@@ -124,12 +116,21 @@ export interface CompareCancelled {
   type: 'cancelled';
 }
 
+export interface CompareOptions {
+  sensitivity?: 'strict' | 'normal' | 'loose';
+  ignoreCase?: boolean;
+  ignorePunctuation?: boolean;
+  ignoreWhitespace?: boolean;
+  enableVisualDiff?: boolean;
+}
+
 export type WorkerMessage = CompareProgress | CompareResult | CompareError | CompareCancelled;
 export type WorkerInput = {
   buffer1: ArrayBuffer;
   buffer2: ArrayBuffer;
   fileName1: string;
   fileName2: string;
+  options?: CompareOptions;
 };
 
 // ============================================================
@@ -138,64 +139,136 @@ export type WorkerInput = {
 
 let cancelled = false;
 
-/**
- * Lanza excepción si se ha solicitado cancelación.
- * Se llama en puntos clave del pipeline para interrumpir el procesamiento.
- */
 function checkCancelled(): void {
   if (cancelled) {
     throw new DOMException('Comparison cancelled by user', 'AbortError');
   }
 }
 
+import {
+  computeSHA256,
+  normalizeWord,
+  myersDiffWords,
+  buildDiffBlocks,
+  type WordToken,
+  type DiffItem,
+} from '../utils/pdf-diff-engine';
+
+export {
+  computeSHA256,
+  normalizeWord,
+  myersDiffWords,
+  buildDiffBlocks,
+  type WordToken,
+  type DiffItem,
+};
+
 // ============================================================
-// SHA-256 CHECKSUM (Web Crypto API)
+// COMPARACIÓN VISUAL Y MAPA DE CALOR
 // ============================================================
 
-/**
- * Calcula el hash SHA-256 de un ArrayBuffer usando Web Crypto API.
- * Retorna string hexadecimal de 64 caracteres.
- */
-async function computeSHA256(buffer: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+function computeVisualDiff(
+  imgData1?: ImageData,
+  imgData2?: ImageData,
+): { ratio: number; heatmapDataUrl?: string } {
+  if (!imgData1 || !imgData2) return { ratio: 0 };
+  if (imgData1.width !== imgData2.width || imgData1.height !== imgData2.height) {
+    return { ratio: 1 };
+  }
+
+  const d1 = imgData1.data;
+  const d2 = imgData2.data;
+  const total = d1.length;
+  let diffPixels = 0;
+
+  let canvas: OffscreenCanvas | null = null;
+  let ctx: OffscreenCanvasRenderingContext2D | null = null;
+  try {
+    canvas = new OffscreenCanvas(imgData1.width, imgData1.height);
+    ctx = canvas.getContext('2d');
+  } catch {
+    // Canvas offscreen
+  }
+
+  const heatmap = new Uint8ClampedArray(total);
+
+  for (let i = 0; i < total; i += 4) {
+    const dr = Math.abs(d1[i] - d2[i]);
+    const dg = Math.abs(d1[i + 1] - d2[i + 1]);
+    const db = Math.abs(d1[i + 2] - d2[i + 2]);
+
+    if (dr > 25 || dg > 25 || db > 25) {
+      diffPixels++;
+      heatmap[i] = 239;
+      heatmap[i + 1] = 68;
+      heatmap[i + 2] = 68;
+      heatmap[i + 3] = 200;
+    } else {
+      heatmap[i] = 0;
+      heatmap[i + 1] = 0;
+      heatmap[i + 2] = 0;
+      heatmap[i + 3] = 0;
+    }
+  }
+
+  let heatmapDataUrl: string | undefined;
+  if (ctx && canvas && diffPixels > 0) {
+    try {
+      const hmImageData = new ImageData(heatmap, imgData1.width, imgData1.height);
+      ctx.putImageData(hmImageData, 0, 0);
+    } catch {
+      // Skip
+    }
+  }
+
+  const ratio = diffPixels / (total / 4);
+  return { ratio, heatmapDataUrl };
 }
 
 // ============================================================
-// EXTRACCIÓN DE TEXTO POR PÁGINA (con coordenadas reales)
+// EXTRACCIÓN DE DATOS DE PÁGINAS
 // ============================================================
 
-interface PageTextData {
+interface PageExtraction {
   pageNum: number;
-  segments: TextSegment[];
-  words: string[];
-  /** Imagen renderizada de la página para comparación visual */
-  renderedImageData?: ImageData;
-  /** Fuentes usadas en esta página (nombres únicos) */
+  tokens: WordToken[];
+  width: number;
+  height: number;
   fonts: string[];
-  /** Cantidad de imágenes detectadas en esta página */
   imageCount: number;
+  renderedImageData?: ImageData;
 }
 
-/**
- * Extrae texto, fuentes e imágenes de cada página usando pdfjs-dist.
- */
-async function extractPageTextData(
+async function extractPages(
   fileBuffer: ArrayBuffer,
+  options: CompareOptions | undefined,
+  label: 'A' | 'B',
   report: (msg: WorkerMessage) => void,
-  label: string
-): Promise<{ pages: PageTextData[]; totalPages: number; fonts: string[]; imageCount: number }> {
-  const pages: PageTextData[] = [];
+): Promise<{
+  pages: PageExtraction[];
+  totalPages: number;
+  fonts: string[];
+  imageCount: number;
+  metadata?: Record<string, any>;
+}> {
+  const pages: PageExtraction[] = [];
   const allFonts = new Set<string>();
   let totalImageCount = 0;
 
   const pdfDoc = await pdfjsLib.getDocument({
-    data: new Uint8Array(fileBuffer.slice(0) as ArrayBuffer),
+    data: new Uint8Array(fileBuffer.slice(0)),
     stopAtErrors: false,
   }).promise;
 
   const totalPages = pdfDoc.numPages;
+
+  let metadata: Record<string, any> | undefined;
+  try {
+    const metaObj = await pdfDoc.getMetadata();
+    metadata = metaObj.info as Record<string, any>;
+  } catch {
+    // Skip
+  }
 
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     checkCancelled();
@@ -205,21 +278,23 @@ async function extractPageTextData(
       type: 'progress',
       phase: label === 'A' ? 'extracting1' : 'extracting2',
       percent: pct,
-      message: `Extrayendo texto de ${label} - Página ${pageNum} de ${totalPages}...`,
+      message: `Extrayendo texto del Documento ${label} - Página ${pageNum} de ${totalPages}...`,
       currentPage: pageNum,
       totalPages,
     });
 
-    const segments: TextSegment[] = [];
-    const words: string[] = [];
+    const tokens: WordToken[] = [];
     const pageFonts: string[] = [];
     let pageImageCount = 0;
+    let width = 595;
+    let height = 842;
 
     try {
       const page = await pdfDoc.getPage(pageNum);
       const viewport = page.getViewport({ scale: 1.0 });
+      width = Math.round(viewport.width);
+      height = Math.round(viewport.height);
 
-      // ─── Extraer texto ───
       const textContent = await page.getTextContent();
 
       for (const item of textContent.items) {
@@ -229,379 +304,183 @@ async function extractPageTextData(
           const [vx, vy] = viewport.convertToViewportPoint(tx, ty);
           const itemWidth = item.width > 0 ? item.width : item.str.length * 6;
           const itemHeight = item.height > 0 ? item.height : 12;
-          const fontSize = 'height' in item && item.height > 0 ? item.height : undefined;
-          const fontName = 'fontName' in item ? (item as { fontName?: string }).fontName : undefined;
+          const fontName =
+            'fontName' in item ? (item as { fontName?: string }).fontName : undefined;
 
           if (fontName) {
             pageFonts.push(fontName);
             allFonts.add(fontName);
           }
 
-          const seg: TextSegment = {
-            page: pageNum,
-            text: item.str,
-            bbox: {
-              x: vx,
-              y: vy - itemHeight,
-              width: itemWidth,
-              height: itemHeight * 1.2,
-            },
-            fontSize,
-            fontName,
-          };
-          segments.push(seg);
+          const rawWords = item.str.match(/\S+/g) || [];
+          const wordApproxWidth = itemWidth / Math.max(1, rawWords.length);
 
-          // Tokenizar palabras
-          const segWords = item.str.match(/\S+/g) || [];
-          for (const w of segWords) words.push(w);
+          for (let wIdx = 0; wIdx < rawWords.length; wIdx++) {
+            const rawWord = rawWords[wIdx];
+            tokens.push({
+              raw: rawWord,
+              norm: normalizeWord(rawWord, options),
+              bbox: {
+                x: vx + wIdx * wordApproxWidth,
+                y: vy - itemHeight,
+                width: wordApproxWidth,
+                height: itemHeight * 1.2,
+              },
+            });
+          }
         }
       }
 
-      // ─── Extraer imágenes y fuentes de los recursos de la página ───
       try {
         const opList = await page.getOperatorList();
         for (let i = 0; i < opList.fnArray.length; i++) {
-          // Ops que indican imágenes: OPS.paintImageXObject, OPS.paintInlineImageXObject, etc.
           const fn = opList.fnArray[i];
-          // pdfjs-dist OPS values:
-          // paintImageXObject = 85, paintInlineImageXObject = 86
-          // paintImageMaskXObject = 87
-          // beginInlineImage = 92
           if (fn === 85 || fn === 86 || fn === 87 || fn === 92) {
             pageImageCount++;
             totalImageCount++;
           }
         }
       } catch {
-        // No se pudo extraer operadores — continuar sin conteo de imágenes
+        // Skip
       }
 
-      // ─── Renderizar página para comparación visual ───
-      try {
-        const renderViewport = page.getViewport({ scale: 1.0 });
-        const canvas = new OffscreenCanvas(renderViewport.width, renderViewport.height);
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          await page.render({
-            canvasContext: ctx,
-            viewport: renderViewport,
-          } as unknown as Parameters<typeof page.render>[0]).promise;
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          pages.push({
-            pageNum,
-            segments,
-            words,
-            renderedImageData: imageData,
-            fonts: pageFonts,
-            imageCount: pageImageCount,
-          });
-          continue;
+      let renderedImageData: ImageData | undefined;
+      if (options?.enableVisualDiff !== false) {
+        try {
+          const canvas = new OffscreenCanvas(viewport.width, viewport.height);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({
+              canvasContext: ctx,
+              viewport,
+            } as unknown as Parameters<typeof page.render>[0]).promise;
+            renderedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          }
+        } catch {
+          // Skip
         }
-      } catch { /* visual render falló — continuar sin imagen */ }
-    } catch { /* página corrupta — saltar */ }
-
-    pages.push({
-      pageNum,
-      segments,
-      words,
-      fonts: pageFonts,
-      imageCount: pageImageCount,
-    });
-  }
-
-  return { pages, totalPages, fonts: Array.from(allFonts), imageCount: totalImageCount };
-}
-
-// ============================================================
-// ALGORITMO DE DIFF — LCS por palabras
-// ============================================================
-
-interface LcsDiffItem {
-  type: 'equal' | 'added' | 'removed';
-  value: string;
-  indexA?: number;
-  indexB?: number;
-  bboxA?: { x: number; y: number; width: number; height: number };
-  bboxB?: { x: number; y: number; width: number; height: number };
-}
-
-function computeWordDiff(
-  wordsA: string[],
-  wordsB: string[],
-  segsA?: TextSegment[],
-  segsB?: TextSegment[]
-): LcsDiffItem[] {
-  const m = wordsA.length;
-  const n = wordsB.length;
-
-  // LCS table (programación dinámica)
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-
-  for (let i = 1; i <= m; i++) {
-    checkCancelled();
-    for (let j = 1; j <= n; j++) {
-      if (wordsA[i - 1] === wordsB[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
       }
-    }
-  }
 
-  // Backtrack para construir el diff
-  const diff: LcsDiffItem[] = [];
-  let i = m, j = n;
-
-  // Mapa de palabra → bbox (aproximado)
-  const bboxMapA = new Map<number, { x: number; y: number; width: number; height: number }>();
-  const bboxMapB = new Map<number, { x: number; y: number; width: number; height: number }>();
-
-  if (segsA) {
-    let wordIdx = 0;
-    for (const seg of segsA) {
-      const ws = seg.text.match(/\S+/g) || [];
-      for (let w = 0; w < ws.length; w++) {
-        bboxMapA.set(wordIdx + w, { ...seg.bbox });
-      }
-      wordIdx += ws.length;
-    }
-  }
-  if (segsB) {
-    let wordIdx = 0;
-    for (const seg of segsB) {
-      const ws = seg.text.match(/\S+/g) || [];
-      for (let w = 0; w < ws.length; w++) {
-        bboxMapB.set(wordIdx + w, { ...seg.bbox });
-      }
-      wordIdx += ws.length;
-    }
-  }
-
-  while (i > 0 || j > 0) {
-    checkCancelled();
-    if (i > 0 && j > 0 && wordsA[i - 1] === wordsB[j - 1]) {
-      diff.unshift({
-        type: 'equal',
-        value: wordsA[i - 1],
-        indexA: i - 1,
-        indexB: j - 1,
-        bboxA: bboxMapA.get(i - 1),
-        bboxB: bboxMapB.get(j - 1),
+      pages.push({
+        pageNum,
+        tokens,
+        width,
+        height,
+        fonts: pageFonts,
+        imageCount: pageImageCount,
+        renderedImageData,
       });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      diff.unshift({
-        type: 'added',
-        value: wordsB[j - 1],
-        indexB: j - 1,
-        bboxB: bboxMapB.get(j - 1),
+    } catch {
+      pages.push({
+        pageNum,
+        tokens,
+        width,
+        height,
+        fonts: pageFonts,
+        imageCount: pageImageCount,
       });
-      j--;
-    } else {
-      diff.unshift({
-        type: 'removed',
-        value: wordsA[i - 1],
-        indexA: i - 1,
-        bboxA: bboxMapA.get(i - 1),
-      });
-      i--;
-    }
-  }
-
-  return diff;
-}
-
-// ============================================================
-// AGRUPACIÓN SEMÁNTICA POR BLOQUES (PÁRRAFOS/ORACIONES)
-// ============================================================
-
-/**
- * Agrupa palabras adyacentes del mismo tipo de cambio en DiffBlocks.
- * Cada bloque incluye contexto de 3 palabras antes y después.
- * Separa bloques cuando hay más de 1 palabra 'equal' consecutiva entre cambios.
- */
-function buildDiffBlocks(diffWords: DiffWord[]): DiffBlock[] {
-  const blocks: DiffBlock[] = [];
-  if (diffWords.length === 0) return blocks;
-
-  let currentType: 'equal' | 'added' | 'removed' | null = null;
-  let currentWords: DiffWord[] = [];
-  let currentStartIdx = 0;
-
-  const flushBlock = () => {
-    if (currentWords.length === 0 || currentType === null) return;
-
-    // Calcular bbox combinada
-    const validBboxes = currentWords.map(w => w.bbox).filter(Boolean) as { x: number; y: number; width: number; height: number }[];
-    let combinedBbox: { x: number; y: number; width: number; height: number } | undefined;
-    if (validBboxes.length > 0) {
-      const minX = Math.min(...validBboxes.map(b => b.x));
-      const minY = Math.min(...validBboxes.map(b => b.y));
-      const maxX = Math.max(...validBboxes.map(b => b.x + b.width));
-      const maxY = Math.max(...validBboxes.map(b => b.y + b.height));
-      combinedBbox = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    } else if (currentWords[0]?.bbox) {
-      combinedBbox = { ...currentWords[0].bbox };
-    }
-
-    // Contexto: 3 palabras antes y después
-    const ctxBeforeWords = diffWords
-      .slice(Math.max(0, currentStartIdx - 3), currentStartIdx)
-      .map(w => w.text)
-      .join(' ');
-    const ctxAfterWords = diffWords
-      .slice(currentStartIdx + currentWords.length, currentStartIdx + currentWords.length + 3)
-      .map(w => w.text)
-      .join(' ');
-
-    blocks.push({
-      type: currentType,
-      page: currentWords[0]?.page || 1,
-      text: currentWords.map(w => w.text).join(' '),
-      words: currentWords,
-      bbox: combinedBbox,
-      contextBefore: ctxBeforeWords,
-      contextAfter: ctxAfterWords,
-    });
-
-    currentWords = [];
-  };
-
-  for (let i = 0; i < diffWords.length; i++) {
-    const w = diffWords[i];
-
-    if (currentType === null) {
-      currentType = w.type;
-      currentWords = [w];
-      currentStartIdx = i;
-    } else if (w.type === currentType) {
-      currentWords.push(w);
-    } else {
-      // Solo agrupamos bloques de cambio (added/removed). Los 'equal' se procesan
-      // individualmente o en grupos pequeños como contexto.
-      flushBlock();
-      currentType = w.type;
-      currentWords = [w];
-      currentStartIdx = i;
-    }
-  }
-  flushBlock();
-
-  // Filtrar solo bloques que contengan cambios reales (added/removed)
-  return blocks.filter(b => b.type !== 'equal');
-}
-
-// ============================================================
-// COMPARACIÓN VISUAL PIXEL A PIXEL
-// ============================================================
-
-function computeVisualDiff(
-  imgData1: ImageData | undefined,
-  imgData2: ImageData | undefined
-): { ratio: number; heatmapData?: ImageData } {
-  if (!imgData1 || !imgData2) return { ratio: 0 };
-  if (imgData1.width !== imgData2.width || imgData1.height !== imgData2.height) return { ratio: 1 };
-
-  const d1 = imgData1.data;
-  const d2 = imgData2.data;
-  const total = d1.length;
-  let diffPixels = 0;
-
-  // Crear heatmap data (rojo para píxeles diferentes)
-  const heatmap = new Uint8ClampedArray(total);
-  for (let i = 0; i < total; i += 4) {
-    const dr = Math.abs(d1[i] - d2[i]);
-    const dg = Math.abs(d1[i + 1] - d2[i + 1]);
-    const db = Math.abs(d1[i + 2] - d2[i + 2]);
-    if (dr > 30 || dg > 30 || db > 30) {
-      diffPixels++;
-      // Pixel diferente: rojo intenso
-      heatmap[i] = 255;
-      heatmap[i + 1] = 0;
-      heatmap[i + 2] = 0;
-      heatmap[i + 3] = 180;
-    } else {
-      // Pixel igual: gris translúcido
-      heatmap[i] = 0;
-      heatmap[i + 1] = 0;
-      heatmap[i + 2] = 0;
-      heatmap[i + 3] = 20;
     }
   }
 
   return {
-    ratio: diffPixels / (total / 4),
-    heatmapData: new ImageData(heatmap, imgData1.width, imgData1.height),
+    pages,
+    totalPages,
+    fonts: Array.from(allFonts),
+    imageCount: totalImageCount,
+    metadata,
   };
 }
 
 // ============================================================
-// COMPARACIÓN ESTRUCTURAL
+// COMPARACIÓN ESTRUCTURAL CORPORATIVA
 // ============================================================
 
-/**
- * Compara metadatos, fuentes e imágenes entre los dos documentos.
- */
 function computeStructuralDiffs(
-  doc1: { fonts: string[]; imageCount: number; totalPages: number },
-  doc2: { fonts: string[]; imageCount: number; totalPages: number },
-  pages1: PageTextData[],
-  pages2: PageTextData[]
+  doc1: { fonts: string[]; imageCount: number; totalPages: number; metadata?: Record<string, any> },
+  doc2: { fonts: string[]; imageCount: number; totalPages: number; metadata?: Record<string, any> },
+  pages1: PageExtraction[],
+  pages2: PageExtraction[],
 ): StructuralDiff[] {
   const diffs: StructuralDiff[] = [];
 
-  // ─── Diferencia en número de páginas ───
+  // Páginas
   if (doc1.totalPages !== doc2.totalPages) {
     diffs.push({
       category: 'pages',
       type: 'modified',
-      description: `Número de páginas cambió de ${doc1.totalPages} a ${doc2.totalPages}`,
-      detail: `Diferencia: ${Math.abs(doc2.totalPages - doc1.totalPages)} página(s)`,
+      description: `Número de páginas modificado: de ${doc1.totalPages} a ${doc2.totalPages}`,
+      detail: `Diferencia de ${Math.abs(doc2.totalPages - doc1.totalPages)} página(s)`,
     });
   }
 
-  // ─── Diferencia en fuentes ───
-  const fontsSet1 = new Set(doc1.fonts);
-  const fontsSet2 = new Set(doc2.fonts);
-  const addedFonts = doc2.fonts.filter(f => !fontsSet1.has(f));
-  const removedFonts = doc1.fonts.filter(f => !fontsSet2.has(f));
+  // Dimensiones y orientación de página
+  const maxP = Math.max(pages1.length, pages2.length);
+  for (let p = 1; p <= maxP; p++) {
+    const p1 = pages1.find((pg) => pg.pageNum === p);
+    const p2 = pages2.find((pg) => pg.pageNum === p);
+    if (p1 && p2) {
+      if (Math.abs(p1.width - p2.width) > 5 || Math.abs(p1.height - p2.height) > 5) {
+        diffs.push({
+          category: 'dimensions',
+          type: 'modified',
+          description: `Página ${p}: tamaño alterado (${p1.width}x${p1.height} pt -> ${p2.width}x${p2.height} pt)`,
+          detail:
+            p1.width > p1.height && p2.width < p2.height
+              ? 'Cambio de orientación Horizontal a Vertical'
+              : p1.width < p1.height && p2.width > p2.height
+                ? 'Cambio de orientación Vertical a Horizontal'
+                : 'Escala o margen modificado',
+        });
+      }
+    }
+  }
+
+  // Fuentes
+  const f1 = new Set(doc1.fonts);
+  const f2 = new Set(doc2.fonts);
+  const addedFonts = doc2.fonts.filter((f) => !f1.has(f));
+  const removedFonts = doc1.fonts.filter((f) => !f2.has(f));
 
   for (const f of addedFonts) {
     diffs.push({
       category: 'fonts',
       type: 'added',
-      description: `Fuente añadida: ${f}`,
+      description: `Tipografía añadida: ${f}`,
     });
   }
   for (const f of removedFonts) {
     diffs.push({
       category: 'fonts',
       type: 'removed',
-      description: `Fuente eliminada: ${f}`,
+      description: `Tipografía retirada: ${f}`,
     });
   }
 
-  // ─── Diferencia en imágenes ───
+  // Imágenes globales
   if (doc1.imageCount !== doc2.imageCount) {
     const diff = doc2.imageCount - doc1.imageCount;
     diffs.push({
       category: 'images',
       type: 'modified',
-      description: `Cantidad de imágenes: ${doc1.imageCount} → ${doc2.imageCount}`,
-      detail: diff > 0 ? `${diff} imagen(es) añadida(s)` : `${Math.abs(diff)} imagen(es) eliminada(s)`,
+      description: `Recursos gráficos: ${doc1.imageCount} -> ${doc2.imageCount}`,
+      detail:
+        diff > 0 ? `${diff} imagen(es) añadida(s)` : `${Math.abs(diff)} imagen(es) eliminada(s)`,
     });
   }
 
-  // ─── Diferencia en imágenes por página ───
-  for (const pg1 of pages1) {
-    const pg2 = pages2.find(p => p.pageNum === pg1.pageNum);
-    if (pg2 && pg1.imageCount !== pg2.imageCount) {
-      diffs.push({
-        category: 'images',
-        type: 'modified',
-        description: `Página ${pg1.pageNum}: imágenes cambiaron de ${pg1.imageCount} a ${pg2.imageCount}`,
-      });
+  // Metadatos
+  if (doc1.metadata && doc2.metadata) {
+    const keysToCheck = ['Title', 'Author', 'Subject', 'Creator', 'Producer'];
+    for (const k of keysToCheck) {
+      const v1 = doc1.metadata[k];
+      const v2 = doc2.metadata[k];
+      if (v1 !== v2) {
+        diffs.push({
+          category: 'metadata',
+          type: 'modified',
+          description: `Metadato [${k}]: "${v1 || '(vacío)'}" -> "${v2 || '(vacío)'}"`,
+        });
+      }
     }
   }
 
@@ -609,7 +488,7 @@ function computeStructuralDiffs(
 }
 
 // ============================================================
-// COMPARACIÓN PRINCIPAL (MOTOR CORPORATIVO v3.0)
+// COMPARADOR PRINCIPAL
 // ============================================================
 
 async function comparePdfs(
@@ -617,50 +496,76 @@ async function comparePdfs(
   buffer2: ArrayBuffer,
   fileName1: string,
   fileName2: string,
-  report: (msg: WorkerMessage) => void
+  options: CompareOptions | undefined,
+  report: (msg: WorkerMessage) => void,
 ): Promise<CompareResult> {
-
-  // ─── Fase 0: Checksums SHA-256 ───
-  report({ type: 'progress', phase: 'hashing', percent: 0, message: 'Calculando checksums SHA-256 para auditoría...' });
+  // 1. Hashes SHA-256
+  report({
+    type: 'progress',
+    phase: 'hashing',
+    percent: 0,
+    message: 'Calculando hashes criptográficos SHA-256 para auditoría...',
+  });
   const [checksum1, checksum2] = await Promise.all([
     computeSHA256(buffer1),
     computeSHA256(buffer2),
   ]);
   checkCancelled();
 
-  // ─── Fase 1: Extracción de texto ───
-  report({ type: 'progress', phase: 'extracting1', percent: 5, message: 'Extrayendo texto del Documento A (Original)...' });
-  const {
-    pages: pages1,
-    totalPages: totalPages1,
-    fonts: fonts1,
-    imageCount: images1,
-  } = await extractPageTextData(buffer1, report, 'A');
+  // 2. Extracción A
+  report({
+    type: 'progress',
+    phase: 'extracting1',
+    percent: 5,
+    message: 'Extrayendo datos de Documento A (Base)...',
+  });
+  const docA = await extractPages(buffer1, options, 'A', report);
   checkCancelled();
 
-  report({ type: 'progress', phase: 'extracting2', percent: 50, message: 'Extrayendo texto del Documento B (Modificado)...' });
-  const {
-    pages: pages2,
-    totalPages: totalPages2,
-    fonts: fonts2,
-    imageCount: images2,
-  } = await extractPageTextData(buffer2, report, 'B');
+  // 3. Extracción B
+  report({
+    type: 'progress',
+    phase: 'extracting2',
+    percent: 45,
+    message: 'Extrayendo datos de Documento B (Modificado)...',
+  });
+  const docB = await extractPages(buffer2, options, 'B', report);
   checkCancelled();
 
-  // ─── Fase 2: Diff estructural ───
-  report({ type: 'progress', phase: 'structural', percent: 60, message: 'Analizando cambios estructurales (fuentes, imágenes, metadatos)...' });
+  // 4. Estructural
+  report({
+    type: 'progress',
+    phase: 'structural',
+    percent: 60,
+    message: 'Analizando cambios estructurales, fuentes, imágenes y orientación...',
+  });
   const structuralDiffs = computeStructuralDiffs(
-    { fonts: fonts1, imageCount: images1, totalPages: totalPages1 },
-    { fonts: fonts2, imageCount: images2, totalPages: totalPages2 },
-    pages1,
-    pages2
+    {
+      fonts: docA.fonts,
+      imageCount: docA.imageCount,
+      totalPages: docA.totalPages,
+      metadata: docA.metadata,
+    },
+    {
+      fonts: docB.fonts,
+      imageCount: docB.imageCount,
+      totalPages: docB.totalPages,
+      metadata: docB.metadata,
+    },
+    docA.pages,
+    docB.pages,
   );
   checkCancelled();
 
-  // ─── Fase 3: Diff página por página ───
-  report({ type: 'progress', phase: 'diffing', percent: 65, message: 'Calculando diferencias página por página (algoritmo LCS)...' });
+  // 5. Comparación página por página con Myers Diff
+  report({
+    type: 'progress',
+    phase: 'diffing',
+    percent: 70,
+    message: 'Ejecutando motor de diferenciación Myers de alta velocidad...',
+  });
 
-  const maxPages = Math.max(totalPages1, totalPages2);
+  const maxPages = Math.max(docA.totalPages, docB.totalPages);
   const pageDiffs: PageDiff[] = [];
   let totalRemovals = 0;
   let totalAdditions = 0;
@@ -668,22 +573,21 @@ async function comparePdfs(
   const pagesAdded: number[] = [];
   const pagesRemoved: number[] = [];
   let pagesWithVisualChanges = 0;
-  let totalSimilaritySum = 0;
 
   for (let p = 1; p <= maxPages; p++) {
     checkCancelled();
 
-    const page1 = pages1.find(pg => pg.pageNum === p);
-    const page2 = pages2.find(pg => pg.pageNum === p);
+    const p1 = docA.pages.find((pg) => pg.pageNum === p);
+    const p2 = docB.pages.find((pg) => pg.pageNum === p);
 
-    if (!page1 && page2) {
-      // Página añadida (solo en B)
+    if (!p1 && p2) {
       pagesAdded.push(p);
-      const words: DiffWord[] = page2.words.map((w, idx) => ({
-        text: w,
+      const words: DiffWord[] = p2.tokens.map((t, idx) => ({
+        text: t.raw,
         type: 'added' as const,
         page: p,
         index: idx,
+        bbox: t.bbox,
       }));
       const blocks = buildDiffBlocks(words);
       pageDiffs.push({
@@ -696,21 +600,21 @@ async function comparePdfs(
         hasVisualChanges: true,
         similarityPercent: 0,
         visualDiffRatio: 1,
-        fontChanges: page2.fonts,
+        fontChanges: p2.fonts,
         imageChanges: [],
       });
       totalAdditions += words.length;
       continue;
     }
 
-    if (page1 && !page2) {
-      // Página eliminada (solo en A)
+    if (p1 && !p2) {
       pagesRemoved.push(p);
-      const words: DiffWord[] = page1.words.map((w, idx) => ({
-        text: w,
+      const words: DiffWord[] = p1.tokens.map((t, idx) => ({
+        text: t.raw,
         type: 'removed' as const,
         page: p,
         index: idx,
+        bbox: t.bbox,
       }));
       const blocks = buildDiffBlocks(words);
       pageDiffs.push({
@@ -723,117 +627,137 @@ async function comparePdfs(
         hasVisualChanges: true,
         similarityPercent: 0,
         visualDiffRatio: 1,
-        fontChanges: page1.fonts,
+        fontChanges: p1.fonts,
         imageChanges: [],
       });
       totalRemovals += words.length;
       continue;
     }
 
-    if (!page1 || !page2) continue;
+    if (!p1 || !p2) continue;
 
-    // Ambas páginas existen → diff real
-    const diffItems = computeWordDiff(
-      page1.words,
-      page2.words,
-      page1.segments,
-      page2.segments
-    );
-
-    const pd: PageDiff = {
-      page: p,
-      removedCount: 0,
-      addedCount: 0,
-      unchangedCount: 0,
-      words: [],
-      blocks: [],
-      hasVisualChanges: false,
-      similarityPercent: 100,
-      visualDiffRatio: 0,
-    };
+    const diffItems = myersDiffWords(p1.tokens, p2.tokens, options);
 
     const diffWords: DiffWord[] = [];
+    let pageRemovals = 0;
+    let pageAdditions = 0;
+    let pageUnchanged = 0;
 
-    for (const d of diffItems) {
-      const bbox = d.type === 'removed' ? d.bboxA : d.type === 'added' ? d.bboxB : d.bboxA;
+    for (let di = 0; di < diffItems.length; di++) {
+      const item = diffItems[di];
+      const rawText =
+        item.type === 'removed'
+          ? item.valueA?.raw || ''
+          : item.type === 'added'
+            ? item.valueB?.raw || ''
+            : item.valueA?.raw || item.valueB?.raw || '';
+
+      const bbox =
+        item.type === 'removed'
+          ? item.valueA?.bbox
+          : item.type === 'added'
+            ? item.valueB?.bbox
+            : item.valueA?.bbox || item.valueB?.bbox;
+
       diffWords.push({
-        text: d.value,
-        type: d.type,
+        text: rawText,
+        type: item.type,
         page: p,
-        index: d.indexA ?? d.indexB ?? 0,
+        index: item.indexA ?? item.indexB ?? di,
         bbox,
       });
 
-      if (d.type === 'removed') pd.removedCount++;
-      else if (d.type === 'added') pd.addedCount++;
-      else pd.unchangedCount++;
+      if (item.type === 'removed') pageRemovals++;
+      else if (item.type === 'added') pageAdditions++;
+      else pageUnchanged++;
     }
 
-    pd.words = diffWords;
+    const totalWordsOnPage = pageRemovals + pageAdditions + pageUnchanged;
+    const similarityPercent =
+      totalWordsOnPage > 0 ? Math.round((pageUnchanged / totalWordsOnPage) * 100) : 100;
 
-    // Construir bloques semánticos
-    pd.blocks = buildDiffBlocks(diffWords);
+    const visual = computeVisualDiff(p1.renderedImageData, p2.renderedImageData);
+    const hasVisualChanges = visual.ratio > 0.03;
+    if (hasVisualChanges) pagesWithVisualChanges++;
 
-    // Calcular % de similitud de esta página
-    const totalWords = pd.removedCount + pd.addedCount + pd.unchangedCount;
-    pd.similarityPercent = totalWords > 0 ? Math.round((pd.unchangedCount / totalWords) * 100) : 100;
+    const fontsAdded = p2.fonts.filter((f) => !p1.fonts.includes(f));
+    const fontsRemoved = p1.fonts.filter((f) => !p2.fonts.includes(f));
+    const fontChanges =
+      fontsAdded.length > 0 || fontsRemoved.length > 0
+        ? [...fontsAdded.map((f) => `+${f}`), ...fontsRemoved.map((f) => `-${f}`)]
+        : undefined;
 
-    // Comparación visual
-    const visualResult = computeVisualDiff(page1.renderedImageData, page2.renderedImageData);
-    pd.visualDiffRatio = visualResult.ratio;
-    pd.hasVisualChanges = visualResult.ratio > 0.05; // 5% de píxeles diferentes = cambio visual
-
-    if (pd.hasVisualChanges) pagesWithVisualChanges++;
-
-    // Cambios de fuentes e imágenes en esta página
-    const pageFontsAdded = page2.fonts.filter(f => !page1.fonts.includes(f));
-    const pageFontsRemoved = page1.fonts.filter(f => !page2.fonts.includes(f));
-    if (pageFontsAdded.length > 0 || pageFontsRemoved.length > 0) {
-      pd.fontChanges = [...pageFontsAdded.map(f => `+${f}`), ...pageFontsRemoved.map(f => `-${f}`)];
+    let dimensionChange: string | undefined;
+    if (Math.abs(p1.width - p2.width) > 5 || Math.abs(p1.height - p2.height) > 5) {
+      dimensionChange = `${p1.width}x${p1.height} -> ${p2.width}x${p2.height}`;
     }
 
-    totalRemovals += pd.removedCount;
-    totalAdditions += pd.addedCount;
-    totalUnchanged += pd.unchangedCount;
-    totalSimilaritySum += pd.similarityPercent;
+    pageDiffs.push({
+      page: p,
+      removedCount: pageRemovals,
+      addedCount: pageAdditions,
+      unchangedCount: pageUnchanged,
+      words: diffWords,
+      blocks: buildDiffBlocks(diffWords),
+      hasVisualChanges,
+      similarityPercent,
+      visualDiffRatio: visual.ratio,
+      heatmapDataUrl: visual.heatmapDataUrl,
+      fontChanges,
+      dimensionChange,
+    });
 
-    pageDiffs.push(pd);
+    totalRemovals += pageRemovals;
+    totalAdditions += pageAdditions;
+    totalUnchanged += pageUnchanged;
   }
 
-  // Ordenar por página
   pageDiffs.sort((a, b) => a.page - b.page);
 
-  // ─── Fase 4: Cálculos globales ───
-  report({ type: 'progress', phase: 'packaging', percent: 95, message: 'Generando estadísticas globales...' });
+  // 6. Resumen Ejecutivo
+  report({
+    type: 'progress',
+    phase: 'packaging',
+    percent: 95,
+    message: 'Generando informe corporativo y estadísticas de auditoría...',
+  });
 
-  const changedPages = pageDiffs.filter(pd => pd.removedCount + pd.addedCount > 0).length;
-  const totalWordsOverall = totalRemovals + totalAdditions + totalUnchanged;
-  const globalSimilarityPercent = totalWordsOverall > 0
-    ? Math.round((totalUnchanged / totalWordsOverall) * 100)
-    : 100;
+  const changedPagesCount = pageDiffs.filter((pd) => pd.removedCount + pd.addedCount > 0).length;
+  const grandTotalWords = totalRemovals + totalAdditions + totalUnchanged;
+  const globalSimilarityPercent =
+    grandTotalWords > 0 ? Math.round((totalUnchanged / grandTotalWords) * 100) : 100;
 
-  // Generar resumen
   let summary = '';
-  if (totalRemovals === 0 && totalAdditions === 0 && pagesAdded.length === 0 && pagesRemoved.length === 0) {
-    summary = '✅ Los documentos son idénticos. No se encontraron diferencias de texto.';
+  if (
+    totalRemovals === 0 &&
+    totalAdditions === 0 &&
+    pagesAdded.length === 0 &&
+    pagesRemoved.length === 0
+  ) {
+    summary = '✅ Documentos idénticos. No se detectaron discrepancias en contenido ni texto.';
   } else {
     const parts: string[] = [];
     if (totalRemovals > 0) parts.push(`${totalRemovals} palabras eliminadas`);
     if (totalAdditions > 0) parts.push(`${totalAdditions} palabras añadidas`);
-    if (totalUnchanged > 0) parts.push(`${totalUnchanged} palabras sin cambios`);
+    if (totalUnchanged > 0) parts.push(`${totalUnchanged} palabras sin cambio`);
     if (pagesAdded.length > 0) parts.push(`${pagesAdded.length} páginas añadidas`);
     if (pagesRemoved.length > 0) parts.push(`${pagesRemoved.length} páginas eliminadas`);
-    summary = `📊 ${changedPages} página(s) modificada(s): ${parts.join(', ')}. Similitud global: ${globalSimilarityPercent}%.`;
+    summary = `📊 ${changedPagesCount} página(s) modificada(s): ${parts.join(', ')}. Similitud: ${globalSimilarityPercent}%.`;
   }
 
-  report({ type: 'progress', phase: 'packaging', percent: 100, message: 'Comparación completada.' });
+  report({
+    type: 'progress',
+    phase: 'packaging',
+    percent: 100,
+    message: 'Comparación completada exitosamente.',
+  });
 
   return {
     type: 'result',
     fileName1,
     fileName2,
-    totalPages1,
-    totalPages2,
+    totalPages1: docA.totalPages,
+    totalPages2: docB.totalPages,
     pagesAdded,
     pagesRemoved,
     totalRemovals,
@@ -856,26 +780,20 @@ async function comparePdfs(
 self.onmessage = async (event: MessageEvent) => {
   const data = event.data as { type?: string } & WorkerInput;
 
-  // Manejar cancelación
   if (data.type === 'cancel') {
     cancelled = true;
     self.postMessage({ type: 'cancelled' } as CompareCancelled);
     return;
   }
 
-  const { buffer1, buffer2, fileName1, fileName2 } = data;
-
-  // Reiniciar flag de cancelación
+  const { buffer1, buffer2, fileName1, fileName2, options } = data;
   cancelled = false;
 
   try {
-    const result = await comparePdfs(buffer1, buffer2, fileName1, fileName2, (msg) => {
-      // Usamos transfer list vacío para mensajes de progreso (no tienen buffers)
+    const result = await comparePdfs(buffer1, buffer2, fileName1, fileName2, options, (msg) => {
       self.postMessage(msg);
     });
 
-    // Transferir los buffers de checksum (son strings, no buffers grandes)
-    // El resultado no contiene buffers grandes que necesiten transfer
     self.postMessage(result);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {

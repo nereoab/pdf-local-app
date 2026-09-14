@@ -56,11 +56,15 @@ export default function ConverterSeoSection({
   const features = isEs ? featuresEs : featuresEn;
   const faqs = isEs ? faqsEs : faqsEn;
 
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+  const toolUrl = `${SITE_URL}/convertir/${toolKey}`;
+
   // Schema.org Structured Data
-  const jsonLd = {
+  const webAppSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: `PDFBlack - ${title}`,
+    name: `PDFBlack — ${title}`,
+    url: toolUrl,
     applicationCategory: 'UtilityApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript',
@@ -73,17 +77,85 @@ export default function ConverterSeoSection({
     featureList: features.map((f) => f.title).join(', '),
   };
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: isEs ? 'Inicio' : 'Home',
+        item: SITE_URL,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: isEs ? 'Convertir PDF' : 'Convert PDF',
+        item: `${SITE_URL}/convertir`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: title,
+        item: toolUrl,
+      },
+    ],
+  };
+
+  const howToSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: title,
+    description,
+    step: steps.map((s, idx) => ({
+      '@type': 'HowToStep',
+      position: idx + 1,
+      name: s.title,
+      text: s.desc,
+    })),
+  };
+
+  const faqSchema =
+    faqs && faqs.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: faqs.map((f) => ({
+            '@type': 'Question',
+            name: f.q,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: f.a,
+            },
+          })),
+        }
+      : null;
+
   const toggleFaq = (idx: number) => {
     setOpenFaqIndex(openFaqIndex === idx ? null : idx);
   };
 
   return (
     <section className="w-full mt-24 mb-16 font-mono text-white flex flex-col items-center">
-      {/* JSON-LD Script */}
+      {/* JSON-LD Scripts */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppSchema) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
+      />
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
 
       <div className="w-full max-w-5xl space-y-16">
         {/* Header descriptivo */}

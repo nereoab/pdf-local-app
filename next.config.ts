@@ -99,6 +99,42 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // ── Redirecciones 301 Canónicas Anti-Canibalización SEO ──
+  async redirects() {
+    return [
+      {
+        source: '/desbloquear',
+        destination: '/optimizar/desbloquear',
+        permanent: true,
+      },
+      {
+        source: '/desbloquear-pdf',
+        destination: '/optimizar/desbloquear',
+        permanent: true,
+      },
+      {
+        source: '/optimizar/comprimir-pdf',
+        destination: '/optimizar/comprimir',
+        permanent: true,
+      },
+      {
+        source: '/optimizar/desbloquear-pdf',
+        destination: '/optimizar/desbloquear',
+        permanent: true,
+      },
+      {
+        source: '/optimizar/proteger-pdf',
+        destination: '/optimizar/proteger',
+        permanent: true,
+      },
+      {
+        source: '/editar/firma',
+        destination: '/editar/firmar',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default bundleAnalyzer(nextConfig);

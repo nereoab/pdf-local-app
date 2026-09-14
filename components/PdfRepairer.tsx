@@ -44,6 +44,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
+import JSZip from 'jszip';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type {
   RepairOptions,
@@ -57,6 +58,16 @@ import type {
 // ---------------------------------------------------------------------------
 // TIPOS LOCALES
 // ---------------------------------------------------------------------------
+
+export interface RepairedItem {
+  fileName: string;
+  originalSize: number;
+  repairedSize: number;
+  downloadUrl: string;
+  rawBlob?: Blob;
+  pagesRecovered: number;
+  pagesLost: number;
+}
 
 interface SlotItem {
   id: number;
@@ -117,7 +128,9 @@ export default function PdfRepairer() {
 
   const activeSlot = slots[activeSlotIndex];
   const activeFile = activeSlot?.file || null;
+  const activeFiles = slots.map((s) => s.file).filter(Boolean) as File[];
   const [file, setFile] = useState<File | null>(() => globalFile || null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // Sincronizar activeFile con file y globalFile
   useEffect(() => {
@@ -214,12 +227,14 @@ export default function PdfRepairer() {
     filename: string;
     fileSize: string;
     rawBlob?: Blob;
-    originalSize: number;
-    repairedSize: number;
+    totalOriginalSize: number;
+    totalRepairedSize: number;
     pagesRecovered: number;
     pagesLost: number;
     repairMethod: string;
+    items: RepairedItem[];
   } | null>(null);
+  const [isCreatingZip, setIsCreatingZip] = useState(false);
 
   // Previsualización Canvas / Miniaturas PDF
   const [previewPageNum, setPreviewPageNum] = useState<number>(1);
@@ -364,10 +379,73 @@ export default function PdfRepairer() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0];
-      loadSingleFileIntoSlot(activeSlotIndex, selected);
+      const uploadedFiles = Array.from(e.target.files).slice(0, 3);
+      if (uploadedFiles.length === 1) {
+        loadSingleFileIntoSlot(activeSlotIndex, uploadedFiles[0]);
+      } else {
+        setSlots((prev) => {
+          const next = [...prev];
+          uploadedFiles.forEach((f, idx) => {
+            if (idx < 3) {
+              next[idx] = { ...next[idx], file: f };
+            }
+          });
+          return next;
+        });
+        setActiveSlotIndex(0);
+        setDownloadUrl(null);
+        setCompletedResult(null);
+        toast.success(
+          isEs
+            ? `${uploadedFiles.length} archivos PDF cargados`
+            : `${uploadedFiles.length} PDF files loaded`,
+        );
+      }
     }
     e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files)
+      .filter((f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+      .slice(0, 3);
+    if (droppedFiles.length === 0) return;
+    if (droppedFiles.length === 1) {
+      loadSingleFileIntoSlot(activeSlotIndex, droppedFiles[0]);
+    } else {
+      setSlots((prev) => {
+        const next = [...prev];
+        droppedFiles.forEach((f, idx) => {
+          if (idx < 3) {
+            next[idx] = { ...next[idx], file: f };
+          }
+        });
+        return next;
+      });
+      setActiveSlotIndex(0);
+      setDownloadUrl(null);
+      setCompletedResult(null);
+      toast.success(
+        isEs
+          ? `${droppedFiles.length} archivos PDF cargados`
+          : `${droppedFiles.length} PDF files loaded`,
+      );
+    }
   };
 
   const removeFile = useCallback(() => {
@@ -576,8 +654,12 @@ export default function PdfRepairer() {
   // ---------------------------------------------------------------------------
 
   const executeRepair = async () => {
-    if (!file) {
-      toast.error(isEs ? 'Selecciona un archivo PDF para reparar' : 'Select a PDF file to repair');
+    if (activeFiles.length === 0) {
+      toast.error(
+        isEs
+          ? 'Selecciona al menos un archivo PDF para reparar'
+          : 'Select at least one PDF file to repair',
+      );
       return;
     }
 
@@ -589,94 +671,143 @@ export default function PdfRepairer() {
     setRecoveryReport(null);
     setDownloadUrl(null);
 
-    let localUrl: string | null = null;
-    const workerRef = new Worker(new URL('@/workers/pdf-repair.worker.ts', import.meta.url), {
-      type: 'module',
-    });
+    const repairedItems: RepairedItem[] = [];
+    let totalPagesRecovered = 0;
+    let totalPagesLost = 0;
+    let totalOriginalSize = 0;
+    let totalRepairedSize = 0;
+
+    const suffix = customSuffix || '_Reparado';
 
     try {
-      const fileBuffer = await file.arrayBuffer();
+      for (let i = 0; i < activeFiles.length; i++) {
+        const currentFile = activeFiles[i];
+        const filePrefix =
+          activeFiles.length > 1
+            ? isEs
+              ? `[${i + 1}/${activeFiles.length}] ${currentFile.name}: `
+              : `[${i + 1}/${activeFiles.length}] ${currentFile.name}: `
+            : '';
 
-      const options: RepairOptions = {
-        mode: repairMode,
-        recoveryPriority,
-        pageScope,
-        pageRange: pageRange || undefined,
-        compressionLevel,
-        damagedPageAction,
-        addRepairStamp,
-        removeRestrictions,
-        customSuffix,
-      };
+        const workerRef = new Worker(new URL('@/workers/pdf-repair.worker.ts', import.meta.url), {
+          type: 'module',
+        });
 
-      // Escuchar mensajes del worker (progreso, diagnóstico, reporte, resultado, error)
-      const result = await new Promise<RepairResult>((resolve, reject) => {
-        workerRef.onmessage = (event: MessageEvent) => {
-          const data = event.data as WorkerMessageFromWorker;
-          switch (data.type) {
-            case 'diagnostic':
-              setDiagnostic({
-                severity: data.severity,
-                summary: data.summary,
-                issues: data.issues.map((i) => ({
-                  category: i.category,
-                  severity: i.severity,
-                  message: i.message,
-                  details: i.details,
-                })),
-                fileSize: data.fileSize,
-              });
-              break;
+        try {
+          const fileBuffer = await currentFile.arrayBuffer();
+          const options: RepairOptions = {
+            mode: repairMode,
+            recoveryPriority,
+            pageScope,
+            pageRange: pageRange || undefined,
+            compressionLevel,
+            damagedPageAction,
+            addRepairStamp,
+            removeRestrictions,
+            customSuffix,
+          };
 
-            case 'progress':
-              setProgressPercent(data.percent ?? 0);
-              setProgressMsg(data.message ?? '');
-              setProgressPhase(data.phase ?? '');
-              break;
+          const result = await new Promise<RepairResult>((resolve, reject) => {
+            workerRef.onmessage = (event: MessageEvent) => {
+              const data = event.data as WorkerMessageFromWorker;
+              switch (data.type) {
+                case 'diagnostic':
+                  if (i === activeSlotIndex) {
+                    setDiagnostic({
+                      severity: data.severity,
+                      summary: data.summary,
+                      issues: data.issues.map((iss) => ({
+                        category: iss.category,
+                        severity: iss.severity,
+                        message: iss.message,
+                        details: iss.details,
+                      })),
+                      fileSize: data.fileSize,
+                    });
+                  }
+                  break;
 
-            case 'report':
-              setRecoveryReport(data);
-              break;
+                case 'progress': {
+                  const basePercent = (i / activeFiles.length) * 100;
+                  const fileShare = 100 / activeFiles.length;
+                  const currentPercent = Math.round(
+                    basePercent + ((data.percent ?? 0) / 100) * fileShare,
+                  );
+                  setProgressPercent(Math.min(currentPercent, 99));
+                  setProgressMsg(`${filePrefix}${data.message ?? ''}`);
+                  setProgressPhase(data.phase ?? '');
+                  break;
+                }
 
-            case 'result':
-              resolve(data);
-              break;
+                case 'report':
+                  if (i === activeSlotIndex) setRecoveryReport(data);
+                  break;
 
-            case 'error':
-              reject(new Error(data.message));
-              break;
-          }
-        };
+                case 'result':
+                  resolve(data);
+                  break;
 
-        workerRef.onerror = (err) => {
-          reject(new Error(`Worker error: ${err.message}`));
-        };
+                case 'error':
+                  reject(new Error(data.message));
+                  break;
+              }
+            };
 
-        // Enviar datos al worker
-        workerRef.postMessage({ fileBuffer, fileName: file.name, options });
-      });
+            workerRef.onerror = (err) => {
+              reject(new Error(`Worker error: ${err.message}`));
+            };
 
-      // Procesar resultado
-      const blob = new Blob([result.repairedBytes], { type: 'application/pdf' });
-      localUrl = URL.createObjectURL(blob);
-      setDownloadUrl(localUrl);
+            workerRef.postMessage({ fileBuffer, fileName: currentFile.name, options });
+          });
+
+          const blob = new Blob([result.repairedBytes], { type: 'application/pdf' });
+          const localUrl = URL.createObjectURL(blob);
+          const originalName = currentFile.name.replace(/\.[^/.]+$/, '');
+          const outFilename = `${originalName}${suffix}.pdf`;
+          const recovered = result.report?.pagesRecovered ?? 0;
+          const lost = result.report?.pagesLost ?? 0;
+
+          totalPagesRecovered += recovered;
+          totalPagesLost += lost;
+          totalOriginalSize += currentFile.size;
+          totalRepairedSize += blob.size;
+
+          repairedItems.push({
+            fileName: outFilename,
+            originalSize: currentFile.size,
+            repairedSize: blob.size,
+            downloadUrl: localUrl,
+            rawBlob: blob,
+            pagesRecovered: recovered,
+            pagesLost: lost,
+          });
+        } finally {
+          workerRef.terminate();
+        }
+      }
+
       setProgressPercent(100);
+      setProgressMsg(isEs ? '¡Reparación completada con éxito!' : 'Repair completed successfully!');
 
-      const originalName = file.name.replace(/\.[^/.]+$/, '');
-      const suffix = customSuffix || '_Reparado';
-      const report = recoveryReport || result.report;
-
+      const first = repairedItems[0];
       setCompletedResult({
-        downloadUrl: localUrl,
-        filename: `${originalName}${suffix}.pdf`,
-        fileSize: formatFileSize(blob.size),
-        rawBlob: blob,
-        originalSize: file.size,
-        repairedSize: blob.size,
-        pagesRecovered: report?.pagesRecovered ?? 0,
-        pagesLost: report?.pagesLost ?? 0,
-        repairMethod: report?.repairMethod ?? repairMode,
+        downloadUrl: first.downloadUrl,
+        filename: first.fileName,
+        fileSize: formatFileSize(first.repairedSize),
+        rawBlob: first.rawBlob,
+        totalOriginalSize,
+        totalRepairedSize,
+        pagesRecovered: totalPagesRecovered,
+        pagesLost: totalPagesLost,
+        repairMethod: repairMode,
+        items: repairedItems,
       });
+
+      toast.success(
+        isEs
+          ? `¡${repairedItems.length} archivo(s) reparado(s) con éxito!`
+          : `¡${repairedItems.length} file(s) repaired successfully!`,
+      );
     } catch (error) {
       console.error(error);
       const errMsg =
@@ -684,7 +815,36 @@ export default function PdfRepairer() {
       toast.error(isEs ? `Error al reparar: ${errMsg}` : `Repair error: ${errMsg}`);
     } finally {
       setIsProcessing(false);
-      workerRef.terminate();
+    }
+  };
+
+  const handleDownloadAllZip = async () => {
+    if (!completedResult || !completedResult.items || completedResult.items.length === 0) return;
+    setIsCreatingZip(true);
+    try {
+      const zip = new JSZip();
+      completedResult.items.forEach((item) => {
+        if (item.rawBlob) {
+          zip.file(item.fileName, item.rawBlob);
+        }
+      });
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = zipUrl;
+      a.download = `PDFBlack_Reparados_${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(zipUrl);
+      toast.success(
+        isEs ? 'Paquete ZIP descargado con éxito' : 'ZIP package downloaded successfully',
+      );
+    } catch (err) {
+      console.error('Error al generar ZIP:', err);
+      toast.error(isEs ? 'Error al generar archivo ZIP' : 'Error generating ZIP file');
+    } finally {
+      setIsCreatingZip(false);
     }
   };
 
@@ -734,6 +894,7 @@ export default function PdfRepairer() {
       <input
         type="file"
         accept=".pdf"
+        multiple
         className="hidden"
         onChange={handleFileChange}
         ref={fileInputRef}
@@ -772,18 +933,28 @@ export default function PdfRepairer() {
           </div>
         </div>
 
-        {file && (
+        {activeFiles.length > 0 && (
           <div className="flex items-center gap-3 font-mono">
             <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs text-white">
-              <FileText className="w-4 h-4 text-zinc-300" />
-              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
-                {file.name}
-              </span>
+              {activeFiles.length === 1 ? (
+                <>
+                  <FileText className="w-4 h-4 text-zinc-300" />
+                  <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
+                    {activeFiles[0].name}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Archive className="w-4 h-4 text-zinc-300" />
+                  <span className="font-bold">{activeFiles.length}</span>
+                  <span>{isEs ? 'archivos cargados' : 'files loaded'}</span>
+                </>
+              )}
             </div>
             <button
-              onClick={removeFile}
+              onClick={handleRemoveAllFiles}
               className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
-              title={isEs ? 'Quitar archivo' : 'Remove file'}
+              title={isEs ? 'Quitar todos' : 'Remove all'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -796,117 +967,90 @@ export default function PdfRepairer() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+          className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[520px] ${
+            isDragging
+              ? 'border-white ring-4 ring-white/20 bg-zinc-900/90 scale-[1.01]'
+              : 'border-zinc-600 hover:border-white'
+          }`}
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <Wrench className="w-12 h-12 text-white" />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>
+              {isEs
+                ? 'Motor de Reconstrucción Estructural v5.0 • 100% Local'
+                : 'Structural Reconstruction Engine v5.0 • 100% Local'}
+            </span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
             {isEs
-              ? 'REPARAR Y RESTAURAR DOCUMENTOS PDF DAÑADOS'
-              : 'REPAIR AND RESTORE DAMAGED PDF DOCUMENTS'}
+              ? 'REPARA Y RECUPERA CUALQUIER ARCHIVO PDF DAÑADO'
+              : 'REPAIR AND RECOVER ANY DAMAGED PDF DOCUMENT'}
           </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Recupera y repara archivos PDF corruptos o dañados con reconstrucción estructural y renderizado vectorial local.'
-              : 'Repair and restore damaged PDF files with structural reconstruction 100% locally.'}
+              ? 'Reconstruye tablas xref corruptas, recupera flujos de datos stream huérfanos y restaura páginas ilegibles directamente en la memoria de tu navegador sin subir tus archivos a internet.'
+              : 'Reconstruct corrupt xref tables, recover orphaned stream objects, and restore unreadable pages directly in browser memory without cloud uploads.'}
           </p>
 
           <button
             type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
           >
             <Plus className="w-4 h-4 text-black" />
-            {isEs ? 'Seleccionar PDF Dañado' : 'Select Corrupted PDF'}
+            {isEs ? 'Seleccionar Archivos PDF Dañados' : 'Select Damaged PDF Files'}
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
-            <span>
-              {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-            </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Reconstrucción XRef' : '✓ XRef Rebuild'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Repara punteros de tabla y referencias rotas a nivel binario.'
+                  : 'Repairs table pointers and broken byte references.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Rescate de Objetos' : '✓ Object Salvage'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Extrae texto, imágenes y vectores de streams desbalanceados.'
+                  : 'Extracts text, images, and vectors from orphaned streams.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin enviar datos a servidores.'
+                  : 'Local RAM processing without sending data to servers.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : completedResult ? (
-        /* PANTALLA DE ÉXITO Y DESCARGA */
+        /* PANTALLA DEDICADA DE ÉXITO Y DESCARGA UNIFICADA */
         <motion.div
           ref={successContainerRef}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <Wrench className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA REPARACIÓN' : 'REPAIR RESULT'}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
-                    {isEs ? '¡Documento Reparado con Éxito!' : 'Document Repaired Successfully!'}
-                  </h2>
-                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                    {isEs
-                      ? `Método: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Reparación'}`
-                      : `Method: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Repair'}`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-zinc-300 shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-zinc-400" />
-                <span>{isEs ? 'Estructura Reconstruida' : 'Structure Rebuilt'}</span>
-              </div>
-            </div>
-
-            {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Original' : 'Original Size'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.originalSize)}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Reparado' : 'Repaired Size'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.repairedSize)}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Recuperadas' : 'Pages Recovered'}
-                </span>
-                <span className="text-white font-bold text-base font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.pagesRecovered} />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Perdidas' : 'Pages Lost'}
-                </span>
-                <span className="font-bold text-base font-mono mt-0.5 text-zinc-300">
-                  <AnimatedNumber value={completedResult.pagesLost} />
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA */}
           <DownloadSuccessCard
             downloadUrl={completedResult.downloadUrl}
             filename={completedResult.filename}
@@ -914,17 +1058,44 @@ export default function PdfRepairer() {
             outputFormat="pdf"
             rawBlob={completedResult.rawBlob}
             currentToolId="reparar"
-            onReset={() => {
-              setCompletedResult(null);
-              setDownloadUrl(null);
-              setFile(null);
-              setGlobalFile(null);
-              setRecoveryReport(null);
-              setDiagnostic(null);
-              setShowDiagnostic(false);
-              setProgressPercent(0);
-              setProgressMsg('');
+            title={
+              completedResult.items.length > 1
+                ? isEs
+                  ? `¡${completedResult.items.length} documentos reparados con éxito!`
+                  : `¡${completedResult.items.length} documents repaired successfully!`
+                : isEs
+                  ? '¡Documento reparado con éxito!'
+                  : 'Document repaired successfully!'
+            }
+            metrics={{
+              categoryTitle: isEs ? 'ESTADO DE LA REPARACIÓN' : 'REPAIR STATUS',
+              categorySubtitle: isEs
+                ? `Método: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Reparación Estructural'}`
+                : `Method: ${completedResult.repairMethod === 'smart' ? 'Smart Repair' : completedResult.repairMethod === 'deep' ? 'Deep Rescue' : 'Structural Repair'}`,
+              badgeLabel: isEs ? 'Páginas:' : 'Pages:',
+              badgeValue: `${completedResult.pagesRecovered} ${isEs ? 'recuperadas' : 'recovered'}`,
+              originalSize: formatFileSize(completedResult.totalOriginalSize),
+              compressedSize: formatFileSize(completedResult.totalRepairedSize),
+              labelOriginal: isEs ? 'Tamaño Original' : 'Original Size',
+              labelCompressed: isEs ? 'Tamaño Reparado' : 'Repaired Size',
+              labelSaved: isEs ? 'Páginas Recuperadas' : 'Pages Recovered',
+              savedSpace: `${completedResult.pagesRecovered} ${isEs ? 'páginas' : 'pages'}`,
+              reductionPercent: 100,
             }}
+            batchItems={
+              completedResult.items.length > 1
+                ? completedResult.items.map((item) => ({
+                    fileName: item.fileName,
+                    originalSize: item.originalSize,
+                    compressedSize: item.repairedSize,
+                    downloadUrl: item.downloadUrl,
+                    rawBlob: item.rawBlob,
+                  }))
+                : undefined
+            }
+            onDownloadAllZip={handleDownloadAllZip}
+            isCreatingZip={isCreatingZip}
+            onReset={handleRemoveAllFiles}
           />
         </motion.div>
       ) : (
@@ -1658,7 +1829,7 @@ export default function PdfRepairer() {
 
               <button
                 onClick={executeRepair}
-                disabled={isProcessing || !activeFile}
+                disabled={isProcessing || activeFiles.length === 0}
                 className="w-full bg-white text-black hover:bg-zinc-200 font-bold py-3.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-40"
               >
                 {isProcessing ? (
@@ -1675,7 +1846,15 @@ export default function PdfRepairer() {
                 ) : (
                   <>
                     <Activity className="w-4 h-4 text-black" />
-                    <span>{isEs ? 'Reparar PDF' : 'Repair PDF'}</span>
+                    <span>
+                      {activeFiles.length > 1
+                        ? isEs
+                          ? `Reparar ${activeFiles.length} Archivos PDF`
+                          : `Repair ${activeFiles.length} PDF Files`
+                        : isEs
+                          ? 'Reparar PDF'
+                          : 'Repair PDF'}
+                    </span>
                   </>
                 )}
               </button>

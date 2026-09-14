@@ -24,14 +24,18 @@ import {
   Unlock,
   ChevronDown,
   Undo2,
+  Redo2,
   RefreshCw,
   Grid,
+  Eye,
+  Check,
+  Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ReorderWorkerMessageIn, ReorderWorkerMessageOut } from '@/workers/pdf-reorder.worker';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
@@ -80,39 +84,67 @@ export default function PdfOrganizer() {
   // ZOOM DE CUADRÍCULA (VISTA COMPACTA / ESTÁNDAR / GRANDE)
   const [gridZoom, setGridZoom] = useState<'sm' | 'md' | 'lg'>('md');
 
-  // REGISTRO DE HISTORIAL PARA DESHACER (UNDO)
+  // REGISTRO DE HISTORIAL PARA DESHACER (UNDO) Y REHACER (REDO)
+  const redoRef = useRef<PageItem[][]>([]);
+  const [redoLength, setRedoLength] = useState(0);
+
   const pushHistory = useCallback((currentPages: PageItem[]) => {
     historyRef.current.push([...currentPages]);
-    if (historyRef.current.length > 25) {
+    if (historyRef.current.length > 30) {
       historyRef.current.shift();
     }
     setHistoryLength(historyRef.current.length);
+    redoRef.current = [];
+    setRedoLength(0);
   }, []);
 
   const handleUndo = useCallback(() => {
     if (historyRef.current.length > 0) {
+      const current = [...pages];
       const prev = historyRef.current.pop()!;
+      redoRef.current.push(current);
+      setRedoLength(redoRef.current.length);
       setHistoryLength(historyRef.current.length);
       setPages(prev);
       toast.info(isEs ? 'Acción deshecha (Ctrl+Z)' : 'Action undone (Ctrl+Z)');
     } else {
       toast.info(isEs ? 'No hay más acciones para deshacer' : 'No more actions to undo');
     }
-  }, [isEs]);
+  }, [isEs, pages]);
 
-  // ATAJO DE TECLADO GLOBAL CTRL+Z
+  const handleRedo = useCallback(() => {
+    if (redoRef.current.length > 0) {
+      const next = redoRef.current.pop()!;
+      historyRef.current.push([...pages]);
+      setHistoryLength(historyRef.current.length);
+      setRedoLength(redoRef.current.length);
+      setPages(next);
+      toast.info(isEs ? 'Acción rehecha (Ctrl+Y)' : 'Action redone (Ctrl+Y)');
+    } else {
+      toast.info(isEs ? 'No hay más acciones para rehacer' : 'No more actions to redo');
+    }
+  }, [isEs, pages]);
+
+  // ATAJOS DE TECLADO GLOBALES CTRL+Z Y CTRL+Y
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        const target = e.target as HTMLElement;
-        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
         e.preventDefault();
         handleUndo();
+      } else if (
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') ||
+        ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && e.shiftKey)
+      ) {
+        e.preventDefault();
+        handleRedo();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo]);
+  }, [handleUndo, handleRedo]);
 
   // Ocultar barra superior global y scroll automático suave hacia la cabecera de la herramienta
   useEffect(() => {
@@ -531,6 +563,21 @@ export default function PdfOrganizer() {
     );
   };
 
+  const handleQuickInsertBlankPage = () => {
+    const blankItem: PageItem = {
+      id: `blank-${Date.now()}-${Math.random()}`,
+      fileIndex: -1,
+      originalPageNum: 0,
+      rotation: 0,
+      isBlank: true,
+      thumbnailUrl: null,
+    };
+    pushHistory(pages);
+    setPages((prev) => [...prev, blankItem]);
+    setDownloadUrl(null);
+    toast.success(isEs ? 'Hoja en blanco añadida al final' : 'Blank page added at the end');
+  };
+
   const handleMovePageCommand = () => {
     const fromIdx = moveFromPage - 1;
     const toIdx = moveToPos - 1;
@@ -749,12 +796,12 @@ export default function PdfOrganizer() {
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
               {isEs
-                ? '002 / REORDENAMIENTO Y MONTAJE DE DOCUMENTOS PDF'
-                : '002 / PDF REORDERING & ASSEMBLY'}
+                ? '004 / ORGANIZACIÓN Y SECUENCIACIÓN DE PÁGINAS PDF'
+                : '004 / FULL PDF ORGANIZATION & PAGE BUILDER'}
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <LayoutGrid className="w-6 h-6 text-white flex-shrink-0" />
-              {isEs ? 'ORDENAR Y REORGANIZAR PÁGINAS PDF' : 'REORDER PDF PAGES'}
+              {isEs ? 'ORGANIZAR PÁGINAS PDF' : 'ORGANIZE PDF PAGES'}
             </h1>
           </div>
         </div>
@@ -777,7 +824,7 @@ export default function PdfOrganizer() {
             </div>
             <button
               onClick={removeFile}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all"
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Limpiar mesa' : 'Clear deck'}
             >
               <Trash2 className="w-4 h-4" />
@@ -804,12 +851,10 @@ export default function PdfOrganizer() {
                 </div>
                 <div>
                   <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DEL REORDENAMIENTO DE PÁGINAS' : 'PAGE REORDER RESULT'}
+                    {isEs ? 'RESULTADO DE ORGANIZACIÓN DE PDF' : 'PDF ORGANIZATION RESULT'}
                   </span>
                   <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs
-                      ? '¡Documento reorganizado con éxito!'
-                      : 'Document reordered successfully!'}
+                    {isEs ? '¡Documento organizado con éxito!' : 'Document organized successfully!'}
                   </h3>
                 </div>
               </div>
@@ -864,7 +909,7 @@ export default function PdfOrganizer() {
           />
         </motion.div>
       ) : pages.length === 0 ? (
-        /* VISTA DROPZONE VACÍA */
+        /* VISTA DROPZONE VACÍA PREMIUM */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -905,10 +950,11 @@ export default function PdfOrganizer() {
             }
           }}
           className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl transition-all duration-300 min-h-[500px] group cursor-pointer relative overflow-hidden ${
-            isDragging ? 'border-white scale-[1.01]' : 'border-zinc-600 hover:border-white'
+            isDragging ? 'border-white bg-zinc-900/50' : 'border-zinc-600 hover:border-white'
           }`}
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
           {/* INPUT TRANSPARENTE DE COBERTURA TOTAL NATIVA */}
           <input
             type="file"
@@ -926,39 +972,81 @@ export default function PdfOrganizer() {
                 : 'bg-zinc-900 border-zinc-700 group-hover:border-white group-hover:scale-105 text-white'
             }`}
           >
-            <UploadCloud className="w-12 h-12 text-white" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase relative z-10 pointer-events-none">
-            {isEs ? 'ORDENAR Y REORGANIZAR PÁGINAS PDF' : 'REORDER PDF PAGES'}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md relative z-10 pointer-events-none">
-            {isEs
-              ? 'Cambia el orden, rota, duplica e intercala hojas de tu PDF de forma 100% confidencial y local.'
-              : 'Reorder, rotate, duplicate, and interleave pages from your PDF 100% locally.'}
-          </p>
-          <div className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer relative z-20 pointer-events-none">
-            <Plus className="w-4 h-4 text-black" />
-            <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
+            <LayoutGrid className="w-12 h-12 text-white" />
           </div>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 relative z-10 pointer-events-none shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
+          {/* BADGE TÉCNICO */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4 relative z-10 pointer-events-none">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>
               {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+                ? 'Motor de Organización Vectorial v5.0 • 100% Local'
+                : 'Vector Organization Engine v5.0 • 100% Local'}
             </span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase relative z-10 pointer-events-none">
+            {isEs
+              ? 'ORGANIZAR O REORDENAR PÁGINAS DE DOCUMENTOS PDF'
+              : 'ORGANIZE OR REORDER PDF PAGES'}
+          </h2>
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed relative z-10 pointer-events-none">
+            {isEs
+              ? 'Une múltiples archivos, reordena páginas arrastrando y soltando, rota hojas o elimina páginas innecesarias al instante, sin subir datos a la nube ni perder calidad vectorial.'
+              : 'Merge multiple files, reorder pages by dragging and dropping, rotate sheets, or delete pages instantly, without cloud uploads or vector quality loss.'}
+          </p>
+
+          <button
+            type="button"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105 relative z-20 pointer-events-none"
+          >
+            <Plus className="w-4 h-4 text-black" />
+            <span>{isEs ? 'Seleccionar Archivos PDF' : 'Select PDF Files'}</span>
+          </button>
+
+          {/* BENEFICIOS TÉCNICOS */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left relative z-10 pointer-events-none">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Fusión Multi-Documento' : '✓ Multi-Doc Merge'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Importa uno o varios PDFs y combina sus hojas en una sola mesa interactiva.'
+                  : 'Import one or more PDFs and combine their sheets into a single interactive deck.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Arrastre y Reorganización' : '✓ Drag & Reorganize'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Cambia el orden, rota 90°, duplica, intercala escaneos dúplex o descarta páginas.'
+                  : 'Change sequence, rotate 90°, duplicate, interleave duplex scans, or discard sheets.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin subir tu información a servidores externos.'
+                  : 'Local browser RAM processing without uploading sensitive data to external servers.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PANEL DE CONTROL Y MESA DE MONTAJE REORDENABLE */
+        /* VISTA PRINCIPAL CON ERGONOMÍA VERTICAL (MESA DE MONTAJE ARRIBA, PANEL DE CONTROL DEBAJO) */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+          className="w-full flex flex-col space-y-6"
         >
-          {/* LADO IZQUIERDO: MESA DE MONTAJE Y REORDENAMIENTO */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col min-h-[580px] lg:h-[700px] relative overflow-hidden">
+          {/* PANEL SUPERIOR: MESA DE MONTAJE Y REORDENAMIENTO A ANCHO COMPLETO */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col h-[580px] lg:h-[640px] relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3.5 pb-2.5 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
@@ -975,11 +1063,58 @@ export default function PdfOrganizer() {
                   type="button"
                   onClick={handleUndo}
                   disabled={historyLength === 0}
-                  className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 text-zinc-200 hover:text-white text-[11px] font-bold px-3 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer disabled:cursor-not-allowed font-mono shadow-sm"
+                  className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 text-zinc-200 hover:text-white text-[11px] font-bold px-2.5 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer disabled:cursor-not-allowed font-mono shadow-sm"
                   title={isEs ? 'Deshacer último cambio (Ctrl+Z)' : 'Undo last action (Ctrl+Z)'}
                 >
-                  <Undo2 className="w-3 h-3" />
-                  <span>{isEs ? 'Deshacer' : 'Undo'}</span>
+                  <Undo2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{isEs ? 'Deshacer' : 'Undo'}</span>
+                </button>
+
+                {/* BOTÓN REHACER (CTRL+Y) */}
+                <button
+                  type="button"
+                  onClick={handleRedo}
+                  disabled={redoLength === 0}
+                  className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-zinc-800 text-zinc-200 hover:text-white text-[11px] font-bold px-2.5 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer disabled:cursor-not-allowed font-mono shadow-sm"
+                  title={isEs ? 'Rehacer cambio (Ctrl+Y)' : 'Redo action (Ctrl+Y)'}
+                >
+                  <Redo2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{isEs ? 'Rehacer' : 'Redo'}</span>
+                </button>
+
+                <div className="h-4 w-px bg-zinc-700 mx-0.5 hidden sm:block" />
+
+                {/* AÑADIR MÁS ARCHIVOS */}
+                <button
+                  type="button"
+                  onClick={() => addMoreInputRef.current?.click()}
+                  className="flex items-center gap-1.5 bg-white text-black hover:bg-zinc-200 text-[11px] font-bold px-3 py-1 rounded-xl transition-all cursor-pointer font-mono shadow-sm"
+                  title={isEs ? 'Subir y combinar más archivos PDF' : 'Upload & merge more PDFs'}
+                >
+                  <Plus className="w-3.5 h-3.5 text-black" />
+                  <span>{isEs ? 'Añadir PDFs' : 'Add PDFs'}</span>
+                </button>
+
+                {/* AÑADIR PÁGINA EN BLANCO */}
+                <button
+                  type="button"
+                  onClick={handleQuickInsertBlankPage}
+                  className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-[11px] font-bold px-2.5 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer font-mono shadow-sm"
+                  title={isEs ? 'Insertar hoja en blanco' : 'Insert blank page'}
+                >
+                  <FileText className="w-3 h-3 text-amber-300" />
+                  <span className="hidden md:inline">{isEs ? '+ Hoja en Blanco' : '+ Blank'}</span>
+                </button>
+
+                {/* INVERTIR SECUENCIA RÁPIDA */}
+                <button
+                  type="button"
+                  onClick={handleInvertOrder}
+                  className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-[11px] font-bold px-2.5 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer font-mono shadow-sm"
+                  title={isEs ? 'Invertir orden de las páginas' : 'Reverse page order'}
+                >
+                  <ArrowLeftRight className="w-3 h-3" />
+                  <span className="hidden lg:inline">{isEs ? 'Invertir' : 'Reverse'}</span>
                 </button>
 
                 {/* SELECTOR DE ZOOM DE CUADRÍCULA */}
@@ -987,19 +1122,19 @@ export default function PdfOrganizer() {
                   <button
                     type="button"
                     onClick={() => setGridZoom('sm')}
-                    className={`px-2.5 py-0.5 rounded-lg transition-all font-bold ${
+                    className={`px-2 py-0.5 rounded-lg transition-all font-bold ${
                       gridZoom === 'sm'
                         ? 'bg-white text-black shadow'
                         : 'text-zinc-400 hover:text-white'
                     }`}
-                    title={isEs ? 'Vista Compacta (Miniaturas pequeñas)' : 'Compact View'}
+                    title={isEs ? 'Miniaturas pequeñas' : 'Small thumbnails'}
                   >
                     S
                   </button>
                   <button
                     type="button"
                     onClick={() => setGridZoom('md')}
-                    className={`px-2.5 py-0.5 rounded-lg transition-all font-bold ${
+                    className={`px-2 py-0.5 rounded-lg transition-all font-bold ${
                       gridZoom === 'md'
                         ? 'bg-white text-black shadow'
                         : 'text-zinc-400 hover:text-white'
@@ -1011,28 +1146,19 @@ export default function PdfOrganizer() {
                   <button
                     type="button"
                     onClick={() => setGridZoom('lg')}
-                    className={`px-2.5 py-0.5 rounded-lg transition-all font-bold ${
+                    className={`px-2 py-0.5 rounded-lg transition-all font-bold ${
                       gridZoom === 'lg'
                         ? 'bg-white text-black shadow'
                         : 'text-zinc-400 hover:text-white'
                     }`}
-                    title={isEs ? 'Vista Detalle (Miniaturas grandes)' : 'Large View'}
+                    title={isEs ? 'Miniaturas grandes' : 'Large thumbnails'}
                   >
                     L
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => addMoreInputRef.current?.click()}
-                  className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-bold px-3 py-1 rounded-xl border border-zinc-600 transition-colors cursor-pointer font-mono shadow-sm"
-                >
-                  <Plus className="w-3 h-3 text-white" />
-                  {isEs ? 'Añadir más' : 'Add more'}
-                </button>
-
                 <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[10px] shadow-sm">
-                  <ShieldCheck className="w-3 h-3 text-zinc-400" /> 100% Local
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 100% Local
                 </div>
               </div>
             </div>
@@ -1057,11 +1183,11 @@ export default function PdfOrganizer() {
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && unlockFileWithPassword()}
-                    className="flex-1 bg-zinc-900 border border-white/15 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40 font-mono"
+                    className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg py-1.5 px-3 text-xs text-white outline-none focus:border-white/40 font-mono"
                   />
                   <button
                     onClick={unlockFileWithPassword}
-                    className="px-3.5 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 font-mono"
+                    className="px-3 py-1.5 bg-white text-black hover:bg-zinc-200 font-bold rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1 font-mono"
                   >
                     <Unlock className="w-3.5 h-3.5" />
                     <span>{isEs ? 'Desbloquear' : 'Unlock'}</span>
@@ -1070,27 +1196,14 @@ export default function PdfOrganizer() {
               </div>
             )}
 
-            {/* INSTRUCCIÓN DE DRAG & DROP */}
-            <div className="bg-zinc-950 p-2.5 rounded-xl border border-white/10 flex items-center justify-between font-mono text-[11px] text-zinc-300 mb-3">
-              <span className="flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-white" />
-                {isEs
-                  ? 'Arrastra cualquier tarjeta para cambiar su posición en vivo'
-                  : 'Drag any card to change position in real time'}
-              </span>
-              <span className="text-[10px] text-zinc-400 font-mono">
-                {pages.length} {isEs ? 'tarjetas' : 'cards'}
-              </span>
-            </div>
-
-            {/* GRID REORDENABLE DRAG & DROP EN CUADRÍCULA DINÁMICA CON FRAMER MOTION LAYOUT */}
+            {/* CUADRÍCULA DE MINIATURAS REORDENABLES */}
             <div
-              className={`grid gap-3.5 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-2 p-1 ${
+              className={`grid gap-3 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-2 p-1 ${
                 gridZoom === 'sm'
-                  ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
-                  : gridZoom === 'lg'
-                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3'
-                    : 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4'
+                  ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8'
+                  : gridZoom === 'md'
+                    ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4'
               }`}
             >
               {pages.map((p, idx) => (
@@ -1114,18 +1227,28 @@ export default function PdfOrganizer() {
                       : 'border-white/10 hover:border-white/30'
                   }`}
                 >
-                  {/* BADGES DE POSICIÓN */}
-                  <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px] shrink-0">
-                    <span className="px-1.5 py-0.2 rounded-md font-bold bg-white text-black text-[10px]">
-                      #{idx + 1}
-                    </span>
+                  {/* BADGES DE POSICIÓN Y ARCHIVO */}
+                  <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px] shrink-0 gap-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="px-1.5 py-0.5 rounded-md font-bold bg-white text-black text-[10px] shrink-0">
+                        #{idx + 1}
+                      </span>
+                      {files.length > 1 && files[p.fileIndex] && (
+                        <span
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-cyan-300 font-mono font-bold truncate max-w-[85px]"
+                          title={files[p.fileIndex].name}
+                        >
+                          {files[p.fileIndex].name.replace(/\.[^/.]+$/, '').slice(0, 8)}...
+                        </span>
+                      )}
+                    </div>
                     {p.isBlank ? (
-                      <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                      <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">
                         {isEs ? 'Blanca' : 'Blank'}
                       </span>
                     ) : (
-                      <span className="text-[9px] text-zinc-400 font-mono">
-                        Orig: {p.originalPageNum} {p.rotation !== 0 && `(${p.rotation}°)`}
+                      <span className="text-[9px] text-zinc-400 font-mono truncate shrink-0">
+                        Pág {p.originalPageNum} {p.rotation !== 0 && `(${p.rotation}°)`}
                       </span>
                     )}
                   </div>
@@ -1138,6 +1261,32 @@ export default function PdfOrganizer() {
                       transition: 'transform 0.2s ease',
                     }}
                   >
+                    {/* BOTONES FLOTANTES RÁPIDOS EN HOVER ESTILO ILOVEPDF */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRotatePage(idx);
+                        }}
+                        className="p-1.5 bg-black/80 hover:bg-black text-white hover:text-cyan-300 rounded-lg backdrop-blur-sm border border-white/20 transition-all shadow-md cursor-pointer"
+                        title={isEs ? 'Rotar 90°' : 'Rotate 90°'}
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePage(idx);
+                        }}
+                        className="p-1.5 bg-black/80 hover:bg-red-600 text-white rounded-lg backdrop-blur-sm border border-white/20 transition-all shadow-md cursor-pointer"
+                        title={isEs ? 'Eliminar página' : 'Delete page'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
                     {p.isBlank ? (
                       <div className="w-full h-full bg-zinc-950 flex items-center justify-center text-zinc-500 text-[10px] font-mono border border-dashed border-white/10 rounded-xl">
                         {isEs ? 'HOJA EN BLANCO' : 'BLANK PAGE'}
@@ -1154,7 +1303,7 @@ export default function PdfOrganizer() {
                     )}
                   </div>
 
-                  {/* BOTONES DE HERRAMIENTAS INDIVIDUALES */}
+                  {/* BOTONES DE HERRAMIENTAS INFERIORES */}
                   <div className="w-full flex items-center justify-between mt-2 pt-1.5 border-t border-white/10 font-mono text-[10px]">
                     <div className="flex items-center gap-1">
                       <button
@@ -1163,7 +1312,7 @@ export default function PdfOrganizer() {
                           e.stopPropagation();
                           handleRotatePage(idx);
                         }}
-                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md transition-colors border border-white/10"
+                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-md transition-colors border border-white/10 cursor-pointer"
                         title={isEs ? 'Rotar 90°' : 'Rotate 90°'}
                       >
                         <RotateCw className="w-3 h-3" />
@@ -1174,7 +1323,7 @@ export default function PdfOrganizer() {
                           e.stopPropagation();
                           handleDuplicatePage(idx);
                         }}
-                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md transition-colors border border-white/10"
+                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-md transition-colors border border-white/10 cursor-pointer"
                         title={isEs ? 'Duplicar página' : 'Duplicate page'}
                       >
                         <Copy className="w-3 h-3" />
@@ -1185,7 +1334,7 @@ export default function PdfOrganizer() {
                           e.stopPropagation();
                           handleDeletePage(idx);
                         }}
-                        className="p-1 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-colors border border-white/10"
+                        className="p-1 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-colors border border-white/10 cursor-pointer"
                         title={isEs ? 'Eliminar página' : 'Delete page'}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -1199,10 +1348,11 @@ export default function PdfOrganizer() {
                           e.stopPropagation();
                           setPreviewZoomPage(p);
                         }}
-                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-md transition-colors border border-white/10"
-                        title={isEs ? 'Zoom' : 'Zoom'}
+                        className="p-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-md transition-colors border border-white/10 cursor-pointer flex items-center gap-1"
+                        title={isEs ? 'Vista previa HD' : 'HD Preview'}
                       >
-                        <ZoomIn className="w-3 h-3" />
+                        <Eye className="w-3 h-3 text-cyan-400" />
+                        <span className="text-[9px] hidden sm:inline">{isEs ? 'Ver' : 'View'}</span>
                       </button>
                     )}
                   </div>
@@ -1211,47 +1361,47 @@ export default function PdfOrganizer() {
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col justify-between min-h-[580px] lg:h-[700px] relative overflow-hidden">
+          {/* PANEL INFERIOR: PANEL DE CONTROL EN 3 COLUMNAS ERGONÓMICAS */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-            <div className="space-y-2.5 font-mono">
-              {/* TÍTULO PRINCIPAL CON MÉTRICAS EN VIVO */}
-              <div className="pb-2 border-b border-zinc-800 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
-                    {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
-                  </span>
-                  <h2 className="text-base font-black text-white font-sans uppercase tracking-tight">
-                    {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
-                  </h2>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-mono">
-                    <span className="text-white font-bold">{pages.length}</span>{' '}
-                    {isEs ? 'págs' : 'pgs'} •{' '}
-                    <span className="text-zinc-300 font-bold">
-                      {pages.filter((p) => p.rotation !== 0).length}
-                    </span>{' '}
-                    {isEs ? 'rot.' : 'rot.'}
-                  </div>
-                </div>
-              </div>
 
-              {/* PATRONES DE ORDEN AUTOMÁTICO EN 1-CLIC */}
-              <div className="space-y-1.5 font-mono text-xs">
-                <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-bold block">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-5 border-b border-zinc-800">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+                  {isEs ? '002 / CONFIGURACIÓN DEL MONTAJE' : '002 / ASSEMBLY CONFIGURATION'}
+                </span>
+                <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight flex items-center gap-2">
+                  <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
+                  <Sliders className="w-5 h-5 text-white" />
+                </h2>
+              </div>
+              <div className="text-xs font-mono text-zinc-400">
+                <span className="text-white font-bold">{pages.length}</span>{' '}
+                {isEs ? 'páginas' : 'pages'} •{' '}
+                <span className="text-zinc-200 font-bold">
+                  {pages.filter((p) => p.rotation !== 0).length}
+                </span>{' '}
+                {isEs ? 'rotadas' : 'rotated'}
+              </div>
+            </div>
+
+            {/* CUADRÍCULA DE 3 COLUMNAS */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+              {/* COLUMNA 1: PATRONES DE ORDEN RÁPIDO */}
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-3 shadow-inner">
+                <span className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
                   {isEs ? 'Patrones de Orden Rápido:' : 'Quick Reorder Patterns:'}
                 </span>
 
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={handleInvertOrder}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                     title={isEs ? 'Invertir orden de todas las páginas' : 'Reverse all pages'}
                   >
-                    <ArrowLeftRight className="w-3 h-3 text-white" />
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-white" />
                     <span>{isEs ? 'Invertir' : 'Reverse'}</span>
                   </button>
 
@@ -1259,10 +1409,10 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={() => handleGroupEvensOdds(true)}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                     title={isEs ? 'Agrupar páginas impares primero' : 'Odds first'}
                   >
-                    <ListOrdered className="w-3 h-3 text-white" />
+                    <ListOrdered className="w-3.5 h-3.5 text-white" />
                     <span>{isEs ? 'Impares 1º' : 'Odds 1st'}</span>
                   </button>
 
@@ -1270,10 +1420,10 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={() => handleGroupEvensOdds(false)}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                     title={isEs ? 'Agrupar páginas pares primero' : 'Evens first'}
                   >
-                    <ListOrdered className="w-3 h-3 text-white" />
+                    <ListOrdered className="w-3.5 h-3.5 text-white" />
                     <span>{isEs ? 'Pares 1º' : 'Evens 1st'}</span>
                   </button>
 
@@ -1281,14 +1431,14 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={() => handleDuplexInterleave(true)}
                     disabled={pages.length < 2}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                     title={
                       isEs
                         ? 'Intercalar escaneo dúplex (impares + pares invertidos)'
                         : 'Interleave duplex scan'
                     }
                   >
-                    <RefreshCw className="w-3 h-3 text-white" />
+                    <RefreshCw className="w-3.5 h-3.5 text-white" />
                     <span>{isEs ? 'Dúplex' : 'Duplex'}</span>
                   </button>
 
@@ -1296,10 +1446,10 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={() => handleRotateAll(90)}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                     title={isEs ? 'Girar todo el PDF 90° a la derecha' : 'Rotate all 90°'}
                   >
-                    <RotateCw className="w-3 h-3 text-white" />
+                    <RotateCw className="w-3.5 h-3.5 text-white" />
                     <span>{isEs ? 'Girar 90°' : 'Rotate 90°'}</span>
                   </button>
 
@@ -1307,18 +1457,22 @@ export default function PdfOrganizer() {
                     type="button"
                     onClick={handleResetInitialOrder}
                     disabled={pages.length === 0}
-                    className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-white/10 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 text-[11px]"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                     title={isEs ? 'Restablecer orden inicial del archivo' : 'Reset original order'}
                   >
-                    <RotateCcw className="w-3 h-3 text-zinc-400" />
+                    <RotateCcw className="w-3.5 h-3.5 text-zinc-400" />
                     <span>{isEs ? 'Restablecer' : 'Reset'}</span>
                   </button>
                 </div>
               </div>
 
-              {/* CONTROLES DE PRECISIÓN E INSERCIÓN */}
-              <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-white/10 space-y-2 font-mono text-xs">
-                <div className="flex items-center justify-between gap-1.5 text-xs">
+              {/* COLUMNA 2: CONTROLES DE PRECISIÓN Y NUMERACIÓN */}
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-3 shadow-inner">
+                <span className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
+                  {isEs ? 'Precisión y Salida:' : 'Precision & Output:'}
+                </span>
+
+                <div className="flex items-center justify-between gap-1.5 text-xs bg-zinc-900 p-2 rounded-xl border border-zinc-800">
                   <span className="text-zinc-400 text-[10px] whitespace-nowrap">
                     {isEs ? 'Mover pág' : 'Move p.'}
                   </span>
@@ -1330,10 +1484,10 @@ export default function PdfOrganizer() {
                     onChange={(e) =>
                       setMoveFromPage(Math.max(1, parseInt(e.target.value, 10) || 1))
                     }
-                    className="w-10 bg-zinc-900 border border-white/20 rounded-md py-0.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                    className="w-11 bg-zinc-950 border border-zinc-700 rounded-lg py-1 text-center text-white font-bold text-xs outline-none focus:border-white/40"
                   />
                   <span className="text-zinc-400 text-[10px] whitespace-nowrap">
-                    {isEs ? 'a pos #' : 'to #'}
+                    {isEs ? 'a #' : 'to #'}
                   </span>
                   <input
                     type="number"
@@ -1341,20 +1495,21 @@ export default function PdfOrganizer() {
                     max={pages.length || 1}
                     value={moveToPos}
                     onChange={(e) => setMoveToPos(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    className="w-10 bg-zinc-900 border border-white/20 rounded-md py-0.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                    className="w-11 bg-zinc-950 border border-zinc-700 rounded-lg py-1 text-center text-white font-bold text-xs outline-none focus:border-white/40"
                   />
                   <button
                     type="button"
                     onClick={handleMovePageCommand}
                     disabled={pages.length === 0}
-                    className="px-2 py-1 bg-white text-black font-bold rounded-md text-[11px] transition-colors cursor-pointer disabled:opacity-40"
+                    className="px-2.5 py-1 bg-white text-black font-bold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40"
                   >
                     {isEs ? 'Mover' : 'Move'}
                   </button>
                 </div>
-                <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/5 text-xs">
+
+                <div className="flex items-center justify-between gap-1.5 text-xs bg-zinc-900 p-2 rounded-xl border border-zinc-800">
                   <span className="text-zinc-400 text-[10px] whitespace-nowrap">
-                    {isEs ? 'Insertar blanca en pos #' : 'Insert blank at #'}
+                    {isEs ? '+ Blanca en pos' : '+ Blank at'}
                   </span>
                   <input
                     type="number"
@@ -1364,147 +1519,105 @@ export default function PdfOrganizer() {
                     onChange={(e) =>
                       setInsertBlankPosition(Math.max(1, parseInt(e.target.value, 10) || 1))
                     }
-                    className="w-10 bg-zinc-900 border border-white/20 rounded-md py-0.5 text-center text-white font-bold text-xs outline-none focus:border-white/50"
+                    className="w-12 bg-zinc-950 border border-zinc-700 rounded-lg py-1 text-center text-white font-bold text-xs outline-none focus:border-white/40"
                   />
                   <button
                     type="button"
                     onClick={handleInsertBlankPage}
                     disabled={pages.length === 0}
-                    className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-white/10 rounded-md text-[11px] transition-colors cursor-pointer disabled:opacity-40"
+                    className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-white font-bold border border-zinc-700 rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40"
                   >
-                    {isEs ? '+ Insertar' : '+ Insert'}
+                    {isEs ? 'Insertar' : 'Insert'}
                   </button>
                 </div>
-              </div>
 
-              {/* SECCIÓN DE OPCIONES AVANZADAS PDFBLACK */}
-              <div className="pt-2 border-t border-white/10 space-y-2 font-mono">
-                <div className="flex items-center gap-2 text-xs font-bold text-white">
-                  <Sliders className="w-3.5 h-3.5 text-white" />
-                  <span>{isEs ? 'Opciones Avanzadas PDFBLACK' : 'PDFBLACK Advanced Options'}</span>
-                </div>
                 <div>
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                    {isEs ? 'Nomenclatura / Prefijo Resultante:' : 'Output File Prefix:'}
-                  </label>
                   <input
                     type="text"
                     value={filePrefix}
                     onChange={(e) => setFilePrefix(e.target.value)}
                     placeholder="Documento_Reordenado"
-                    className="w-full py-1 px-2.5 bg-zinc-900 border border-white/10 rounded-lg text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                    className="w-full py-1.5 px-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-xs font-bold text-white outline-none focus:border-white/40 font-mono"
                   />
                 </div>
-                {/* Ajustes de numeración con formato y posición */}
-                <div className="bg-zinc-950/80 p-2 rounded-lg border border-white/10 space-y-1.5">
-                  <label className="flex items-center gap-2 text-[11px] font-bold text-zinc-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={renumberPages}
-                      onChange={(e) => setRenumberPages(e.target.checked)}
-                      className="accent-white w-3.5 h-3.5 rounded"
-                    />
-                    <span>{isEs ? 'Re-numerar pie de página' : 'Re-number footer pages'}</span>
-                  </label>
-                  {renumberPages && (
-                    <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-white/5">
-                      <div>
-                        <label className="text-[9px] text-zinc-400 block mb-0.5">
-                          {isEs ? 'Formato:' : 'Format:'}
-                        </label>
-                        <select
-                          value={numberingFormat}
-                          onChange={(e: any) => setNumberingFormat(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded py-0.5 px-1.5 text-[10px] text-white outline-none focus:border-white/30 font-mono cursor-pointer"
-                        >
-                          <option value="page_x_of_y">Página X de Y</option>
-                          <option value="x_slash_y">X / Y</option>
-                          <option value="dash_x_dash">— X —</option>
-                          <option value="num_only">X (Solo número)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[9px] text-zinc-400 block mb-0.5">
-                          {isEs ? 'Posición:' : 'Position:'}
-                        </label>
-                        <select
-                          value={numberingPosition}
-                          onChange={(e: any) => setNumberingPosition(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded py-0.5 px-1.5 text-[10px] text-white outline-none focus:border-white/30 font-mono cursor-pointer"
-                        >
-                          <option value="bottom_center">Inferior Centro</option>
-                          <option value="bottom_right">Inferior Derecha</option>
-                          <option value="bottom_left">Inferior Izquierda</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {/* Metadatos del documento */}
-                <details className="group bg-zinc-950/80 border border-white/10 rounded-lg overflow-hidden font-mono text-xs">
-                  <summary className="flex items-center justify-between p-2 cursor-pointer font-bold text-[10px] uppercase text-zinc-400 hover:text-white select-none">
-                    <span>
-                      {isEs
-                        ? 'Metadatos del PDF (Título, Autor, Asunto)'
-                        : 'PDF Metadata (Title, Author, Subject)'}
-                    </span>
-                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-open:rotate-180 transition-transform" />
-                  </summary>
-                  <div className="p-2 space-y-1.5 border-t border-white/5 text-[11px]">
-                    <div>
-                      <label className="text-[9px] text-zinc-400 block mb-0.5">
-                        {isEs ? 'Título del Documento:' : 'Document Title:'}
-                      </label>
-                      <input
-                        type="text"
-                        placeholder={
-                          isEs ? 'Ej: Documento_Ordenado_2026' : 'Ex: Reordered_Document_2026'
-                        }
-                        value={docTitle}
-                        onChange={(e) => setDocTitle(e.target.value)}
-                        className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div>
-                        <label className="text-[9px] text-zinc-400 block mb-0.5">
-                          {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
-                          value={docAuthor}
-                          onChange={(e) => setDocAuthor(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] text-zinc-400 block mb-0.5">
-                          {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={isEs ? 'Ej: Reordenamiento' : 'Ex: Reordering'}
-                          value={docSubject}
-                          onChange={(e) => setDocSubject(e.target.value)}
-                          className="w-full bg-zinc-900 border border-white/10 rounded py-1 px-2 text-[10px] text-white outline-none focus:border-white/30"
-                        />
-                      </div>
-                    </div>
+              </div>
+
+              {/* COLUMNA 3: METADATOS Y NUMERACIÓN */}
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-2.5 shadow-inner">
+                <span className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
+                  {isEs ? 'Numeración y Metadatos:' : 'Numbering & Metadata:'}
+                </span>
+
+                <label className="flex items-center gap-2 text-xs font-bold text-zinc-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={renumberPages}
+                    onChange={(e) => setRenumberPages(e.target.checked)}
+                    className="accent-white w-4 h-4 rounded cursor-pointer"
+                  />
+                  <span>{isEs ? 'Re-numerar pie de página' : 'Re-number footer pages'}</span>
+                </label>
+
+                {renumberPages && (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <select
+                      value={numberingFormat}
+                      onChange={(e: any) => setNumberingFormat(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg py-1 px-2 text-[10px] text-white outline-none focus:border-white/40 font-mono cursor-pointer"
+                    >
+                      <option value="page_x_of_y">Pág X de Y</option>
+                      <option value="x_slash_y">X / Y</option>
+                      <option value="dash_x_dash">— X —</option>
+                      <option value="num_only">Solo núm</option>
+                    </select>
+                    <select
+                      value={numberingPosition}
+                      onChange={(e: any) => setNumberingPosition(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg py-1 px-2 text-[10px] text-white outline-none focus:border-white/40 font-mono cursor-pointer"
+                    >
+                      <option value="bottom_center">Centro</option>
+                      <option value="bottom_right">Derecha</option>
+                      <option value="bottom_left">Izquierda</option>
+                    </select>
                   </div>
-                </details>
+                )}
+
+                <input
+                  type="text"
+                  placeholder={isEs ? 'Título: Ej. Documento_Ordenado' : 'Title: Ex. Ordered_Doc'}
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-1 px-2.5 text-xs text-white outline-none focus:border-white/40 font-mono"
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder={isEs ? 'Autor' : 'Author'}
+                    value={docAuthor}
+                    onChange={(e) => setDocAuthor(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-1 px-2.5 text-xs text-white outline-none focus:border-white/40 font-mono"
+                  />
+                  <input
+                    type="text"
+                    placeholder={isEs ? 'Asunto' : 'Subject'}
+                    value={docSubject}
+                    onChange={(e) => setDocSubject(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-1 px-2.5 text-xs text-white outline-none focus:border-white/40 font-mono"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-2.5 border-t border-white/10 font-sans">
+            {/* BARRA DE PROGRESO Y BOTÓN PRINCIPAL */}
+            <div className="pt-4 border-t border-zinc-800">
               {isProcessing && (
-                <div className="mb-2 space-y-1 font-mono">
+                <div className="mb-3 space-y-1.5 font-mono">
                   <div className="flex justify-between text-[10px] font-bold text-zinc-300">
-                    <span className="truncate max-w-[180px]">{progressMsg}</span>
+                    <span className="truncate max-w-[250px]">{progressMsg}</span>
                     <span>{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-700">
                     <div
                       style={{ width: `${progressPercent}%` }}
                       className="h-full bg-white transition-all duration-300"
@@ -1516,12 +1629,12 @@ export default function PdfOrganizer() {
               <button
                 onClick={executeReorder}
                 disabled={isProcessing || pages.length === 0 || (isEncrypted && !isUnlocked)}
-                className="w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-zinc-200 py-3 rounded-xl font-sans font-bold text-sm sm:text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.005] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  <Loader2 className="w-5 h-5 animate-spin text-black" />
                 ) : (
-                  <Sparkles className="w-4 h-4 text-black" />
+                  <Sparkles className="w-5 h-5 text-black" />
                 )}
                 <span>
                   {isProcessing
@@ -1531,8 +1644,8 @@ export default function PdfOrganizer() {
                         ? 'Selecciona un archivo PDF'
                         : 'Select a PDF file'
                       : isEs
-                        ? 'Guardar Nuevo Orden del PDF →'
-                        : 'Save New PDF Order →'}
+                        ? 'Organizar y Descargar PDF →'
+                        : 'Organize & Download PDF →'}
                 </span>
               </button>
             </div>
@@ -1541,34 +1654,49 @@ export default function PdfOrganizer() {
       )}
 
       {/* MODAL ZOOM DE PREVISUALIZACIÓN DE HOJA */}
-      {previewZoomPage && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-white/20 p-6 rounded-2xl max-w-xl w-full flex flex-col items-center gap-4 relative shadow-2xl font-mono">
-            <button
-              type="button"
-              onClick={() => setPreviewZoomPage(null)}
-              className="absolute top-4 right-4 p-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl"
+      <AnimatePresence>
+        {previewZoomPage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewZoomPage(null)}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-zinc-900 border border-white/20 p-6 rounded-2xl max-w-xl w-full flex flex-col items-center gap-4 relative shadow-2xl font-mono"
             >
-              <X className="w-5 h-5" />
-            </button>
-            <h4 className="text-white font-bold text-sm">
-              {isEs
-                ? `Previsualización - Página Original #${previewZoomPage.originalPageNum}`
-                : `Preview - Original Page #${previewZoomPage.originalPageNum}`}
-            </h4>
-            <div className="w-full max-h-[70vh] bg-white rounded-xl overflow-hidden p-2 flex items-center justify-center shadow-inner">
-              {previewZoomPage.thumbnailUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewZoomPage.thumbnailUrl}
-                  alt="Preview Zoom"
-                  className="max-h-[65vh] object-contain"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              <button
+                type="button"
+                onClick={() => setPreviewZoomPage(null)}
+                className="absolute top-4 right-4 p-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl cursor-pointer transition-colors"
+                title={isEs ? 'Cerrar' : 'Close'}
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h4 className="text-white font-bold text-sm">
+                {isEs
+                  ? `Previsualización - Página #${previewZoomPage.originalPageNum}`
+                  : `Preview - Page #${previewZoomPage.originalPageNum}`}
+              </h4>
+              <div className="w-full max-h-[70vh] bg-white rounded-xl overflow-hidden p-2 flex items-center justify-center shadow-inner">
+                {previewZoomPage.thumbnailUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewZoomPage.thumbnailUrl}
+                    alt="Preview Zoom"
+                    className="max-h-[65vh] object-contain"
+                  />
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

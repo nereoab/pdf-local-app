@@ -70,6 +70,8 @@ export default function PdfPageDeleter() {
   const [progressPercent, setProgressPercent] = useState(0);
   const [completedResult, setCompletedResult] = useState<CompletedDeleteResult | null>(null);
 
+  const [isDragging, setIsDragging] = useState(false);
+
   // Ocultar barra superior global y scroll automático suave hacia la cabecera de la herramienta
   useEffect(() => {
     if (completedResult) {
@@ -223,22 +225,25 @@ export default function PdfPageDeleter() {
     }
   }, [file, pages.length, isEncrypted, renderThumbnails]);
 
+  const handleSelectFile = async (selected: File) => {
+    if (selected.type === 'application/pdf' || selected.name.toLowerCase().endsWith('.pdf')) {
+      setFile(selected);
+      setGlobalFile(selected);
+      setDownloadUrl(null);
+      setPages([]);
+      setIsEncrypted(false);
+      setIsUnlocked(false);
+      setUnlockedPassword(undefined);
+      setPasswordInput('');
+      await renderThumbnails(selected);
+    } else {
+      toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0];
-      if (selected.type === 'application/pdf') {
-        setFile(selected);
-        setGlobalFile(selected);
-        setDownloadUrl(null);
-        setPages([]);
-        setIsEncrypted(false);
-        setIsUnlocked(false);
-        setUnlockedPassword(undefined);
-        setPasswordInput('');
-        await renderThumbnails(selected);
-      } else {
-        toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
-      }
+      await handleSelectFile(e.target.files[0]);
     }
     e.target.value = '';
   };
@@ -249,118 +254,133 @@ export default function PdfPageDeleter() {
       await renderThumbnails(file, passwordInput);
       setUnlockedPassword(passwordInput);
       setIsUnlocked(true);
-      setIsEncrypted(false);
-      toast.success(
-        isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF unlocked successfully!',
-      );
-    } catch {
+      toast.success(isEs ? 'Contraseña correcta' : 'Password correct');
+    } catch (e) {
       toast.error(isEs ? 'Contraseña incorrecta' : 'Incorrect password');
     }
   };
 
-  const removeFile = useCallback(() => {
+  const removeFile = () => {
     setHeaderHidden(false);
     setFile(null);
+    setGlobalFile(null);
     setPages([]);
     setDownloadUrl(null);
     setCompletedResult(null);
-    setGlobalFile(null);
     setRangeInput('');
     setIsEncrypted(false);
     setIsUnlocked(false);
     setUnlockedPassword(undefined);
     setPasswordInput('');
+    setIsDragging(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [setGlobalFile, setHeaderHidden]);
+  };
 
   const toggleSelectPage = (index: number) => {
     setPages((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], selectedToDelete: !updated[index].selectedToDelete };
-      return updated;
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        selectedToDelete: !next[index].selectedToDelete,
+      };
+      return next;
     });
     setDownloadUrl(null);
   };
 
   const selectEvenPages = () => {
-    setPages((prev) => prev.map((p) => ({ ...p, selectedToDelete: p.pageNum % 2 === 0 })));
-    setDownloadUrl(null);
-    toast.info(
-      isEs ? 'Páginas pares seleccionadas para eliminar' : 'Even pages selected for deletion',
+    setPages((prev) =>
+      prev.map((p) => ({
+        ...p,
+        selectedToDelete: p.pageNum % 2 === 0,
+      })),
     );
+    setDownloadUrl(null);
   };
 
   const selectOddPages = () => {
-    setPages((prev) => prev.map((p) => ({ ...p, selectedToDelete: p.pageNum % 2 !== 0 })));
-    setDownloadUrl(null);
-    toast.info(
-      isEs ? 'Páginas impares seleccionadas para eliminar' : 'Odd pages selected for deletion',
+    setPages((prev) =>
+      prev.map((p) => ({
+        ...p,
+        selectedToDelete: p.pageNum % 2 !== 0,
+      })),
     );
+    setDownloadUrl(null);
   };
 
   const selectBlankPages = () => {
-    const blankCount = pages.filter((p) => p.isBlank).length;
-    setPages((prev) => prev.map((p) => ({ ...p, selectedToDelete: p.isBlank })));
+    setPages((prev) =>
+      prev.map((p) => ({
+        ...p,
+        selectedToDelete: p.isBlank ? true : p.selectedToDelete,
+      })),
+    );
     setDownloadUrl(null);
-    if (blankCount > 0) {
-      toast.success(
-        isEs
-          ? `${blankCount} páginas en blanco detectadas y seleccionadas`
-          : `${blankCount} blank pages detected and selected`,
-      );
-    } else {
-      toast.info(isEs ? 'No se detectaron páginas en blanco' : 'No blank pages detected');
-    }
+    toast.info(isEs ? 'Páginas en blanco seleccionadas' : 'Blank pages selected');
+  };
+
+  const invertSelection = () => {
+    setPages((prev) =>
+      prev.map((p) => ({
+        ...p,
+        selectedToDelete: !p.selectedToDelete,
+      })),
+    );
+    setDownloadUrl(null);
   };
 
   const clearSelection = () => {
-    setPages((prev) => prev.map((p) => ({ ...p, selectedToDelete: false })));
+    setPages((prev) =>
+      prev.map((p) => ({
+        ...p,
+        selectedToDelete: false,
+      })),
+    );
     setRangeInput('');
     setDownloadUrl(null);
   };
 
-  const invertSelection = () => {
-    setPages((prev) => prev.map((p) => ({ ...p, selectedToDelete: !p.selectedToDelete })));
-    setDownloadUrl(null);
-  };
-
-  // Sincronizar input de rangos de texto (ej. 2, 5, 8-12) con las miniaturas
-  const handleRangeInputChange = (val: string) => {
-    setRangeInput(val);
-    if (!val.trim()) {
+  // Parser de rangos de texto (ej: "2, 5, 8-12")
+  const handleRangeInputChange = (text: string) => {
+    setRangeInput(text);
+    if (!text.trim()) {
       setPages((prev) => prev.map((p) => ({ ...p, selectedToDelete: false })));
       return;
     }
 
-    const indicesToDelete: Set<number> = new Set();
-    val.split(',').forEach((part) => {
-      const trimmed = part.trim();
-      if (trimmed.includes('-')) {
-        const [startStr, endStr] = trimmed.split('-');
+    const parts = text.split(/[,;\s]+/).filter(Boolean);
+    const toDeleteIndices = new Set<number>();
+
+    for (const part of parts) {
+      if (part.includes('-')) {
+        const [startStr, endStr] = part.split('-');
         const start = parseInt(startStr, 10);
         const end = parseInt(endStr, 10);
         if (!isNaN(start) && !isNaN(end)) {
-          for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
-            if (i >= 1 && i <= pages.length) indicesToDelete.add(i);
+          const min = Math.min(start, end);
+          const max = Math.max(start, end);
+          for (let i = min; i <= max; i++) {
+            if (i >= 1 && i <= pages.length) {
+              toDeleteIndices.add(i);
+            }
           }
         }
       } else {
-        const pNum = parseInt(trimmed, 10);
-        if (!isNaN(pNum) && pNum >= 1 && pNum <= pages.length) {
-          indicesToDelete.add(pNum);
+        const single = parseInt(part, 10);
+        if (!isNaN(single) && single >= 1 && single <= pages.length) {
+          toDeleteIndices.add(single);
         }
       }
-    });
+    }
 
     setPages((prev) =>
       prev.map((p) => ({
         ...p,
-        selectedToDelete: indicesToDelete.has(p.pageNum),
+        selectedToDelete: toDeleteIndices.has(p.pageNum),
       })),
     );
   };
 
-  // EJECUCIÓN CON WEB WORKER
   const executeDelete = async () => {
     if (!file) {
       toast.error(isEs ? 'Selecciona un archivo PDF' : 'Select a PDF file');
@@ -376,7 +396,8 @@ export default function PdfPageDeleter() {
       return;
     }
 
-    const pagesToKeep = pages.filter((p) => !p.selectedToDelete).map((p) => p.pageNum - 1);
+    const pagesToKeep = pages.filter((p) => !p.selectedToDelete).map((p) => p.pageNum - 1); // 0-indexed para pdf-lib
+
     if (pagesToKeep.length === 0) {
       toast.error(
         isEs
@@ -396,7 +417,7 @@ export default function PdfPageDeleter() {
     }
 
     setIsProcessing(true);
-    setProgressPercent(10);
+    setProgressPercent(5);
     setProgressMsg(isEs ? 'Iniciando Web Worker acelerado...' : 'Starting Web Worker...');
 
     try {
@@ -495,7 +516,7 @@ export default function PdfPageDeleter() {
     <div className="w-full max-w-7xl mx-auto min-h-[calc(100vh-100px)] flex flex-col justify-start">
       <input
         type="file"
-        accept=".pdf"
+        accept=".pdf,application/pdf"
         className="hidden"
         ref={fileInputRef}
         onChange={handleFileChange}
@@ -518,7 +539,7 @@ export default function PdfPageDeleter() {
           <div className="hidden sm:block h-5 w-px bg-zinc-700" />
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-              {isEs ? '002 / PURGA Y ELIMINACIÓN DE PÁGINAS PDF' : '002 / PAGE PURGING & DELETION'}
+              {isEs ? '003 / BORRADO Y DEPURACIÓN DE PÁGINAS PDF' : '003 / PAGE PURGING & DELETION'}
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Trash2 className="w-6 h-6 text-white flex-shrink-0" />
@@ -544,7 +565,7 @@ export default function PdfPageDeleter() {
             </div>
             <button
               onClick={removeFile}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all"
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Quitar archivo' : 'Remove file'}
             >
               <Trash2 className="w-4 h-4" />
@@ -561,7 +582,7 @@ export default function PdfPageDeleter() {
           animate={{ opacity: 1, scale: 1 }}
           className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE ELIMINACIÓN (ESTILO PÁGINA DE INICIO) */}
+          {/* BANNER DE RESULTADO Y MÉTRICAS DE ELIMINACIÓN */}
           <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -631,51 +652,109 @@ export default function PdfPageDeleter() {
           />
         </motion.div>
       ) : !file ? (
-        /* VISTA DROPZONE VACÍA */
+        /* VISTA DROPZONE VACÍA PREMIUM */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              const dropped = e.dataTransfer.files[0];
+              handleSelectFile(dropped);
+            }
+          }}
+          className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px] ${
+            isDragging ? 'border-white bg-zinc-900/50' : 'border-zinc-600 hover:border-white'
+          }`}
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <Trash2 className="w-12 h-12 text-white" />
           </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>
+              {isEs
+                ? 'Motor de Depuración Vectorial v5.0 • 100% Local'
+                : 'Vector Purge Engine v5.0 • 100% Local'}
+            </span>
+          </div>
+
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
             {isEs ? 'ELIMINAR PÁGINAS DE DOCUMENTOS PDF' : 'DELETE PDF PAGES'}
           </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Selecciona y remueve hojas no deseadas o detecta páginas en blanco de forma 100% confidencial y local.'
-              : 'Select and remove unwanted pages or detect blank pages 100% locally.'}
+              ? 'Selecciona y elimina páginas no deseadas, hojas en blanco o intervalos específicos al instante, sin subir datos a la nube ni perder calidad vectorial.'
+              : 'Select and remove unwanted pages, blank sheets, or specific intervals instantly, without cloud uploads or vector quality loss.'}
           </p>
+
           <button
             type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
           >
             <Plus className="w-4 h-4 text-black" />
             <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
-            <span>
-              {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-            </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Supresión Vectorial 100%' : '✓ 100% Vector Purge'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Reestructura el árbol de páginas sin alterar tipografías, metadatos ni enlaces.'
+                  : 'Restructures page tree without altering fonts, metadata, or embedded hyperlinks.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Detección de Hojas en Blanco' : '✓ Blank Page Detection'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Identifica automáticamente páginas vacías para eliminarlas en un solo clic.'
+                  : 'Automatically flags empty or blank sheets for single-click bulk removal.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin subir tu información a servidores externos.'
+                  : 'Local browser RAM processing without uploading sensitive data to external servers.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PANEL DE CONTROL Y GRID DE PÁGINAS */
+        /* VISTA PRINCIPAL CON ERGONOMÍA VERTICAL (VISTA PREVIA ARRIBA, PANEL DE CONTROL DEBAJO) */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+          className="w-full flex flex-col space-y-6"
         >
-          {/* LADO IZQUIERDO: REJILLA INTERACTIVA DE PÁGINAS EN CUADRÍCULA 4x4 */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px] relative overflow-hidden">
+          {/* PANEL SUPERIOR: REJILLA INTERACTIVA DE PÁGINAS A ANCHO COMPLETO */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col h-[580px] lg:h-[640px] relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold">
               <div className="flex items-center gap-2 text-zinc-200 text-xs font-bold">
@@ -688,7 +767,7 @@ export default function PdfPageDeleter() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-white font-mono bg-zinc-800 px-3 py-1 rounded-xl border border-zinc-600 shadow-sm">
-                  {selectedCount} {isEs ? 'marcadas' : 'marked'}
+                  {selectedCount} {isEs ? 'marcadas para borrar' : 'marked to delete'}
                 </span>
                 <div className="flex items-center gap-2 px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[11px] shadow-sm">
                   <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" /> 100% Local
@@ -732,7 +811,7 @@ export default function PdfPageDeleter() {
             {/* BARRA DE HERRAMIENTAS Y FILTROS RÁPIDOS */}
             <div className="bg-[#121217] p-3 rounded-2xl border border-zinc-700/80 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] mb-4 shadow-inner">
               <span className="text-zinc-200 font-bold">
-                {isEs ? 'Filtros Masivos:' : 'Mass Filters:'}
+                {isEs ? 'Filtros Masivos de Selección:' : 'Mass Filters:'}
               </span>
 
               <div className="flex flex-wrap items-center gap-1.5">
@@ -753,7 +832,7 @@ export default function PdfPageDeleter() {
                 <button
                   type="button"
                   onClick={selectBlankPages}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-amber-500/20 hover:text-amber-300 text-zinc-300 rounded-lg border border-white/10 transition-colors cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 bg-zinc-800 hover:bg-amber-500/20 hover:text-amber-300 text-zinc-300 rounded-xl border border-zinc-700 transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <Filter className="w-3 h-3 text-amber-400" />
                   {isEs ? 'Blancas' : 'Blanks'}
@@ -761,36 +840,36 @@ export default function PdfPageDeleter() {
                 <button
                   type="button"
                   onClick={invertSelection}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg border border-white/10 transition-colors cursor-pointer"
+                  className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl border border-zinc-700 transition-colors cursor-pointer"
                 >
                   {isEs ? 'Invertir' : 'Invert'}
                 </button>
                 <button
                   type="button"
                   onClick={clearSelection}
-                  className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
+                  className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl border border-zinc-700 transition-colors cursor-pointer"
                 >
-                  {isEs ? 'Limpiar' : 'Clear'}
+                  {isEs ? 'Limpiar Selección' : 'Clear'}
                 </button>
               </div>
             </div>
 
-            {/* GRID DE MINIATURAS CANVAS DE PÁGINAS EN CUADRÍCULA ESPACIOSA Y PROPORCIONAL */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-2 p-1">
+            {/* GRID DE MINIATURAS CANVAS DE PÁGINAS */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-2 p-1">
               {pages.map((p, idx) => (
                 <motion.div
                   key={p.pageNum}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   onClick={() => toggleSelectPage(idx)}
-                  className={`relative w-full h-[280px] min-h-[280px] rounded-2xl border p-3 flex flex-col justify-between cursor-pointer transition-all duration-200 group overflow-hidden ${
+                  className={`relative w-full h-[250px] min-h-[250px] rounded-2xl border p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 group overflow-hidden ${
                     p.selectedToDelete
                       ? 'border-red-500 bg-red-950/40 shadow-[0_0_15px_rgba(239,68,68,0.25)]'
                       : 'border-white/10 hover:border-white/30 bg-zinc-950 hover:bg-zinc-900'
                   }`}
                 >
                   {/* BADGE DE NÚMERO DE PÁGINA */}
-                  <div className="w-full flex items-center justify-between mb-2 font-mono text-[10px] shrink-0">
+                  <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px] shrink-0">
                     <span
                       className={`px-2 py-0.5 rounded-md font-bold ${p.selectedToDelete ? 'bg-red-500 text-white' : 'bg-zinc-900 border border-white/10 text-zinc-300'}`}
                     >
@@ -803,8 +882,8 @@ export default function PdfPageDeleter() {
                     )}
                   </div>
 
-                  {/* MINIATURA CANVAS / IMAGEN PROPORCIONAL */}
-                  <div className="w-full flex-1 min-h-0 bg-zinc-900/90 rounded-xl overflow-hidden flex items-center justify-center relative shadow-inner border border-white/5 p-2">
+                  {/* MINIATURA CANVAS / IMAGEN */}
+                  <div className="w-full flex-1 min-h-0 bg-zinc-900/90 rounded-xl overflow-hidden flex items-center justify-center relative shadow-inner border border-white/5 p-1.5">
                     {p.thumbnailUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -819,8 +898,8 @@ export default function PdfPageDeleter() {
                     {/* OVERLAY SI ESTÁ SELECCIONADA PARA ELIMINAR */}
                     {p.selectedToDelete && (
                       <div className="absolute inset-0 bg-red-900/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1 text-white animate-fade-in font-mono">
-                        <X className="w-8 h-8 text-red-300 stroke-[3]" />
-                        <span className="text-[10px] font-bold tracking-wider uppercase">
+                        <X className="w-7 h-7 text-red-300 stroke-[3]" />
+                        <span className="text-[9px] font-bold tracking-wider uppercase">
                           {isEs ? 'Eliminada' : 'Deleted'}
                         </span>
                       </div>
@@ -834,7 +913,7 @@ export default function PdfPageDeleter() {
                       e.stopPropagation();
                       setPreviewZoomPage(p);
                     }}
-                    className="absolute bottom-4 right-4 p-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-white rounded-lg border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    className="absolute bottom-3 right-3 p-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-white rounded-lg border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
                     title={isEs ? 'Previsualizar hoja' : 'Zoom page'}
                   >
                     <ZoomIn className="w-3.5 h-3.5" />
@@ -844,136 +923,127 @@ export default function PdfPageDeleter() {
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL */}
-          <div className="lg:col-span-5 xl:col-span-4 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px] relative overflow-hidden">
+          {/* PANEL INFERIOR: PANEL DE CONTROL EN 3 COLUMNAS ERGONÓMICAS */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 sm:p-7 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
-              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-4 pb-3 border-b border-zinc-800">
-                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-5 border-b border-zinc-800">
+              <div>
+                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+                  {isEs ? '002 / PARÁMETROS DE ELIMINACIÓN' : '002 / DELETION SETTINGS'}
                 </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
+                <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight flex items-center gap-2">
                   <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
                   <Sliders className="w-5 h-5 text-white" />
                 </h2>
               </div>
+              <div className="text-xs font-mono text-zinc-400">
+                {isEs ? 'Hojas a conservar:' : 'Pages to keep:'}{' '}
+                <span className="text-white font-bold">{pages.length - selectedCount}</span> /{' '}
+                {pages.length}
+              </div>
+            </div>
 
-              {/* SELECCIÓN POR TEXTO / RANGO */}
-              <div className="mb-5 font-mono">
-                <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">
-                  {isEs ? 'Eliminación por Texto / Rango:' : 'Range Removal Input:'}
-                </label>
+            {/* CUADRÍCULA DE 3 COLUMNAS */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+              {/* COLUMNA 1: ENTRADA POR TEXTO / RANGO */}
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-3 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider">
+                    {isEs ? 'Rango o Páginas a Borrar:' : 'Range to Delete:'}
+                  </label>
+                  <span className="text-[10px] text-zinc-400 font-mono">ej: 2, 5, 8-12</span>
+                </div>
                 <input
                   type="text"
                   value={rangeInput}
                   onChange={(e) => handleRangeInputChange(e.target.value)}
-                  placeholder="ej: 2, 5, 8-12"
-                  className="w-full p-2.5 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30"
+                  placeholder="2, 5, 8-12"
+                  className="w-full p-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-xs font-bold text-white outline-none focus:border-white/40"
                 />
-                <span className="text-[10px] text-zinc-400 mt-1 block">
+                <p className="text-[10px] text-zinc-400 leading-relaxed font-sans">
                   {isEs
-                    ? 'Escribe páginas o rangos separados por comas para desestimar'
-                    : 'Enter pages or ranges separated by commas'}
-                </span>
+                    ? 'Escribe números de páginas individuales o rangos con guiones para marcarlas al instante.'
+                    : 'Enter page numbers or ranges with hyphens to mark them immediately.'}
+                </p>
               </div>
 
-              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
-              <div className="pt-4 border-t border-white/10 my-4 space-y-3 font-mono">
-                <div className="flex items-center gap-2 text-xs font-bold text-white mb-1">
-                  <Sliders className="w-4 h-4 text-white" />
-                  <span>{isEs ? 'Opciones Avanzadas PDFBLACK' : 'PDFBLACK Advanced Options'}</span>
-                </div>
-
+              {/* COLUMNA 2: SALIDA Y NUMERACIÓN */}
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-3 shadow-inner">
+                <label className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
+                  {isEs ? 'Ajustes del Archivo de Salida:' : 'Output Settings:'}
+                </label>
                 <div>
                   <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
-                    {isEs ? 'Prefijo del Archivo Resultante:' : 'Output File Prefix:'}
+                    {isEs ? 'Prefijo de archivo:' : 'File prefix:'}
                   </label>
                   <input
                     type="text"
                     value={filePrefix}
                     onChange={(e) => setFilePrefix(e.target.value)}
                     placeholder="Documento_Depurado"
-                    className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none focus:border-white/30 font-mono"
+                    className="w-full p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-xs font-bold text-white outline-none focus:border-white/40 font-mono"
                   />
                 </div>
+                <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={renumberPages}
+                    onChange={(e) => setRenumberPages(e.target.checked)}
+                    className="accent-white w-4 h-4 rounded cursor-pointer"
+                  />
+                  <span>
+                    {isEs
+                      ? 'Re-numerar páginas en pie de página'
+                      : 'Re-number footer pages (N / M)'}
+                  </span>
+                </label>
+              </div>
 
-                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'AJUSTES DE NUMERACIÓN' : 'NUMBERING SETTINGS'}
-                  </label>
-
-                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={renumberPages}
-                      onChange={(e) => setRenumberPages(e.target.checked)}
-                      className="accent-white w-4 h-4 rounded"
-                    />
-                    <span>
-                      {isEs
-                        ? 'Re-numerar páginas en pie de página (Página N / M)'
-                        : 'Re-number footer pages (Page N / M)'}
-                    </span>
-                  </label>
+              {/* COLUMNA 3: METADATOS PERSONALIZADOS */}
+              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-2 shadow-inner">
+                <label className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block mb-1">
+                  {isEs ? 'Metadatos del Documento:' : 'Document Metadata:'}
+                </label>
+                <div>
+                  <input
+                    type="text"
+                    placeholder={
+                      isEs ? 'Título: Ej. Contrato_Depurado' : 'Title: Ex. Contract_Clean'
+                    }
+                    value={docTitle}
+                    onChange={(e) => setDocTitle(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-1.5 px-2.5 text-xs text-white outline-none focus:border-white/40 font-mono mb-1.5"
+                  />
                 </div>
-
-                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
-                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2 font-mono">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">
-                    {isEs ? 'METADATOS DEL PDF DEPUPADO' : 'CLEAN PDF METADATA'}
-                  </label>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Título:' : 'Title:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Documento_Limpio_2026' : 'Ex: Clean_Document_2026'}
-                      value={docTitle}
-                      onChange={(e) => setDocTitle(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
-                      value={docAuthor}
-                      onChange={(e) => setDocAuthor(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={
-                        isEs ? 'Ej: Purga de páginas obsoletas' : 'Ex: Purge of obsolete pages'
-                      }
-                      value={docSubject}
-                      onChange={(e) => setDocSubject(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder={isEs ? 'Autor' : 'Author'}
+                    value={docAuthor}
+                    onChange={(e) => setDocAuthor(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-1.5 px-2.5 text-xs text-white outline-none focus:border-white/40 font-mono"
+                  />
+                  <input
+                    type="text"
+                    placeholder={isEs ? 'Asunto' : 'Subject'}
+                    value={docSubject}
+                    onChange={(e) => setDocSubject(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-xl py-1.5 px-2.5 text-xs text-white outline-none focus:border-white/40 font-mono"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-4 border-t border-white/10 font-sans">
+            {/* BARRA DE PROGRESO Y BOTÓN PRINCIPAL */}
+            <div className="pt-4 border-t border-zinc-800">
               {isProcessing && (
                 <div className="mb-3 space-y-1.5 font-mono">
                   <div className="flex justify-between text-[10px] font-bold text-zinc-300">
-                    <span className="truncate max-w-[200px]">{progressMsg}</span>
+                    <span className="truncate max-w-[250px]">{progressMsg}</span>
                     <span>{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-700">
                     <div
                       style={{ width: `${progressPercent}%` }}
                       className="h-full bg-white transition-all duration-300"
@@ -987,7 +1057,7 @@ export default function PdfPageDeleter() {
                 disabled={
                   isProcessing || !file || selectedCount === 0 || (isEncrypted && !isUnlocked)
                 }
-                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.005] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? (
                   <Loader2 className="w-5 h-5 animate-spin text-black" />

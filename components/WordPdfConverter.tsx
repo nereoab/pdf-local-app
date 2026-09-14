@@ -1578,8 +1578,26 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
             >
               <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
               <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-                <UploadCloud className="w-12 h-12 text-white" />
+                {mode === 'word-to-pdf' ? (
+                  <WordIcon className="w-12 h-12" />
+                ) : (
+                  <FileText className="w-12 h-12 text-white" />
+                )}
               </div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  {mode === 'word-to-pdf'
+                    ? isEs
+                      ? 'Motor de Conversión Word a PDF Vectorial v5.0 • 100% Local'
+                      : 'Word to Vector PDF Conversion Engine v5.0 • 100% Local'
+                    : isEs
+                      ? 'Motor de Reconstrucción OpenXML Word v5.0 • 100% Local'
+                      : 'OpenXML Word Reconstruction Engine v5.0 • 100% Local'}
+                </span>
+              </div>
+
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
                 {mode === 'word-to-pdf'
                   ? isEs
@@ -1589,18 +1607,18 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                     ? 'CONVERTIR PDF A WORD EDITABLE'
                     : 'CONVERT PDF TO EDITABLE WORD'}
               </h2>
-              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
                 {mode === 'word-to-pdf'
                   ? isEs
-                    ? 'Transforma documentos de Microsoft Word (.docx/.doc) en PDFs vectoriales con opciones de maquetación y tipografía.'
-                    : 'Transform Microsoft Word documents (.docx/.doc) into vector PDFs with typography options.'
+                    ? 'Transforma documentos de Microsoft Word (.docx/.doc) en PDFs vectoriales con opciones de maquetación y tipografía en tu memoria RAM.'
+                    : 'Transform Microsoft Word documents (.docx/.doc) into vector PDFs with typography options directly in RAM.'
                   : isEs
-                    ? 'Extrae texto, tablas y maquetación a formato Word (.docx) con selector de páginas y 100% privado.'
-                    : 'Extract text, tables, and layout into editable Word (.docx) with page selector 100% privately.'}
+                    ? 'Extrae texto, tablas y maquetación a formato Word (.docx) editable con selector de páginas y máxima confidencialidad en tu memoria RAM.'
+                    : 'Extract text, tables, and layout into editable Word (.docx) with page selector and maximum RAM confidentiality.'}
               </p>
               <button
                 type="button"
-                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
               >
                 <Plus className="w-4 h-4 text-black" />
                 <span>
@@ -1614,13 +1632,37 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-white" />
-                <span>
-                  {isEs
-                    ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                    : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-3xl font-mono text-left">
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Conversión Vectorial y Fuentes' : '✓ Lossless Vector & Fonts'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Preserva tipografías, formatos y coordenadas visuales exactas sin pixelado ni rasterización.'
+                      : 'Preserves fonts, formatting, and exact layout coordinates without rasterization.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Tablas y Párrafos Editables' : '✓ Editable Tables & Flow'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Reconstruye tablas nativas de Word y estructura de párrafos limpios listos para trabajar.'
+                      : 'Reconstructs native Word tables and paragraph flow ready for direct editing.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Privacidad Estricta en RAM' : '✓ Strict In-RAM Privacy'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Procesamiento 100% local en tu navegador sin enviar documentos a servidores externos.'
+                      : '100% local processing in your browser without uploading documents to external servers.'}
+                  </span>
+                </div>
               </div>
             </motion.div>
           ) : (

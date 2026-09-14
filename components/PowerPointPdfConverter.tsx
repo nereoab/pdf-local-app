@@ -1788,30 +1788,44 @@ export default function PowerPointPdfConverter({
                 {mode === 'powerpoint-to-pdf' ? (
                   <PowerPointIcon className="w-12 h-12" />
                 ) : (
-                  <UploadCloud className="w-12 h-12 text-white" />
+                  <Presentation className="w-12 h-12 text-white" />
                 )}
               </div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  {mode === 'powerpoint-to-pdf'
+                    ? isEs
+                      ? 'Motor de Conversión PPTX a PDF Vectorial v5.0 • 100% Local'
+                      : 'PPTX to Vector PDF Conversion Engine v5.0 • 100% Local'
+                    : isEs
+                      ? 'Motor de Reconstrucción Diapositivas PPTX v5.0 • 100% Local'
+                      : 'PPTX Slide Reconstruction Engine v5.0 • 100% Local'}
+                </span>
+              </div>
+
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
                 {mode === 'powerpoint-to-pdf'
                   ? isEs
-                    ? 'Arrastra hasta 3 archivos PowerPoint (.pptx)'
-                    : 'Drop up to 3 PowerPoint files (.pptx)'
+                    ? 'CONVERTIR PRESENTACIÓN POWERPOINT A PDF'
+                    : 'CONVERT POWERPOINT PRESENTATION TO PDF'
                   : isEs
-                    ? 'Arrastra hasta 3 archivos PDF aquí'
-                    : 'Drop up to 3 PDF files here'}
+                    ? 'CONVERTIR PDF A PRESENTACIÓN POWERPOINT'
+                    : 'CONVERT PDF TO POWERPOINT PRESENTATION'}
               </h2>
-              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+              <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
                 {mode === 'powerpoint-to-pdf'
                   ? isEs
-                    ? 'Transforma archivos PowerPoint en documentos PDF vectoriales. 3 cajas independientes para procesar a la vez.'
-                    : 'Transform PowerPoint files into vector PDF documents. 3 independent boxes to process at once.'
+                    ? 'Transforma archivos PowerPoint (.pptx) en documentos PDF vectoriales con alta definición y hasta 3 cajas independientes en tu memoria RAM.'
+                    : 'Transform PowerPoint files (.pptx) into vector PDF documents with high definition and up to 3 parallel slots in RAM.'
                   : isEs
-                    ? 'Transforma páginas PDF a diapositivas PowerPoint (.pptx). Previsualiza al 50% y procesa hasta 3 archivos.'
-                    : 'Transform PDF pages into PowerPoint slides (.pptx). Preview at 50% and process up to 3 files.'}
+                    ? 'Transforma páginas PDF a diapositivas PowerPoint (.pptx) con previsualización al 50% y máxima confidencialidad en tu memoria RAM.'
+                    : 'Transform PDF pages into PowerPoint slides (.pptx) with 50% split preview and maximum in-RAM privacy.'}
               </p>
               <button
                 type="button"
-                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+                className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
               >
                 <Plus className="w-4 h-4 text-black" />
                 <span>
@@ -1825,13 +1839,37 @@ export default function PowerPointPdfConverter({
                 </span>
               </button>
 
-              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-                <ShieldCheck className="w-3.5 h-3.5 text-white" />
-                <span>
-                  {isEs
-                    ? '3 CAJAS INDEPENDIENTES • VISTA AL 50% • 100% LOCAL'
-                    : '3 INDEPENDENT BOXES • 50% PREVIEW • 100% LOCAL'}
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-3xl font-mono text-left">
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Diapositivas en Alta Definición' : '✓ High Definition Slides'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Preserva vectores, proporciones 16:9 y 4:3, y claridad tipográfica impecable.'
+                      : 'Preserves vectors, 16:9 & 4:3 ratios, and flawless typographical sharpness.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ 3 Cajas Independientes' : '✓ 3 Independent Slots'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Carga y procesa hasta 3 presentaciones en paralelo con visor interactivo al 50%.'
+                      : 'Upload and process up to 3 presentations in parallel with 50% interactive viewer.'}
+                  </span>
+                </div>
+                <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+                  <span className="text-emerald-400 font-bold text-xs block mb-1">
+                    {isEs ? '✓ Privacidad Estricta en RAM' : '✓ Strict In-RAM Privacy'}
+                  </span>
+                  <span className="text-zinc-400 text-[11px] leading-tight">
+                    {isEs
+                      ? 'Procesamiento 100% local en tu navegador sin enviar documentos a servidores externos.'
+                      : '100% local processing in your browser without uploading documents to external servers.'}
+                  </span>
+                </div>
               </div>
             </motion.div>
           ) : (

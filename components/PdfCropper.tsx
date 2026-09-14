@@ -119,7 +119,8 @@ export default function PdfCropper() {
   const [docAuthor, setDocAuthor] = useState<string>('');
   const [docSubject, setDocSubject] = useState<string>('');
 
-  // ESTADO DE ARRASTRE DEL RECUADRO DE RECORTE
+  // ESTADO DE ARRASTRE DEL RECUADRO DE RECORTE Y DE ARCHIVOS
+  const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const dragStartRef = useRef<{
     startX: number;
@@ -243,23 +244,26 @@ export default function PdfCropper() {
     }
   }, [file, currentPage, isEncrypted, unlockedPassword, renderCurrentPage]);
 
+  const processSelectedFile = async (selected: File) => {
+    if (selected.type === 'application/pdf' || selected.name.toLowerCase().endsWith('.pdf')) {
+      setFile(selected);
+      setGlobalFile(selected);
+      setCurrentPage(1);
+      setMiniThumbnails([]);
+      setDownloadUrl(null);
+      setIsEncrypted(false);
+      setIsUnlocked(false);
+      setUnlockedPassword(undefined);
+      setPasswordInput('');
+      await renderCurrentPage(selected, 1);
+    } else {
+      toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0];
-      if (selected.type === 'application/pdf') {
-        setFile(selected);
-        setGlobalFile(selected);
-        setCurrentPage(1);
-        setMiniThumbnails([]);
-        setDownloadUrl(null);
-        setIsEncrypted(false);
-        setIsUnlocked(false);
-        setUnlockedPassword(undefined);
-        setPasswordInput('');
-        await renderCurrentPage(selected, 1);
-      } else {
-        toast.error(isEs ? 'Selecciona un archivo PDF válido' : 'Select a valid PDF file');
-      }
+      await processSelectedFile(e.target.files[0]);
     }
     e.target.value = '';
   };
@@ -638,9 +642,7 @@ export default function PdfCropper() {
           <div className="hidden sm:block h-5 w-px bg-zinc-700" />
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-              {isEs
-                ? '002 / RECORTE Y AJUSTE DE MÁRGENES PDF'
-                : '002 / PDF MARGIN CROPPING & ADJUSTMENT'}
+              {isEs ? '006 / RECORTAR MÁRGENES DE DOCUMENTOS PDF' : '006 / CROP PDF MARGINS'}
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Crop className="w-6 h-6 text-white flex-shrink-0" />
@@ -757,46 +759,103 @@ export default function PdfCropper() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDraggingFile(true);
+          }}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setIsDraggingFile(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setIsDraggingFile(false);
+          }}
+          onDrop={async (e) => {
+            e.preventDefault();
+            setIsDraggingFile(false);
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              await processSelectedFile(e.dataTransfer.files[0]);
+            }
+          }}
+          className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border ${
+            isDraggingFile ? 'border-white bg-zinc-900/50' : 'border-zinc-600 hover:border-white'
+          } rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]`}
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <Crop className="w-12 h-12 text-white" />
           </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>
+              {isEs
+                ? 'Motor de Recorte Vectorial v5.0 • 100% Local'
+                : 'Vector Crop Engine v5.0 • 100% Local'}
+            </span>
+          </div>
+
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
             {isEs ? 'RECORTAR MÁRGENES DE DOCUMENTOS PDF' : 'CROP PDF MARGINS'}
           </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Recorta los márgenes superior, inferior y laterales de tu PDF con control interactivo 100% local.'
-              : 'Crop top, bottom, left, and right margins of your PDF with interactive control 100% locally.'}
+              ? 'Ajusta márgenes blancos, cabeceras o pies de página con visor interactivo o encuadre milimétrico al instante, sin subir datos a la nube ni perder calidad vectorial.'
+              : 'Crop white margins, headers, or footers with interactive viewer or millimeter framing instantly, without cloud uploads or vector quality loss.'}
           </p>
+
           <button
             type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
           >
             <Plus className="w-4 h-4 text-black" />
             <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
-            <span>
-              {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-            </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Recorte Visual CropBox' : '✓ Interactive CropBox'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Arrastra los 8 manejadores en vivo para encuadrar milimétricamente el contenido útil del documento.'
+                  : 'Drag 8 live handles to frame the document contents with millimeter precision.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Ajuste en Milímetros' : '✓ Millimeter Margins'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Ajusta márgenes Top, Bottom, Left y Right con enlace de proporción y presets automáticos.'
+                  : 'Set Top, Bottom, Left, and Right margins with aspect linking and fast presets.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin subir tu información a servidores externos.'
+                  : 'Local browser RAM processing without uploading sensitive data to external servers.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : (
-        /* VISTA PRINCIPAL CON PANEL DE CONTROL Y VISOR INTERACTIVO CROPBOX */
+        /* VISTA PRINCIPAL CON ERGONOMÍA VERTICAL: VISOR CROPBOX ARRIBA Y PANEL DEBAJO */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start"
+          className="flex flex-col gap-6 w-full"
         >
-          {/* LADO IZQUIERDO: VISOR INTERACTIVO CROP BOX CON HANDLES ARRASTRABLES */}
-          <div className="lg:col-span-7 xl:col-span-7 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col h-[750px] lg:h-[830px] max-h-[850px] overflow-hidden relative">
+          {/* MESA SUPERIOR INTERACTIVA: VISOR CROP BOX A ANCHO COMPLETO */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col h-[580px] lg:h-[660px] overflow-hidden relative">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             {/* CABECERA DE LA VISTA PREVIA */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400 font-bold shrink-0">
@@ -1081,215 +1140,147 @@ export default function PdfCropper() {
             )}
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL (ALTURA NATURAL SIN SCROLL FORZADO) */}
-          <div className="lg:col-span-5 xl:col-span-5 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-5 relative overflow-hidden">
+          {/* PANEL DE CONTROL DE RECORTE CROPBOX (ANCHO COMPLETO DEBAJO DE LA MESA) */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 lg:p-8 shadow-2xl flex flex-col gap-6 relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-            <div className="space-y-4">
-              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-3 pb-3 border-b border-zinc-800">
+
+            {/* CABECERA DEL PANEL */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-800">
+              <div>
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                  {isEs ? '002 / CONFIGURACIÓN Y PARÁMETROS' : '002 / CONFIGURATION & SETTINGS'}
                 </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
+                <h2 className="text-xl font-black text-white flex items-center gap-2 font-sans uppercase tracking-tight">
                   <Sliders className="w-5 h-5 text-white" />
+                  <span>{isEs ? 'PANEL DE CONTROL DE RECORTE' : 'CROP CONTROL PANEL'}</span>
                 </h2>
               </div>
+              {liveSummary && (
+                <div className="flex items-center gap-2 font-mono text-xs">
+                  <span className="px-3 py-1.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-xl font-bold flex items-center gap-1.5">
+                    📐 {liveSummary.finalWidthMm} × {liveSummary.finalHeightMm} mm
+                  </span>
+                  <span className="px-3 py-1.5 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-xl font-bold">
+                    {liveSummary.affectedPagesCount}{' '}
+                    {liveSummary.affectedPagesCount === 1
+                      ? isEs
+                        ? 'página'
+                        : 'page'
+                      : isEs
+                        ? 'páginas'
+                        : 'pages'}
+                  </span>
+                </div>
+              )}
+            </div>
 
-              {/* 1. MODO DE ALCANCE DEL RECORTE */}
-              <div className="space-y-3 font-mono text-xs">
-                <div>
-                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2 font-bold">
-                    {isEs ? 'Alcance del Recorte:' : 'Crop Scope:'}
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            {/* CUADRÍCULA DE 3 COLUMNAS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start font-mono text-xs">
+              {/* COLUMNA 1: MÁRGENES DE RECORTE EN MM CON VINCULACIÓN */}
+              <div className="bg-zinc-950 p-4 rounded-2xl border border-white/10 space-y-3.5">
+                <div className="flex items-center justify-between text-[11px] font-bold text-white">
+                  <span className="flex items-center gap-1.5">
+                    <Crop className="w-4 h-4 text-cyan-400" />
+                    {isEs ? 'Márgenes de Recorte (mm):' : 'Crop Margins (mm):'}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {/* BOTÓN VINCULAR MÁRGENES */}
                     <button
                       type="button"
-                      onClick={() => setCropScope('all')}
-                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'all'
-                          ? 'bg-white text-black border-white shadow-md'
-                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      onClick={() => setIsLinkedMargins(!isLinkedMargins)}
+                      className={`p-1.5 rounded-lg border text-xs transition-colors flex items-center gap-1 cursor-pointer ${
+                        isLinkedMargins
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                          : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
                       }`}
+                      title={
+                        isEs ? 'Vincular/desvincular todos los márgenes' : 'Link/unlink margins'
+                      }
                     >
-                      {isEs ? 'Todas' : 'All'}
+                      {isLinkedMargins ? (
+                        <LinkIcon className="w-3.5 h-3.5 text-cyan-400" />
+                      ) : (
+                        <Unlink className="w-3.5 h-3.5" />
+                      )}
+                      <span className="text-[10px]">
+                        {isLinkedMargins
+                          ? isEs
+                            ? 'Vinculados'
+                            : 'Linked'
+                          : isEs
+                            ? 'Libres'
+                            : 'Free'}
+                      </span>
                     </button>
-
+                    {/* RESET */}
                     <button
                       type="button"
-                      onClick={() => setCropScope('even')}
-                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'even'
-                          ? 'bg-white text-black border-white shadow-md'
-                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                      }`}
+                      onClick={resetMargins}
+                      className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors cursor-pointer"
+                      title={isEs ? 'Restablecer márgenes a 0' : 'Reset margins to 0'}
                     >
-                      {isEs ? 'Pares' : 'Evens'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setCropScope('odd')}
-                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'odd'
-                          ? 'bg-white text-black border-white shadow-md'
-                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      {isEs ? 'Impares' : 'Odds'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setCropScope('current')}
-                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
-                        cropScope === 'current'
-                          ? 'bg-white text-black border-white shadow-md'
-                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      {isEs ? 'Actual' : 'Current'}
+                      <RefreshCw className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* ALCANCE PERSONALIZADO SI SE DESEA */}
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setCropScope(cropScope === 'custom' ? 'all' : 'custom')}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                      cropScope === 'custom'
-                        ? 'bg-white text-black border-white'
-                        : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    <Filter className="w-3 h-3" />
-                    <span>{isEs ? 'Rango Personalizado' : 'Custom Range'}</span>
-                  </button>
-
-                  {cropScope === 'custom' && (
-                    <input
-                      type="text"
-                      placeholder="Ej: 1-5, 8, 12"
-                      value={customPagesInput}
-                      onChange={(e) => setCustomPagesInput(e.target.value)}
-                      className="flex-1 bg-zinc-900 border border-white/20 rounded-lg py-1 px-2.5 text-xs text-white outline-none focus:border-white/50 font-mono"
-                    />
-                  )}
-                </div>
-
-                {/* 2. MÁRGENES DE RECORTE EN MM CON VINCULACIÓN */}
-                <div className="bg-zinc-950 p-3.5 rounded-xl border border-white/10 space-y-3">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-white">
-                    <span className="flex items-center gap-1.5">
-                      <Crop className="w-3.5 h-3.5 text-cyan-400" />
-                      {isEs ? 'Márgenes de Recorte (mm):' : 'Crop Margins (mm):'}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-zinc-400 block font-bold">
+                      {isEs ? 'Superior (Top):' : 'Top:'}
                     </span>
-
-                    <div className="flex items-center gap-2">
-                      {/* BOTÓN VINCULAR MÁRGENES */}
-                      <button
-                        type="button"
-                        onClick={() => setIsLinkedMargins(!isLinkedMargins)}
-                        className={`p-1.5 rounded-lg border text-xs transition-colors flex items-center gap-1 ${
-                          isLinkedMargins
-                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                            : 'bg-zinc-900 text-zinc-400 border-white/10 hover:text-white'
-                        }`}
-                        title={
-                          isEs ? 'Vincular/desvincular todos los márgenes' : 'Link/unlink margins'
-                        }
-                      >
-                        {isLinkedMargins ? (
-                          <LinkIcon className="w-3 h-3 text-cyan-400" />
-                        ) : (
-                          <Unlink className="w-3 h-3" />
-                        )}
-                        <span className="text-[10px]">
-                          {isLinkedMargins
-                            ? isEs
-                              ? 'Vinculados'
-                              : 'Linked'
-                            : isEs
-                              ? 'Libres'
-                              : 'Free'}
-                        </span>
-                      </button>
-
-                      {/* RESET */}
-                      <button
-                        type="button"
-                        onClick={resetMargins}
-                        className="p-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg border border-white/10 transition-colors"
-                        title={isEs ? 'Restablecer márgenes a 0' : 'Reset margins to 0'}
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                      </button>
-                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      max={150}
+                      value={marginTop}
+                      onChange={(e) => updateMargin('top', parseInt(e.target.value, 10) || 0)}
+                      className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
+                    />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">
-                        {isEs ? 'Superior (Top):' : 'Top:'}
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={150}
-                        value={marginTop}
-                        onChange={(e) => updateMargin('top', parseInt(e.target.value, 10) || 0)}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">
-                        {isEs ? 'Inferior (Bottom):' : 'Bottom:'}
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={150}
-                        value={marginBottom}
-                        onChange={(e) => updateMargin('bottom', parseInt(e.target.value, 10) || 0)}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">
-                        {isEs ? 'Izquierdo (Left):' : 'Left:'}
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={150}
-                        value={marginLeft}
-                        onChange={(e) => updateMargin('left', parseInt(e.target.value, 10) || 0)}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-zinc-400 block">
-                        {isEs ? 'Derecho (Right):' : 'Right:'}
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={150}
-                        value={marginRight}
-                        onChange={(e) => updateMargin('right', parseInt(e.target.value, 10) || 0)}
-                        className="w-full bg-zinc-900 border border-white/20 rounded-xl py-1.5 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-zinc-400 block font-bold">
+                      {isEs ? 'Inferior (Bottom):' : 'Bottom:'}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={150}
+                      value={marginBottom}
+                      onChange={(e) => updateMargin('bottom', parseInt(e.target.value, 10) || 0)}
+                      className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-zinc-400 block font-bold">
+                      {isEs ? 'Izquierdo (Left):' : 'Left:'}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={150}
+                      value={marginLeft}
+                      onChange={(e) => updateMargin('left', parseInt(e.target.value, 10) || 0)}
+                      className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-zinc-400 block font-bold">
+                      {isEs ? 'Derecho (Right):' : 'Right:'}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={150}
+                      value={marginRight}
+                      onChange={(e) => updateMargin('right', parseInt(e.target.value, 10) || 0)}
+                      className="w-full bg-zinc-900 border border-white/20 rounded-xl py-2 px-3 text-white font-bold text-xs outline-none focus:border-cyan-400"
+                    />
                   </div>
                 </div>
 
-                {/* PREAJUSTES RÁPIDOS PROFESIONALES */}
-                <div className="space-y-1.5">
+                {/* PREAJUSTES RÁPIDOS */}
+                <div className="pt-2 border-t border-white/5 space-y-1.5">
                   <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'Preajustes de Recorte:' : 'Crop Presets:'}
                   </span>
@@ -1327,10 +1318,120 @@ export default function PdfCropper() {
                 </div>
               </div>
 
-              {/* SECCIÓN DE OPCIONES AVANZADAS Y METADATOS PLEGABLES */}
-              <div className="pt-3 border-t border-white/10 space-y-3 font-mono">
+              {/* COLUMNA 2: ALCANCE Y PÁGINAS AFECTADAS */}
+              <div className="bg-zinc-950 p-4 rounded-2xl border border-white/10 space-y-4">
                 <div>
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">
+                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2 font-bold">
+                    {isEs ? 'Alcance del Recorte:' : 'Crop Scope:'}
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCropScope('all')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'all'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {isEs ? 'Todas' : 'All'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCropScope('even')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'even'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {isEs ? 'Pares' : 'Evens'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCropScope('odd')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'odd'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {isEs ? 'Impares' : 'Odds'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCropScope('current')}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                        cropScope === 'current'
+                          ? 'bg-white text-black border-white shadow-md'
+                          : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      {isEs ? 'Actual' : 'Current'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ALCANCE PERSONALIZADO */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCropScope(cropScope === 'custom' ? 'all' : 'custom')}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-mono font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      cropScope === 'custom'
+                        ? 'bg-white text-black border-white'
+                        : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>{isEs ? 'Rango Personalizado' : 'Custom Range'}</span>
+                  </button>
+
+                  {cropScope === 'custom' && (
+                    <input
+                      type="text"
+                      placeholder="Ej: 1-5, 8, 12"
+                      value={customPagesInput}
+                      onChange={(e) => setCustomPagesInput(e.target.value)}
+                      className="flex-1 bg-zinc-900 border border-white/20 rounded-lg py-1 px-2.5 text-xs text-white outline-none focus:border-white/50 font-mono"
+                    />
+                  )}
+                </div>
+
+                {/* TARJETA RESUMEN DE ALCANCE */}
+                {liveSummary && (
+                  <div className="bg-zinc-900/60 p-3 rounded-xl border border-white/5 space-y-2">
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">
+                      {isEs ? 'Resumen de Aplicación' : 'Application Summary'}
+                    </span>
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-zinc-300">
+                        {isEs ? 'Páginas objetivo:' : 'Target pages:'}
+                      </span>
+                      <span className="text-cyan-400">{liveSummary.scopeLabel}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span>{isEs ? 'Afectadas:' : 'Affected:'}</span>
+                      <span className="text-white font-mono font-bold">
+                        {liveSummary.affectedPagesCount} / {totalPages} {isEs ? 'págs' : 'pages'}
+                      </span>
+                    </div>
+                    {liveSummary.areaReductionPercent > 0 && (
+                      <div className="flex items-center justify-between text-xs text-zinc-400 pt-1 border-t border-white/5">
+                        <span>{isEs ? 'Reducción de área:' : 'Area reduction:'}</span>
+                        <span className="text-amber-400 font-mono font-bold">
+                          -{liveSummary.areaReductionPercent}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* COLUMNA 3: SALIDA, NUMERACIÓN Y METADATOS */}
+              <div className="bg-zinc-950 p-4 rounded-2xl border border-white/10 space-y-3.5">
+                <div>
+                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1 font-bold">
                     {isEs ? 'Prefijo del Archivo Resultante:' : 'Output File Prefix:'}
                   </label>
                   <input
@@ -1342,7 +1443,7 @@ export default function PdfCropper() {
                   />
                 </div>
 
-                <div className="bg-zinc-950/70 p-3 rounded-xl border border-white/10 space-y-2">
+                <div className="bg-zinc-900/60 p-3 rounded-xl border border-white/5 space-y-2">
                   <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
                     {isEs ? 'AJUSTES DE NUMERACIÓN' : 'NUMBERING SETTINGS'}
                   </label>
@@ -1356,22 +1457,22 @@ export default function PdfCropper() {
                     />
                     <span>
                       {isEs
-                        ? 'Re-numerar páginas en pie de página (Página N / M)'
+                        ? 'Re-numerar páginas en pie (Pág N / M)'
                         : 'Re-number footer pages (Page N / M)'}
                     </span>
                   </label>
                 </div>
 
-                {/* METADATOS DEL DOCUMENTO RESULTANTE (PLEGABLE CON ACCORDEON) */}
-                <div className="bg-zinc-950/70 rounded-xl border border-white/10 overflow-hidden font-mono">
+                {/* METADATOS DEL DOCUMENTO (ACORDEÓN) */}
+                <div className="bg-zinc-900/60 rounded-xl border border-white/5 overflow-hidden font-mono">
                   <button
                     type="button"
                     onClick={() => setShowMetadata(!showMetadata)}
-                    className="w-full p-2.5 flex items-center justify-between text-left hover:bg-zinc-900/60 transition-colors cursor-pointer"
+                    className="w-full p-2.5 flex items-center justify-between text-left hover:bg-zinc-800/60 transition-colors cursor-pointer"
                   >
                     <span className="text-[10px] text-zinc-300 uppercase tracking-wider font-bold flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5 text-zinc-400" />
-                      {isEs ? 'Metadatos del PDF (Opcional)' : 'PDF Metadata (Optional)'}
+                      {isEs ? 'Metadatos PDF (Opcional)' : 'PDF Metadata (Optional)'}
                     </span>
                     {showMetadata ? (
                       <ChevronUp className="w-3.5 h-3.5 text-zinc-400" />
@@ -1430,29 +1531,8 @@ export default function PdfCropper() {
               </div>
             </div>
 
-            {/* TARJETA DE RESUMEN EN VIVO & BOTÓN PRINCIPAL */}
-            <div className="pt-3 border-t border-white/10 space-y-3">
-              {/* TARJETA DE RESUMEN DINÁMICO EN VIVO */}
-              {liveSummary && (
-                <div className="bg-zinc-950 border border-cyan-500/30 rounded-xl p-3 font-mono text-xs flex items-center justify-between shadow-inner">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-zinc-400 uppercase font-bold block">
-                      {isEs ? 'Resumen del recorte' : 'Crop summary'}
-                    </span>
-                    <span className="text-white font-bold text-xs">
-                      {liveSummary.scopeLabel} • {liveSummary.finalWidthMm}×
-                      {liveSummary.finalHeightMm} mm
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded font-bold">
-                      {liveSummary.affectedPagesCount}{' '}
-                      {liveSummary.affectedPagesCount === 1 ? 'pág' : 'págs'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
+            {/* SECCIÓN INFERIOR: BARRA DE PROGRESO Y BOTÓN PRINCIPAL ANCHO COMPLETO */}
+            <div className="pt-4 border-t border-white/10 space-y-3">
               {/* BARRA DE PROGRESO */}
               {isProcessing && (
                 <div className="space-y-1.5 font-mono">

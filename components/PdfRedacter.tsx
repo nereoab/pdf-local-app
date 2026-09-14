@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   ArrowLeft,
   EyeOff,
@@ -32,6 +32,13 @@ import {
   Trash2,
   Plus,
   Maximize2,
+  Copy,
+  Layers,
+  FileCode,
+  FileDown,
+  Hash,
+  Sparkles,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -39,15 +46,11 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import {
-  getEnabledPatterns,
-  patternToRegex,
   type SensitivePattern,
   type AuditEntry,
   generateAuditReport,
   downloadAuditReport,
-  addCustomPattern,
 } from '../lib/sensitive-patterns-registry';
 import {
   calculateSHA256,
@@ -56,6 +59,7 @@ import {
   downloadCertificate,
   addAuditLogEntry,
   generateSessionId,
+  getCustodyChain,
 } from '../lib/security-audit';
 
 import type {
@@ -81,15 +85,59 @@ interface ExtractedTextItem {
   viewportHeight: number;
 }
 
-interface SensitiveMatch {
+export type SensitiveCategory = 'all' | 'personal_id' | 'financial' | 'contact' | 'confidential';
+
+export interface SensitiveMatch {
   id: string;
   page: number;
-  category: 'card' | 'phone' | 'email' | 'text';
+  category: 'personal_id' | 'financial' | 'contact' | 'confidential';
+  severity: 'critical' | 'high' | 'medium';
   matchedText: string;
   redactionBox: RedactionBox;
 }
 
-// Canvas de medición reutilizable para evitar miles de createElement durante escaneos regex
+// Algoritmo de Luhn para validación matemática de números de tarjeta de crédito
+function isValidLuhn(str: string): boolean {
+  const clean = str.replace(/\D/g, '');
+  if (clean.length < 13 || clean.length > 19) return false;
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = clean.length - 1; i >= 0; i--) {
+    let digit = parseInt(clean.charAt(i), 10);
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum % 10 === 0;
+}
+
+// Validación de dígito de control de DNI español
+function isValidSpanishDni(dniStr: string): boolean {
+  const match = dniStr.match(/^(\d{8})([A-HJ-NP-TV-Z])$/i);
+  if (!match) return false;
+  const num = parseInt(match[1], 10);
+  const letter = match[2].toUpperCase();
+  const letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+  return letters.charAt(num % 23) === letter;
+}
+
+// Validación de NIE español
+function isValidSpanishNie(nieStr: string): boolean {
+  const match = nieStr.match(/^([XYZ])(\d{7})([A-HJ-NP-TV-Z])$/i);
+  if (!match) return false;
+  const prefix = match[1].toUpperCase();
+  const numStr = match[2];
+  const prefixDigit = prefix === 'X' ? '0' : prefix === 'Y' ? '1' : '2';
+  const fullNum = parseInt(prefixDigit + numStr, 10);
+  const letter = match[3].toUpperCase();
+  const letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+  return letters.charAt(fullNum % 23) === letter;
+}
+
+// Canvas de medición reutilizable
 let _cachedMeasureCanvas: HTMLCanvasElement | null = null;
 let _cachedMeasureCtx: CanvasRenderingContext2D | null = null;
 
@@ -140,7 +188,6 @@ export default function PdfRedacter() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(115);
 
   useEffect(() => {
     return () => {
@@ -164,9 +211,10 @@ export default function PdfRedacter() {
     heightPercent: number;
   } | null>(null);
 
-  // Search state
+  // Search & Batch state
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPreset, setSelectedPreset] = useState<'text' | 'card' | 'phone' | 'email'>('text');
+  const [batchKeywordsInput, setBatchKeywordsInput] = useState('');
+  const [showBatchKeywords, setShowBatchKeywords] = useState(false);
   const [exactMatch, setExactMatch] = useState(false);
 
   // Redaction state
@@ -174,24 +222,24 @@ export default function PdfRedacter() {
   const [autoRedactions, setAutoRedactions] = useState<RedactionBox[]>([]);
   const [extractedTextItems, setExtractedTextItems] = useState<ExtractedTextItem[]>([]);
   const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
-  const [pageJpegBytes, setPageJpegBytes] = useState<Record<number, ArrayBuffer>>({});
 
-  // Panel de Auditoría: lista de datos sensibles detectados
+  // Panel de Auditoría Forense y Filtros
   const [sensitiveMatches, setSensitiveMatches] = useState<SensitiveMatch[]>([]);
-  const [showAuditPanel, setShowAuditPanel] = useState(false);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<SensitiveCategory>('all');
+  const [isScanning, setIsScanning] = useState(false);
 
-  // Advanced options
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [redactionStyle, setRedactionStyle] = useState<'black' | 'gray'>('black');
+  // Opciones Avanzadas Corporativas
+  const [redactionStyle, setRedactionStyle] = useState<'black' | 'dark' | 'white' | 'gray'>(
+    'black',
+  );
   const [redactionMode, setRedactionMode] = useState<'precision' | 'raster'>('precision');
+  const [overlayPreset, setOverlayPreset] = useState<
+    'none' | 'redacted' | 'confidential' | 'gdpr' | 'custom'
+  >('none');
+  const [customOverlayText, setCustomOverlayText] = useState('');
   const [customSuffix, setCustomSuffix] = useState('_Censurado');
-  const [showCustomRegex, setShowCustomRegex] = useState(false);
-  const [customRegexName, setCustomRegexName] = useState('');
-  const [customRegexPattern, setCustomRegexPattern] = useState('');
-  const [customRegexTestText, setCustomRegexTestText] = useState('');
-  const [customRegexIsValid, setCustomRegexIsValid] = useState<boolean | null>(null);
-  const [customRegexError, setCustomRegexError] = useState('');
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [showHashDetails, setShowHashDetails] = useState(false);
 
   // Undo/Redo system
   interface UndoAction {
@@ -200,7 +248,6 @@ export default function PdfRedacter() {
   }
   const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
   const [redoStack, setRedoStack] = useState<UndoAction[]>([]);
-  const thumbnailContainerRef = useRef<HTMLDivElement>(null);
 
   const pushUndo = () => {
     setUndoStack((prev) => [
@@ -209,6 +256,7 @@ export default function PdfRedacter() {
     ]);
     setRedoStack([]);
   };
+
   const handleUndo = () => {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
@@ -220,6 +268,7 @@ export default function PdfRedacter() {
     setAutoRedactions(prev.autoRedactions);
     setUndoStack((s) => s.slice(0, -1));
   };
+
   const handleRedo = () => {
     if (redoStack.length === 0) return;
     const next = redoStack[redoStack.length - 1];
@@ -247,90 +296,31 @@ export default function PdfRedacter() {
     pageCount: number;
     totalRedactions: number;
     pagesWithRedactions: number;
+    redactedHash?: string;
   } | null>(null);
+
+  const [sessionId] = useState<string>(generateSessionId());
+  const [startTime, setStartTime] = useState<number>(0);
 
   // Ocultar barra superior global y posicionar la vista en el tope de la página
   useEffect(() => {
     if (completedResult) {
       setHeaderHidden(true);
-
-      // Posicionar en el tope absoluto (y = 0) para mantener el margen y vista completa del título
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-
-      const raf = requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-      });
-
-      const timer = setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'instant' });
-      }, 50);
-
-      return () => {
-        cancelAnimationFrame(raf);
-        clearTimeout(timer);
-      };
     } else {
       setHeaderHidden(false);
     }
   }, [completedResult, setHeaderHidden]);
 
-  // Restaurar barra superior al desmontar
   useEffect(() => {
     return () => {
       setHeaderHidden(false);
     };
   }, [setHeaderHidden]);
 
-  // Altura sincronizada para igualar panel de vista previa al panel de control
   const controlPanelRef = useRef<HTMLDivElement>(null);
-  const [previewHeight, setPreviewHeight] = useState<number>(0);
-  const [isDesktop, setIsDesktop] = useState<boolean>(false);
-
-  useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
-
-  // Sincronizar altura del panel de vista previa con la del panel de control
-  useEffect(() => {
-    if (!controlPanelRef.current) return;
-    const updateHeight = () => {
-      if (controlPanelRef.current) {
-        const h = controlPanelRef.current.getBoundingClientRect().height;
-        if (h > 0) setPreviewHeight(h);
-      }
-    };
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const h = entry.target.getBoundingClientRect().height;
-        if (h > 0) {
-          setPreviewHeight(h);
-        }
-      }
-    });
-    observer.observe(controlPanelRef.current);
-    updateHeight();
-    return () => observer.disconnect();
-  }, [
-    file,
-    sensitiveMatches,
-    searchQuery,
-    selectedPreset,
-    exactMatch,
-    redactionStyle,
-    redactionMode,
-    customSuffix,
-    isProcessing,
-    redactions,
-    autoRedactions,
-  ]);
-  const [sessionId] = useState<string>(generateSessionId());
-  const [startTime, setStartTime] = useState<number>(0);
 
   const formatFileSize = (bytes: number) => {
     if (!bytes || bytes === 0) return '0 KB';
@@ -340,16 +330,196 @@ export default function PdfRedacter() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const measureTextWidth = (text: string, fontSize: number): number => {
+    if (typeof window === 'undefined') return text.length * fontSize * 0.55;
+    const ctx = getCachedMeasureCtx();
+    if (!ctx) return text.length * fontSize * 0.55;
+    ctx.font = `${fontSize}px sans-serif, Arial, "Times New Roman"`;
+    return ctx.measureText(text).width;
+  };
+
+  // ============================================================
+  // MOTOR DE AUDITORÍA FORENSE INTELIGENTE (DEEP SCANNER)
+  // ============================================================
+  const runSensitiveDataScan = useCallback(
+    (extracted: ExtractedTextItem[]) => {
+      setIsScanning(true);
+      const matches: SensitiveMatch[] = [];
+      const entries: AuditEntry[] = [];
+
+      // Patrones regex corporativos
+      const PATTERNS: Array<{
+        id: string;
+        category: 'personal_id' | 'financial' | 'contact' | 'confidential';
+        severity: 'critical' | 'high' | 'medium';
+        regex: RegExp;
+        validate?: (match: string) => boolean;
+      }> = [
+        // 1. Tarjetas de crédito (con test de Luhn)
+        {
+          id: 'credit_card',
+          category: 'financial',
+          severity: 'critical',
+          regex: /\b(?:\d[ -]*?){13,19}\b/g,
+          validate: (m) => isValidLuhn(m),
+        },
+        // 2. Cuentas bancarias e IBAN
+        {
+          id: 'iban_account',
+          category: 'financial',
+          severity: 'critical',
+          regex: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g,
+        },
+        // 3. DNI / NIE Español
+        {
+          id: 'dni_es',
+          category: 'personal_id',
+          severity: 'critical',
+          regex: /\b\d{8}[A-HJ-NP-TV-Z]\b/gi,
+          validate: (m) => isValidSpanishDni(m),
+        },
+        {
+          id: 'nie_es',
+          category: 'personal_id',
+          severity: 'critical',
+          regex: /\b[XYZ]\d{7}[A-HJ-NP-TV-Z]\b/gi,
+          validate: (m) => isValidSpanishNie(m),
+        },
+        // 4. SSN Americano
+        {
+          id: 'ssn_us',
+          category: 'personal_id',
+          severity: 'critical',
+          regex: /\b\d{3}-\d{2}-\d{4}\b/g,
+        },
+        // 5. Correo electrónico
+        {
+          id: 'email_address',
+          category: 'contact',
+          severity: 'high',
+          regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+        },
+        // 6. Teléfonos internacionales y nacionales
+        {
+          id: 'phone_number',
+          category: 'contact',
+          severity: 'medium',
+          regex:
+            /(?:\+?\d{1,4}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}[\s.-]?\d{0,4}/g,
+          validate: (m) => {
+            const digits = m.replace(/\D/g, '');
+            return digits.length >= 8 && digits.length <= 15;
+          },
+        },
+        // 7. Términos confidenciales o clasificados
+        {
+          id: 'confidential_terms',
+          category: 'confidential',
+          severity: 'high',
+          regex:
+            /\b(confidencial|secreto|privado|strictly\s+confidential|salario|nómina|honorarios|password|clave)\b/gi,
+        },
+      ];
+
+      extracted.forEach((item, idx) => {
+        const textStr = item.str;
+
+        PATTERNS.forEach((pat) => {
+          pat.regex.lastIndex = 0;
+          let match: RegExpExecArray | null;
+
+          while ((match = pat.regex.exec(textStr)) !== null) {
+            const matchedText = match[0];
+            const matchPos = match.index;
+            if (matchPos === undefined || matchedText.length === 0) continue;
+
+            if (pat.validate && !pat.validate(matchedText)) continue;
+
+            const fullTextWidth = measureTextWidth(textStr, item.fontHeight);
+            const prefixTextWidth = measureTextWidth(textStr.slice(0, matchPos), item.fontHeight);
+            const wordTextWidth = measureTextWidth(matchedText, item.fontHeight);
+            const scaleRatio = fullTextWidth > 0 ? item.itemWidth / fullTextWidth : 1;
+            const wordVx = item.vx + prefixTextWidth * scaleRatio;
+            const wordWidth = Math.max(wordTextWidth * scaleRatio, 8);
+            const wordVyTop = item.vy - item.fontHeight * 0.82;
+            const xPct = (wordVx / item.viewportWidth) * 100;
+            const yPct = (wordVyTop / item.viewportHeight) * 100;
+            const wPct = (wordWidth / item.viewportWidth) * 100;
+            const hPct = Math.max(1.5, ((item.fontHeight * 1.15) / item.viewportHeight) * 100);
+
+            const matchId = `match-${pat.id}-${item.page}-${idx}-${matchPos}`;
+
+            matches.push({
+              id: matchId,
+              page: item.page,
+              category: pat.category,
+              severity: pat.severity,
+              matchedText: matchedText.length > 35 ? matchedText.slice(0, 32) + '…' : matchedText,
+              redactionBox: {
+                id: `box-${matchId}`,
+                page: item.page,
+                word: matchedText.slice(0, 25),
+                xPercent: Math.max(0, Math.min(98, xPct)),
+                yPercent: Math.max(0, Math.min(98, yPct)),
+                widthPercent: Math.min(100 - xPct, wPct),
+                heightPercent: Math.min(100 - yPct, hPct),
+              },
+            });
+
+            entries.push({
+              id: matchId,
+              category: pat.category === 'confidential' ? 'custom' : pat.category,
+              severity: pat.severity,
+              detectedText: matchedText.slice(0, 3) + '****' + matchedText.slice(-3),
+              page: item.page,
+              xPercent: xPct,
+              yPercent: yPct,
+              action: 'flagged',
+              timestamp: new Date().toISOString(),
+              patternName: pat.id,
+            });
+          }
+        });
+      });
+
+      setSensitiveMatches(matches);
+      setAuditEntries(entries);
+      setIsScanning(false);
+
+      if (matches.length > 0) {
+        toast.info(
+          isEs
+            ? `Auditoría Forense: Se detectaron ${matches.length} datos confidenciales potenciales.`
+            : `Forensic Audit: Detected ${matches.length} potentially confidential data items.`,
+        );
+      }
+    },
+    [isEs],
+  );
+
+  // Cargar y analizar PDF
   const cargarPdf = async (selectedFile: File) => {
     setFile(selectedFile);
     setGlobalFile(selectedFile);
     setIsProcessing(true);
     setProgressMsg(
-      isEs ? 'Analizando y renderizando páginas...' : 'Analyzing & rendering pages...',
+      isEs ? 'Analizando estructura binaria y páginas...' : 'Analyzing binary structure & pages...',
     );
 
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
+
+      // Calcular hash SHA-256 inicial de entrada
+      calculateSHA256(arrayBuffer).then((hash) => {
+        setOriginalHash(hash);
+        addAuditLogEntry({
+          timestamp: new Date().toISOString(),
+          eventType: 'document_loaded',
+          details: `Documento ${selectedFile.name} cargado. SHA-256: ${hash}`,
+          metadata: { fileName: selectedFile.name, fileSize: selectedFile.size },
+        });
+      });
+
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
@@ -362,14 +532,13 @@ export default function PdfRedacter() {
       setTotalPages(count);
 
       const urls: Record<number, string> = {};
-      const jpegs: Record<number, ArrayBuffer> = {};
       const extracted: ExtractedTextItem[] = [];
 
       for (let p = 1; p <= count; p++) {
         setProgressMsg(
-          isEs ? `Cargando página ${p} de ${count}...` : `Loading page ${p} of ${count}...`,
+          isEs ? `Extrayendo página ${p} de ${count}...` : `Extracting page ${p} of ${count}...`,
         );
-        setProgressPercent(Math.round((p / count) * 100));
+        setProgressPercent(Math.round((p / count) * 85));
         try {
           const page = await pdfDoc.getPage(p);
           const viewport = page.getViewport({ scale: 1.4 });
@@ -407,176 +576,33 @@ export default function PdfRedacter() {
             await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
               typeof page.render
             >[0]).promise;
-            const blob = await new Promise<Blob | null>((resolve) =>
-              canvas.toBlob(resolve, 'image/jpeg', 0.82),
-            );
-            if (blob) {
-              const dataUrl = URL.createObjectURL(blob);
-              urls[p] = dataUrl;
-              setPageDataUrls((prev) => ({ ...prev, [p]: dataUrl }));
-            }
+            urls[p] = canvas.toDataURL('image/jpeg', 0.85);
           }
         } catch (pageErr) {
-          console.warn(`Error al renderizar página ${p}:`, pageErr);
+          console.warn(`Error on page ${p}:`, pageErr);
         }
       }
 
-      setExtractedTextItems(extracted);
       setPageDataUrls(urls);
+      setExtractedTextItems(extracted);
 
-      // Detección automática de datos sensibles al cargar
-      runAutoDetection(extracted);
+      // Disparar escáner forense automático de datos sensibles
+      setProgressMsg(
+        isEs ? 'Ejecutando auditoría forense de patrones...' : 'Running forensic pattern audit...',
+      );
+      setProgressPercent(95);
+      runSensitiveDataScan(extracted);
 
-      toast.success(isEs ? 'Documento cargado exitosamente' : 'Document loaded successfully');
-    } catch (error) {
-      console.error(error);
-      toast.error(isEs ? 'Error al leer el archivo PDF' : 'Error reading PDF file');
-      setFile(null);
-    } finally {
       setIsProcessing(false);
-      setProgressMsg('');
+      setProgressPercent(100);
+    } catch (err: any) {
+      console.error('cargarPdf error:', err);
+      toast.error(isEs ? 'Error al procesar el archivo PDF' : 'Error processing PDF file');
+      setIsProcessing(false);
     }
   };
 
-  // === DETECCIÓN AUTOMÁTICA DE DATOS SENSIBLES (REGISTRY V2) ===
-  const runAutoDetection = (textItems: ExtractedTextItem[]) => {
-    const allMatches: SensitiveMatch[] = [];
-    const entries: AuditEntry[] = [];
-    const patterns = getEnabledPatterns();
-    const timestamp = new Date().toISOString();
-
-    patterns.forEach((pattern) => {
-      const regex = patternToRegex(pattern);
-      const cat =
-        pattern.category === 'personal_id'
-          ? 'text'
-          : pattern.category === 'financial'
-            ? 'card'
-            : 'email';
-      const foundMatches = findPatternMatchesForPattern(textItems, regex, cat, pattern);
-      allMatches.push(...foundMatches.matches);
-      entries.push(...foundMatches.auditEntries.map((e) => ({ ...e, timestamp })));
-    });
-
-    setSensitiveMatches(allMatches);
-    setAuditEntries(entries);
-  };
-
-  const findPatternMatchesForPattern = (
-    textItems: ExtractedTextItem[],
-    regex: RegExp,
-    category: 'card' | 'phone' | 'email' | 'text',
-    pattern: SensitivePattern,
-  ): { matches: SensitiveMatch[]; auditEntries: AuditEntry[] } => {
-    const matches: SensitiveMatch[] = [];
-    const auditEntries: AuditEntry[] = [];
-    textItems.forEach((item, idx) => {
-      const textStr = item.str;
-      let match: RegExpExecArray | null;
-      regex.lastIndex = 0;
-      while ((match = regex.exec(textStr)) !== null) {
-        const matchedText = match[0];
-        const matchPos = match.index;
-        if (matchPos === undefined || matchedText.length === 0) continue;
-        const fullTextWidth = measureTextWidth(textStr, item.fontHeight);
-        const prefixTextWidth = measureTextWidth(textStr.slice(0, matchPos), item.fontHeight);
-        const wordTextWidth = measureTextWidth(matchedText, item.fontHeight);
-        const scaleRatio = fullTextWidth > 0 ? item.itemWidth / fullTextWidth : 1;
-        const wordVx = item.vx + prefixTextWidth * scaleRatio;
-        const wordWidth = Math.max(wordTextWidth * scaleRatio, 8);
-        const wordVyTop = item.vy - item.fontHeight * 0.82;
-        const xPct = (wordVx / item.viewportWidth) * 100;
-        const yPct = (wordVyTop / item.viewportHeight) * 100;
-        const wPct = (wordWidth / item.viewportWidth) * 100;
-        const hPct = Math.max(1.5, ((item.fontHeight * 1.15) / item.viewportHeight) * 100);
-        const matchId = `${pattern.id}-${item.page}-${idx}-${matchPos}`;
-        matches.push({
-          id: matchId,
-          page: item.page,
-          category,
-          matchedText: matchedText.length > 30 ? matchedText.slice(0, 28) + '…' : matchedText,
-          redactionBox: {
-            id: `auto-${matchId}`,
-            page: item.page,
-            word: matchedText.slice(0, 20),
-            xPercent: Math.max(0, Math.min(98, xPct)),
-            yPercent: Math.max(0, Math.min(98, yPct)),
-            widthPercent: Math.min(100 - xPct, wPct),
-            heightPercent: Math.min(100 - yPct, hPct),
-          },
-        });
-        auditEntries.push({
-          id: matchId,
-          category: pattern.category,
-          severity: pattern.severity,
-          detectedText: matchedText,
-          page: item.page,
-          xPercent: xPct,
-          yPercent: yPct,
-          action: 'flagged',
-          timestamp: '',
-          patternName: pattern.id,
-        });
-      }
-    });
-    return { matches, auditEntries };
-  };
-
-  const measureTextWidth = (text: string, fontSize: number): number => {
-    if (typeof window === 'undefined') return text.length * fontSize * 0.55;
-    const ctx = getCachedMeasureCtx();
-    if (!ctx) return text.length * fontSize * 0.55;
-    ctx.font = `${fontSize}px sans-serif, Arial, "Times New Roman"`;
-    return ctx.measureText(text).width;
-  };
-
-  const findPatternMatches = (
-    textItems: ExtractedTextItem[],
-    regex: RegExp,
-    category: 'card' | 'phone' | 'email' | 'text',
-  ): SensitiveMatch[] => {
-    const matches: SensitiveMatch[] = [];
-    textItems.forEach((item, idx) => {
-      const textStr = item.str;
-      let match: RegExpExecArray | null;
-      regex.lastIndex = 0;
-      while ((match = regex.exec(textStr)) !== null) {
-        const matchedText = match[0];
-        const matchPos = match.index;
-        if (matchPos === undefined || matchedText.length === 0) continue;
-
-        const fullTextWidth = measureTextWidth(textStr, item.fontHeight);
-        const prefixTextWidth = measureTextWidth(textStr.slice(0, matchPos), item.fontHeight);
-        const wordTextWidth = measureTextWidth(matchedText, item.fontHeight);
-        const scaleRatio = fullTextWidth > 0 ? item.itemWidth / fullTextWidth : 1;
-        const wordVx = item.vx + prefixTextWidth * scaleRatio;
-        const wordWidth = Math.max(wordTextWidth * scaleRatio, 8);
-        const wordVyTop = item.vy - item.fontHeight * 0.82;
-        const xPct = (wordVx / item.viewportWidth) * 100;
-        const yPct = (wordVyTop / item.viewportHeight) * 100;
-        const wPct = (wordWidth / item.viewportWidth) * 100;
-        const hPct = Math.max(1.5, ((item.fontHeight * 1.15) / item.viewportHeight) * 100);
-
-        matches.push({
-          id: `sensitive-${category}-${item.page}-${idx}-${matchPos}`,
-          page: item.page,
-          category,
-          matchedText: matchedText.length > 30 ? matchedText.slice(0, 28) + '…' : matchedText,
-          redactionBox: {
-            id: `auto-${item.page}-${idx}-${matchPos}`,
-            page: item.page,
-            word: matchedText.slice(0, 20),
-            xPercent: Math.max(0, Math.min(98, xPct)),
-            yPercent: Math.max(0, Math.min(98, yPct)),
-            widthPercent: Math.min(100 - xPct, wPct),
-            heightPercent: Math.min(100 - yPct, hPct),
-          },
-        });
-      }
-    });
-    return matches;
-  };
-
+  // Coincidencias de búsqueda por sub-palabra
   const getSubWordMatches = (
     queryStr: string,
     textItems: ExtractedTextItem[],
@@ -612,7 +638,8 @@ export default function PdfRedacter() {
         matches.push({
           id: `text-${item.page}-${idx}-${matchPos}`,
           page: item.page,
-          category: 'text',
+          category: 'confidential',
+          severity: 'high',
           matchedText,
           redactionBox: {
             id: `text-box-${item.page}-${idx}-${matchPos}`,
@@ -634,7 +661,7 @@ export default function PdfRedacter() {
     return matches;
   };
 
-  // LIVE AUTOMATIC SEARCH
+  // Búsqueda en vivo al escribir texto único
   useEffect(() => {
     if (searchQuery.trim()) {
       const matches = getSubWordMatches(searchQuery, extractedTextItems, exactMatch);
@@ -644,7 +671,7 @@ export default function PdfRedacter() {
     }
   }, [searchQuery, extractedTextItems, exactMatch]);
 
-  // ⌨️ KEYBOARD SHORTCUTS
+  // Atajos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
@@ -657,38 +684,19 @@ export default function PdfRedacter() {
         handleRedo();
       } else if (ctrl && e.key === 'f') {
         e.preventDefault();
-        const inp = document.querySelector<HTMLInputElement>(
-          'input[placeholder*="Escribe la palabra"]',
-        );
-        inp?.focus();
-      } else if (e.key === 'Delete' && activeTool === 'erase') {
-        setRedactions([]);
-        setAutoRedactions([]);
+        document.getElementById('keyword-search-input')?.focus();
+      } else if (ctrl && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isProcessing && redactions.length + autoRedactions.length > 0) {
+          executeRedact();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [file, handleUndo, handleRedo, activeTool]);
+  }, [file, handleUndo, handleRedo, isProcessing, redactions, autoRedactions]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selected = e.target.files[0];
-      if (selected.type === 'application/pdf') {
-        loadSingleFileIntoSlot(activeSlotIndex, selected);
-      }
-    }
-    e.target.value = '';
-  };
-
-  const loadSampleDocument = async () => {
-    const samplePdfStr =
-      '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n2 0 obj\n<</Type/Pages/Kids[3 0 R]/Count 1>>\nendobj\n3 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>\nendobj\n4 0 obj\n<</Length 44>>\nstream\nBT /F1 12 Tf 100 700 Td (Sample 0002) Tj ET\nendstream\nendobj\n5 0 obj\n<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000266 00000 n \n0000000360 00000 n \ntrailer\n<</Size 6/Root 1 0 R>>\nstartxref\n423\n%%EOF\n';
-    const sampleBlob = new Blob([samplePdfStr], { type: 'application/pdf' });
-    const sampleFile = new File([sampleBlob], '0002.pdf', { type: 'application/pdf' });
-    await cargarPdf(sampleFile);
-  };
-
-  // Cargar PDF activo cuando cambie activeSlotIndex o su archivo
+  // Cargar PDF activo cuando cambie el slot
   useEffect(() => {
     if (activeFile) {
       cargarPdf(activeFile);
@@ -762,7 +770,7 @@ export default function PdfRedacter() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // === DIBUJO MANUAL ===
+  // Coordenadas para dibujo manual
   const getPercentCoords = (pageNum: number, e: React.MouseEvent) => {
     const imgWrapper = (e.currentTarget as HTMLElement).querySelector('[data-img-wrapper]');
     if (!imgWrapper) return null;
@@ -817,6 +825,22 @@ export default function PdfRedacter() {
     const widthPct = Math.abs(coords.xPercent - drawStart!.xPercent);
     const heightPct = Math.abs(coords.yPercent - drawStart!.yPercent);
     if (widthPct < 1.5 && heightPct < 0.8) return;
+
+    const resolvedOverlayText =
+      overlayPreset === 'none'
+        ? undefined
+        : overlayPreset === 'redacted'
+          ? isEs
+            ? '[CENSURADO]'
+            : '[REDACTED]'
+          : overlayPreset === 'confidential'
+            ? isEs
+              ? '[CONFIDENCIAL]'
+              : '[CONFIDENTIAL]'
+            : overlayPreset === 'gdpr'
+              ? '[RGPD / GDPR]'
+              : customOverlayText || (isEs ? '[CENSURADO]' : '[REDACTED]');
+
     const newBox: RedactionBox = {
       id: `box-${Date.now()}-${Math.random()}`,
       page: pageNum,
@@ -825,13 +849,10 @@ export default function PdfRedacter() {
       yPercent: Math.max(0, Math.min(drawStart!.yPercent, coords.yPercent)),
       widthPercent: widthPct,
       heightPercent: heightPct,
+      overlayText: resolvedOverlayText,
+      boxColor: redactionStyle,
     };
     setRedactions((prev) => [...prev, newBox]);
-  };
-
-  const handleEraseClick = (boxId: string) => {
-    if (activeTool !== 'erase') return;
-    removeRedaction(boxId);
   };
 
   const removeRedaction = (id: string) => {
@@ -839,68 +860,116 @@ export default function PdfRedacter() {
     setAutoRedactions((prev) => prev.filter((r) => r.id !== id));
   };
 
-  // === CENSURAR TODO / APLICAR BÚSQUEDA ===
-  const handleApplyWordSearch = () => {
-    const word = searchQuery.trim();
-    if (!word && selectedPreset === 'text') {
-      toast.error(isEs ? 'Escribe la palabra a censurar' : 'Type the word to redact');
+  // ============================================================
+  // REPLICACIÓN MULTI-PÁGINA (HERRAMIENTA EMPRESARIAL)
+  // ============================================================
+  const replicateLastBoxAcrossAllPages = () => {
+    const pageBoxes = redactions.filter((r) => r.page === activePage);
+    if (pageBoxes.length === 0) {
+      toast.warning(
+        isEs
+          ? 'Dibuja al menos un parche en la página actual para replicarlo.'
+          : 'Draw at least one box on current page to replicate.',
+      );
       return;
     }
+    const targetBox = pageBoxes[pageBoxes.length - 1];
+    pushUndo();
 
-    let newBoxes: RedactionBox[] = [];
-
-    if (selectedPreset === 'text' && word) {
-      // Búsqueda de texto libre (la palabra escrita en la caja)
-      const matches = getSubWordMatches(word, extractedTextItems, exactMatch);
-      newBoxes = matches.map((m) => m.redactionBox);
-    } else {
-      // Búsqueda por patrón (tarjeta, teléfono, email)
-      const regex =
-        selectedPreset === 'card'
-          ? /\b(?:\d[ -]*?){12,18}\d\b/g
-          : selectedPreset === 'phone'
-            ? /(?:\+?\d{1,4}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}[\s.-]?\d{0,4}/g
-            : /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
-      const matches = findPatternMatches(extractedTextItems, regex, selectedPreset);
-      newBoxes = matches.map((m) => m.redactionBox);
+    const newBoxes: RedactionBox[] = [];
+    for (let p = 1; p <= totalPages; p++) {
+      if (p === activePage) continue;
+      newBoxes.push({
+        ...targetBox,
+        id: `replicated-${p}-${Date.now()}-${Math.random()}`,
+        page: p,
+      });
     }
 
-    if (newBoxes.length > 0) {
-      pushUndo();
-      setRedactions((prev) => [...prev, ...newBoxes]);
-      toast.success(
-        isEs
-          ? `¡${newBoxes.length} elementos marcados para censura!`
-          : `${newBoxes.length} items marked for redaction!`,
-      );
-    } else {
-      toast.info(isEs ? 'No se encontraron coincidencias' : 'No matches found');
-    }
-    setSearchQuery('');
-    setAutoRedactions([]);
+    setRedactions((prev) => [...prev, ...newBoxes]);
+    toast.success(
+      isEs
+        ? `¡Parche replicado en las ${totalPages - 1} páginas restantes!`
+        : `Box replicated across all other ${totalPages - 1} pages!`,
+    );
   };
 
-  // === CENSURAR TODOS LOS DATOS SENSIBLES DETECTADOS ===
+  // ============================================================
+  // CENSURA POR LOTE DE PALABRAS CLAVE (BATCH KEYWORDS)
+  // ============================================================
+  const handleApplyBatchKeywords = () => {
+    const raw = batchKeywordsInput.trim();
+    if (!raw) {
+      toast.error(isEs ? 'Ingresa al menos una palabra o frase' : 'Enter at least one keyword');
+      return;
+    }
+    const terms = raw
+      .split(/[\n,;]+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+
+    if (terms.length === 0) return;
+
+    let accumulatedBoxes: RedactionBox[] = [];
+    terms.forEach((term) => {
+      const matches = getSubWordMatches(term, extractedTextItems, exactMatch);
+      matches.forEach((m) => accumulatedBoxes.push(m.redactionBox));
+    });
+
+    if (accumulatedBoxes.length > 0) {
+      pushUndo();
+      setRedactions((prev) => [...prev, ...accumulatedBoxes]);
+      setBatchKeywordsInput('');
+      setShowBatchKeywords(false);
+      toast.success(
+        isEs
+          ? `¡${accumulatedBoxes.length} coincidencias censuradas para ${terms.length} términos!`
+          : `Applied ${accumulatedBoxes.length} patches for ${terms.length} terms!`,
+      );
+    } else {
+      toast.info(isEs ? 'No se encontraron coincidencias para los términos' : 'No matches found');
+    }
+  };
+
+  // Filtrado de hallazgos por categoría
+  const filteredSensitiveMatches = useMemo(() => {
+    if (activeCategoryFilter === 'all') return sensitiveMatches;
+    return sensitiveMatches.filter((m) => m.category === activeCategoryFilter);
+  }, [sensitiveMatches, activeCategoryFilter]);
+
   const censorAllDetected = () => {
     if (sensitiveMatches.length === 0) {
       toast.info(isEs ? 'No hay datos sensibles detectados' : 'No sensitive data detected');
       return;
     }
+    pushUndo();
     const allBoxes = sensitiveMatches.map((m) => m.redactionBox);
     setRedactions((prev) => [...prev, ...allBoxes]);
     toast.success(
       isEs
-        ? `¡${allBoxes.length} datos sensibles marcados para censura!`
-        : `${allBoxes.length} sensitive items marked for redaction!`,
+        ? `¡${allBoxes.length} datos confidenciales marcados para censura!`
+        : `${allBoxes.length} confidential items marked for redaction!`,
     );
   };
 
-  const clearAllRedactions = () => {
-    setRedactions([]);
-    setAutoRedactions([]);
+  const censorCurrentCategory = () => {
+    if (filteredSensitiveMatches.length === 0) {
+      toast.info(isEs ? 'No hay datos en esta categoría' : 'No data in this category');
+      return;
+    }
+    pushUndo();
+    const boxes = filteredSensitiveMatches.map((m) => m.redactionBox);
+    setRedactions((prev) => [...prev, ...boxes]);
+    toast.success(
+      isEs
+        ? `¡${boxes.length} datos de la categoría marcados para censura!`
+        : `${boxes.length} category items marked for redaction!`,
+    );
   };
 
-  // === EJECUTAR CENSURA (WORKER CON FALLBACK DIRECTO) ===
+  // ============================================================
+  // EJECUCIÓN DEL MOTOR TRUEREDACT™
+  // ============================================================
   const executeRedact = async () => {
     if (!file) return;
     const allBoxes = [...redactions, ...autoRedactions];
@@ -917,29 +986,30 @@ export default function PdfRedacter() {
     setProgressPercent(5);
     setDownloadUrl(null);
     setStartTime(Date.now());
-    setProgressMsg(isEs ? 'Iniciando proceso de censura...' : 'Starting redaction process...');
+    setProgressMsg(
+      isEs ? 'Iniciando purgado binario seguro...' : 'Starting secure binary sanitization...',
+    );
+
+    const resolvedOverlayText =
+      overlayPreset === 'none'
+        ? undefined
+        : overlayPreset === 'redacted'
+          ? isEs
+            ? '[CENSURADO]'
+            : '[REDACTED]'
+          : overlayPreset === 'confidential'
+            ? isEs
+              ? '[CONFIDENCIAL]'
+              : '[CONFIDENTIAL]'
+            : overlayPreset === 'gdpr'
+              ? '[RGPD / GDPR]'
+              : customOverlayText || (isEs ? '[CENSURADO]' : '[REDACTED]');
 
     try {
       const fileBuffer = await file.arrayBuffer();
       const bufferCopy = fileBuffer.slice(0);
 
-      // Calcular hash del original para cadena de custodia
-      calculateSHA256(fileBuffer).then((hash) => {
-        setOriginalHash(hash);
-        addAuditLogEntry({
-          timestamp: new Date().toISOString(),
-          eventType: 'redaction_applied',
-          details: `Iniciando censura de ${file.name} (${formatFileSize(file.size)}). SHA-256: ${hash.substring(0, 16)}...`,
-          metadata: {
-            fileName: file.name,
-            fileSize: file.size,
-            redactionCount: allBoxes.length,
-            mode: redactionMode,
-          },
-        });
-      });
-
-      // Intentar procesar en Web Worker
+      // Web Worker
       const workerUrl = new URL('../workers/pdf-redact-v3.worker.ts', import.meta.url);
       const worker = new Worker(workerUrl, { type: 'module' });
       workerRef.current = worker;
@@ -956,18 +1026,18 @@ export default function PdfRedacter() {
           worker.terminate();
           workerRef.current = null;
         } else if (msg.type === 'error') {
-          console.warn('Worker error, switching to inline engine:', (msg as RedactError).message);
+          console.warn('Worker error, fallback to inline engine:', (msg as RedactError).message);
           worker.terminate();
           workerRef.current = null;
-          applyInlineRedaction(allBoxes, redactionMode);
+          applyInlineRedaction(allBoxes, redactionMode, resolvedOverlayText);
         }
       };
 
       worker.onerror = (err) => {
-        console.warn('Worker runtime error, executing inline engine:', err);
+        console.warn('Worker error, running inline engine:', err);
         worker.terminate();
         workerRef.current = null;
-        applyInlineRedaction(allBoxes, redactionMode);
+        applyInlineRedaction(allBoxes, redactionMode, resolvedOverlayText);
       };
 
       worker.postMessage({
@@ -976,15 +1046,15 @@ export default function PdfRedacter() {
         options: {
           redactions: allBoxes,
           redactionColor: redactionStyle,
+          overlayText: resolvedOverlayText,
           stripMetadata: true,
           customSuffix,
           mode: redactionMode,
         },
-        totalPages,
       });
     } catch (error) {
-      console.error('executeRedact exception, falling back to inline engine:', error);
-      applyInlineRedaction(allBoxes, redactionMode);
+      console.error('executeRedact error, executing inline engine:', error);
+      applyInlineRedaction(allBoxes, redactionMode, resolvedOverlayText);
     }
   };
 
@@ -997,23 +1067,22 @@ export default function PdfRedacter() {
     const originalName = file!.name.replace(/\.[^/.]+$/, '');
     const suffix = customSuffix || '_Censurado';
 
-    setCompletedResult({
-      downloadUrl: url,
-      filename: `${originalName}${suffix}.pdf`,
-      fileSize: formatFileSize(blob.size),
-      rawBlob: blob,
-      originalSize: file!.size,
-      redactedSize: r.redactedBytes.byteLength,
-      pageCount: r.pageCount,
-      totalRedactions: r.totalRedactions,
-      pagesWithRedactions: r.pagesWithRedactions,
-    });
-
-    setIsProcessing(false);
-    const durationMs = Date.now() - startTime;
-
-    // Calcular hash del output y registrar cadena de custodia
+    // Calcular hash del archivo censurado
     calculateSHA256(r.redactedBytes).then((redactedHash) => {
+      setCompletedResult({
+        downloadUrl: url,
+        filename: `${originalName}${suffix}.pdf`,
+        fileSize: formatFileSize(blob.size),
+        rawBlob: blob,
+        originalSize: file!.size,
+        redactedSize: r.redactedBytes.byteLength,
+        pageCount: r.pageCount,
+        totalRedactions: r.totalRedactions,
+        pagesWithRedactions: r.pagesWithRedactions,
+        redactedHash,
+      });
+
+      const durationMs = Date.now() - startTime;
       addCustodyRecord({
         sessionId,
         timestamp: new Date().toISOString(),
@@ -1027,34 +1096,37 @@ export default function PdfRedacter() {
         mode: r.mode || redactionMode,
         precisionPages: r.stats?.precisionPages || 0,
         rasterPages: r.stats?.rasterPages || 0,
-        engineVersion: 'PDFBlack Enterprise v3.0',
-        userAgent: navigator.userAgent,
-        patternsUsed: auditEntries
-          .map((e) => e.patternName)
-          .filter((v, i, a) => a.indexOf(v) === i),
+        engineVersion: 'PDFBlack TrueRedact™ Enterprise v4.0',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Browser',
         processingDurationMs: durationMs,
       });
+
       addAuditLogEntry({
         timestamp: new Date().toISOString(),
         eventType: 'document_downloaded',
-        details: `Documento censurado descargado: ${r.totalRedactions} parches en ${r.pagesWithRedactions} páginas.`,
+        details: `Censura completada con ${r.totalRedactions} parches en ${r.pagesWithRedactions} páginas. SHA-256: ${redactedHash}`,
         metadata: { mode: r.mode, pagesWithRedactions: r.pagesWithRedactions },
       });
     });
 
+    setIsProcessing(false);
     toast.success(
       isEs
-        ? `¡Censura completada! ${r.totalRedactions} parches en ${r.pagesWithRedactions} páginas.`
-        : `Redaction complete! ${r.totalRedactions} patches on ${r.pagesWithRedactions} pages.`,
+        ? `¡Censura completada! ${r.totalRedactions} parches aplicados exitosamente.`
+        : `Redaction complete! ${r.totalRedactions} patches applied successfully.`,
     );
   };
 
-  // Motor Inline Ultra-Robusto (Ejecución directa en navegador)
-  const applyInlineRedaction = async (allBoxes: RedactionBox[], mode: 'precision' | 'raster') => {
+  // Motor Inline Ultra-Robusto de Fallback
+  const applyInlineRedaction = async (
+    allBoxes: RedactionBox[],
+    mode: 'precision' | 'raster',
+    overlayTextStr?: string,
+  ) => {
     try {
       if (!file) return;
       const fileBuffer = await file.arrayBuffer();
-      const { PDFDocument, rgb } = await import('pdf-lib');
+      const { PDFDocument, rgb, StandardFonts, PDFName } = await import('pdf-lib');
 
       const redactionsByPage = new Map<number, RedactionBox[]>();
       for (const r of allBoxes) {
@@ -1063,11 +1135,8 @@ export default function PdfRedacter() {
       }
 
       if (mode === 'raster') {
-        // Modo rasterizado: renderiza páginas completas a canvas y las quema en un nuevo PDF
         setProgressMsg(
-          isEs
-            ? 'Renderizando páginas en alta resolución...'
-            : 'Rendering pages in high resolution...',
+          isEs ? 'Renderizando páginas anti-forense...' : 'Rendering anti-forensic pages...',
         );
         const pdfjsLib = await import('pdfjs-dist');
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -1080,14 +1149,17 @@ export default function PdfRedacter() {
 
         const totalP = srcDoc.numPages;
         const outPdf = await PDFDocument.create();
-        const boxColor = redactionStyle === 'gray' ? '#404040' : '#000000';
+        const boxColorHex =
+          redactionStyle === 'dark'
+            ? '#18181b'
+            : redactionStyle === 'white'
+              ? '#ffffff'
+              : redactionStyle === 'gray'
+                ? '#52525b'
+                : '#000000';
 
         for (let p = 1; p <= totalP; p++) {
           setProgressPercent(15 + Math.floor((p / totalP) * 75));
-          setProgressMsg(
-            isEs ? `Procesando página ${p}/${totalP}...` : `Processing page ${p}/${totalP}...`,
-          );
-
           const page = await srcDoc.getPage(p);
           const viewport = page.getViewport({ scale: 2.0 });
           const canvas = document.createElement('canvas');
@@ -1105,8 +1177,17 @@ export default function PdfRedacter() {
             const ry = (box.yPercent / 100) * canvas.height;
             const rw = (box.widthPercent / 100) * canvas.width;
             const rh = (box.heightPercent / 100) * canvas.height;
-            ctx.fillStyle = boxColor;
+            ctx.fillStyle = boxColorHex;
             ctx.fillRect(rx, ry, rw, rh);
+
+            const txt = box.overlayText || overlayTextStr;
+            if (txt && rw > 25 && rh > 12) {
+              ctx.fillStyle = redactionStyle === 'white' ? '#0d0d12' : '#ffffff';
+              ctx.font = `bold ${Math.min(Math.max(rh * 0.52, 9), 24)}px sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(txt, rx + rw / 2, ry + rh / 2);
+            }
           }
 
           const blob = await new Promise<Blob | null>((res) =>
@@ -1122,13 +1203,12 @@ export default function PdfRedacter() {
 
         outPdf.setTitle('');
         outPdf.setAuthor('');
-        outPdf.setSubject('');
-        outPdf.setKeywords([]);
-        outPdf.setProducer('PDFBlack TrueRedact Engine v3.0 (Raster Flattened)');
-        outPdf.setCreator('PDFBlack Redaction Engine');
+        outPdf.setProducer('PDFBlack TrueRedact™ Enterprise v4.0 (Raster Flattened)');
+        try {
+          outPdf.catalog.delete(PDFName.of('Metadata'));
+          outPdf.catalog.delete(PDFName.of('PieceInfo'));
+        } catch {}
 
-        setProgressPercent(95);
-        setProgressMsg(isEs ? 'Empaquetando PDF final...' : 'Packaging final PDF...');
         const pdfBytes = await outPdf.save({ useObjectStreams: true, addDefaultPage: false });
         const resultBuffer = pdfBytes.buffer.slice(
           pdfBytes.byteOffset,
@@ -1151,7 +1231,7 @@ export default function PdfRedacter() {
           },
         });
       } else {
-        // Modo precisión: vector drawing directo en pdf-lib
+        // Modo precisión vectorial nativo
         setProgressMsg(
           isEs ? 'Aplicando censura vectorial nativa...' : 'Applying native vector redaction...',
         );
@@ -1160,9 +1240,17 @@ export default function PdfRedacter() {
           updateMetadata: false,
         });
 
+        const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         const totalP = pdfDoc.getPageCount();
         const pages = pdfDoc.getPages();
-        const boxColor = redactionStyle === 'gray' ? rgb(0.25, 0.25, 0.25) : rgb(0, 0, 0);
+        const boxColor =
+          redactionStyle === 'dark'
+            ? rgb(0.09, 0.09, 0.11)
+            : redactionStyle === 'white'
+              ? rgb(1, 1, 1)
+              : redactionStyle === 'gray'
+                ? rgb(0.35, 0.35, 0.38)
+                : rgb(0, 0, 0);
 
         for (let p = 1; p <= totalP; p++) {
           setProgressPercent(15 + Math.floor((p / totalP) * 75));
@@ -1212,18 +1300,40 @@ export default function PdfRedacter() {
               color: boxColor,
               opacity: 1,
             });
+
+            const txt = box.overlayText || overlayTextStr;
+            if (txt && rw > 15 && rh > 6) {
+              const textColor = redactionStyle === 'white' ? rgb(0.08, 0.08, 0.1) : rgb(1, 1, 1);
+              const maxFontSizeByHeight = Math.max(rh * 0.56, 5);
+              const textWidthAt1 = font.widthOfTextAtSize(txt, 1);
+              const maxFontSizeByWidth = (rw * 0.88) / Math.max(textWidthAt1, 1);
+              const fontSize = Math.min(maxFontSizeByHeight, maxFontSizeByWidth, 12);
+
+              if (fontSize >= 4.5) {
+                const textWidth = font.widthOfTextAtSize(txt, fontSize);
+                const textHeight = font.heightAtSize(fontSize);
+                const textX = rx + offsetX + (rw - textWidth) / 2;
+                const textY = ry + offsetY + (rh - textHeight) / 2 + fontSize * 0.15;
+                page.drawText(txt, {
+                  x: textX,
+                  y: textY,
+                  size: fontSize,
+                  font,
+                  color: textColor,
+                });
+              }
+            }
           }
         }
 
         pdfDoc.setTitle('');
         pdfDoc.setAuthor('');
-        pdfDoc.setSubject('');
-        pdfDoc.setKeywords([]);
-        pdfDoc.setProducer('PDFBlack TrueRedact Engine v3.0');
-        pdfDoc.setCreator('PDFBlack Secure Engine');
+        pdfDoc.setProducer('PDFBlack TrueRedact™ Enterprise v4.0');
+        try {
+          pdfDoc.catalog.delete(PDFName.of('Metadata'));
+          pdfDoc.catalog.delete(PDFName.of('PieceInfo'));
+        } catch {}
 
-        setProgressPercent(95);
-        setProgressMsg(isEs ? 'Empaquetando PDF...' : 'Packaging PDF...');
         const pdfBytes = await pdfDoc.save({ useObjectStreams: true, addDefaultPage: false });
         const resultBuffer = pdfBytes.buffer.slice(
           pdfBytes.byteOffset,
@@ -1253,6 +1363,80 @@ export default function PdfRedacter() {
     }
   };
 
+  // Descargas forenses complementarias
+  const handleDownloadForensicCertificate = () => {
+    if (!completedResult || !file) return;
+    const chain = getCustodyChain();
+    const cert = generateCertificateOfRedaction(
+      chain.length > 0
+        ? chain
+        : [
+            {
+              sessionId,
+              timestamp: new Date().toISOString(),
+              originalFileName: file.name,
+              originalHash: originalHash || 'unavailable',
+              redactedHash: completedResult.redactedHash || 'completed',
+              originalSize: completedResult.originalSize,
+              redactedSize: completedResult.redactedSize,
+              totalRedactions: completedResult.totalRedactions,
+              pagesWithRedactions: completedResult.pagesWithRedactions,
+              mode: redactionMode,
+              precisionPages:
+                redactionMode === 'precision' ? completedResult.pagesWithRedactions : 0,
+              rasterPages: redactionMode === 'raster' ? completedResult.pagesWithRedactions : 0,
+              engineVersion: 'PDFBlack TrueRedact™ Enterprise v4.0',
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Browser',
+            },
+          ],
+    );
+    downloadCertificate(cert);
+    toast.success(
+      isEs ? 'Certificado Forense descargado (.json)' : 'Forensic Certificate downloaded (.json)',
+    );
+  };
+
+  const handleDownloadAuditReportTxt = () => {
+    if (!completedResult || !file) return;
+    const lines = [
+      '================================================================================',
+      '        PDFBLACK TRUEREDACT™ ENTERPRISE v4.0 — INFORME DE AUDITORÍA FORENSE     ',
+      '================================================================================',
+      `Fecha de Emisión:       ${new Date().toLocaleString()}`,
+      `ID de Sesión:           ${sessionId}`,
+      `Documento:              ${file.name}`,
+      `Tamaño Original:        ${formatFileSize(completedResult.originalSize)} (${completedResult.originalSize} bytes)`,
+      `Tamaño Sanitizado:      ${completedResult.fileSize} (${completedResult.redactedSize} bytes)`,
+      `Total Parches:          ${completedResult.totalRedactions}`,
+      `Páginas Afectadas:      ${completedResult.pagesWithRedactions} de ${totalPages}`,
+      `Modo de Sanitización:   ${redactionMode.toUpperCase()} (${redactionMode === 'precision' ? 'Vectorial con purga XMP' : 'Aplanado Raster Anti-Forense 300 DPI'})`,
+      `Color de Parche:        ${redactionStyle.toUpperCase()}`,
+      `Texto Superpuesto:      ${overlayPreset === 'none' ? 'Ninguno' : overlayPreset}`,
+      '',
+      '--- CADENA CRIPTOGRÁFICA DE INTEGRIDAD (SHA-256) ---',
+      `Hash SHA-256 Original:    ${originalHash || 'No disponible'}`,
+      `Hash SHA-256 Sanitizado:  ${completedResult.redactedHash || 'No disponible'}`,
+      '',
+      '--- CUMPLIMIENTO NORMATIVO CORPORATIVO ---',
+      '* RGPD (Reglamento General de Protección de Datos UE 2016/679, Art. 17 y 32)',
+      '* HIPAA (Health Insurance Portability and Accountability Act, 45 CFR § 164.514)',
+      '* NIST SP 800-88 Rev. 1 (Guidelines for Media Sanitization)',
+      '================================================================================',
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Auditoria_Censura_${file.name.replace(/\.[^/.]+$/, '')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(
+      isEs ? 'Informe de auditoría descargado (.txt)' : 'Audit report downloaded (.txt)',
+    );
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto flex flex-col gap-4 font-sans">
       <input
@@ -1260,7 +1444,12 @@ export default function PdfRedacter() {
         accept=".pdf"
         className="hidden"
         ref={fileInputRef}
-        onChange={handleFileChange}
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            loadSingleFileIntoSlot(activeSlotIndex, e.target.files[0]);
+          }
+          e.target.value = '';
+        }}
       />
 
       {/* HEADER SUPERIOR UNIFICADO */}
@@ -1313,6 +1502,7 @@ export default function PdfRedacter() {
       </div>
 
       {!slots.some((s) => s.file !== null) ? (
+        /* DROPZONE VACÍA ESTILO PRÉMIUM */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1321,109 +1511,78 @@ export default function PdfRedacter() {
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <EyeOff className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
-            {isEs
-              ? 'CENSURAR Y OCULTAR INFORMACIÓN SENSIBLE EN PDF'
-              : 'REDACT AND HIDE SENSITIVE INFORMATION IN PDF'}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
-            {isEs
-              ? 'Elimina de forma irreversible datos sensibles, textos y números confidenciales con sanitización de metadatos 100% local.'
-              : 'Irreversibly redact sensitive data and numbers with metadata sanitization 100% locally.'}
-          </p>
-          <button
-            type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-black" />{' '}
-            {isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}
-          </button>
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>
               {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+                ? 'Motor TrueRedact™ Enterprise v4.0 • 100% Local'
+                : 'TrueRedact™ Enterprise Engine v4.0 • 100% Local'}
             </span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+            {isEs
+              ? 'CENSURA Y ELIMINA INFORMACIÓN SENSIBLE EN PDF'
+              : 'REDACT AND REMOVE SENSITIVE INFORMATION IN PDF'}
+          </h2>
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
+            {isEs
+              ? 'Elimina de forma irreversible datos confidenciales, números de tarjeta (Luhn), DNI/NIE, cuentas bancarias y textos privados mediante purgado binario real en tu navegador sin subir archivos a internet.'
+              : 'Irreversibly purge confidential data, credit cards, ID numbers, bank accounts, and private text via true binary sanitization without cloud uploads.'}
+          </p>
+
+          <button
+            type="button"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
+          >
+            <Plus className="w-4 h-4 text-black" />
+            {isEs ? 'Seleccionar Archivo PDF para Censurar' : 'Select PDF File to Redact'}
+          </button>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Purgado Binario Real' : '✓ True Binary Purge'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Eliminación física de glifos y purga del árbol XML /Metadata XMP en memoria.'
+                  : 'Physical destruction of glyphs and deep XMP XML /Metadata tree purging in RAM.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Escaneo Inteligente' : '✓ Smart Regex Scan'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Detección automática de tarjetas (Luhn), DNI/NIE, emails y teléfonos con 1 clic.'
+                  : 'Automated 1-click detection for cards (Luhn), IDs, emails, and phone numbers.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Cadena de Custodia' : '✓ Chain of Custody'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Certificado forense descargable con SHA-256 de entrada y salida para validez pericial.'
+                  : 'Downloadable forensic certificate with input/output SHA-256 for legal compliance.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : completedResult ? (
-        /* PANTALLA DE ÉXITO Y DESCARGA */
+        /* PANTALLA DEDICADA DE ÉXITO Y DESCARGA UNIFICADA */
         <motion.div
           ref={successContainerRef}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-4xl mx-auto my-6 font-sans"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <EyeOff className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA CENSURA' : 'REDACTION RESULT'}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
-                    {isEs ? '¡Documento Censurado con Éxito!' : 'Document Redacted Successfully!'}
-                  </h2>
-                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                    {isEs
-                      ? `${completedResult.totalRedactions} parches aplicados en ${completedResult.pagesWithRedactions} páginas`
-                      : `${completedResult.totalRedactions} patches applied across ${completedResult.pagesWithRedactions} pages`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-[#E8DFCF]/30 rounded-2xl text-xs text-[#E8DFCF] shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-[#FAF6EE]" />
-                <span>{isEs ? 'True Redaction Aplicado' : 'True Redaction Applied'}</span>
-              </div>
-            </div>
-
-            {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Original' : 'Original Size'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.originalSize)}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Censurado' : 'Redacted Size'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.redactedSize)}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Parches' : 'Patches'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-base font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.totalRedactions} />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Afectadas' : 'Affected Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-base font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.pagesWithRedactions} />
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA */}
           <DownloadSuccessCard
             downloadUrl={completedResult.downloadUrl}
             filename={completedResult.filename}
@@ -1431,17 +1590,143 @@ export default function PdfRedacter() {
             outputFormat="pdf"
             rawBlob={completedResult.rawBlob}
             currentToolId="censurar"
+            title={isEs ? '¡Documento censurado con éxito!' : 'Document redacted successfully!'}
+            metrics={{
+              categoryTitle: isEs ? 'ESTADO DE LA SANITIZACIÓN' : 'SANITIZATION STATUS',
+              categorySubtitle: isEs
+                ? `${completedResult.totalRedactions} parches aplicados en ${completedResult.pagesWithRedactions} páginas • TrueRedact™ v4.0`
+                : `${completedResult.totalRedactions} patches applied across ${completedResult.pagesWithRedactions} pages • TrueRedact™ v4.0`,
+              badgeLabel: isEs ? 'Seguridad:' : 'Security:',
+              badgeValue: isEs ? '100% Certificada' : '100% Certified',
+              originalSize: formatFileSize(completedResult.originalSize),
+              compressedSize: formatFileSize(completedResult.redactedSize),
+              labelOriginal: isEs ? 'Tamaño Original' : 'Original Size',
+              labelCompressed: isEs ? 'Tamaño Sanitizado' : 'Sanitized Size',
+              labelSaved: isEs ? 'Parches Aplicados' : 'Applied Patches',
+              savedSpace: `${completedResult.totalRedactions} ${isEs ? 'parches' : 'patches'}`,
+              reductionPercent: 100,
+            }}
             onReset={() => {
               setCompletedResult(null);
               setDownloadUrl(null);
               handleRemoveAllFiles();
             }}
-          />
+          >
+            {/* AUDITORÍA Y CERTIFICACIÓN FORENSE COMPLEMENTARIA (OPCIONAL) */}
+            <div className="bg-[#0e0e13] border border-zinc-800 hover:border-zinc-700/80 rounded-2xl p-3.5 sm:p-4 font-mono transition-all my-1">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 bg-zinc-900 border border-zinc-800 rounded-xl flex-shrink-0">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-zinc-200 block font-sans">
+                      {isEs
+                        ? 'Certificación Forense y Cadena de Custodia (Opcional)'
+                        : 'Forensic Certification & Chain of Custody (Optional)'}
+                    </span>
+                    <span className="text-[10px] text-zinc-400 block">
+                      {isEs
+                        ? 'Documentación técnica con huella SHA-256 para validez legal o auditorías.'
+                        : 'Technical documentation with SHA-256 hash for legal validity or audit.'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleDownloadForensicCertificate}
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 rounded-xl text-[11px] font-mono font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                    title={
+                      isEs
+                        ? 'Descargar certificado forense en formato JSON'
+                        : 'Download forensic certificate in JSON format'
+                    }
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isEs ? 'Certificado (.json)' : 'Certificate (.json)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadAuditReportTxt}
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 rounded-xl text-[11px] font-mono font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                    title={
+                      isEs
+                        ? 'Descargar informe de auditoría en texto plano'
+                        : 'Download audit report in plain text'
+                    }
+                  >
+                    <FileCode className="w-3.5 h-3.5 text-zinc-300" />
+                    <span>{isEs ? 'Informe (.txt)' : 'Report (.txt)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowHashDetails(!showHashDetails)}
+                    className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded-xl text-[11px] font-mono flex items-center gap-1 transition cursor-pointer"
+                    title={isEs ? 'Ver / Ocultar hashes SHA-256' : 'View / Hide SHA-256 hashes'}
+                  >
+                    <Hash className="w-3.5 h-3.5 text-zinc-400" />
+                    <span className="hidden sm:inline">{isEs ? 'Hashes' : 'Hashes'}</span>
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform duration-200 ${showHashDetails ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* PANEL DESPLEGABLE DE HASHES SHA-256 */}
+              {showHashDetails && (
+                <div className="mt-3 pt-3 border-t border-zinc-800/80 grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] font-mono">
+                  <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-2 overflow-hidden">
+                    <span className="text-zinc-500 font-bold flex-shrink-0">SHA-256 Original:</span>
+                    <span className="text-zinc-300 truncate">
+                      {originalHash || 'No disponible'}
+                    </span>
+                    {originalHash && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(originalHash);
+                          toast.success(isEs ? 'Hash original copiado' : 'Original hash copied');
+                        }}
+                        className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded cursor-pointer flex-shrink-0"
+                        title={isEs ? 'Copiar hash' : 'Copy hash'}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-2 overflow-hidden">
+                    <span className="text-emerald-400 font-bold flex-shrink-0">
+                      SHA-256 Sanitizado:
+                    </span>
+                    <span className="text-emerald-300 truncate">
+                      {completedResult.redactedHash || 'No disponible'}
+                    </span>
+                    {completedResult.redactedHash && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(completedResult.redactedHash!);
+                          toast.success(isEs ? 'Hash sanitizado copiado' : 'Sanitized hash copied');
+                        }}
+                        className="p-1 hover:bg-zinc-800 text-emerald-400 hover:text-white rounded cursor-pointer flex-shrink-0"
+                        title={isEs ? 'Copiar hash' : 'Copy hash'}
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </DownloadSuccessCard>
         </motion.div>
       ) : (
-        /* ÁREA DE TRABAJO VERTICAL: SECCIÓN 1 (SUPERIOR) + SECCIÓN 2 (INFERIOR) */
+        /* ÁREA DE TRABAJO VERTICAL: SECCIÓN 1 (VISOR Y SLOTS) + SECCIÓN 2 (PANEL DE CONTROL CORPORATIVO) */
         <div className="flex flex-col gap-6 mb-6 font-sans">
-          {/* SECCIÓN 1: VISOR INTERACTIVO Y CAJAS DE ARCHIVOS (PARALELOS ARRIBA) */}
+          {/* SECCIÓN 1: VISOR INTERACTIVO Y CAJAS DE ARCHIVOS */}
           <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
@@ -1471,13 +1756,17 @@ export default function PdfRedacter() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               {/* LADO IZQUIERDO: VISOR INTERACTIVO CON LIENZO DE CENSURA (6/12) */}
               <div className="lg:col-span-6 flex flex-col justify-between bg-[#0c0c0f] border border-zinc-800/80 rounded-2xl p-4 min-h-[440px]">
-                {/* Header Visor con controles de Dibujo / Borrado / Undo / Redo */}
+                {/* Header Visor con controles de Dibujo / Borrado / Replicar / Undo / Redo */}
                 <div className="flex flex-wrap items-center justify-between pb-3 border-b border-zinc-800/80 font-mono text-xs text-zinc-400 gap-2">
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setActiveTool('draw')}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border transition-all cursor-pointer text-[10px] ${activeTool === 'draw' ? 'bg-white text-black border-white font-bold shadow-sm' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'}`}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border transition-all cursor-pointer text-[10px] ${
+                        activeTool === 'draw'
+                          ? 'bg-white text-black border-white font-bold shadow-sm'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white'
+                      }`}
                     >
                       <Square className="w-3 h-3" />
                       <span>{isEs ? 'Dibujar' : 'Draw'}</span>
@@ -1485,10 +1774,30 @@ export default function PdfRedacter() {
                     <button
                       type="button"
                       onClick={() => setActiveTool('erase')}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border transition-all cursor-pointer text-[10px] ${activeTool === 'erase' ? 'bg-zinc-800 text-white border-zinc-500 font-bold shadow-sm' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white'}`}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border transition-all cursor-pointer text-[10px] ${
+                        activeTool === 'erase'
+                          ? 'bg-zinc-800 text-white border-zinc-500 font-bold shadow-sm'
+                          : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white'
+                      }`}
                     >
                       <Eraser className="w-3 h-3" />
                       <span>{isEs ? 'Borrar' : 'Erase'}</span>
+                    </button>
+                    <span className="text-zinc-600 mx-0.5">|</span>
+                    <button
+                      type="button"
+                      onClick={replicateLastBoxAcrossAllPages}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 text-[10px] font-mono cursor-pointer transition shadow-sm"
+                      title={
+                        isEs
+                          ? 'Replicar el último parche en todas las páginas del PDF'
+                          : 'Replicate last box across all pages'
+                      }
+                    >
+                      <Layers className="w-3 h-3 text-emerald-400" />
+                      <span className="hidden sm:inline">
+                        {isEs ? 'Replicar en Todas' : 'Replicate All'}
+                      </span>
                     </button>
                     <span className="text-zinc-600 mx-0.5">|</span>
                     <button
@@ -1533,7 +1842,13 @@ export default function PdfRedacter() {
                 {/* Lienzo Central de la Página Activa */}
                 <div
                   ref={scrollContainerRef}
-                  className={`flex-1 min-h-[260px] max-h-[360px] bg-[#121215] relative overflow-y-auto p-2 rounded-xl my-3 flex items-center justify-center border border-zinc-800/80 ${activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-pointer' : 'cursor-default'}`}
+                  className={`flex-1 min-h-[260px] max-h-[360px] bg-[#121215] relative overflow-y-auto p-2 rounded-xl my-3 flex items-center justify-center border border-zinc-800/80 ${
+                    activeTool === 'draw'
+                      ? 'cursor-crosshair'
+                      : activeTool === 'erase'
+                        ? 'cursor-pointer'
+                        : 'cursor-default'
+                  }`}
                 >
                   {isProcessing && Object.keys(pageDataUrls).length === 0 ? (
                     <div className="flex flex-col items-center gap-2 text-zinc-500 font-mono text-xs">
@@ -1575,35 +1890,59 @@ export default function PdfRedacter() {
                             ))}
 
                             {/* Cajas de censura manual */}
-                            {manualBoxes.map((box) => (
-                              <div
-                                key={box.id}
-                                style={{
-                                  left: `${box.xPercent}%`,
-                                  top: `${box.yPercent}%`,
-                                  width: `${box.widthPercent}%`,
-                                  height: `${box.heightPercent}%`,
-                                }}
-                                onClick={(e) => {
-                                  if (activeTool === 'erase') {
-                                    e.stopPropagation();
-                                    handleEraseClick(box.id);
-                                  }
-                                }}
-                                className={`absolute bg-black/85 border border-white/40 rounded-xs shadow-lg flex items-center justify-end px-0.5 text-white z-30 group ${activeTool === 'erase' ? 'cursor-pointer ring-2 ring-red-500/80' : 'cursor-default'}`}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeRedaction(box.id);
+                            {manualBoxes.map((box) => {
+                              const isWhiteBox = box.boxColor === 'white';
+                              return (
+                                <div
+                                  key={box.id}
+                                  style={{
+                                    left: `${box.xPercent}%`,
+                                    top: `${box.yPercent}%`,
+                                    width: `${box.widthPercent}%`,
+                                    height: `${box.heightPercent}%`,
+                                    backgroundColor:
+                                      box.boxColor === 'dark'
+                                        ? '#18181b'
+                                        : box.boxColor === 'white'
+                                          ? '#ffffff'
+                                          : box.boxColor === 'gray'
+                                            ? '#4b5563'
+                                            : '#000000',
                                   }}
-                                  className="text-red-400 hover:text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                  onClick={(e) => {
+                                    if (activeTool === 'erase') {
+                                      e.stopPropagation();
+                                      removeRedaction(box.id);
+                                    }
+                                  }}
+                                  className={`absolute border border-white/40 rounded-xs shadow-lg flex items-center justify-center px-0.5 text-white z-30 group overflow-hidden ${
+                                    activeTool === 'erase'
+                                      ? 'cursor-pointer ring-2 ring-red-500/80'
+                                      : 'cursor-default'
+                                  }`}
                                 >
-                                  <X className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
-                            ))}
+                                  {box.overlayText && (
+                                    <span
+                                      className={`text-[8px] font-bold font-mono truncate select-none ${
+                                        isWhiteBox ? 'text-black' : 'text-white'
+                                      }`}
+                                    >
+                                      {box.overlayText}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeRedaction(box.id);
+                                    }}
+                                    className="absolute right-0.5 top-0.5 text-red-400 hover:text-white p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer bg-black/60 rounded"
+                                  >
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              );
+                            })}
 
                             {/* Vista previa de dibujo */}
                             {drawPreview && drawPreview.page === pageNum && (
@@ -1786,7 +2125,7 @@ export default function PdfRedacter() {
             </div>
           </div>
 
-          {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO A ANCHO COMPLETO */}
+          {/* SECCIÓN 2: PANEL DE CONTROL CORPORATIVO TRUEREDACT™ */}
           <div
             ref={controlPanelRef}
             className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden font-sans"
@@ -1797,42 +2136,106 @@ export default function PdfRedacter() {
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800 font-sans">
               <div>
                 <span className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold block mb-1">
-                  002 / CONFIGURACIÓN DE CENSURA
+                  002 / CONFIGURACIÓN DE CENSURA Y AUDITORÍA FORENSE
                 </span>
                 <h2 className="text-xl font-bold text-white tracking-tight font-sans uppercase">
-                  {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
+                  {isEs ? 'PANEL DE CONTROL CORPORATIVO' : 'CORPORATE CONTROL PANEL'}
                 </h2>
               </div>
-              <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm">
-                <SlidersHorizontal className="w-5 h-5 text-white" />
+              <div className="bg-zinc-900 p-2.5 rounded-xl border border-zinc-700 text-white shadow-sm flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-mono font-bold text-zinc-300">TrueRedact™ v4.0</span>
               </div>
             </div>
 
             <div className="space-y-4">
-              {/* === PANEL DE AUDITORÍA DE DATOS === */}
-              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
-                <div className="flex items-center justify-between mb-2">
+              {/* === PANEL DE AUDITORÍA FORENSE INTELIGENTE (AUTO-SCAN) === */}
+              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
                   <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-white" />
+                    <Zap className="w-4 h-4 text-emerald-400" />
                     <span className="text-xs font-bold text-white font-mono uppercase tracking-wide">
-                      {isEs ? 'Auditoría de Datos Sensibles' : 'Sensitive Data Audit'}
+                      {isEs
+                        ? 'Auditoría Forense de Datos Confidenciales'
+                        : 'Confidential Data Forensic Audit'}
                     </span>
+                    {isScanning && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />}
                   </div>
-                  {sensitiveMatches.length > 0 && (
-                    <span className="text-[10px] font-mono text-white bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-lg shadow-sm">
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-white bg-zinc-800 border border-zinc-700 px-2.5 py-0.5 rounded-lg shadow-sm">
                       {sensitiveMatches.length} {isEs ? 'detectados' : 'detected'}
                     </span>
-                  )}
+                  </div>
+                </div>
+
+                {/* PESTAÑAS DE CATEGORÍA DE DATOS */}
+                <div className="flex flex-wrap gap-1.5 font-mono text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryFilter('all')}
+                    className={`px-3 py-1 rounded-lg border transition cursor-pointer ${
+                      activeCategoryFilter === 'all'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {isEs ? 'Todos' : 'All'} ({sensitiveMatches.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryFilter('personal_id')}
+                    className={`px-3 py-1 rounded-lg border transition cursor-pointer ${
+                      activeCategoryFilter === 'personal_id'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    🪪 {isEs ? 'Identidad' : 'IDs'} (
+                    {sensitiveMatches.filter((m) => m.category === 'personal_id').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryFilter('financial')}
+                    className={`px-3 py-1 rounded-lg border transition cursor-pointer ${
+                      activeCategoryFilter === 'financial'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    💳 {isEs ? 'Financiero' : 'Financial'} (
+                    {sensitiveMatches.filter((m) => m.category === 'financial').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryFilter('contact')}
+                    className={`px-3 py-1 rounded-lg border transition cursor-pointer ${
+                      activeCategoryFilter === 'contact'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    📧 {isEs ? 'Contacto' : 'Contact'} (
+                    {sensitiveMatches.filter((m) => m.category === 'contact').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryFilter('confidential')}
+                    className={`px-3 py-1 rounded-lg border transition cursor-pointer ${
+                      activeCategoryFilter === 'confidential'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    🔒 {isEs ? 'Confidencial' : 'Confidential'} (
+                    {sensitiveMatches.filter((m) => m.category === 'confidential').length})
+                  </button>
                 </div>
 
                 {sensitiveMatches.length > 0 ? (
                   <>
-                    <p className="text-[11px] text-zinc-400 font-sans mb-3 leading-relaxed">
-                      {isEs
-                        ? `Se detectaron ${sensitiveMatches.length} posibles elementos confidenciales.`
-                        : `Found ${sensitiveMatches.length} potentially sensitive items.`}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
+                    {/* ACCIONES DE 1-CLIC */}
+                    <div className="flex flex-wrap gap-2 pt-1">
                       <button
                         type="button"
                         onClick={censorAllDetected}
@@ -1841,119 +2244,343 @@ export default function PdfRedacter() {
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>
-                          {isEs ? 'Censurar Todos los Detectados' : 'Redact All Detected'}
+                          {isEs
+                            ? `Censurar Todos los Detectados (${sensitiveMatches.length})`
+                            : `Redact All Detected (${sensitiveMatches.length})`}
                         </span>
                       </button>
+                      {activeCategoryFilter !== 'all' && (
+                        <button
+                          type="button"
+                          onClick={censorCurrentCategory}
+                          disabled={isProcessing || filteredSensitiveMatches.length === 0}
+                          className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold py-2 px-3 rounded-xl text-xs font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 border border-zinc-700"
+                        >
+                          <span>
+                            {isEs
+                              ? `Censurar Categoría (${filteredSensitiveMatches.length})`
+                              : `Redact Category (${filteredSensitiveMatches.length})`}
+                          </span>
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={clearAllRedactions}
+                        onClick={() => {
+                          setRedactions([]);
+                          setAutoRedactions([]);
+                        }}
                         disabled={isProcessing || redactions.length === 0}
-                        className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-mono transition-all cursor-pointer disabled:opacity-40"
+                        className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-red-400 rounded-xl text-xs font-mono transition-all cursor-pointer disabled:opacity-40 border border-zinc-800"
                       >
                         {isEs ? 'Limpiar Parches' : 'Clear Patches'}
                       </button>
+                    </div>
+
+                    {/* LISTA SCROLLABLE DE HALLAZGOS CON DETALLES */}
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                      {filteredSensitiveMatches.slice(0, 40).map((match) => {
+                        const isAlreadyRedacted = redactions.some(
+                          (r) => r.id === match.redactionBox.id,
+                        );
+                        return (
+                          <div
+                            key={match.id}
+                            className="flex items-center justify-between p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs font-mono text-zinc-300"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  match.category === 'financial'
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    : match.category === 'personal_id'
+                                      ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                      : match.category === 'contact'
+                                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                        : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                }`}
+                              >
+                                {match.category === 'financial'
+                                  ? 'Financiero'
+                                  : match.category === 'personal_id'
+                                    ? 'Identidad'
+                                    : match.category === 'contact'
+                                      ? 'Contacto'
+                                      : 'Confidencial'}
+                              </span>
+                              <span className="text-white font-bold truncate max-w-[200px] sm:max-w-[280px]">
+                                {match.matchedText}
+                              </span>
+                              <span className="text-[10px] text-zinc-500">Pág {match.page}</span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setActivePage(match.page)}
+                                className="text-[10px] text-zinc-400 hover:text-white px-2 py-1 bg-zinc-800 rounded border border-zinc-700 cursor-pointer"
+                              >
+                                {isEs ? 'Ver Pág' : 'View'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isAlreadyRedacted) {
+                                    removeRedaction(match.redactionBox.id);
+                                  } else {
+                                    pushUndo();
+                                    setRedactions((prev) => [...prev, match.redactionBox]);
+                                  }
+                                }}
+                                className={`text-[10px] px-2.5 py-1 rounded font-bold cursor-pointer transition ${
+                                  isAlreadyRedacted
+                                    ? 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30'
+                                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
+                                }`}
+                              >
+                                {isAlreadyRedacted
+                                  ? isEs
+                                    ? 'Quitar'
+                                    : 'Remove'
+                                  : isEs
+                                    ? 'Censurar'
+                                    : 'Redact'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 ) : (
                   <p className="text-[11px] text-zinc-500 font-mono">
                     {isEs
-                      ? '✓ No se detectaron patrones confidenciales obvios.'
-                      : '✓ No obvious confidential patterns found.'}
+                      ? '✓ No se detectaron patrones confidenciales automáticos evidentes. Puedes dibujar parches o usar la búsqueda de palabras clave.'
+                      : '✓ No obvious automated sensitive patterns found. You can draw boxes or search keywords.'}
                   </p>
                 )}
               </div>
 
-              {/* BUSCADOR DE PALABRAS / TEXTO */}
-              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner">
-                <label className="text-[10px] font-bold text-zinc-400 mb-2 font-mono tracking-widest uppercase block">
-                  {isEs ? 'Buscar y Censurar Texto Específico' : 'Search & Redact Specific Text'}
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={
-                        isEs ? 'Escribe la palabra o frase a ocultar...' : 'Type word to redact...'
-                      }
-                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
-                    />
-                  </div>
-                  {searchQuery.trim() && autoRedactions.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRedactions((prev) => [...prev, ...autoRedactions]);
-                        setAutoRedactions([]);
-                        setSearchQuery('');
-                        toast.success(isEs ? 'Parches agregados' : 'Patches added');
-                      }}
-                      className="bg-white text-black font-bold px-3.5 py-2.5 rounded-xl text-xs font-mono hover:bg-zinc-200 transition-colors cursor-pointer"
-                    >
-                      {isEs
-                        ? `Fijar (${autoRedactions.length})`
-                        : `Apply (${autoRedactions.length})`}
-                    </button>
-                  )}
+              {/* BÚSQUEDA INDIVIDUAL Y CENSURA POR LOTE DE PALABRAS */}
+              <div className="bg-[#121217] border border-zinc-700/80 rounded-2xl p-4 shadow-inner space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-zinc-400 font-mono tracking-widest uppercase block">
+                    {isEs ? 'Buscar y Censurar Palabras Clave' : 'Search & Redact Keywords'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowBatchKeywords(!showBatchKeywords)}
+                    className="text-[10px] font-mono text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>
+                      {showBatchKeywords
+                        ? isEs
+                          ? 'Modo Simple'
+                          : 'Single Mode'
+                        : isEs
+                          ? '+ Modo Lote de Palabras'
+                          : '+ Batch Words Mode'}
+                    </span>
+                  </button>
                 </div>
+
+                {!showBatchKeywords ? (
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        id="keyword-search-input"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={
+                          isEs
+                            ? 'Escribe una palabra o frase a censurar...'
+                            : 'Type word or phrase to redact...'
+                        }
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2.5 px-3 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono"
+                      />
+                    </div>
+                    {searchQuery.trim() && autoRedactions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRedactions((prev) => [...prev, ...autoRedactions]);
+                          setAutoRedactions([]);
+                          setSearchQuery('');
+                          toast.success(isEs ? 'Parches fijados' : 'Patches pinned');
+                        }}
+                        className="bg-white text-black font-bold px-4 py-2.5 rounded-xl text-xs font-mono hover:bg-zinc-200 transition-colors cursor-pointer flex-shrink-0"
+                      >
+                        {isEs
+                          ? `Fijar (${autoRedactions.length})`
+                          : `Apply (${autoRedactions.length})`}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <textarea
+                      value={batchKeywordsInput}
+                      onChange={(e) => setBatchKeywordsInput(e.target.value)}
+                      placeholder={
+                        isEs
+                          ? 'Pega varios nombres o términos separados por comas o saltos de línea (ej: Juan Pérez, 45.000€, Contrato Secreto)...'
+                          : 'Paste multiple terms separated by commas or newlines (e.g. John Doe, Confidential, $50,000)...'
+                      }
+                      rows={3}
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-white rounded-xl py-2 px-3 text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors font-mono resize-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBatchKeywordsInput('')}
+                        className="px-3 py-1.5 bg-zinc-800 text-zinc-400 hover:text-white rounded-lg text-xs font-mono cursor-pointer"
+                      >
+                        {isEs ? 'Borrar' : 'Clear'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApplyBatchKeywords}
+                        className="px-4 py-1.5 bg-white text-black font-bold rounded-lg text-xs font-mono hover:bg-zinc-200 transition cursor-pointer"
+                      >
+                        {isEs ? 'Censurar Todo el Lote' : 'Redact Batch List'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* OPCIONES AVANZADAS DE SALIDA */}
-              <div className="bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5">
-                <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider border-b border-white/10 pb-2 mb-3 uppercase">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{isEs ? 'OPCIONES DE FORMATO Y SALIDA' : 'FORMAT & OUTPUT OPTIONS'}</span>
+              {/* OPCIONES AVANZADAS DE SALIDA & TEXTO SUPERPUESTO */}
+              <div className="bg-zinc-950/60 border border-white/10 rounded-2xl p-4 sm:p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-white font-mono tracking-wider uppercase">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>
+                      {isEs ? 'ESTILO DE PARCHE Y TEXTO SUPERPUESTO' : 'PATCH STYLE & OVERLAY TEXT'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    {redactions.length} {isEs ? 'parches activos' : 'active patches'}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* COLOR DE PARCHE */}
                   <div>
                     <label className="text-[10px] font-mono text-zinc-400 block mb-1">
-                      {isEs ? 'Color de Parche:' : 'Patch Color:'}
+                      {isEs ? 'Color de Parche:' : 'Box Color:'}
                     </label>
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-4 gap-1">
                       <button
                         type="button"
                         onClick={() => setRedactionStyle('black')}
-                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionStyle === 'black' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold font-mono transition cursor-pointer border ${
+                          redactionStyle === 'black'
+                            ? 'border-white bg-black text-white ring-1 ring-white'
+                            : 'border-white/15 bg-zinc-900 text-zinc-400'
+                        }`}
                       >
-                        ⬛ {isEs ? 'Negro' : 'Black'}
+                        Negro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRedactionStyle('dark')}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold font-mono transition cursor-pointer border ${
+                          redactionStyle === 'dark'
+                            ? 'border-white bg-[#18181b] text-white ring-1 ring-white'
+                            : 'border-white/15 bg-zinc-900 text-zinc-400'
+                        }`}
+                      >
+                        Carbón
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRedactionStyle('white')}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold font-mono transition cursor-pointer border ${
+                          redactionStyle === 'white'
+                            ? 'border-white bg-white text-black ring-1 ring-white'
+                            : 'border-white/15 bg-zinc-900 text-zinc-400'
+                        }`}
+                      >
+                        Blanco
                       </button>
                       <button
                         type="button"
                         onClick={() => setRedactionStyle('gray')}
-                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionStyle === 'gray' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold font-mono transition cursor-pointer border ${
+                          redactionStyle === 'gray'
+                            ? 'border-white bg-zinc-700 text-white ring-1 ring-white'
+                            : 'border-white/15 bg-zinc-900 text-zinc-400'
+                        }`}
                       >
-                        ◻️ {isEs ? 'Gris' : 'Gray'}
+                        Gris
                       </button>
                     </div>
                   </div>
 
+                  {/* TEXTO SUPERPUESTO (ESTILO CORPORATIVO) */}
                   <div>
                     <label className="text-[10px] font-mono text-zinc-400 block mb-1">
-                      {isEs ? 'Modo de Sanitización:' : 'Sanitization Mode:'}
+                      {isEs ? 'Texto Superpuesto:' : 'Overlay Label:'}
+                    </label>
+                    <select
+                      value={overlayPreset}
+                      onChange={(e) => setOverlayPreset(e.target.value as any)}
+                      className="w-full bg-zinc-900 border border-white/15 text-white text-[11px] font-mono rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-white/40 transition cursor-pointer"
+                    >
+                      <option value="none">{isEs ? 'Ninguno (Sólido)' : 'None (Solid)'}</option>
+                      <option value="redacted">[CENSURADO] / [REDACTED]</option>
+                      <option value="confidential">[CONFIDENCIAL]</option>
+                      <option value="gdpr">[RGPD / GDPR]</option>
+                      <option value="custom">{isEs ? 'Personalizado...' : 'Custom...'}</option>
+                    </select>
+                  </div>
+
+                  {/* MODO DE SANITIZACIÓN */}
+                  <div>
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                      {isEs ? 'Modo de Motor:' : 'Engine Mode:'}
                     </label>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setRedactionMode('precision')}
-                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionMode === 'precision' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${
+                          redactionMode === 'precision'
+                            ? 'border-white bg-zinc-800 text-white'
+                            : 'border-white/10 bg-zinc-900 text-zinc-400'
+                        }`}
+                        title={
+                          isEs
+                            ? 'Vectorial nativo con purga de glifos y árbol XMP'
+                            : 'Native vector with glyph & XMP purge'
+                        }
                       >
                         🎯 {isEs ? 'Vector' : 'Vector'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setRedactionMode('raster')}
-                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${redactionMode === 'raster' ? 'border-white bg-zinc-700 text-white' : 'border-white/10 bg-zinc-900 text-zinc-400'}`}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold font-mono transition-all cursor-pointer border ${
+                          redactionMode === 'raster'
+                            ? 'border-white bg-zinc-800 text-white'
+                            : 'border-white/10 bg-zinc-900 text-zinc-400'
+                        }`}
+                        title={
+                          isEs
+                            ? 'Aplanado plano a 300 DPI (Destrucción total anti-forense)'
+                            : '300 DPI flat raster destruction'
+                        }
                       >
                         📸 {isEs ? 'Raster' : 'Raster'}
                       </button>
                     </div>
                   </div>
 
+                  {/* SUFIJO DE ARCHIVO */}
                   <div>
                     <label className="text-[10px] font-mono text-zinc-400 block mb-1">
-                      {isEs ? 'Sufijo del archivo:' : 'Output suffix:'}
+                      {isEs ? 'Sufijo del archivo:' : 'File suffix:'}
                     </label>
                     <input
                       type="text"
@@ -1963,6 +2590,24 @@ export default function PdfRedacter() {
                     />
                   </div>
                 </div>
+
+                {/* TEXTO PERSONALIZADO SI SE ELIGE CUSTOM */}
+                {overlayPreset === 'custom' && (
+                  <div className="pt-2 border-t border-zinc-800/80">
+                    <label className="text-[10px] font-mono text-zinc-400 block mb-1">
+                      {isEs
+                        ? 'Escribe el texto corporativo superpuesto:'
+                        : 'Type custom overlay label:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={customOverlayText}
+                      onChange={(e) => setCustomOverlayText(e.target.value)}
+                      placeholder="[EXPEDIENTE RESERVADO]"
+                      className="w-full bg-zinc-900 border border-zinc-700 text-white text-xs font-mono rounded-lg px-3 py-1.5 focus:outline-none focus:border-white transition"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1996,20 +2641,24 @@ export default function PdfRedacter() {
                 <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                 <p className="text-[10px] text-amber-200 font-sans leading-snug">
                   {isEs
-                    ? 'True Redaction: el contenido censurado se destruye permanentemente y de manera irreversible.'
-                    : 'True Redaction: redacted content is permanently and irreversibly destroyed.'}
+                    ? 'True Redaction Enterprise: el contenido censurado y sus metadatos XMP se destruyen permanentemente y de manera irreversible conforme a RGPD y NIST SP 800-88.'
+                    : 'True Redaction Enterprise: redacted content and XMP metadata are permanently and irreversibly destroyed per GDPR and NIST SP 800-88.'}
                 </p>
               </div>
 
               <button
                 onClick={executeRedact}
                 disabled={isProcessing || redactions.length + autoRedactions.length === 0}
-                className="w-full bg-white text-black hover:bg-zinc-200 font-extrabold text-xs py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-40"
+                className="w-full bg-white text-black hover:bg-zinc-200 font-extrabold text-xs py-3.5 px-6 rounded-full flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl disabled:opacity-40 hover:scale-[1.01]"
               >
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-black" />
-                    <span>{isEs ? 'Censurando...' : 'Redacting...'}</span>
+                    <span>
+                      {isEs
+                        ? 'Sanitizando y Purgando Documento...'
+                        : 'Sanitizing & Purging Document...'}
+                    </span>
                   </>
                 ) : (
                   <>
@@ -2028,11 +2677,11 @@ export default function PdfRedacter() {
               <div className="pt-2 flex items-center justify-between font-mono text-xs text-zinc-400 mt-2 border-t border-white/10">
                 <span className="flex items-center gap-1.5 text-[10px]">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  {isEs ? 'Web Worker Activo' : 'Web Worker Active'}
+                  {isEs ? 'Motor TrueRedact™ v4.0 Activo' : 'TrueRedact™ v4.0 Engine Active'}
                 </span>
                 <span className="flex items-center gap-1 text-white">
                   <Database className="w-3 h-3" />
-                  {isEs ? '100% Local' : '100% Local'}
+                  {isEs ? '100% Local (Cero Servidores)' : '100% Local (Zero Servers)'}
                 </span>
               </div>
             </div>

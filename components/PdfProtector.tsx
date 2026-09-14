@@ -645,35 +645,68 @@ export default function PdfProtector() {
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <Lock className="w-12 h-12 text-white" />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>
+              {isEs
+                ? 'Cifrado Militar AES-256 • 100% Local'
+                : 'Military-Grade AES-256 Encryption • 100% Local'}
+            </span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
             {isEs
-              ? 'PROTEGER Y CIFRAR DOCUMENTOS PDF CON CONTRASEÑA'
-              : 'PROTECT AND ENCRYPT PDF DOCUMENTS WITH PASSWORD'}
+              ? 'PROTEGE Y CIFRA TUS DOCUMENTOS PDF CON CONTRASEÑA'
+              : 'PROTECT AND ENCRYPT YOUR PDF DOCUMENTS WITH PASSWORD'}
           </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Añade contraseñas de apertura y restringe permisos de copia, edición o impresión con cifrado AES-256 100% local.'
-              : 'Add passwords and restrict permissions with AES-256 encryption 100% locally.'}
+              ? 'Añade contraseñas de apertura (User) y gestión (Owner) con restricción granular de impresión, copia y edición sin enviar tus claves ni archivos a servidores externos.'
+              : 'Add opening (User) and permissions (Owner) passwords with granular printing, copying, and editing restrictions without sending keys or files to servers.'}
           </p>
 
           <button
             type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
           >
-            <Plus className="w-4 h-4 text-black" />{' '}
-            {isEs ? 'Seleccionar Archivos PDF' : 'Select PDF Files'}
+            <Plus className="w-4 h-4 text-black" />
+            {isEs ? 'Seleccionar Archivos PDF para Proteger' : 'Select PDF Files to Protect'}
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
-            <span>
-              {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
-            </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Cifrado AES-256' : '✓ AES-256 Encryption'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Algoritmo estándar bancario e industrial para máxima confidencialidad.'
+                  : 'Banking and defense standard algorithm for maximum confidentiality.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Permisos Granulares' : '✓ Granular Permissions'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Control independiente de impresión, copia de texto y edición.'
+                  : 'Independent control over printing, text copying, and editing.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin enviar datos a servidores.'
+                  : 'Local RAM processing without sending data to servers.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : completedResult ? (

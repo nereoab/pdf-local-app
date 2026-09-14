@@ -38,6 +38,9 @@ import {
   List,
   ArrowDownAZ,
   ArrowUpDown,
+  BookOpen,
+  Bookmark,
+  Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -46,14 +49,16 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
 
-type PageOrientation = 'original' | 'portrait' | 'landscape';
-type PageSizeOption = 'original' | 'a4' | 'letter';
-type SeparatorOption = 'none' | 'blank' | 'title_page';
-
-import type { WorkerMessageOut } from '../workers/pdf-merge.worker';
+import type {
+  WorkerMessageOut,
+  PageOrientation,
+  PageSizeOption,
+  SeparatorOption,
+  PageNumberFormat,
+  PageNumberPosition,
+} from '../workers/pdf-merge.worker';
 
 export interface PageDetail {
   pageIndex: number;
@@ -96,8 +101,37 @@ export default function PdfMerger() {
 
   const [files, setFiles] = useState<FileItem[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [controlPanelHeight, setControlPanelHeight] = useState<number | null>(null);
   const [completedResult, setCompletedResult] = useState<CompletedMergeResult | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDropzoneDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDropzoneDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDropzoneDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const selected = Array.from(e.dataTransfer.files).filter((f) => f.type === 'application/pdf');
+      if (selected.length === 0) {
+        toast.error(
+          isEs ? 'Por favor, selecciona archivos PDF válidos' : 'Please select valid PDF files',
+        );
+        return;
+      }
+      toast.info(isEs ? 'Analizando páginas de los archivos...' : 'Analyzing file pages...');
+      await processAndAddFileList(selected);
+      toast.success(
+        isEs ? `${selected.length} archivo(s) añadido(s)` : `${selected.length} file(s) added`,
+      );
+    }
+  };
 
   // Ocultar barra superior global y scroll automático suave hacia la cabecera de la herramienta
   useEffect(() => {
@@ -123,21 +157,6 @@ export default function PdfMerger() {
     };
   }, [setHeaderHidden]);
 
-  // Sincronizar altura exacta del panel de vista previa con el panel de control
-  useEffect(() => {
-    if (!controlPanelRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect && entry.contentRect.height > 0) {
-          const fullH = controlPanelRef.current?.offsetHeight || entry.contentRect.height;
-          setControlPanelHeight(fullH);
-        }
-      }
-    });
-    ro.observe(controlPanelRef.current);
-    return () => ro.disconnect();
-  }, [files.length]);
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -162,6 +181,30 @@ export default function PdfMerger() {
   const reverseFilesOrder = () => {
     setFiles((prev) => [...prev].reverse());
     toast.success(isEs ? 'Orden de archivos invertido' : 'Files order inverted');
+  };
+
+  const rotateAllFiles90 = () => {
+    setFiles((prev) =>
+      prev.map((f) => {
+        if (f.pagesDetail && f.pagesDetail.length > 0) {
+          return {
+            ...f,
+            pagesDetail: f.pagesDetail.map((p) => ({
+              ...p,
+              rotation: (p.rotation + 90) % 360,
+            })),
+          };
+        }
+        const details: PageDetail[] = Array.from({ length: f.pageCount }, (_, i) => ({
+          pageIndex: i,
+          rotation: 90,
+          included: true,
+          thumbnailUrl: i === 0 ? f.thumbnailUrl : undefined,
+        }));
+        return { ...f, pagesDetail: details };
+      }),
+    );
+    toast.success(isEs ? 'Todas las páginas rotadas 90°' : 'All pages rotated 90°');
   };
 
   // TOTAL PAGES CALCULATION
@@ -311,6 +354,12 @@ export default function PdfMerger() {
   const [pageSize, setPageSize] = useState<PageSizeOption>('original');
   const [separatorMode, setSeparatorMode] = useState<SeparatorOption>('none');
   const [addPageNumbers, setAddPageNumbers] = useState<boolean>(true);
+  const [pageNumberFormat, setPageNumberFormat] = useState<PageNumberFormat>('ratio');
+  const [pageNumberPosition, setPageNumberPosition] = useState<PageNumberPosition>('bottom_center');
+  const [skipFirstPageNumber, setSkipFirstPageNumber] = useState<boolean>(false);
+  const [generateToc, setGenerateToc] = useState<boolean>(false);
+  const [tocTitle, setTocTitle] = useState<string>('');
+  const [batesPrefix, setBatesPrefix] = useState<string>('EXP');
   const [duplexMode, setDuplexMode] = useState<boolean>(false);
 
   const { globalFiles, globalFile } = useFileStore();
@@ -620,6 +669,12 @@ export default function PdfMerger() {
               pageSize,
               separatorMode,
               addPageNumbers,
+              pageNumberFormat,
+              pageNumberPosition,
+              skipFirstPageNumber,
+              generateToc,
+              tocTitle: tocTitle.trim() || undefined,
+              batesPrefix: batesPrefix.trim() || undefined,
               duplexMode,
               metadata: {
                 title: docTitle.trim() || undefined,
@@ -709,23 +764,30 @@ export default function PdfMerger() {
         className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden"
       >
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
             href="/organizar"
             className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
+            <ArrowLeft className="w-3.5 h-3.5 text-white" />
+            <span>{isEs ? 'Volver' : 'Back'}</span>
           </Link>
+
           <div className="hidden sm:block h-5 w-px bg-zinc-700" />
-          <div className="flex flex-col">
-            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+
+          <div>
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
               {isEs
-                ? '002 / FUSIÓN Y COMBINACIÓN DE DOCUMENTOS'
-                : '002 / DOCUMENT FUSION & MERGING'}
+                ? '002 / ORGANIZACIÓN Y FUSIÓN DE ARCHIVOS PDF'
+                : '002 / PDF ORGANIZATION & FUSION'}
             </span>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Merge className="w-6 h-6 text-white flex-shrink-0" />
-              {isEs ? 'UNIR O COMBINAR DOCUMENTOS PDF' : 'MERGE PDF DOCUMENTS'}
+              <span>
+                {isEs
+                  ? 'UNIR ARCHIVOS PDF (COMBINAR Y FUSIONAR DOCUMENTOS)'
+                  : 'MERGE PDF FILES (COMBINE AND JOIN DOCUMENTS)'}
+              </span>
             </h1>
           </div>
         </div>
@@ -740,17 +802,24 @@ export default function PdfMerger() {
         )}
 
         {files.length > 0 && !completedResult && (
-          <div className="flex items-center gap-3">
-            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
-              <FileText className="w-4 h-4 text-zinc-300" />
-              <span className="font-semibold">
-                {files.length} {isEs ? 'Archivos seleccionados' : 'Files selected'}
-              </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => addMoreInputRef.current?.click()}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-zinc-200 hover:text-white px-3 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-white" />
+              <span>{isEs ? 'Añadir más' : 'Add more'}</span>
+            </button>
+            <div className="bg-zinc-900 border border-zinc-700 px-3 py-2 rounded-xl text-xs text-white font-mono">
+              <FileText className="w-3.5 h-3.5 inline mr-1.5 text-zinc-300" />
+              <span className="font-bold">{files.length}</span> {isEs ? 'archivo(s)' : 'file(s)'}
             </div>
             <button
               onClick={handleRemoveAllFiles}
-              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all"
-              title={isEs ? 'Limpiar todos los archivos' : 'Remove all files'}
+              disabled={isProcessing}
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
+              title={isEs ? 'Quitar todos los archivos' : 'Remove all files'}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -759,127 +828,118 @@ export default function PdfMerger() {
       </div>
 
       {completedResult ? (
-        /* ── PANTALLA DE ÉXITO DEDICADA ── */
+        /* ── PANTALLA DEDICADA DE ÉXITO Y DESCARGA UNIFICADA ── */
         <motion.div
           ref={successContainerRef}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
+          className="w-full max-w-4xl mx-auto my-6 font-sans"
         >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE FUSIÓN (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <Merge className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA FUSIÓN DE DOCUMENTOS' : 'DOCUMENT MERGE RESULT'}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs ? '¡Documentos combinados con éxito!' : 'Documents merged successfully!'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
-                    {isEs ? 'Estado del proceso' : 'Process status'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Archivos Unidos' : 'Merged Files'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.filesCount} />{' '}
-                  {isEs ? 'Documentos' : 'Documents'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Totales' : 'Total Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.totalPages} /> {isEs ? 'Páginas' : 'Pages'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {isEs ? 'Vectorial Nativo' : 'Native Vector'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
           <DownloadSuccessCard
             downloadUrl={completedResult.downloadUrl}
             filename={completedResult.filename}
             fileSize={completedResult.fileSize}
             outputFormat="pdf"
             rawBlob={completedResult.rawBlob}
+            currentToolId="unir"
+            title={isEs ? '¡Documentos combinados con éxito!' : 'Documents merged successfully!'}
+            metrics={{
+              categoryTitle: isEs ? 'RESUMEN DE LA FUSIÓN' : 'MERGE SUMMARY',
+              categorySubtitle: isEs
+                ? `${completedResult.filesCount} archivos combinados en ${completedResult.totalPages} páginas`
+                : `${completedResult.filesCount} files merged into ${completedResult.totalPages} pages`,
+              badgeLabel: isEs ? 'Modo:' : 'Mode:',
+              badgeValue: isEs ? 'Vectorial Nativo' : 'Native Vector',
+              originalSize: `${completedResult.filesCount} ${isEs ? 'archivos' : 'files'}`,
+              compressedSize: `${completedResult.totalPages} ${isEs ? 'páginas' : 'pages'}`,
+              labelOriginal: isEs ? 'Documentos' : 'Documents',
+              labelCompressed: isEs ? 'Total Páginas' : 'Total Pages',
+              labelSaved: isEs ? 'Peso Final' : 'Final Size',
+              savedSpace: completedResult.fileSize,
+              reductionPercent: 100,
+            }}
             onReset={handleReset}
           />
         </motion.div>
       ) : files.length === 0 ? (
-        /* VISTA DROPZONE VACÍA */
+        /* DROPZONE SIN ARCHIVOS (MODELO REFERENCIA COMPRIMIR / ORGANIZAR) */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          onDragOver={handleDropzoneDragOver}
+          onDragLeave={handleDropzoneDragLeave}
+          onDrop={handleDropzoneDrop}
           onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-              handleFilesSelected({
-                target: { files: e.dataTransfer.files },
-              } as unknown as React.ChangeEvent<HTMLInputElement>);
-            }
-          }}
-          className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 hover:border-white rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px]"
+          className={`w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border rounded-3xl p-12 lg:p-16 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group cursor-pointer transition-all duration-300 min-h-[500px] ${
+            isDragging
+              ? 'border-white ring-4 ring-white/20 bg-zinc-900/90 scale-[1.01]'
+              : 'border-zinc-600 hover:border-white'
+          }`}
         >
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
           <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-700 group-hover:border-white group-hover:scale-105 transition-all text-white mb-6 shadow-md">
-            <UploadCloud className="w-12 h-12 text-white" />
+            <Merge className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
-            {isEs ? 'UNIR O COMBINAR DOCUMENTOS PDF' : 'MERGE PDF DOCUMENTS'}
-          </h2>
-          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-md">
-            {isEs
-              ? 'Combina dos o más archivos PDF en un único documento de forma 100% confidencial y local.'
-              : 'Combine two or more PDF files into a single document 100% locally.'}
-          </p>
-          <button
-            type="button"
-            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center gap-2 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-black" />
-            <span>{isEs ? 'Seleccionar Archivos PDF' : 'Select PDF Files'}</span>
-          </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 text-white font-bold text-xs font-mono rounded-full mt-8 shadow-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-800 border border-zinc-600 rounded-full text-zinc-300 text-xs font-mono mb-4">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span>
               {isEs
-                ? '100% GRATIS • SIN REGISTRO • PROCESAMIENTO LOCAL'
-                : '100% FREE • NO SIGN-UP • LOCAL PROCESSING'}
+                ? 'Motor de Fusión Zero-Knowledge v5.0 • 100% Local'
+                : 'Zero-Knowledge Merge Engine v5.0 • 100% Local'}
             </span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
+            {isEs
+              ? 'UNE Y COMBINA TUS ARCHIVOS PDF EN UN SOLO DOCUMENTO'
+              : 'MERGE AND COMBINE YOUR PDF FILES INTO ONE'}
+          </h2>
+          <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
+            {isEs
+              ? 'Fusiona múltiples documentos PDF en el orden exacto que desees, sin subir tus archivos a internet ni comprometer la nitidez tipográfica ni vectorial.'
+              : 'Merge multiple PDF documents in the exact sequence you need without uploading your files to the web or compromising vector and text clarity.'}
+          </p>
+
+          <button
+            type="button"
+            className="bg-white text-black hover:bg-zinc-100 font-bold px-8 py-3.5 rounded-full font-sans text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] flex items-center gap-2 cursor-pointer hover:scale-105"
+          >
+            <Plus className="w-4 h-4 text-black" />
+            <span>{isEs ? 'Seleccionar Archivos PDF para Unir' : 'Select PDF Files to Merge'}</span>
+          </button>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Fusión Vectorial 100%' : '✓ 100% Lossless Vector'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Copia matemática de fuentes y vectores sin rasterización ni pérdida de resolución.'
+                  : 'Lossless vector copying of fonts, coordinates, and pages with zero rasterization.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Índice y Foliado Bates' : '✓ TOC & Bates Stamping'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Índice TOC automático, numeración continua formal y modo dúplex para imprenta.'
+                  : 'Auto Table of Contents, continuous page numbering, and smart duplex mode.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-zinc-800">
+              <span className="text-emerald-400 font-bold text-xs block mb-1">
+                {isEs ? '✓ Privacidad Estricta' : '✓ Strict Privacy'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight">
+                {isEs
+                  ? 'Procesamiento en memoria RAM local sin enviar datos a servidores remotos.'
+                  : 'Local RAM processing without sending data or telemetry to remote servers.'}
+              </span>
+            </div>
           </div>
         </motion.div>
       ) : (
@@ -887,10 +947,10 @@ export default function PdfMerger() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch"
+          className="w-full flex flex-col gap-6"
         >
-          {/* LADO IZQUIERDO: REJILLA DE ARCHIVOS Y MINIATURAS DE UNIÓN (ALTURA SIMÉTRICA) */}
-          <div className="lg:col-span-7 xl:col-span-8 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col lg:h-[760px] lg:max-h-[760px] relative overflow-hidden">
+          {/* PANEL SUPERIOR: REJILLA DE ARCHIVOS Y VISTA PREVIA */}
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
             {/* BARRA SUPERIOR DE HERRAMIENTAS Y ORDENAMIENTO */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-zinc-800 font-mono text-xs text-zinc-400">
@@ -922,6 +982,15 @@ export default function PdfMerger() {
                     title={isEs ? 'Invertir orden de los archivos' : 'Invert files order'}
                   >
                     <ArrowUpDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={rotateAllFiles90}
+                    className="flex items-center gap-1 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white rounded-lg text-[10px] font-mono transition-colors cursor-pointer"
+                    title={isEs ? 'Rotar todas las páginas 90°' : 'Rotate all pages 90°'}
+                  >
+                    <RotateCw className="w-3 h-3 text-zinc-400" />
+                    <span className="hidden sm:inline">90°</span>
                   </button>
                 </div>
 
@@ -971,10 +1040,10 @@ export default function PdfMerger() {
             </div>
 
             {/* CONTENEDOR CON SCROLL INTERNO DINÁMICO */}
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-3 custom-scrollbar">
+            <div className="w-full overflow-y-auto max-h-[600px] pr-1 space-y-3 custom-scrollbar">
               {viewMode === 'grid' ? (
                 /* ── MODO 1: CUADRÍCULA DE TARJETAS ── */
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   <AnimatePresence>
                     {files.map((item, index) => {
                       const isDraggingThis = draggedIndex === index;
@@ -1304,93 +1373,118 @@ export default function PdfMerger() {
             </div>
           </div>
 
-          {/* LADO DERECHO: PANEL DE CONTROL DE UNIÓN */}
+          {/* PANEL INFERIOR: PANEL DE CONTROL DE UNIÓN Y CONFIGURACIÓN */}
           <div
             ref={controlPanelRef}
-            className="lg:col-span-5 xl:col-span-4 bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 shadow-2xl flex flex-col justify-between space-y-6 lg:h-[760px] lg:max-h-[760px] relative overflow-hidden"
+            className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col space-y-6 relative overflow-hidden"
           >
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1 space-y-4 custom-scrollbar">
-              {/* TÍTULO PRINCIPAL: PANEL DE CONTROL */}
-              <div className="mb-4 pb-3 border-b border-zinc-800">
+
+            {/* HEADER DEL PANEL DE CONTROL */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
                 <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block mb-1">
-                  {isEs ? '002 / CONFIGURACIÓN' : '002 / CONFIGURATION'}
+                  {isEs ? '002 / CONFIGURACIÓN DE UNIÓN' : '002 / MERGE CONFIGURATION'}
                 </span>
-                <h2 className="text-xl font-black text-white flex items-center justify-between font-sans uppercase tracking-tight">
-                  <span>{isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}</span>
+                <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5 font-sans uppercase tracking-tight">
                   <Sliders className="w-5 h-5 text-white" />
+                  <span>
+                    {isEs ? 'PARÁMETROS Y OPCIONES DE FUSIÓN' : 'MERGE PARAMETERS & OPTIONS'}
+                  </span>
                 </h2>
               </div>
-
-              {/* 1. SEPARADORES ENTRE DOCUMENTOS */}
-              <div className="mb-5 font-mono">
-                <label className="text-[11px] text-zinc-400 uppercase tracking-wider block mb-2">
-                  {isEs ? 'Separadores entre Documentos' : 'Document Separators'}
-                </label>
-                <select
-                  value={separatorMode}
-                  onChange={(e) => setSeparatorMode(e.target.value as SeparatorOption)}
-                  className="w-full p-2.5 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none cursor-pointer focus:border-white/30"
-                >
-                  <option value="none">
-                    {isEs ? 'Sin separadores (Directo)' : 'None (Direct)'}
-                  </option>
-                  <option value="blank">
-                    {isEs ? 'Insertar página en blanco' : 'Insert blank page'}
-                  </option>
-                  <option value="title_page">
-                    {isEs ? 'Insertar carátula con nombre' : 'Insert title page'}
-                  </option>
-                </select>
+              <div className="flex items-center gap-2 text-xs font-mono text-zinc-400 bg-zinc-900/80 px-3.5 py-1.5 rounded-xl border border-zinc-800 shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>{isEs ? 'Compilación 100% en RAM local' : '100% Local RAM Compilation'}</span>
               </div>
+            </div>
 
-              {/* SECCIÓN DE OPCIONES AVANZADAS SIEMPRE VISIBLE */}
-              <div className="pt-4 border-t border-white/10 my-4 space-y-4 font-mono">
-                <div className="flex items-center gap-2 text-xs font-bold text-white mb-2">
-                  <Settings2 className="w-4 h-4 text-white" />
-                  <span>{isEs ? 'Opciones Avanzadas' : 'Advanced Options'}</span>
-                </div>
-
-                {/* ORIENTACIÓN Y TAMAÑO DE PAPEL */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">
-                      {isEs ? 'Orientación:' : 'Orientation:'}
-                    </label>
-                    <select
-                      value={orientation}
-                      onChange={(e) => setOrientation(e.target.value as PageOrientation)}
-                      className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-[11px] font-bold text-white outline-none cursor-pointer focus:border-white/30"
-                    >
-                      <option value="original">{isEs ? 'Original' : 'Original'}</option>
-                      <option value="portrait">{isEs ? 'Vertical' : 'Portrait'}</option>
-                      <option value="landscape">{isEs ? 'Horizontal' : 'Landscape'}</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1.5">
-                      {isEs ? 'Papel:' : 'Paper Size:'}
-                    </label>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => setPageSize(e.target.value as PageSizeOption)}
-                      className="w-full p-2 bg-zinc-900 border border-white/10 rounded-xl text-[11px] font-bold text-white outline-none cursor-pointer focus:border-white/30"
-                    >
-                      <option value="original">{isEs ? 'Original' : 'Original'}</option>
-                      <option value="a4">A4</option>
-                      <option value="letter">Carta</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* METADATOS Y NUMERACIÓN CONTINUA */}
-                <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2.5">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'AJUSTES DE NUMERACIÓN Y PÁGINAS' : 'NUMBERING & PAGE SETTINGS'}
+            {/* CUERPO DEL PANEL DE CONTROL EN 3 COLUMNAS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
+              {/* COLUMNA 1: SEPARADORES E ÍNDICE TOC */}
+              <div className="space-y-4 flex flex-col justify-between">
+                <div>
+                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block font-bold mb-2">
+                    {isEs ? '1. Separadores y Carátula' : '1. Separators & Cover Page'}
                   </label>
+                  <select
+                    value={separatorMode}
+                    onChange={(e) => setSeparatorMode(e.target.value as SeparatorOption)}
+                    className="w-full p-2.5 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white outline-none cursor-pointer focus:border-white/30"
+                  >
+                    <option value="none">
+                      {isEs ? 'Sin separadores (Fusión directa)' : 'None (Direct merge)'}
+                    </option>
+                    <option value="executive_cover">
+                      {isEs
+                        ? 'Carátula Ejecutiva Institucional (Inicio)'
+                        : 'Executive Master Cover (Start)'}
+                    </option>
+                    <option value="title_page">
+                      {isEs ? 'Separador por cada documento' : 'Section divider per file'}
+                    </option>
+                    <option value="blank">
+                      {isEs ? 'Página en blanco entre documentos' : 'Blank page between files'}
+                    </option>
+                  </select>
+                </div>
+
+                {/* ÍNDICE DE CONTENIDOS AUTOMÁTICO (TOC) */}
+                <div className="bg-zinc-950/70 p-4 rounded-2xl border border-white/10 space-y-3 flex-1 flex flex-col justify-center">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-white">
+                      <BookOpen className="w-4 h-4 text-emerald-400" />
+                      <span>{isEs ? 'Índice de Contenidos (TOC)' : 'Table of Contents (TOC)'}</span>
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-bold">
+                      {isEs ? 'Empresarial' : 'Enterprise'}
+                    </span>
+                  </div>
 
                   <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={generateToc}
+                      onChange={(e) => setGenerateToc(e.target.checked)}
+                      className="accent-white w-4 h-4 rounded"
+                    />
+                    <span>
+                      {isEs
+                        ? 'Generar Índice estructurado al inicio'
+                        : 'Generate structured Index at start'}
+                    </span>
+                  </label>
+
+                  {generateToc && (
+                    <div className="pt-1">
+                      <label className="text-[10px] text-zinc-400 block mb-1">
+                        {isEs ? 'Título del Índice:' : 'TOC Title:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isEs ? 'ÍNDICE GENERAL DEL EXPEDIENTE' : 'TABLE OF CONTENTS'}
+                        value={tocTitle}
+                        onChange={(e) => setTocTitle(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2.5 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* COLUMNA 2: FOLIADO, NUMERACIÓN BATES Y MODO DÚPLEX */}
+              <div className="bg-zinc-950/70 p-4 rounded-2xl border border-white/10 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[11px] text-zinc-400 uppercase tracking-wider block font-bold">
+                      {isEs ? '2. Foliado y Numeración Bates' : '2. Bates & Page Numbering'}
+                    </label>
+                    <span className="text-[9px] px-2 py-0.5 bg-zinc-800 text-zinc-300 border border-zinc-700 rounded font-bold">
+                      {isEs ? 'Judicial / Notarial' : 'Court Ready'}
+                    </span>
+                  </div>
+
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer mb-2">
                     <input
                       type="checkbox"
                       checked={addPageNumbers}
@@ -1398,12 +1492,89 @@ export default function PdfMerger() {
                       className="accent-white w-4 h-4 rounded"
                     />
                     <span>
-                      {isEs
-                        ? 'Numeración continua (Página N / M)'
-                        : 'Continuous numbering (Page N / M)'}
+                      {isEs ? 'Activar numeración continua' : 'Enable continuous numbering'}
                     </span>
                   </label>
 
+                  {addPageNumbers && (
+                    <div className="space-y-2.5 pt-1 pl-3 sm:pl-4 border-l-2 border-zinc-800 my-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] text-zinc-400 block mb-1">
+                            {isEs ? 'Formato:' : 'Format:'}
+                          </label>
+                          <select
+                            value={pageNumberFormat}
+                            onChange={(e) =>
+                              setPageNumberFormat(e.target.value as PageNumberFormat)
+                            }
+                            className="w-full p-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-[10px] font-bold text-white outline-none"
+                          >
+                            <option value="ratio">1 / N</option>
+                            <option value="formal">{isEs ? 'Página X de Y' : 'Page X of Y'}</option>
+                            <option value="short">{isEs ? 'Pág. X' : 'P. X'}</option>
+                            <option value="bates">
+                              {isEs ? 'Foliado Bates' : 'Bates Stamping'}
+                            </option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-zinc-400 block mb-1">
+                            {isEs ? 'Posición:' : 'Position:'}
+                          </label>
+                          <select
+                            value={pageNumberPosition}
+                            onChange={(e) =>
+                              setPageNumberPosition(e.target.value as PageNumberPosition)
+                            }
+                            className="w-full p-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-[10px] font-bold text-white outline-none"
+                          >
+                            <option value="bottom_center">
+                              {isEs ? 'Inferior Centro' : 'Bottom Center'}
+                            </option>
+                            <option value="bottom_right">
+                              {isEs ? 'Inferior Derecha' : 'Bottom Right'}
+                            </option>
+                            <option value="top_right">
+                              {isEs ? 'Superior Derecha' : 'Top Right'}
+                            </option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {pageNumberFormat === 'bates' && (
+                        <div>
+                          <label className="text-[9px] text-zinc-400 block mb-1">
+                            {isEs ? 'Prefijo de Expediente / Folio:' : 'Dossier / Bates Prefix:'}
+                          </label>
+                          <input
+                            type="text"
+                            value={batesPrefix}
+                            onChange={(e) => setBatesPrefix(e.target.value)}
+                            placeholder="EXP"
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg py-1 px-2 text-[10px] text-white outline-none font-mono"
+                          />
+                        </div>
+                      )}
+
+                      <label className="flex items-center gap-2 text-[11px] text-zinc-400 cursor-pointer pt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={skipFirstPageNumber}
+                          onChange={(e) => setSkipFirstPageNumber(e.target.checked)}
+                          className="accent-white w-3.5 h-3.5 rounded"
+                        />
+                        <span>
+                          {isEs
+                            ? 'Omitir número en carátula e índice'
+                            : 'Skip number on cover & index'}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-white/5 space-y-2">
                   <label className="flex items-center gap-2.5 text-xs font-bold text-zinc-300 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1417,68 +1588,109 @@ export default function PdfMerger() {
                         : 'Duplex mode (Start on odd page)'}
                     </span>
                   </label>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label className="text-[9px] text-zinc-400 uppercase tracking-wider block mb-1">
+                        {isEs ? 'Orientación:' : 'Orientation:'}
+                      </label>
+                      <select
+                        value={orientation}
+                        onChange={(e) => setOrientation(e.target.value as PageOrientation)}
+                        className="w-full p-1.5 bg-zinc-900 border border-white/10 rounded-lg text-[10px] font-bold text-white outline-none cursor-pointer"
+                      >
+                        <option value="original">{isEs ? 'Original' : 'Original'}</option>
+                        <option value="portrait">{isEs ? 'Vertical' : 'Portrait'}</option>
+                        <option value="landscape">{isEs ? 'Horizontal' : 'Landscape'}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-zinc-400 uppercase tracking-wider block mb-1">
+                        {isEs ? 'Papel:' : 'Paper Size:'}
+                      </label>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => setPageSize(e.target.value as PageSizeOption)}
+                        className="w-full p-1.5 bg-zinc-900 border border-white/10 rounded-lg text-[10px] font-bold text-white outline-none cursor-pointer"
+                      >
+                        <option value="original">{isEs ? 'Original' : 'Original'}</option>
+                        <option value="a4">A4</option>
+                        <option value="letter">Carta</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* COLUMNA 3: METADATOS DEL DOCUMENTO RESULTANTE */}
+              <div className="bg-zinc-950/70 p-4 rounded-2xl border border-white/10 space-y-3 flex flex-col justify-between">
+                <div>
+                  <label className="text-[11px] text-zinc-400 uppercase tracking-wider block font-bold mb-2">
+                    {isEs ? '3. Metadatos del PDF Resultante' : '3. Output PDF Metadata'}
+                  </label>
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">
+                        {isEs ? 'Título del Documento:' : 'Document Title:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={
+                          isEs ? 'Ej: Documento_Unificado_2026' : 'Ex: Unified_Document_2026'
+                        }
+                        value={docTitle}
+                        onChange={(e) => setDocTitle(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2.5 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">
+                        {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
+                        value={docAuthor}
+                        onChange={(e) => setDocAuthor(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2.5 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">
+                        {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={
+                          isEs
+                            ? 'Ej: Fusión de expedientes corporativos'
+                            : 'Ex: Merged corporate records'
+                        }
+                        value={docSubject}
+                        onChange={(e) => setDocSubject(e.target.value)}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1.5 px-2.5 text-[11px] text-white outline-none focus:border-white/30 font-mono"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* METADATOS DEL DOCUMENTO RESULTANTE */}
-                <div className="bg-zinc-950/70 p-3.5 rounded-xl border border-white/10 space-y-2 font-mono">
-                  <label className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold mb-1">
-                    {isEs ? 'METADATOS DEL PDF RESULTANTE' : 'OUTPUT PDF METADATA'}
-                  </label>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Título:' : 'Title:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={
-                        isEs ? 'Ej: Documento_Unificado_2026' : 'Ex: Unified_Document_2026'
-                      }
-                      value={docTitle}
-                      onChange={(e) => setDocTitle(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Autor / Organización:' : 'Author / Organization:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isEs ? 'Ej: Mi Empresa S.A.' : 'Ex: Company Inc.'}
-                      value={docAuthor}
-                      onChange={(e) => setDocAuthor(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">
-                      {isEs ? 'Asunto / Descripción:' : 'Subject / Description:'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={
-                        isEs
-                          ? 'Ej: Fusión de expedientes corporativos'
-                          : 'Ex: Merged corporate records'
-                      }
-                      value={docSubject}
-                      onChange={(e) => setDocSubject(e.target.value)}
-                      className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-[11px] text-white outline-none focus:border-white/30 font-mono"
-                    />
-                  </div>
+                <div className="pt-2 border-t border-white/5 text-[10px] text-zinc-500 font-mono flex items-center justify-between">
+                  <span>{isEs ? 'Fusión ISO 32000-1 nativa' : 'Native ISO 32000-1'}</span>
+                  <span className="text-zinc-400 font-bold">
+                    ~{totalMergedPages} {isEs ? 'páginas estimadas' : 'estimated pages'}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* BOTÓN PRINCIPAL DE ACCIÓN CON BARRA DE PROGRESO */}
-            <div className="pt-4 border-t border-white/10 font-sans">
+            <div className="pt-4 border-t border-zinc-800 font-sans">
               {isProcessing && (
                 <div className="mb-3 space-y-1.5 font-mono">
                   <div className="flex justify-between text-[10px] font-bold text-zinc-300">
                     <span className="truncate max-w-[200px]">{progressMsg}</span>
                     <span>{progressPercent}%</span>
                   </div>
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div className="w-full h-2.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
                     <div
                       style={{ width: `${progressPercent}%` }}
                       className="h-full bg-white transition-all duration-300"
@@ -1490,7 +1702,7 @@ export default function PdfMerger() {
               <button
                 onClick={executeMerge}
                 disabled={isProcessing || files.length < 2}
-                className="w-full flex items-center justify-center gap-2.5 bg-white text-black hover:bg-zinc-200 py-4 rounded-2xl font-sans font-bold text-base transition-all shadow-md hover:scale-[1.01] active:scale-98 disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-zinc-200 py-4 sm:py-4.5 rounded-2xl font-sans font-extrabold text-base sm:text-lg transition-all shadow-xl hover:scale-[1.005] active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
                 {isProcessing ? (
                   <Loader2 className="w-5 h-5 animate-spin text-black" />
@@ -1502,11 +1714,11 @@ export default function PdfMerger() {
                     ? progressMsg
                     : files.length < 2
                       ? isEs
-                        ? 'Selecciona 2 o más archivos'
-                        : 'Select 2 or more files'
+                        ? 'Selecciona al menos 2 archivos PDF para unir'
+                        : 'Select at least 2 PDF files to merge'
                       : isEs
-                        ? `Unir ${files.length} Archivos PDF →`
-                        : `Merge ${files.length} PDF Files →`}
+                        ? `Unir ${files.length} Archivos PDF (${totalMergedPages} Páginas) →`
+                        : `Merge ${files.length} PDF Files (${totalMergedPages} Pages) →`}
                 </span>
               </button>
             </div>

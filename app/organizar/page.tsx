@@ -74,12 +74,14 @@ function OrganizarContent() {
     },
     {
       id: 'reordenar',
-      tagEs: '004 / REORDENAR',
-      tagEn: '004 / REORDER',
-      titleEs: 'Reordenar PDF',
-      titleEn: 'Reorder PDF',
-      descEs: 'Arrastra y suelta páginas para cambiar su orden en el documento.',
-      descEn: 'Drag and drop pages to change their order in the document.',
+      tagEs: '004 / ORGANIZAR Y REORDENAR',
+      tagEn: '004 / ORGANIZE & REORDER',
+      titleEs: 'Organizar PDF',
+      titleEn: 'Organize PDF',
+      descEs:
+        'Une múltiples archivos, reordena, rota, duplica o elimina páginas en mesa de montaje interactiva.',
+      descEn:
+        'Merge multiple files, sort, rotate, duplicate, or delete pages in an interactive canvas deck.',
       icon: LayoutGrid,
       path: '/organizar/reordenar',
     },

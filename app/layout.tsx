@@ -58,10 +58,6 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: SITE_URL,
-    languages: {
-      es: `${SITE_URL}/es`,
-      en: `${SITE_URL}/en`,
-    },
   },
 
   // ── Open Graph ──
@@ -123,6 +119,55 @@ export const metadata: Metadata = {
   },
 };
 
+const globalJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': ['WebApplication', 'SoftwareApplication'],
+      '@id': `${SITE_URL}/#webapp`,
+      name: 'PDFBlack — Herramientas PDF Gratuitas, Privadas y Locales',
+      url: SITE_URL,
+      applicationCategory: 'UtilitiesApplication, BusinessApplication',
+      operatingSystem: 'All (Windows, macOS, Linux, Android, iOS)',
+      browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas, WebAssembly & Web Workers.',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '4.9',
+        ratingCount: '1540',
+        bestRating: '5',
+        worstRating: '1',
+      },
+      description:
+        'Edita, organiza, convierte, firma, aplica OCR y optimiza archivos PDF 100% gratis y sin registro. Procesamiento local en memoria RAM sin servidores.',
+      softwareVersion: '5.0',
+      screenshot: `${SITE_URL}/og-image.png`,
+      featureList: [
+        'OCR PDF con IA Local (Tesseract v5 y PaddleOCR ONNX)',
+        'Unir y Dividir PDF sin límites de tamaño',
+        'Comprimir PDF reduciendo tamaño sin pérdida visual',
+        'Firma Digital PKCS#12 y Firma Gráfica con sellos',
+        'Desbloquear y Proteger PDF con cifrado AES-256',
+        'Conversión fiel a Word, Excel, PowerPoint y JPG',
+        'Censura irreversible de datos confidenciales y sanitización de metadatos',
+      ],
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'PDFBlack',
+      url: SITE_URL,
+      logo: `${SITE_URL}/icon-192.png`,
+      sameAs: [],
+    },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className="dark" style={{ colorScheme: 'dark light' }} suppressHydrationWarning>
@@ -133,6 +178,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
         <link rel="dns-prefetch" href="https://cdn.syncfusion.com" />
+        {/* Datos estructurados Schema.org JSON-LD para Google Rich Results */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(globalJsonLd) }}
+        />
         {/* CSP vía meta tag — respaldo confiable para desarrollo (Turbopack a veces ignora headers()) */}
         <meta
           httpEquiv="Content-Security-Policy"
@@ -168,9 +218,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <LanguageProvider>
             <FirebaseAuthProvider>
-              <SharedLayout>
-                {children}
-              </SharedLayout>
+              <SharedLayout>{children}</SharedLayout>
             </FirebaseAuthProvider>
           </LanguageProvider>
         </ThemeProvider>

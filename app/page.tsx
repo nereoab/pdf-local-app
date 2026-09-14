@@ -236,10 +236,22 @@ const categories = [
     tools: [
       { nameEs: '1. Comprimir PDF', nameEn: '1. Compress PDF', path: '/optimizar/comprimir' },
       { nameEs: '2. Reparar PDF', nameEn: '2. Repair PDF', path: '/optimizar/reparar' },
-      { nameEs: '3. Desbloquear PDF', nameEn: '3. Unlock PDF', path: '/optimizar/desbloquear' },
+      {
+        nameEs: '3. Desbloquear PDF',
+        nameEn: '3. Unlock PDF',
+        path: '/optimizar/desbloquear',
+        badgeEs: 'POPULAR',
+        badgeEn: 'POPULAR',
+      },
       { nameEs: '4. Proteger PDF', nameEn: '4. Protect PDF', path: '/optimizar/proteger' },
       { nameEs: '5. Censurar PDF', nameEn: '5. Redact PDF', path: '/optimizar/censurar' },
-      { nameEs: '6. Comparar PDF', nameEn: '6. Compare PDF', path: '/optimizar/comparar' },
+      {
+        nameEs: '6. Comparar PDF',
+        nameEn: '6. Compare PDF',
+        path: '/optimizar/comparar',
+        badgeEs: 'NUEVO MOTOR v4.0',
+        badgeEn: 'NEW ENGINE v4.0',
+      },
     ],
     badgeEs: 'REDUCE HASTA 90%',
     badgeEn: 'SAVE UP TO 90%',
@@ -338,7 +350,14 @@ function CategoryCard({
               role="listitem"
               title={isEs ? `Ir a ${tool.nameEs}` : `Go to ${tool.nameEn}`}
             >
-              <span className="truncate font-semibold">{isEs ? tool.nameEs : tool.nameEn}</span>
+              <span className="truncate font-semibold flex items-center gap-1.5">
+                <span className="truncate">{isEs ? tool.nameEs : tool.nameEn}</span>
+                {(tool as any).badgeEs && (
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase flex-shrink-0">
+                    {isEs ? (tool as any).badgeEs : (tool as any).badgeEn}
+                  </span>
+                )}
+              </span>
               <ArrowRight
                 className="w-3.5 h-3.5 opacity-0 group-hover/tool:opacity-100 -translate-x-1 group-hover/tool:translate-x-0 transition-all flex-shrink-0 ml-1 text-black"
                 aria-hidden="true"

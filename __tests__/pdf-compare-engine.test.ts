@@ -1,15 +1,13 @@
-import test, { describe } from 'node:test';
-import assert from 'node:assert/strict';
 import {
   myersDiffWords,
   normalizeWord,
   buildDiffBlocks,
   type WordToken,
   type DiffWord,
-} from '../utils/pdf-diff-engine.ts';
+} from '../utils/pdf-diff-engine';
 
 describe('PDF Comparison Engine v4.0 - Myers Diff & Normalization', () => {
-  test('correctly detects identical sentences with common prefix and suffix', () => {
+  it('correctly detects identical sentences with common prefix and suffix', () => {
     const textA = 'El contrato de arrendamiento entra en vigencia hoy';
     const textB = 'El contrato de arrendamiento entra en vigencia hoy';
 
@@ -18,11 +16,8 @@ describe('PDF Comparison Engine v4.0 - Myers Diff & Normalization', () => {
 
     const diff = myersDiffWords(tokensA, tokensB);
 
-    assert.equal(
-      diff.every((d) => d.type === 'equal'),
-      true,
-    );
-    assert.equal(diff.length, tokensA.length);
+    expect(diff.every((d) => d.type === 'equal')).toBe(true);
+    expect(diff.length).toBe(tokensA.length);
   });
 
   test('detects word additions and removals in middle of sentence', () => {
@@ -37,27 +32,21 @@ describe('PDF Comparison Engine v4.0 - Myers Diff & Normalization', () => {
     const removed = diff.filter((d) => d.type === 'removed');
     const added = diff.filter((d) => d.type === 'added');
 
-    assert.deepEqual(
-      removed.map((r) => r.valueA?.raw),
-      ['diez', 'dólares'],
-    );
-    assert.deepEqual(
-      added.map((a) => a.valueB?.raw),
-      ['quince', 'euros'],
-    );
+    expect(removed.map((r) => r.valueA?.raw)).toEqual(['diez', 'dólares']);
+    expect(added.map((a) => a.valueB?.raw)).toEqual(['quince', 'euros']);
   });
 
-  test('respects ignoreCase and ignorePunctuation normalization options', () => {
+  it('respects ignoreCase and ignorePunctuation normalization options', () => {
     const word1 = 'CLÁUSULA:';
     const word2 = 'cláusula';
 
     const norm1 = normalizeWord(word1, { ignoreCase: true, ignorePunctuation: true });
     const norm2 = normalizeWord(word2, { ignoreCase: true, ignorePunctuation: true });
 
-    assert.equal(norm1, norm2);
+    expect(norm1).toBe(norm2);
   });
 
-  test('buildDiffBlocks correctly aggregates sequential diff words with context', () => {
+  it('buildDiffBlocks correctly aggregates sequential diff words with context', () => {
     const diffWords: DiffWord[] = [
       { text: 'Esta', type: 'equal', page: 1, index: 0 },
       { text: 'es', type: 'equal', page: 1, index: 1 },
@@ -71,15 +60,15 @@ describe('PDF Comparison Engine v4.0 - Myers Diff & Normalization', () => {
 
     const blocks = buildDiffBlocks(diffWords);
 
-    assert.equal(blocks.length, 2);
-    assert.equal(blocks[0].type, 'removed');
-    assert.equal(blocks[0].text, 'versión antigua');
-    assert.equal(blocks[0].contextBefore, 'Esta es una');
-    assert.equal(blocks[1].type, 'added');
-    assert.equal(blocks[1].text, 'nueva');
+    expect(blocks.length).toBe(2);
+    expect(blocks[0].type).toBe('removed');
+    expect(blocks[0].text).toBe('versión antigua');
+    expect(blocks[0].contextBefore).toBe('Esta es una');
+    expect(blocks[1].type).toBe('added');
+    expect(blocks[1].text).toBe('nueva');
   });
 
-  test('handles completely different text without crashing or hanging', () => {
+  it('handles completely different text without crashing or hanging', () => {
     const textA = 'Párrafo original con conceptos jurídicos y financieros';
     const textB = 'Totalmente modificado sin ninguna coincidencia léxica previa';
 
@@ -91,7 +80,7 @@ describe('PDF Comparison Engine v4.0 - Myers Diff & Normalization', () => {
     const removed = diff.filter((d) => d.type === 'removed');
     const added = diff.filter((d) => d.type === 'added');
 
-    assert.equal(removed.length, tokensA.length);
-    assert.equal(added.length, tokensB.length);
+    expect(removed.length).toBe(tokensA.length);
+    expect(added.length).toBe(tokensB.length);
   });
 });

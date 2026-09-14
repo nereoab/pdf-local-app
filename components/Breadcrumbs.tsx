@@ -13,28 +13,52 @@ interface BreadcrumbSegment {
 
 // Mapa de rutas a nombres legibles
 const ROUTE_MAP: Record<string, { label: string; labelEn: string }> = {
+  // Secciones principales
   editar: { label: 'Editar PDF', labelEn: 'Edit PDF' },
   organizar: { label: 'Organizar PDF', labelEn: 'Organize PDF' },
   convertir: { label: 'Convertir PDF', labelEn: 'Convert PDF' },
   optimizar: { label: 'Optimizar PDF', labelEn: 'Optimize PDF' },
+
+  // Editar
   texto: { label: 'Editar Texto', labelEn: 'Edit Text' },
   'marca-agua': { label: 'Marca de Agua', labelEn: 'Watermark' },
   foliar: { label: 'Foliar Páginas', labelEn: 'Page Numbers' },
+  firmar: { label: 'Firmar PDF', labelEn: 'Sign PDF' },
   firma: { label: 'Firmar PDF', labelEn: 'Sign PDF' },
   ocr: { label: 'OCR PDF', labelEn: 'OCR PDF' },
   'quitar-marca-agua': { label: 'Quitar Marca de Agua', labelEn: 'Remove Watermark' },
+
+  // Organizar
   unir: { label: 'Unir PDF', labelEn: 'Merge PDF' },
   dividir: { label: 'Dividir PDF', labelEn: 'Split PDF' },
   eliminar: { label: 'Eliminar Páginas', labelEn: 'Delete Pages' },
   reordenar: { label: 'Reordenar PDF', labelEn: 'Reorder PDF' },
   rotar: { label: 'Rotar PDF', labelEn: 'Rotate PDF' },
   recortar: { label: 'Recortar PDF', labelEn: 'Crop PDF' },
+
+  // Optimizar
   comprimir: { label: 'Comprimir PDF', labelEn: 'Compress PDF' },
   reparar: { label: 'Reparar PDF', labelEn: 'Repair PDF' },
   desbloquear: { label: 'Desbloquear PDF', labelEn: 'Unlock PDF' },
   proteger: { label: 'Proteger PDF', labelEn: 'Protect PDF' },
   censurar: { label: 'Censurar PDF', labelEn: 'Redact PDF' },
   comparar: { label: 'Comparar PDF', labelEn: 'Compare PDF' },
+
+  // Convertir
+  'pdf-word': { label: 'PDF a Word', labelEn: 'PDF to Word' },
+  'word-pdf': { label: 'Word a PDF', labelEn: 'Word to PDF' },
+  'pdf-excel': { label: 'PDF a Excel', labelEn: 'PDF to Excel' },
+  'excel-pdf': { label: 'Excel a PDF', labelEn: 'Excel to PDF' },
+  'pdf-powerpoint': { label: 'PDF a PowerPoint', labelEn: 'PDF to PowerPoint' },
+  'powerpoint-pdf': { label: 'PowerPoint a PDF', labelEn: 'PowerPoint to PDF' },
+  'pdf-jpg': { label: 'PDF a JPG', labelEn: 'PDF to JPG' },
+  'jpg-pdf': { label: 'JPG a PDF', labelEn: 'JPG to PDF' },
+  'pdf-texto': { label: 'PDF a Texto', labelEn: 'PDF to Text' },
+  'texto-pdf': { label: 'Texto a PDF', labelEn: 'Text to PDF' },
+  'pdf-html': { label: 'PDF a HTML', labelEn: 'PDF to HTML' },
+  'html-pdf': { label: 'HTML a PDF', labelEn: 'HTML to PDF' },
+
+  // Páginas informativas y legales
   privacidad: { label: 'Política de Privacidad', labelEn: 'Privacy Policy' },
   terminos: { label: 'Términos y Condiciones', labelEn: 'Terms & Conditions' },
   'aviso-legal': { label: 'Aviso Legal', labelEn: 'Legal Notice' },
@@ -81,25 +105,16 @@ export default function Breadcrumbs() {
       aria-label={isEs ? 'Ruta de navegación' : 'Breadcrumb'}
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2"
     >
-      <ol
-        className="flex flex-wrap items-center gap-1 text-[11px] font-mono text-zinc-500"
-        itemScope
-        itemType="https://schema.org/BreadcrumbList"
-      >
+      <ol className="flex flex-wrap items-center gap-1 text-[11px] font-mono text-zinc-500">
         {breadcrumbs.map((crumb, i) => {
           const isLast = i === breadcrumbs.length - 1;
           return (
-            <li
-              key={`${crumb.href}-${i}`}
-              className="flex items-center gap-1"
-              itemScope
-              itemType="https://schema.org/ListItem"
-            >
+            <li key={`${crumb.href}-${i}`} className="flex items-center gap-1">
               {i > 0 && (
                 <ChevronRight className="w-3 h-3 text-zinc-600 flex-shrink-0" aria-hidden="true" />
               )}
               {isLast ? (
-                <span className="text-zinc-400 font-medium" aria-current="page" itemProp="name">
+                <span className="text-zinc-400 font-medium" aria-current="page">
                   {i === 0 ? (
                     <Home className="w-3.5 h-3.5 inline mr-0.5" aria-hidden="true" />
                   ) : null}
@@ -109,13 +124,11 @@ export default function Breadcrumbs() {
                 <Link
                   href={crumb.href}
                   className="hover:text-white transition-colors inline-flex items-center"
-                  itemProp="item"
                 >
                   {i === 0 ? <Home className="w-3 h-3 mr-0.5" aria-hidden="true" /> : null}
-                  <span itemProp="name">{isEs ? crumb.label : crumb.labelEn}</span>
+                  <span>{isEs ? crumb.label : crumb.labelEn}</span>
                 </Link>
               )}
-              <meta itemProp="position" content={String(i + 1)} />
             </li>
           );
         })}

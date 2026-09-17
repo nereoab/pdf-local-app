@@ -17,7 +17,7 @@
 
 import { PDFDocument, PDFName, PDFDict, PDFRawStream, PDFNumber, PDFRef, PDFPage } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
-// @ts-ignore
+// @ts-expect-error pako does not provide complete typings
 import pako from 'pako';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
@@ -279,7 +279,7 @@ async function rasterizePageToNewPdf(
 function optimizeFlateStreams(pdfDoc: PDFDocument): number {
   let savedBytes = 0;
   try {
-    for (const [_, obj] of pdfDoc.context.enumerateIndirectObjects()) {
+    for (const [, obj] of pdfDoc.context.enumerateIndirectObjects()) {
       if (obj instanceof PDFRawStream) {
         const filter = obj.dict.get(PDFName.of('Filter'));
         if (filter && filter.toString() === '/FlateDecode') {

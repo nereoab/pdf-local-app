@@ -173,26 +173,16 @@ export default function PdfUnlocker() {
 
   useEffect(() => {
     if (globalFile && !slots.some((s) => s.file !== null)) {
-      setSlots([
-        { id: 'slot-1', file: globalFile },
-        { id: 'slot-2', file: null },
-        { id: 'slot-3', file: null },
-      ]);
-      setActiveSlotIndex(0);
+      queueMicrotask(() => {
+        setSlots([
+          { id: 'slot-1', file: globalFile },
+          { id: 'slot-2', file: null },
+          { id: 'slot-3', file: null },
+        ]);
+        setActiveSlotIndex(0);
+      });
     }
-  }, [globalFile]);
-
-  // === DETECCIÓN AUTOMÁTICA Y GENERACIÓN DE MINIATURAS ===
-  useEffect(() => {
-    if (activeFile) {
-      setPreviewPageNum(1);
-      loadFileThumbnails(activeFile, password);
-      detectFileStatus(activeFile, activeSlotIndex);
-    } else {
-      setThumbnails([]);
-      setTotalPages(1);
-    }
-  }, [activeFile, password, activeSlotIndex]);
+  }, [globalFile, slots]);
 
   const detectFileStatus = async (f: File, idx: number) => {
     try {
@@ -407,6 +397,22 @@ export default function PdfUnlocker() {
       setIsLoadingThumbnails(false);
     }
   }, []);
+
+  // === DETECCIÓN AUTOMÁTICA Y GENERACIÓN DE MINIATURAS ===
+  useEffect(() => {
+    if (activeFile) {
+      queueMicrotask(() => {
+        setPreviewPageNum(1);
+        loadFileThumbnails(activeFile, password);
+        detectFileStatus(activeFile, activeSlotIndex);
+      });
+    } else {
+      queueMicrotask(() => {
+        setThumbnails([]);
+        setTotalPages(1);
+      });
+    }
+  }, [activeFile, password, activeSlotIndex, loadFileThumbnails]);
 
   // === GESTIÓN DE ARCHIVOS Y SLOTS ===
   const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {

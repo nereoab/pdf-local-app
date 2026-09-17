@@ -8,16 +8,12 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  FileText,
-  HelpCircle,
-  Trash2,
   Check,
   X as XIcon,
   Scale,
   Stethoscope,
   Briefcase,
   GraduationCap,
-  Sparkles,
   Filter,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';

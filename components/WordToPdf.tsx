@@ -12,7 +12,6 @@ import {
   Grid,
   Compass,
   Sparkles,
-  FileText,
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -45,12 +44,6 @@ export default function WordToPdf() {
 
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
-  useEffect(() => {
-    if (file) {
-      prepararPrevisualizacionWord(file);
-    }
-  }, [file, pageSize, orientation, margin, watermarkText]);
-
   // Parsear .docx y pre-generar PDF local para vista previa
   const generarPdfLocal = async (wordFile: File): Promise<Uint8Array> => {
     const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
@@ -75,7 +68,7 @@ export default function WordToPdf() {
     const marginOffset = margin === 'narrow' ? 25 : margin === 'none' ? 10 : 45;
 
     // Extraer texto de word/document.xml mediante JSZip
-    let extractedParagraphs: string[] = [];
+    const extractedParagraphs: string[] = [];
 
     try {
       const zip = new JSZip();
@@ -255,6 +248,14 @@ export default function WordToPdf() {
       setIsRendering(false);
     }
   };
+
+  useEffect(() => {
+    if (file) {
+      queueMicrotask(() => {
+        prepararPrevisualizacionWord(file);
+      });
+    }
+  }, [file, pageSize, orientation, margin, watermarkText]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -437,6 +438,7 @@ export default function WordToPdf() {
                       >
                         <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
                           {pageDataUrls[pageNum] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={pageDataUrls[pageNum]}
                               alt={`Pág ${pageNum}`}

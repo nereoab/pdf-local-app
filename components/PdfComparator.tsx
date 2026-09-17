@@ -14,7 +14,6 @@ import {
   ZoomOut,
   SplitSquareVertical,
   Database,
-  UploadCloud,
   Hash,
   Copy,
   CheckCircle2,
@@ -27,26 +26,17 @@ import {
   ArrowLeftRight,
   Sliders,
   Layers,
-  Eye,
   FileDown,
-  Filter,
   Keyboard,
   FileCode,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
-import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
-import type {
-  CompareResult,
-  CompareOptions,
-  StructuralDiff,
-  PageDiff,
-  DiffWord,
-} from '../workers/pdf-compare.worker';
+import type { CompareResult, CompareOptions, DiffWord } from '../workers/pdf-compare.worker';
 
 export default function PdfComparator() {
   const { lang } = useLanguage();
@@ -63,7 +53,6 @@ export default function PdfComparator() {
   const sliderContainerRef = useRef<HTMLDivElement>(null);
 
   const { globalFile } = useFileStore();
-  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   // ============================================================
   // ESTADO ESTRICTO DE 2 ARCHIVOS (DOCUMENTO A vs DOCUMENTO B)
@@ -99,7 +88,7 @@ export default function PdfComparator() {
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [progressPhase, setProgressPhase] = useState('');
+  const [, setProgressPhase] = useState('');
 
   // Sincronización y navegación
   const [scrollSync, setScrollSync] = useState(true);
@@ -192,18 +181,6 @@ export default function PdfComparator() {
     toast.info(isEs ? 'Archivos eliminados' : 'Files cleared');
   };
 
-  // Carga de Documentos en PDF.js para renderizado de vistas previas
-  useEffect(() => {
-    if (!fileA && !fileB) {
-      setCanvas1Urls({});
-      setCanvas2Urls({});
-      setTotalPages1(0);
-      setTotalPages2(0);
-      return;
-    }
-    loadPdfDocs();
-  }, [fileA, fileB]);
-
   const loadPdfDocs = async () => {
     setIsRendering(true);
     setCompareResult(null);
@@ -256,6 +233,22 @@ export default function PdfComparator() {
       setIsRendering(false);
     }
   };
+
+  // Carga de Documentos en PDF.js para renderizado de vistas previas
+  useEffect(() => {
+    if (!fileA && !fileB) {
+      queueMicrotask(() => {
+        setCanvas1Urls({});
+        setCanvas2Urls({});
+        setTotalPages1(0);
+        setTotalPages2(0);
+      });
+      return;
+    }
+    queueMicrotask(() => {
+      loadPdfDocs();
+    });
+  }, [fileA, fileB]);
 
   // Renderizar página individual bajo demanda
   const renderPage = useCallback(
@@ -422,34 +415,6 @@ export default function PdfComparator() {
     }
   };
 
-  // Atajos de teclado
-  useEffect(() => {
-    const handleKeydown = (e: KeyboardEvent) => {
-      const isCtrl = e.ctrlKey || e.metaKey;
-      if (isCtrl && e.key === 'Enter') {
-        e.preventDefault();
-        if (fileA && fileB && !isComparing) executeCompare();
-      } else if (e.key === 'Escape') {
-        if (isComparing) cancel();
-        else if (zoomModalImage) setZoomModalImage(null);
-      } else if (isCtrl && e.key === 'ArrowRight') {
-        e.preventDefault();
-        gotoNextDiff();
-      } else if (isCtrl && e.key === 'ArrowLeft') {
-        e.preventDefault();
-        gotoPrevDiff();
-      } else if (isCtrl && e.key === 's') {
-        e.preventDefault();
-        setScrollSync((prev) => !prev);
-      } else if (isCtrl && e.key === 'f') {
-        e.preventDefault();
-        document.getElementById('cmp-search-input')?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
-  }, [fileA, fileB, isComparing, zoomModalImage, activeDiffIdx, filteredDiffWords]);
-
   // Cancelar proceso
   const cancel = () => {
     workerRef.current?.postMessage({ type: 'cancel' });
@@ -525,6 +490,34 @@ export default function PdfComparator() {
       options,
     });
   };
+
+  // Atajos de teclado
+  useEffect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      if (isCtrl && e.key === 'Enter') {
+        e.preventDefault();
+        if (fileA && fileB && !isComparing) executeCompare();
+      } else if (e.key === 'Escape') {
+        if (isComparing) cancel();
+        else if (zoomModalImage) setZoomModalImage(null);
+      } else if (isCtrl && e.key === 'ArrowRight') {
+        e.preventDefault();
+        gotoNextDiff();
+      } else if (isCtrl && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        gotoPrevDiff();
+      } else if (isCtrl && e.key === 's') {
+        e.preventDefault();
+        setScrollSync((prev) => !prev);
+      } else if (isCtrl && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('cmp-search-input')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [fileA, fileB, isComparing, zoomModalImage, activeDiffIdx, filteredDiffWords]);
 
   // Descargar Reporte TXT
   const downloadTxtReport = () => {
@@ -654,7 +647,7 @@ export default function PdfComparator() {
       const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
       const doc = await PDFDocument.create();
       let page = doc.addPage([612, 792]); // Carta Portrait
-      const { height, width } = page.getSize();
+      const { height } = page.getSize();
       const margin = 45;
       let y = height - margin;
       const font = await doc.embedFont(StandardFonts.Helvetica);

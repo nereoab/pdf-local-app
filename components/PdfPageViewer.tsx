@@ -97,57 +97,6 @@ export default function PdfPageViewer({
   const currentRenderTaskRef = useRef<any>(null);
   const currentFileRef = useRef<File | null>(null);
 
-  // 1. Cargar el PDF Document una sola vez cuando cambie el archivo
-  useEffect(() => {
-    let isCancelled = false;
-
-    if (!file) {
-      pdfDocRef.current = null;
-      currentFileRef.current = null;
-      return;
-    }
-
-    if (currentFileRef.current === file && pdfDocRef.current) {
-      return;
-    }
-
-    currentFileRef.current = file;
-    setIsLoadingDoc(true);
-
-    (async () => {
-      try {
-        const buffer = await file.arrayBuffer();
-        const pdfjsLib = await import('pdfjs-dist');
-        try {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
-        } catch {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-        }
-
-        const doc = await pdfjsLib.getDocument({
-          data: buffer.slice(0),
-          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-          cMapPacked: true,
-        }).promise;
-
-        if (!isCancelled) {
-          pdfDocRef.current = doc;
-          setIsLoadingDoc(false);
-          renderPage(doc, activePage, zoom);
-        }
-      } catch (err) {
-        console.error('Error loading PDF document in PdfPageViewer:', err);
-        if (!isCancelled) {
-          setIsLoadingDoc(false);
-        }
-      }
-    })();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [file]);
-
   // 2. Función para renderizar la página activa en el canvas a alta definición
   const renderPage = useCallback(async (doc: any, pageNum: number, currentZoom: number) => {
     if (!doc || pageNum < 1 || pageNum > doc.numPages) return;
@@ -215,6 +164,57 @@ export default function PdfPageViewer({
       setIsRenderingPage(false);
     }
   }, []);
+
+  // 1. Cargar el PDF Document una sola vez cuando cambie el archivo
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!file) {
+      pdfDocRef.current = null;
+      currentFileRef.current = null;
+      return;
+    }
+
+    if (currentFileRef.current === file && pdfDocRef.current) {
+      return;
+    }
+
+    currentFileRef.current = file;
+    setIsLoadingDoc(true);
+
+    (async () => {
+      try {
+        const buffer = await file.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        try {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
+        } catch {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        }
+
+        const doc = await pdfjsLib.getDocument({
+          data: buffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        if (!isCancelled) {
+          pdfDocRef.current = doc;
+          setIsLoadingDoc(false);
+          renderPage(doc, activePage, zoom);
+        }
+      } catch (err) {
+        console.error('Error loading PDF document in PdfPageViewer:', err);
+        if (!isCancelled) {
+          setIsLoadingDoc(false);
+        }
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [file, activePage, zoom, renderPage]);
 
   // 3. Renderizar cuando cambie la página activa o el nivel de zoom
   useEffect(() => {

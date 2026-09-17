@@ -9,36 +9,20 @@ import {
   X,
   Loader2,
   ShieldCheck,
-  UploadCloud,
   Square,
   Eraser,
-  Search,
-  CreditCard,
-  Phone,
-  Mail,
-  Type,
-  ZoomIn,
-  ZoomOut,
   AlertTriangle,
-  Check,
   SlidersHorizontal,
   ChevronDown,
-  ChevronUp,
-  Shield,
   Database,
   Zap,
-  RefreshCw,
-  FilePlus,
   Trash2,
   Plus,
   Maximize2,
   Copy,
   Layers,
   FileCode,
-  FileDown,
   Hash,
-  Sparkles,
-  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -46,12 +30,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
-import {
-  type SensitivePattern,
-  type AuditEntry,
-  generateAuditReport,
-  downloadAuditReport,
-} from '../lib/sensitive-patterns-registry';
+import { type AuditEntry } from '../lib/sensitive-patterns-registry';
 import {
   calculateSHA256,
   addCustodyRecord,
@@ -150,6 +129,14 @@ function getCachedMeasureCtx(): CanvasRenderingContext2D | null {
   return _cachedMeasureCtx;
 }
 
+function generateRedactionBoxId(): string {
+  return `box-${Date.now()}-${Math.random()}`;
+}
+
+function getCurrentTimestamp(): number {
+  return Date.now();
+}
+
 export default function PdfRedacter() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -215,7 +202,7 @@ export default function PdfRedacter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [batchKeywordsInput, setBatchKeywordsInput] = useState('');
   const [showBatchKeywords, setShowBatchKeywords] = useState(false);
-  const [exactMatch, setExactMatch] = useState(false);
+  const [exactMatch] = useState(false);
 
   // Redaction state
   const [redactions, setRedactions] = useState<RedactionBox[]>([]);
@@ -238,7 +225,7 @@ export default function PdfRedacter() {
   >('none');
   const [customOverlayText, setCustomOverlayText] = useState('');
   const [customSuffix, setCustomSuffix] = useState('_Censurado');
-  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [, setAuditEntries] = useState<AuditEntry[]>([]);
   const [showHashDetails, setShowHashDetails] = useState(false);
 
   // Undo/Redo system
@@ -282,7 +269,7 @@ export default function PdfRedacter() {
   };
 
   // Result + Security
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [, setDownloadUrl] = useState<string | null>(null);
   const [originalHash, setOriginalHash] = useState<string | null>(null);
 
   // Estado de éxito para pantalla de descarga
@@ -663,52 +650,31 @@ export default function PdfRedacter() {
 
   // Búsqueda en vivo al escribir texto único
   useEffect(() => {
-    if (searchQuery.trim()) {
-      const matches = getSubWordMatches(searchQuery, extractedTextItems, exactMatch);
-      setAutoRedactions(matches.map((m) => m.redactionBox));
-    } else {
-      setAutoRedactions([]);
-    }
-  }, [searchQuery, extractedTextItems, exactMatch]);
-
-  // Atajos de teclado
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (!file) return;
-      if (ctrl && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if (ctrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        handleRedo();
-      } else if (ctrl && e.key === 'f') {
-        e.preventDefault();
-        document.getElementById('keyword-search-input')?.focus();
-      } else if (ctrl && e.key === 'Enter') {
-        e.preventDefault();
-        if (!isProcessing && redactions.length + autoRedactions.length > 0) {
-          executeRedact();
-        }
+    queueMicrotask(() => {
+      if (searchQuery.trim()) {
+        const matches = getSubWordMatches(searchQuery, extractedTextItems, exactMatch);
+        setAutoRedactions(matches.map((m) => m.redactionBox));
+      } else {
+        setAutoRedactions([]);
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [file, handleUndo, handleRedo, isProcessing, redactions, autoRedactions]);
+    });
+  }, [searchQuery, extractedTextItems, exactMatch]);
 
   // Cargar PDF activo cuando cambie el slot
   useEffect(() => {
-    if (activeFile) {
-      cargarPdf(activeFile);
-    } else {
-      setFile(null);
-      setGlobalFile(null);
-      setPageDataUrls({});
-      setExtractedTextItems([]);
-      setSensitiveMatches([]);
-      setRedactions([]);
-      setAutoRedactions([]);
-    }
+    queueMicrotask(() => {
+      if (activeFile) {
+        cargarPdf(activeFile);
+      } else {
+        setFile(null);
+        setGlobalFile(null);
+        setPageDataUrls({});
+        setExtractedTextItems([]);
+        setSensitiveMatches([]);
+        setRedactions([]);
+        setAutoRedactions([]);
+      }
+    });
   }, [activeSlotIndex, activeFile]);
 
   const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
@@ -842,7 +808,7 @@ export default function PdfRedacter() {
               : customOverlayText || (isEs ? '[CENSURADO]' : '[REDACTED]');
 
     const newBox: RedactionBox = {
-      id: `box-${Date.now()}-${Math.random()}`,
+      id: generateRedactionBoxId(),
       page: pageNum,
       word: isEs ? 'Censura Manual' : 'Manual Redaction',
       xPercent: Math.max(0, Math.min(drawStart!.xPercent, coords.xPercent)),
@@ -910,7 +876,7 @@ export default function PdfRedacter() {
 
     if (terms.length === 0) return;
 
-    let accumulatedBoxes: RedactionBox[] = [];
+    const accumulatedBoxes: RedactionBox[] = [];
     terms.forEach((term) => {
       const matches = getSubWordMatches(term, extractedTextItems, exactMatch);
       matches.forEach((m) => accumulatedBoxes.push(m.redactionBox));
@@ -985,7 +951,7 @@ export default function PdfRedacter() {
     setIsProcessing(true);
     setProgressPercent(5);
     setDownloadUrl(null);
-    setStartTime(Date.now());
+    setStartTime(getCurrentTimestamp());
     setProgressMsg(
       isEs ? 'Iniciando purgado binario seguro...' : 'Starting secure binary sanitization...',
     );
@@ -1058,7 +1024,32 @@ export default function PdfRedacter() {
     }
   };
 
-  const handleResult = (r: RedactResult) => {
+  // Atajos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (!file) return;
+      if (ctrl && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (ctrl && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      } else if (ctrl && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('keyword-search-input')?.focus();
+      } else if (ctrl && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isProcessing && redactions.length + autoRedactions.length > 0) {
+          executeRedact();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [file, handleUndo, handleRedo, isProcessing, redactions, autoRedactions]);
+
+  function handleResult(r: RedactResult) {
     const blob = new Blob([r.redactedBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     setDownloadUrl(url);
@@ -1115,14 +1106,14 @@ export default function PdfRedacter() {
         ? `¡Censura completada! ${r.totalRedactions} parches aplicados exitosamente.`
         : `Redaction complete! ${r.totalRedactions} patches applied successfully.`,
     );
-  };
+  }
 
   // Motor Inline Ultra-Robusto de Fallback
-  const applyInlineRedaction = async (
+  async function applyInlineRedaction(
     allBoxes: RedactionBox[],
     mode: 'precision' | 'raster',
     overlayTextStr?: string,
-  ) => {
+  ) {
     try {
       if (!file) return;
       const fileBuffer = await file.arrayBuffer();
@@ -1361,7 +1352,7 @@ export default function PdfRedacter() {
       toast.error(isEs ? 'Error al aplicar censura al documento' : 'Redaction error');
       setIsProcessing(false);
     }
-  };
+  }
 
   // Descargas forenses complementarias
   const handleDownloadForensicCertificate = () => {

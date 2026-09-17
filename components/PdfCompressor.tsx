@@ -5,14 +5,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   Sliders,
-  FileDown,
   Loader2,
   X,
   ShieldCheck,
   Zap,
-  RefreshCw,
   FileText,
-  UploadCloud,
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
@@ -21,17 +18,11 @@ import {
   Archive,
   FileCheck2,
   Image as ImageIcon,
-  ZoomIn,
   Trash2,
   Plus,
   Sparkles,
-  CheckCircle2,
-  Lock,
-  Download,
-  Share2,
   HardDrive,
   Maximize2,
-  HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -41,7 +32,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 import JSZip from 'jszip';
 import { PDFDocument, PDFName, PDFDict, PDFRawStream, PDFNumber, PDFRef, PDFPage } from 'pdf-lib';
-// @ts-ignore
+// @ts-expect-error pako does not provide complete typings
 import pako from 'pako';
 
 export type CompressionLevel = 'high' | 'medium' | 'low';
@@ -122,7 +113,7 @@ function checkPageHasImages(page: PDFPage | undefined, pdfDoc: PDFDocument): boo
 function optimizeFlateStreamsDoc(pdfDoc: PDFDocument): number {
   let savedBytes = 0;
   try {
-    for (const [_, obj] of pdfDoc.context.enumerateIndirectObjects()) {
+    for (const [, obj] of pdfDoc.context.enumerateIndirectObjects()) {
       if (obj instanceof PDFRawStream) {
         const filter = obj.dict.get(PDFName.of('Filter'));
         if (filter && filter.toString() === '/FlateDecode') {
@@ -193,10 +184,10 @@ export default function PdfCompressor() {
   const [pageScope, setPageScope] = useState<PageScope>('todas');
   const [pageRange, setPageRange] = useState('');
   const [stripMetadata, setStripMetadata] = useState(true);
-  const [customSuffix, setCustomSuffix] = useState('_Comprimido');
+  const [customSuffix] = useState('_Comprimido');
   const [preserveTextVectors, setPreserveTextVectors] = useState(true);
-  const [preservePdfA, setPreservePdfA] = useState(true);
-  const [detectPdfA, setDetectPdfA] = useState(true);
+  const [preservePdfA] = useState(true);
+  const [detectPdfA] = useState(true);
   const [targetPreset, setTargetPreset] = useState<string | null>(null);
 
   // === ESTADO DE PROCESAMIENTO ===
@@ -207,7 +198,7 @@ export default function PdfCompressor() {
   const [totalFilesCount, setTotalFilesCount] = useState(0);
 
   // === RESULTADOS DE COMPRESIÓN ===
-  const [results, setResults] = useState<CompressionResultItem[]>([]);
+  const [, setResults] = useState<CompressionResultItem[]>([]);
 
   // === VISTA PREVIA Y MINIATURAS ===
   const [previewPageNum, setPreviewPageNum] = useState<number>(1);
@@ -218,8 +209,8 @@ export default function PdfCompressor() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Sincronización de alturas
-  const [previewHeight, setPreviewHeight] = useState<number>(0);
-  const [isDesktop, setIsDesktop] = useState<boolean>(false);
+  const [, setPreviewHeight] = useState<number>(0);
+  const [, setIsDesktop] = useState<boolean>(false);
 
   // Control de cabecera fija
   useEffect(() => {
@@ -236,15 +227,17 @@ export default function PdfCompressor() {
   }, [setHeaderHidden]);
 
   useEffect(() => {
-    if (globalFile && !slots.some((s) => s.file !== null)) {
-      setSlots([
-        { id: 'slot-1', file: globalFile },
-        { id: 'slot-2', file: null },
-        { id: 'slot-3', file: null },
-      ]);
-      setActiveSlotIndex(0);
-    }
-  }, [globalFile]);
+    queueMicrotask(() => {
+      if (globalFile && !slots.some((s) => s.file !== null)) {
+        setSlots([
+          { id: 'slot-1', file: globalFile },
+          { id: 'slot-2', file: null },
+          { id: 'slot-3', file: null },
+        ]);
+        setActiveSlotIndex(0);
+      }
+    });
+  }, [globalFile, slots]);
 
   const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
     setSlots((prev) => {
@@ -377,12 +370,16 @@ export default function PdfCompressor() {
 
   useEffect(() => {
     if (activeFile) {
-      setPreviewPageNum(1);
-      loadFileThumbnails(activeFile);
-      setGlobalFile(activeFile);
+      queueMicrotask(() => {
+        setPreviewPageNum(1);
+        loadFileThumbnails(activeFile);
+        setGlobalFile(activeFile);
+      });
     } else {
-      setThumbnails([]);
-      setTotalPages(1);
+      queueMicrotask(() => {
+        setThumbnails([]);
+        setTotalPages(1);
+      });
     }
   }, [activeFile, loadFileThumbnails, setGlobalFile]);
 

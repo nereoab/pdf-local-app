@@ -3,11 +3,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, User, Mail, LogIn, UserPlus, ShieldCheck, Sparkles, Lock,
-  Eye, EyeOff, Copy, Check, KeyRound, Send, AlertTriangle
+  X,
+  User,
+  Mail,
+  LogIn,
+  UserPlus,
+  ShieldCheck,
+  Sparkles,
+  Lock,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  KeyRound,
+  Send,
+  AlertTriangle,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuthStore } from '../store/useAuthStore';
 import { useFirebaseAuth } from '../context/FirebaseAuthContext';
 import {
   signInWithEmailAndPassword,
@@ -47,10 +59,53 @@ function parseAuthError(error: unknown): string {
   return errorMap[code] || `Error: ${fError.message || 'desconocido'}`;
 }
 
+interface GoogleButtonProps {
+  onClick: () => void;
+  disabled: boolean;
+  isEs: boolean;
+}
+
+function GoogleButton({ onClick, disabled, isEs }: GoogleButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full flex items-center justify-center gap-3 bg-white border border-white/20 text-gray-900 hover:bg-gray-100 disabled:opacity-50 px-4 py-2.5 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer shadow-sm disabled:cursor-not-allowed"
+    >
+      <svg
+        className="w-4 h-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <path
+          d="M23.766 12.276c0-.815-.066-1.636-.207-2.438H12.24v4.62h6.482a5.554 5.554 0 01-2.408 3.648v3.014h3.882c2.274-2.094 3.57-5.183 3.57-8.844z"
+          fill="#4285F4"
+        />
+        <path
+          d="M12.24 24c3.24 0 5.964-1.075 7.954-2.916l-3.882-3.014c-1.075.726-2.454 1.156-4.072 1.156-3.126 0-5.772-2.112-6.72-4.956h-3.996v3.102C3.744 21.204 7.704 24 12.24 24z"
+          fill="#34A853"
+        />
+        <path
+          d="M5.52 14.274a7.202 7.202 0 01-.378-2.274c0-.792.138-1.56.378-2.274V6.624H1.524A11.962 11.962 0 000 12c0 1.938.468 3.768 1.284 5.376l4.236-3.102z"
+          fill="#FBBC05"
+        />
+        <path
+          d="M12.24 4.656c1.764 0 3.342.606 4.59 1.794l3.432-3.432C18.198 1.236 15.474 0 12.24 0 7.704 0 3.744 2.796 1.524 6.624l4.236 3.102c.948-2.844 3.594-4.956 6.72-4.956z"
+          fill="#EA4335"
+        />
+      </svg>
+      {isEs ? 'Continuar con Google' : 'Continue with Google'}
+    </button>
+  );
+}
+
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
-  const { user, loading: fbLoading } = useFirebaseAuth();
+  const { user } = useFirebaseAuth();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('register');
   const [step, setStep] = useState<ModalStep>('form');
@@ -114,15 +169,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
       const focusable = modal.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     modal.addEventListener('keydown', handleTab);
@@ -145,7 +206,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     for (let i = 0; i < pwdLength; i++) pwd += chars[array[i] % chars.length];
 
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), pwd);
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email.trim().toLowerCase(),
+        pwd,
+      );
       // Enviar correo de verificación
       await sendEmailVerification(credential.user);
       setGeneratedPassword(pwd);
@@ -215,33 +280,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     toast.success(
       isEs
         ? 'Revisa tu correo para verificar tu cuenta. Ya puedes usar todas las herramientas.'
-        : 'Check your email to verify your account. You can already use all tools.'
+        : 'Check your email to verify your account. You can already use all tools.',
     );
   };
-
-  // ─── BOTÓN DE GOOGLE ───
-  const GoogleButton = () => (
-    <button
-      type="button"
-      onClick={handleGoogleLogin}
-      disabled={isSubmitting}
-      className="w-full flex items-center justify-center gap-3 bg-white border border-white/20 text-gray-900 hover:bg-gray-100 disabled:opacity-50 px-4 py-2.5 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer shadow-sm disabled:cursor-not-allowed"
-    >
-      {/* Google Logo SVG inline */}
-      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M23.766 12.276c0-.815-.066-1.636-.207-2.438H12.24v4.62h6.482a5.554 5.554 0 01-2.408 3.648v3.014h3.882c2.274-2.094 3.57-5.183 3.57-8.844z" fill="#4285F4"/>
-        <path d="M12.24 24c3.24 0 5.964-1.075 7.954-2.916l-3.882-3.014c-1.075.726-2.454 1.156-4.072 1.156-3.126 0-5.772-2.112-6.72-4.956h-3.996v3.102C3.744 21.204 7.704 24 12.24 24z" fill="#34A853"/>
-        <path d="M5.52 14.274a7.202 7.202 0 01-.378-2.274c0-.792.138-1.56.378-2.274V6.624H1.524A11.962 11.962 0 000 12c0 1.938.468 3.768 1.284 5.376l4.236-3.102z" fill="#FBBC05"/>
-        <path d="M12.24 4.656c1.764 0 3.342.606 4.59 1.794l3.432-3.432C18.198 1.236 15.474 0 12.24 0 7.704 0 3.744 2.796 1.524 6.624l4.236 3.102c.948-2.844 3.594-4.956 6.72-4.956z" fill="#EA4335"/>
-      </svg>
-      {isEs ? 'Continuar con Google' : 'Continue with Google'}
-    </button>
-  );
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div key="auth-modal-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div
+          key="auth-modal-wrapper"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -270,7 +321,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {/* Header */}
               <div className="bg-zinc-900/80 border-b border-white/10 p-6 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <div className="bg-white text-black p-2.5 rounded-xl shadow-md" aria-hidden="true">
+                  <div
+                    className="bg-white text-black p-2.5 rounded-xl shadow-md"
+                    aria-hidden="true"
+                  >
                     <User className="w-5 h-5" />
                   </div>
                   <div>
@@ -330,18 +384,25 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                           className="flex-shrink-0 p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors cursor-pointer"
                           aria-label={isEs ? 'Copiar contraseña' : 'Copy password'}
                         >
-                          {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                          {copied ? (
+                            <Check className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2.5 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl" role="alert">
+                  <div
+                    className="flex items-start gap-2.5 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl"
+                    role="alert"
+                  >
                     <Send className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                     <p className="text-[11px] text-amber-300/80 font-sans leading-relaxed">
                       {isEs
                         ? 'Revisa tu bandeja de entrada y haz clic en el enlace de verificación. Si no lo encuentras, revisa la carpeta de spam.'
-                        : 'Check your inbox and click the verification link. If you don\'t see it, check your spam folder.'}
+                        : "Check your inbox and click the verification link. If you don't see it, check your spam folder."}
                     </p>
                   </div>
 
@@ -359,7 +420,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   {/* ============ TABS ============ */}
                   <div className="flex border-b border-white/10" role="tablist">
                     <button
-                      onClick={() => { setActiveTab('register'); setEmail(''); setPassword(''); setAuthError(''); }}
+                      onClick={() => {
+                        setActiveTab('register');
+                        setEmail('');
+                        setPassword('');
+                        setAuthError('');
+                      }}
                       className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-mono font-semibold transition-all cursor-pointer ${
                         activeTab === 'register'
                           ? 'text-white border-b-2 border-white bg-white/5'
@@ -372,7 +438,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       {isEs ? 'REGISTRARSE' : 'SIGN UP'}
                     </button>
                     <button
-                      onClick={() => { setActiveTab('login'); setEmail(''); setPassword(''); setAuthError(''); }}
+                      onClick={() => {
+                        setActiveTab('login');
+                        setEmail('');
+                        setPassword('');
+                        setAuthError('');
+                      }}
                       className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-mono font-semibold transition-all cursor-pointer ${
                         activeTab === 'login'
                           ? 'text-white border-b-2 border-white bg-white/5'
@@ -393,7 +464,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     noValidate
                   >
                     {/* Aviso de opcionalidad */}
-                    <div className="flex items-start gap-2.5 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl" role="note">
+                    <div
+                      className="flex items-start gap-2.5 p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl"
+                      role="note"
+                    >
                       <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                       <p className="text-[11px] text-emerald-300/80 font-sans leading-relaxed">
                         {isEs
@@ -404,14 +478,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                     {/* Error banner */}
                     {authError && (
-                      <div className="flex items-start gap-2.5 p-3 bg-red-500/5 border border-red-500/15 rounded-xl" role="alert">
+                      <div
+                        className="flex items-start gap-2.5 p-3 bg-red-500/5 border border-red-500/15 rounded-xl"
+                        role="alert"
+                      >
                         <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-[11px] text-red-300/90 font-sans leading-relaxed">{authError}</p>
+                        <p className="text-[11px] text-red-300/90 font-sans leading-relaxed">
+                          {authError}
+                        </p>
                       </div>
                     )}
 
                     {/* Google Button */}
-                    <GoogleButton />
+                    <GoogleButton onClick={handleGoogleLogin} disabled={isSubmitting} isEs={isEs} />
 
                     {/* Separador */}
                     <div className="flex items-center gap-3">
@@ -424,7 +503,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                     {/* Email */}
                     <div>
-                      <label htmlFor="auth-email" className="block text-xs font-mono font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
+                      <label
+                        htmlFor="auth-email"
+                        className="block text-xs font-mono font-semibold text-zinc-400 mb-2 uppercase tracking-wider"
+                      >
                         {isEs ? 'Correo Electrónico' : 'Email Address'}
                       </label>
                       <div className="relative">
@@ -446,7 +528,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     {/* Password (login y registro) */}
                     {activeTab === 'login' && (
                       <div>
-                        <label htmlFor="auth-password" className="block text-xs font-mono font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
+                        <label
+                          htmlFor="auth-password"
+                          className="block text-xs font-mono font-semibold text-zinc-400 mb-2 uppercase tracking-wider"
+                        >
                           {isEs ? 'Contraseña' : 'Password'}
                         </label>
                         <div className="relative">
@@ -465,9 +550,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                            aria-label={showPassword ? (isEs ? 'Ocultar contraseña' : 'Hide password') : (isEs ? 'Mostrar contraseña' : 'Show password')}
+                            aria-label={
+                              showPassword
+                                ? isEs
+                                  ? 'Ocultar contraseña'
+                                  : 'Hide password'
+                                : isEs
+                                  ? 'Mostrar contraseña'
+                                  : 'Show password'
+                            }
                           >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            {showPassword ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -494,9 +591,25 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     >
                       {isSubmitting ? (
                         <span className="flex items-center gap-2" role="status">
-                          <svg className="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          <svg
+                            className="animate-spin h-4 w-4 text-black"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                            />
                           </svg>
                           {isEs ? 'Procesando...' : 'Processing...'}
                         </span>
@@ -528,11 +641,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         </li>
                         <li className="flex items-start gap-2">
                           <span className="text-emerald-400 mt-0.5">•</span>
-                          {isEs ? 'Acceso a funciones premium futuras.' : 'Access to future premium features.'}
+                          {isEs
+                            ? 'Acceso a funciones premium futuras.'
+                            : 'Access to future premium features.'}
                         </li>
                         <li className="flex items-start gap-2">
                           <span className="text-emerald-400 mt-0.5">•</span>
-                          {isEs ? 'Notificaciones sobre nuevas herramientas.' : 'Notifications about new tools.'}
+                          {isEs
+                            ? 'Notificaciones sobre nuevas herramientas.'
+                            : 'Notifications about new tools.'}
                         </li>
                       </ul>
                     </div>

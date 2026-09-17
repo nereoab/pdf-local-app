@@ -15,7 +15,8 @@
 import { PDFDocument, rgb } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
 
 // ============================================================
 // INTERFACES
@@ -97,7 +98,8 @@ export interface RepairError {
   phase?: string;
 }
 
-export type WorkerMessage = DiagnosticResult | RepairProgress | RepairResult | RepairError | RecoveryReport;
+export type WorkerMessage =
+  DiagnosticResult | RepairProgress | RepairResult | RepairError | RecoveryReport;
 
 // ============================================================
 // UTILIDADES DE DIAGNÓSTICO BINARIO AVANZADO
@@ -125,7 +127,8 @@ function scanBinaryHeader(uint8: Uint8Array): DiagnosticIssue[] {
       category: 'header',
       severity: 'critical',
       message: 'Firma %PDF- no encontrada',
-      details: 'El archivo no contiene una cabecera PDF válida. Puede estar severamente corrupto o no ser un PDF.',
+      details:
+        'El archivo no contiene una cabecera PDF válida. Puede estar severamente corrupto o no ser un PDF.',
     });
   } else if (headerOffset > 0) {
     issues.push({
@@ -153,8 +156,11 @@ function scanBinaryTrailer(uint8: Uint8Array): DiagnosticIssue[] {
 
   for (let i = uint8.length - tailCheckLength; i < uint8.length - 4; i++) {
     if (
-      uint8[i] === 0x25 && uint8[i + 1] === 0x25 &&
-      uint8[i + 2] === 0x45 && uint8[i + 3] === 0x4f && uint8[i + 4] === 0x46
+      uint8[i] === 0x25 &&
+      uint8[i + 1] === 0x25 &&
+      uint8[i + 2] === 0x45 &&
+      uint8[i + 3] === 0x4f &&
+      uint8[i + 4] === 0x46
     ) {
       hasEof = true;
       eofOffset = i;
@@ -167,14 +173,16 @@ function scanBinaryTrailer(uint8: Uint8Array): DiagnosticIssue[] {
       category: 'trailer',
       severity: 'critical',
       message: 'Marcador %%EOF ausente o corrupto',
-      details: 'El archivo no contiene el marcador de fin de documento. Esto puede causar que visores PDF rechacen el archivo.',
+      details:
+        'El archivo no contiene el marcador de fin de documento. Esto puede causar que visores PDF rechacen el archivo.',
     });
   } else if (uint8.length - eofOffset > 128) {
     issues.push({
       category: 'trailer',
       severity: 'warning',
       message: `Basura después del marcador %%EOF (${uint8.length - eofOffset - 5} bytes)`,
-      details: 'Datos extra después del final del PDF. Posible corrupción por concatenación accidental.',
+      details:
+        'Datos extra después del final del PDF. Posible corrupción por concatenación accidental.',
     });
   } else {
     issues.push({
@@ -199,7 +207,8 @@ function scanXrefTable(uint8: Uint8Array): DiagnosticIssue[] {
       category: 'xref',
       severity: 'critical',
       message: 'Tabla de referencias cruzadas (xref) no encontrada',
-      details: 'Sin tabla xref, los visores PDF no pueden localizar los objetos del documento. Se intentará reconstruir.',
+      details:
+        'Sin tabla xref, los visores PDF no pueden localizar los objetos del documento. Se intentará reconstruir.',
     });
   } else if (xrefMatches.length > 3) {
     issues.push({
@@ -282,7 +291,9 @@ function scanObjectsAndStreams(uint8: Uint8Array): DiagnosticIssue[] {
 
 function scanEncryption(uint8: Uint8Array): DiagnosticIssue[] {
   const issues: DiagnosticIssue[] = [];
-  const text = new TextDecoder('latin1').decode(uint8.slice(0, Math.min(uint8.length, 1024 * 1024)));
+  const text = new TextDecoder('latin1').decode(
+    uint8.slice(0, Math.min(uint8.length, 1024 * 1024)),
+  );
 
   if (text.includes('/Encrypt')) {
     issues.push({
@@ -311,8 +322,8 @@ function runFullDiagnosis(uint8: Uint8Array, fileName: string): DiagnosticResult
     ...scanEncryption(uint8),
   ];
 
-  const criticalCount = allIssues.filter(i => i.severity === 'critical').length;
-  const warningCount = allIssues.filter(i => i.severity === 'warning').length;
+  const criticalCount = allIssues.filter((i) => i.severity === 'critical').length;
+  const warningCount = allIssues.filter((i) => i.severity === 'warning').length;
 
   let severity: 'ok' | 'warning' | 'critical' = 'ok';
   if (criticalCount >= 2) severity = 'critical';
@@ -343,8 +354,10 @@ function runFullDiagnosis(uint8: Uint8Array, fileName: string): DiagnosticResult
 
 function parseSelectedPages(numPages: number, pageScope: string, pageRange?: string): number[] {
   if (pageScope === 'todas') return Array.from({ length: numPages }, (_, i) => i + 1);
-  if (pageScope === 'pares') return Array.from({ length: numPages }, (_, i) => i + 1).filter(p => p % 2 === 0);
-  if (pageScope === 'impares') return Array.from({ length: numPages }, (_, i) => i + 1).filter(p => p % 2 !== 0);
+  if (pageScope === 'pares')
+    return Array.from({ length: numPages }, (_, i) => i + 1).filter((p) => p % 2 === 0);
+  if (pageScope === 'impares')
+    return Array.from({ length: numPages }, (_, i) => i + 1).filter((p) => p % 2 !== 0);
   if (pageScope === 'rango' && pageRange?.trim()) {
     const selected = new Set<number>();
     const parts = pageRange.split(',');
@@ -376,7 +389,7 @@ function parseSelectedPages(numPages: number, pageScope: string, pageRange?: str
 async function attemptSmartRepair(
   uint8: Uint8Array,
   _options: RepairOptions,
-  report: (msg: WorkerMessage) => void
+  report: (msg: WorkerMessage) => void,
 ): Promise<{
   bytes: Uint8Array;
   pageCount: number;
@@ -385,7 +398,6 @@ async function attemptSmartRepair(
   vectorPreserved: boolean;
   fontsPreserved: boolean;
 } | null> {
-
   const issuesFixed: string[] = [];
   const issuesUnresolved: string[] = [];
 
@@ -401,8 +413,11 @@ async function attemptSmartRepair(
     let headerOffset = -1;
     for (let i = 0; i < Math.min(uint8.length - 5, 8192); i++) {
       if (
-        uint8[i] === 0x25 && uint8[i + 1] === 0x50 &&
-        uint8[i + 2] === 0x44 && uint8[i + 3] === 0x46 && uint8[i + 4] === 0x2d
+        uint8[i] === 0x25 &&
+        uint8[i + 1] === 0x50 &&
+        uint8[i + 2] === 0x44 &&
+        uint8[i + 3] === 0x46 &&
+        uint8[i + 4] === 0x2d
       ) {
         headerOffset = i;
         break;
@@ -410,7 +425,9 @@ async function attemptSmartRepair(
     }
     if (headerOffset > 0) {
       targetBytes = uint8.slice(headerOffset);
-      issuesFixed.push(`Purga binaria: ${headerOffset} bytes de basura eliminados antes de la cabecera %PDF-`);
+      issuesFixed.push(
+        `Purga binaria: ${headerOffset} bytes de basura eliminados antes de la cabecera %PDF-`,
+      );
     }
 
     const pdfDoc = await PDFDocument.load(targetBytes.buffer as ArrayBuffer, {
@@ -456,9 +473,11 @@ async function attemptSmartRepair(
 
     try {
       const copiedPages = await cleanPdf.copyPages(pdfDoc, pageIndices);
-      copiedPages.forEach(page => cleanPdf.addPage(page));
+      copiedPages.forEach((page) => cleanPdf.addPage(page));
       copiedCount = copiedPages.length;
-      issuesFixed.push(`Estructura de ${copiedCount} paginas reconstruida (vectores y fuentes preservados)`);
+      issuesFixed.push(
+        `Estructura de ${copiedCount} paginas reconstruida (vectores y fuentes preservados)`,
+      );
     } catch {
       // Fallback: intentar copiar pagina por pagina
       issuesUnresolved.push('Copia masiva de paginas fallo. Intentando copia individual...');
@@ -506,7 +525,9 @@ async function attemptSmartRepair(
       fontsPreserved: true,
     };
   } catch (err) {
-    issuesUnresolved.push(`Smart Repair fallo: ${err instanceof Error ? err.message : 'Error de sintaxis binaria'}`);
+    issuesUnresolved.push(
+      `Smart Repair fallo: ${err instanceof Error ? err.message : 'Error de sintaxis binaria'}`,
+    );
     return null;
   }
 }
@@ -520,7 +541,7 @@ async function attemptSmartRepair(
 async function attemptDeepRescue(
   uint8: Uint8Array,
   options: RepairOptions,
-  report: (msg: WorkerMessage) => void
+  report: (msg: WorkerMessage) => void,
 ): Promise<{
   bytes: Uint8Array;
   pageCount: number;
@@ -532,7 +553,6 @@ async function attemptDeepRescue(
   substitutedPageNumbers: number[];
   blankPageNumbers: number[];
 }> {
-
   const issuesFixed: string[] = [];
   const issuesUnresolved: string[] = [];
   const lostPageNumbers: number[] = [];
@@ -624,7 +644,9 @@ async function attemptDeepRescue(
         substitutedPageNumbers.push(pageNum);
         try {
           const subPage = deepPdf.addPage([612, 792]);
-          const helveticaFont = await deepPdf.embedStandardFont('Helvetica' as unknown as import('pdf-lib').StandardFonts);
+          const helveticaFont = await deepPdf.embedStandardFont(
+            'Helvetica' as unknown as import('pdf-lib').StandardFonts,
+          );
           subPage.drawText('Contenido original irrecuperable por corrupcion severa', {
             x: 50,
             y: 400,
@@ -649,7 +671,9 @@ async function attemptDeepRescue(
   }
 
   if (rescuedCount === 0) {
-    throw new Error('No se pudo rescatar ninguna pagina. El archivo puede estar irreparablemente danado.');
+    throw new Error(
+      'No se pudo rescatar ninguna pagina. El archivo puede estar irreparablemente danado.',
+    );
   }
 
   report({
@@ -682,24 +706,40 @@ async function repairPdf(
   fileBuffer: ArrayBuffer,
   fileName: string,
   options: RepairOptions,
-  report: (msg: WorkerMessage) => void
+  report: (msg: WorkerMessage) => void,
 ): Promise<RepairResult> {
   const startTime = performance.now();
   const originalSize = fileBuffer.byteLength;
   let uint8 = new Uint8Array(fileBuffer);
 
   // ============ FASE 1: DIAGNÓSTICO ============
-  report({ type: 'progress', phase: 'diagnosis', percent: 5, message: 'Ejecutando diagnostico binario completo...' });
+  report({
+    type: 'progress',
+    phase: 'diagnosis',
+    percent: 5,
+    message: 'Ejecutando diagnostico binario completo...',
+  });
 
   const diagnosis = runFullDiagnosis(uint8, fileName);
   report(diagnosis);
 
-  report({ type: 'progress', phase: 'diagnosis', percent: 15, message: 'Diagnostico completado. Iniciando reparacion...' });
+  report({
+    type: 'progress',
+    phase: 'diagnosis',
+    percent: 15,
+    message: 'Diagnostico completado. Iniciando reparacion...',
+  });
 
   // Limpiar basura de cabecera
   let headerOffset = -1;
   for (let i = 0; i < Math.min(uint8.length - 5, 8192); i++) {
-    if (uint8[i] === 0x25 && uint8[i + 1] === 0x50 && uint8[i + 2] === 0x44 && uint8[i + 3] === 0x46 && uint8[i + 4] === 0x2d) {
+    if (
+      uint8[i] === 0x25 &&
+      uint8[i + 1] === 0x50 &&
+      uint8[i + 2] === 0x44 &&
+      uint8[i + 3] === 0x46 &&
+      uint8[i + 4] === 0x2d
+    ) {
       headerOffset = i;
       break;
     }
@@ -712,7 +752,13 @@ async function repairPdf(
   const tailCheck = Math.min(uint8.length, 4096);
   let hasEof = false;
   for (let i = uint8.length - tailCheck; i < uint8.length - 4; i++) {
-    if (uint8[i] === 0x25 && uint8[i + 1] === 0x25 && uint8[i + 2] === 0x45 && uint8[i + 3] === 0x4f && uint8[i + 4] === 0x46) {
+    if (
+      uint8[i] === 0x25 &&
+      uint8[i + 1] === 0x25 &&
+      uint8[i + 2] === 0x45 &&
+      uint8[i + 3] === 0x4f &&
+      uint8[i + 4] === 0x46
+    ) {
       hasEof = true;
       break;
     }
@@ -730,7 +776,7 @@ async function repairPdf(
   const allIssuesUnresolved: string[] = [];
   let finalBytes: Uint8Array | null = null;
   let recoveredPages = 0;
-  let totalPagesOriginal = 0;
+  const totalPagesOriginal = 0;
   let repairMethod: 'smart' | 'deep' | 'partial' = 'smart';
   let vectorPreserved = true;
   let fontsPreserved = true;
@@ -771,13 +817,24 @@ async function repairPdf(
   }
 
   // ============ FASE 3: REPORTE DE RECUPERACIÓN ============
-  report({ type: 'progress', phase: 'packaging', percent: 95, message: 'Generando reporte de recuperacion...' });
+  report({
+    type: 'progress',
+    phase: 'packaging',
+    percent: 95,
+    message: 'Generando reporte de recuperacion...',
+  });
 
   const warnings: string[] = [];
-  if (!vectorPreserved) warnings.push('El contenido vectorial fue rasterizado. Texto y lineas se convirtieron a imagen.');
-  if (!fontsPreserved) warnings.push('Las fuentes originales no se preservaron. El texto puede verse diferente.');
+  if (!vectorPreserved)
+    warnings.push(
+      'El contenido vectorial fue rasterizado. Texto y lineas se convirtieron a imagen.',
+    );
+  if (!fontsPreserved)
+    warnings.push('Las fuentes originales no se preservaron. El texto puede verse diferente.');
   if (finalBytes.byteLength > originalSize * 3) {
-    warnings.push('El archivo reparado es significativamente mas grande que el original debido a la rasterizacion.');
+    warnings.push(
+      'El archivo reparado es significativamente mas grande que el original debido a la rasterizacion.',
+    );
   }
 
   const repairTimeMs = performance.now() - startTime;
@@ -793,7 +850,7 @@ async function repairPdf(
     repairMethod,
     vectorPreserved,
     fontsPreserved,
-    issuesFound: diagnosis.issues.map(i => i.message),
+    issuesFound: diagnosis.issues.map((i) => i.message),
     issuesFixed: allIssuesFixed,
     issuesUnresolved: allIssuesUnresolved,
     warnings,

@@ -173,10 +173,7 @@ function detectEncryptionAlgorithm(text: string): { algorithm: string; pValue?: 
   return { algorithm: 'Cifrado Estándar PDF', pValue };
 }
 
-async function detectEncryptionStatus(
-  fileBuffer: ArrayBuffer,
-  fileName: string,
-): Promise<EncryptionDetection> {
+async function detectEncryptionStatus(fileBuffer: ArrayBuffer): Promise<EncryptionDetection> {
   const uint8 = new Uint8Array(fileBuffer);
   const scanSize = Math.min(uint8.length, 2 * 1024 * 1024);
   const text = new TextDecoder('latin1').decode(uint8.slice(0, scanSize));
@@ -815,7 +812,7 @@ async function unlockSinglePdf(
     percent: 5,
     message: 'Analizando seguridad y esquema de cifrado...',
   });
-  const detection = await detectEncryptionStatus(fileBuffer.slice(0), fileName);
+  const detection = await detectEncryptionStatus(fileBuffer.slice(0));
 
   report({
     type: 'detection',

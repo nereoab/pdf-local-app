@@ -5,16 +5,12 @@ import { useState } from 'react';
 import {
   Loader2,
   ShieldCheck,
-  Zap,
   Unlock,
   ChevronDown,
   ChevronUp,
   FileText,
   HelpCircle,
-  HardDrive,
   KeyRound,
-  CheckCircle2,
-  Lock,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';

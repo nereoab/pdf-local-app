@@ -228,20 +228,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     }
   };
 
-  useEffect(() => {
-    if (!file) {
-      setPageDataUrls({});
-      setTotalPages(0);
-      setSelectedPageSet(new Set());
-      return;
-    }
-    if (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
-      parseHtmlContent(file).then((count) => setHtmlTagCount(count));
-    } else if (file.name.toLowerCase().endsWith('.pdf')) {
-      cargarMiniaturasPdfUltraFast(file);
-    }
-  }, [file]);
-
   // CARGA ULTRA RÁPIDA DE MINIATURAS (ESCALA 0.22 + STREAMING EN SEGUNDO PLANO)
   const cargarMiniaturasPdfUltraFast = async (pdfFile: File) => {
     cancelRenderRef.current = true;
@@ -329,6 +315,24 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
       setIsRendering(false);
     }
   };
+
+  useEffect(() => {
+    if (!file) {
+      queueMicrotask(() => {
+        setPageDataUrls({});
+        setTotalPages(0);
+        setSelectedPageSet(new Set());
+      });
+      return;
+    }
+    queueMicrotask(() => {
+      if (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
+        parseHtmlContent(file).then((count) => setHtmlTagCount(count));
+      } else if (file.name.toLowerCase().endsWith('.pdf')) {
+        cargarMiniaturasPdfUltraFast(file);
+      }
+    });
+  }, [file]);
 
   const handleClearAllSlots = () => {
     setSlots([
@@ -570,9 +574,11 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
 
     if ((defaultMode === 'pdf-to-html' && isPdf) || (defaultMode === 'html-to-pdf' && isHtml)) {
       initialGlobalFileLoadedRef.current = true;
-      loadFilesIntoSlots([globalFile], 0);
+      queueMicrotask(() => {
+        loadFilesIntoSlots([globalFile], 0);
+      });
     }
-  }, [globalFile, defaultMode]);
+  }, [globalFile, defaultMode, loadFilesIntoSlots]);
 
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;
@@ -599,29 +605,30 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   };
 
   // Sincronizar slot activo con estado de archivo y previsualización
-  const loadedSlots = slots.filter((s) => s.file !== null);
   const activeSlot = slots[activeSlotIndex] || slots[0];
 
   useEffect(() => {
-    if (activeSlot && activeSlot.file) {
-      setFile(activeSlot.file);
-      if (activeSlot.totalPages > 0) {
-        setTotalPages(activeSlot.totalPages);
-      }
-      if (Object.keys(activeSlot.pageDataUrls).length > 0) {
-        setPageDataUrls(activeSlot.pageDataUrls);
-      }
-    } else {
-      const firstLoaded = slots.find((s) => s.file !== null);
-      if (firstLoaded && firstLoaded.file) {
-        setFile(firstLoaded.file);
-        setTotalPages(firstLoaded.totalPages);
-        setPageDataUrls(firstLoaded.pageDataUrls);
+    queueMicrotask(() => {
+      if (activeSlot && activeSlot.file) {
+        setFile(activeSlot.file);
+        if (activeSlot.totalPages > 0) {
+          setTotalPages(activeSlot.totalPages);
+        }
+        if (Object.keys(activeSlot.pageDataUrls).length > 0) {
+          setPageDataUrls(activeSlot.pageDataUrls);
+        }
       } else {
-        setFile(null);
+        const firstLoaded = slots.find((s) => s.file !== null);
+        if (firstLoaded && firstLoaded.file) {
+          setFile(firstLoaded.file);
+          setTotalPages(firstLoaded.totalPages);
+          setPageDataUrls(firstLoaded.pageDataUrls);
+        } else {
+          setFile(null);
+        }
       }
-    }
-  }, [slots, activeSlotIndex]);
+    });
+  }, [slots, activeSlotIndex, activeSlot]);
 
   const handleSelectAll = () => {
     if (totalPages > 0) {

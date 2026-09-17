@@ -3,43 +3,18 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   FileText,
-  FileDown,
   Loader2,
   X,
   SlidersHorizontal,
   AlignLeft,
-  Image as ImageIcon,
-  Check,
   FilePlus,
-  UploadCloud,
   ShieldCheck,
   Sparkles,
-  Zap,
-  RotateCcw,
-  Layout,
-  Table as TableIcon,
-  Maximize2,
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  ImageRun,
-  PageBreak,
-  PageOrientation,
-  ExternalHyperlink,
-  Table,
-  TableRow,
-  TableCell,
-  WidthType,
-  BorderStyle,
-} from 'docx';
-import { PDFDocument, PDFName, PDFDict, PDFRef, PDFRawStream } from 'pdf-lib';
 import DownloadSuccessCard from './DownloadSuccessCard';
 import { convertPdfToUltraDocx } from '@/lib/high-fidelity-docx-engine';
 import { convertPdfToWordWithApi } from '@/lib/pdf2docx-api-client';
@@ -68,12 +43,6 @@ export default function PdfToWord() {
   const [detectTables, setDetectTables] = useState<boolean>(true);
   const [docFormat, setDocFormat] = useState<'docx' | 'rtf'>('docx');
   const [customSuffix, setCustomSuffix] = useState<string>('_Convertido');
-
-  useEffect(() => {
-    if (file) {
-      cargarPdf(file);
-    }
-  }, [file]);
 
   const cargarPdf = async (selectedFile: File) => {
     setIsRendering(true);
@@ -124,6 +93,14 @@ export default function PdfToWord() {
       setIsRendering(false);
     }
   };
+
+  useEffect(() => {
+    if (file) {
+      queueMicrotask(() => {
+        cargarPdf(file);
+      });
+    }
+  }, [file]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -320,6 +297,7 @@ export default function PdfToWord() {
                       >
                         <div className="w-full bg-white rounded overflow-hidden aspect-[1/1.4] relative flex items-center justify-center">
                           {pageDataUrls[pageNum] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={pageDataUrls[pageNum]}
                               alt={`Pág ${pageNum}`}

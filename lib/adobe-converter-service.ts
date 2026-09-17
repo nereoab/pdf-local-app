@@ -22,6 +22,7 @@ function getAdobeClient() {
     ExportPDFToImagesParams,
     ExportPDFToImagesTargetFormat,
     ExportPDFToImagesResult,
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
   } = require('@adobe/pdfservices-node-sdk');
 
   const credentials = new ServicePrincipalCredentials({

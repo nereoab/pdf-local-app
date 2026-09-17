@@ -64,7 +64,6 @@ self.onmessage = async (e: MessageEvent<CropWorkerMessageIn>) => {
     }
 
     const {
-      filePrefix,
       renumberPages,
       marginTop,
       marginBottom,

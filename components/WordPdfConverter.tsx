@@ -432,121 +432,6 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     }
   };
 
-  useEffect(() => {
-    if (!file) {
-      setPageDataUrls({});
-      setTotalPages(0);
-      setParsedWordDoc(null);
-      setSelectedPageSet(new Set());
-      return;
-    }
-
-    const name = file.name.toLowerCase();
-    if (name.endsWith('.pdf')) {
-      cargarMiniaturasPdfUltraFast(file);
-    } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
-      prepararWordDocCompleto(file);
-    }
-  }, [file]);
-
-  // EFECTO DE RENDERIZADO ALTA FIDELIDAD DE DOCX CON DOCX-PREVIEW Y MAMMOTH
-  useEffect(() => {
-    let isMounted = true;
-    if (
-      file &&
-      (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.doc'))
-    ) {
-      setIsDocxRendering(true);
-      setDocxRenderError(false);
-      (async () => {
-        try {
-          const buffer = await file.arrayBuffer();
-
-          // Intentar renderizar con docx-preview
-          try {
-            const docx = await import('docx-preview');
-            if (docxContainerRef.current && isMounted) {
-              docxContainerRef.current.innerHTML = '';
-              await docx.renderAsync(buffer.slice(0), docxContainerRef.current, undefined, {
-                className: 'docx-preview-rendered',
-                inWrapper: true,
-                ignoreWidth: false,
-                ignoreHeight: false,
-                ignoreFonts: false,
-                breakPages: true,
-                useBase64URL: true,
-                renderHeaders: true,
-                renderFooters: true,
-                renderFootnotes: true,
-                renderEndnotes: true,
-              });
-
-              if (isMounted) {
-                const sections = docxContainerRef.current.querySelectorAll(
-                  '.docx-wrapper > section.docx, section.docx',
-                );
-                if (sections && sections.length > 0) {
-                  setDocxRenderError(false);
-                  const total = Math.max(
-                    sections.length,
-                    parsedWordDoc?.estPages || totalPages || 1,
-                  );
-                  setTotalPages(total);
-                  setSelectedPageSet(new Set(Array.from({ length: total }, (_, i) => i + 1)));
-                  setPageRangeInput(`1-${total}`);
-                  setActivePage(1);
-
-                  sections.forEach((sec, idx) => {
-                    sec.setAttribute('id', `docx-page-${idx + 1}`);
-                    (sec as HTMLElement).style.position = 'relative';
-
-                    const badge = document.createElement('div');
-                    badge.className = 'docx-page-badge';
-                    badge.innerText = `Página ${idx + 1} de ${total}`;
-                    sec.insertBefore(badge, sec.firstChild);
-
-                    if (idx === 0) sec.classList.add('docx-active-page');
-                  });
-
-                  if (parsedWordDoc) {
-                    const richThumbs = renderWordPageThumbnails(
-                      parsedWordDoc,
-                      total,
-                      docxContainerRef.current,
-                    );
-                    setPageDataUrls(richThumbs);
-                  }
-                } else {
-                  setDocxRenderError(true);
-                }
-              }
-            }
-          } catch (docxErr) {
-            console.warn('docx-preview warning, using high-fidelity Mammoth Word Engine:', docxErr);
-            if (isMounted) {
-              setDocxRenderError(true);
-            }
-          }
-        } catch (err) {
-          console.warn('Document buffer read error:', err);
-          if (isMounted) {
-            setDocxRenderError(true);
-          }
-        } finally {
-          if (isMounted) {
-            setIsDocxRendering(false);
-            setTimeout(() => {
-              handleFitDocxWidth();
-            }, 60);
-          }
-        }
-      })();
-    }
-    return () => {
-      isMounted = false;
-    };
-  }, [file, handleFitDocxWidth, parsedWordDoc]);
-
   const renderWordPageThumbnails = (
     doc: ParsedWordDoc,
     pagesCount: number,
@@ -767,6 +652,125 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
       setIsRendering(false);
     }
   };
+
+  useEffect(() => {
+    if (!file) {
+      queueMicrotask(() => {
+        setPageDataUrls({});
+        setTotalPages(0);
+        setParsedWordDoc(null);
+        setSelectedPageSet(new Set());
+      });
+      return;
+    }
+
+    queueMicrotask(() => {
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.pdf')) {
+        cargarMiniaturasPdfUltraFast(file);
+      } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
+        prepararWordDocCompleto(file);
+      }
+    });
+  }, [file]);
+
+  // EFECTO DE RENDERIZADO ALTA FIDELIDAD DE DOCX CON DOCX-PREVIEW Y MAMMOTH
+  useEffect(() => {
+    let isMounted = true;
+    if (
+      file &&
+      (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.doc'))
+    ) {
+      setIsDocxRendering(true);
+      setDocxRenderError(false);
+      (async () => {
+        try {
+          const buffer = await file.arrayBuffer();
+
+          // Intentar renderizar con docx-preview
+          try {
+            const docx = await import('docx-preview');
+            if (docxContainerRef.current && isMounted) {
+              docxContainerRef.current.innerHTML = '';
+              await docx.renderAsync(buffer.slice(0), docxContainerRef.current, undefined, {
+                className: 'docx-preview-rendered',
+                inWrapper: true,
+                ignoreWidth: false,
+                ignoreHeight: false,
+                ignoreFonts: false,
+                breakPages: true,
+                useBase64URL: true,
+                renderHeaders: true,
+                renderFooters: true,
+                renderFootnotes: true,
+                renderEndnotes: true,
+              });
+
+              if (isMounted) {
+                const sections = docxContainerRef.current.querySelectorAll(
+                  '.docx-wrapper > section.docx, section.docx',
+                );
+                if (sections && sections.length > 0) {
+                  setDocxRenderError(false);
+                  const total = Math.max(
+                    sections.length,
+                    parsedWordDoc?.estPages || totalPages || 1,
+                  );
+                  setTotalPages(total);
+                  setSelectedPageSet(new Set(Array.from({ length: total }, (_, i) => i + 1)));
+                  setPageRangeInput(`1-${total}`);
+                  setActivePage(1);
+
+                  sections.forEach((sec, idx) => {
+                    sec.setAttribute('id', `docx-page-${idx + 1}`);
+                    (sec as HTMLElement).style.position = 'relative';
+
+                    const badge = document.createElement('div');
+                    badge.className = 'docx-page-badge';
+                    badge.innerText = `Página ${idx + 1} de ${total}`;
+                    sec.insertBefore(badge, sec.firstChild);
+
+                    if (idx === 0) sec.classList.add('docx-active-page');
+                  });
+
+                  if (parsedWordDoc) {
+                    const richThumbs = renderWordPageThumbnails(
+                      parsedWordDoc,
+                      total,
+                      docxContainerRef.current,
+                    );
+                    setPageDataUrls(richThumbs);
+                  }
+                } else {
+                  setDocxRenderError(true);
+                }
+              }
+            }
+          } catch (docxErr) {
+            console.warn('docx-preview warning, using high-fidelity Mammoth Word Engine:', docxErr);
+            if (isMounted) {
+              setDocxRenderError(true);
+            }
+          }
+        } catch (err) {
+          console.warn('Document buffer read error:', err);
+          if (isMounted) {
+            setDocxRenderError(true);
+          }
+        } finally {
+          if (isMounted) {
+            setIsDocxRendering(false);
+            setTimeout(() => {
+              handleFitDocxWidth();
+            }, 60);
+          }
+        }
+      })();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [file, handleFitDocxWidth, parsedWordDoc]);
 
   const handleClearAllSlots = () => {
     setSlots([
@@ -1008,9 +1012,11 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
 
     if ((defaultMode === 'pdf-to-word' && isPdf) || (defaultMode === 'word-to-pdf' && isWord)) {
       initialGlobalFileLoadedRef.current = true;
-      loadFilesIntoSlots([globalFile], 0);
+      queueMicrotask(() => {
+        loadFilesIntoSlots([globalFile], 0);
+      });
     }
-  }, [globalFile, defaultMode]);
+  }, [globalFile, defaultMode, loadFilesIntoSlots]);
 
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;

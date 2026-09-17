@@ -113,22 +113,48 @@ async function sha512(data: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(hash);
 }
 
-async function aes128CbcEncryptNoPad(data: Uint8Array, key: Uint8Array, iv: Uint8Array): Promise<Uint8Array> {
-  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, cryptoKey, data as BufferSource);
+async function aes128CbcEncryptNoPad(
+  data: Uint8Array,
+  key: Uint8Array,
+  iv: Uint8Array,
+): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, [
+    'encrypt',
+  ]);
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: iv as BufferSource },
+    cryptoKey,
+    data as BufferSource,
+  );
   return new Uint8Array(encrypted).slice(0, data.byteLength);
 }
 
-async function aes256CbcEncryptNoPad(data: Uint8Array, key: Uint8Array, iv: Uint8Array): Promise<Uint8Array> {
-  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, cryptoKey, data as BufferSource);
+async function aes256CbcEncryptNoPad(
+  data: Uint8Array,
+  key: Uint8Array,
+  iv: Uint8Array,
+): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, [
+    'encrypt',
+  ]);
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: iv as BufferSource },
+    cryptoKey,
+    data as BufferSource,
+  );
   return new Uint8Array(encrypted).slice(0, data.byteLength);
 }
 
 async function aes256EcbEncryptBlock(block: Uint8Array, key: Uint8Array): Promise<Uint8Array> {
   const zeroIV = new Uint8Array(16);
-  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: zeroIV as BufferSource }, cryptoKey, block as BufferSource);
+  const cryptoKey = await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, [
+    'encrypt',
+  ]);
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: zeroIV as BufferSource },
+    cryptoKey,
+    block as BufferSource,
+  );
   return new Uint8Array(encrypted).slice(0, 16);
 }
 
@@ -136,15 +162,27 @@ async function importAES256Key(key: Uint8Array): Promise<CryptoKey> {
   return await crypto.subtle.importKey('raw', key as BufferSource, 'AES-CBC', false, ['encrypt']);
 }
 
-async function aes256CbcEncryptWithKey(data: Uint8Array, cryptoKey: CryptoKey, iv: Uint8Array): Promise<Uint8Array> {
-  const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv: iv as BufferSource }, cryptoKey, data as BufferSource);
+async function aes256CbcEncryptWithKey(
+  data: Uint8Array,
+  cryptoKey: CryptoKey,
+  iv: Uint8Array,
+): Promise<Uint8Array> {
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: iv as BufferSource },
+    cryptoKey,
+    data as BufferSource,
+  );
   return new Uint8Array(encrypted);
 }
 
 /**
  * Algoritmo 2.B (ISO 32000-2:2020) — Derivación de Clave Hardened para R=6
  */
-async function computeHash2B(password: Uint8Array, salt: Uint8Array, userKey: Uint8Array): Promise<Uint8Array> {
+async function computeHash2B(
+  password: Uint8Array,
+  salt: Uint8Array,
+  userKey: Uint8Array,
+): Promise<Uint8Array> {
   const input = concatBuffers(password, salt, userKey);
   let K = await sha256(input);
 
@@ -186,7 +224,7 @@ async function computeHash2B(password: Uint8Array, salt: Uint8Array, userKey: Ui
 }
 
 function buildPermissions(options: ProtectOptions): number {
-  let P = 0xFFFFF000 | 0x000000C0;
+  let P = 0xfffff000 | 0x000000c0;
   if (options.allowPrinting !== false) P |= 0x00000004;
   if (options.allowModifying !== false) P |= 0x00000008;
   if (options.allowCopying !== false) P |= 0x00000010;
@@ -233,17 +271,29 @@ async function computeOandOE(password: Uint8Array, fileKey: Uint8Array, U: Uint8
   return { O, OE };
 }
 
-async function computePerms(permissions: number, fileKey: Uint8Array, encryptMetadata: boolean): Promise<Uint8Array> {
+async function computePerms(
+  permissions: number,
+  fileKey: Uint8Array,
+  encryptMetadata: boolean,
+): Promise<Uint8Array> {
   const block = new Uint8Array(16);
-  block[0] = permissions & 0xFF;
-  block[1] = (permissions >> 8) & 0xFF;
-  block[2] = (permissions >> 16) & 0xFF;
-  block[3] = (permissions >> 24) & 0xFF;
-  block[4] = 0xFF; block[5] = 0xFF; block[6] = 0xFF; block[7] = 0xFF;
+  block[0] = permissions & 0xff;
+  block[1] = (permissions >> 8) & 0xff;
+  block[2] = (permissions >> 16) & 0xff;
+  block[3] = (permissions >> 24) & 0xff;
+  block[4] = 0xff;
+  block[5] = 0xff;
+  block[6] = 0xff;
+  block[7] = 0xff;
   block[8] = encryptMetadata ? 0x54 : 0x46;
-  block[9] = 0x61; block[10] = 0x64; block[11] = 0x62;
+  block[9] = 0x61;
+  block[10] = 0x64;
+  block[11] = 0x62;
   const rand = randomBytes(4);
-  block[12] = rand[0]; block[13] = rand[1]; block[14] = rand[2]; block[15] = rand[3];
+  block[12] = rand[0];
+  block[13] = rand[1];
+  block[14] = rand[2];
+  block[15] = rand[3];
   return await aes256EcbEncryptBlock(block, fileKey);
 }
 
@@ -309,9 +359,7 @@ async function rasterizePdf(fileBuffer: ArrayBuffer): Promise<Uint8Array> {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/6.1.200/pdf.worker.min.mjs';
 
-  const srcDoc = await pdfjsLib
-    .getDocument({ data: new Uint8Array(fileBuffer) })
-    .promise;
+  const srcDoc = await pdfjsLib.getDocument({ data: new Uint8Array(fileBuffer) }).promise;
   const rp = await PDFDocument.create();
 
   for (let pn = 1; pn <= srcDoc.numPages; pn++) {
@@ -358,7 +406,9 @@ async function protectSinglePdf(
 
   if (options.enableRasterize) {
     report({
-      type: 'progress', phase: 'rasterizing', percent: 15,
+      type: 'progress',
+      phase: 'rasterizing',
+      percent: 15,
       message: 'Rasterizando páginas a capa única de alta seguridad...',
     });
     pdfBytes = await rasterizePdf(fileBuffer);
@@ -369,7 +419,9 @@ async function protectSinglePdf(
   }
 
   report({
-    type: 'progress', phase: 'encrypting', percent: 40,
+    type: 'progress',
+    phase: 'encrypting',
+    percent: 40,
     message: 'Aplicando cifrado AES-256 compatible con Adobe Acrobat DC (ISO 32000-2)...',
   });
 
@@ -403,7 +455,7 @@ async function protectSinglePdf(
 
   const indirectObjects = context.enumerateIndirectObjects();
 
-  for (const [ref, obj] of indirectObjects) {
+  for (const [, obj] of indirectObjects) {
     // Ignorar diccionario de cifrado si ya existiera
     if (obj instanceof PDFDict) {
       const filter = obj.get(PDFName.of('Filter'));
@@ -511,9 +563,12 @@ self.onmessage = async (event: MessageEvent) => {
   for (let i = 0; i < total; i++) {
     try {
       self.postMessage({
-        type: 'progress', phase: 'reading', percent: 0,
+        type: 'progress',
+        phase: 'reading',
+        percent: 0,
         message: `Archivo ${i + 1}/${total}: ${fileNames[i]}`,
-        currentFile: i + 1, totalFiles: total,
+        currentFile: i + 1,
+        totalFiles: total,
       } as ProtectProgress);
 
       const result = await protectSinglePdf(fileBuffers[i], fileNames[i], options, (msg) => {
@@ -532,8 +587,12 @@ self.onmessage = async (event: MessageEvent) => {
   }
 
   self.postMessage({
-    type: 'progress', phase: 'packaging', percent: 100,
-    message: 'Completado.', currentFile: total, totalFiles: total,
+    type: 'progress',
+    phase: 'packaging',
+    percent: 100,
+    message: 'Completado.',
+    currentFile: total,
+    totalFiles: total,
   } as ProtectProgress);
 };
 

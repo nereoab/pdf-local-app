@@ -8,18 +8,13 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  FileText,
-  HelpCircle,
-  RotateCw,
   Check,
   X as XIcon,
   Scale,
   Stethoscope,
   Briefcase,
   GraduationCap,
-  Sparkles,
   RefreshCw,
-  Sliders,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';

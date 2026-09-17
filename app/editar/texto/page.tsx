@@ -8,18 +8,13 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  FileText,
-  Type,
   Check,
   X as XIcon,
   Scale,
-  Stethoscope,
   Briefcase,
   GraduationCap,
   Sparkles,
   Image as ImageIcon,
-  Layers,
-  Lock,
   Sliders,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';

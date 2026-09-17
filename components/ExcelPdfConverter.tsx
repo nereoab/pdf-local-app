@@ -6,29 +6,17 @@ import * as XLSX from 'xlsx';
 import {
   Table,
   Loader2,
-  X,
-  FilePlus,
   RefreshCw,
-  UploadCloud,
   Repeat,
   Layout,
   FileSpreadsheet,
   Sliders,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
-  Filter,
-  ListOrdered,
   Grid,
   ShieldCheck,
   ArrowLeft,
-  Zap,
   Cpu,
-  HelpCircle,
   Plus,
-  FileDown,
   FileText,
-  Check,
   ListChecks,
   Trash2,
 } from 'lucide-react';
@@ -36,11 +24,10 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
-import PdfPageViewer from '@/components/PdfPageViewer';
 import { convertWithApi } from '@/lib/adobe-api-client';
 
 type ConversionDirection = 'excel-to-pdf' | 'pdf-to-excel';
@@ -168,12 +155,12 @@ export default function ExcelPdfConverter({
     };
   }, [pdfUrl]);
 
-  const [extractedCellCount, setExtractedCellCount] = useState<number>(0);
+  const [, setExtractedCellCount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
+  const [, setDownloadFilename] = useState<string>('');
 
   // ESTADO DE HOJAS EXCEL (EXCEL -> PDF)
   const [excelSheets, setExcelSheets] = useState<ParsedSheet[]>([]);
@@ -193,7 +180,6 @@ export default function ExcelPdfConverter({
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'legal'>('a4');
   const [showGridlines, setShowGridlines] = useState<boolean>(true);
-  const [tableTheme, setTableTheme] = useState<'emerald' | 'dark' | 'minimal'>('emerald');
 
   // Opciones Avanzadas - PDF a Excel
   const [outputFormat, setOutputFormat] = useState<'xlsx' | 'csv_comma' | 'csv_semicolon'>('xlsx');
@@ -204,10 +190,10 @@ export default function ExcelPdfConverter({
   const [extractionStrategy, setExtractionStrategy] = useState<'smart' | 'lineByLine'>('smart');
 
   // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
-  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [, setPageDataUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState<number>(0);
   const [activePage, setActivePage] = useState<number>(1);
-  const [isRendering, setIsRendering] = useState<boolean>(false);
+  const [, setIsRendering] = useState<boolean>(false);
 
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
@@ -303,26 +289,6 @@ export default function ExcelPdfConverter({
     }
   };
 
-  useEffect(() => {
-    if (!file) {
-      setPageDataUrls({});
-      setTotalPages(0);
-      setSelectedPageSet(new Set());
-      setExcelSheets([]);
-      setActiveSheetIndex(0);
-      return;
-    }
-    if (
-      file.name.toLowerCase().endsWith('.xlsx') ||
-      file.name.toLowerCase().endsWith('.xls') ||
-      file.name.toLowerCase().endsWith('.csv')
-    ) {
-      parseXlsxContent(file);
-    } else if (file.name.toLowerCase().endsWith('.pdf')) {
-      cargarMiniaturasPdfUltraFast(file);
-    }
-  }, [file]);
-
   // CARGA ULTRA RÁPIDA DE MINIATURAS (ESCALA LIVIANA 0.22 + STREAMING EN SEGUNDO PLANO)
   const cargarMiniaturasPdfUltraFast = async (pdfFile: File) => {
     cancelRenderRef.current = true;
@@ -410,6 +376,30 @@ export default function ExcelPdfConverter({
       setIsRendering(false);
     }
   };
+
+  useEffect(() => {
+    if (!file) {
+      queueMicrotask(() => {
+        setPageDataUrls({});
+        setTotalPages(0);
+        setSelectedPageSet(new Set());
+        setExcelSheets([]);
+        setActiveSheetIndex(0);
+      });
+      return;
+    }
+    queueMicrotask(() => {
+      if (
+        file.name.toLowerCase().endsWith('.xlsx') ||
+        file.name.toLowerCase().endsWith('.xls') ||
+        file.name.toLowerCase().endsWith('.csv')
+      ) {
+        parseXlsxContent(file);
+      } else if (file.name.toLowerCase().endsWith('.pdf')) {
+        cargarMiniaturasPdfUltraFast(file);
+      }
+    });
+  }, [file]);
 
   const handleClearAllSlots = () => {
     setSlots([
@@ -660,10 +650,6 @@ export default function ExcelPdfConverter({
     e.target.value = '';
   };
 
-  const processSelectedFile = (selected: File) => {
-    loadFilesIntoSlots([selected]);
-  };
-
   const initialGlobalFileLoadedRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -674,9 +660,11 @@ export default function ExcelPdfConverter({
 
     if ((defaultMode === 'pdf-to-excel' && isPdf) || (defaultMode === 'excel-to-pdf' && isExcel)) {
       initialGlobalFileLoadedRef.current = true;
-      loadFilesIntoSlots([globalFile], 0);
+      queueMicrotask(() => {
+        loadFilesIntoSlots([globalFile], 0);
+      });
     }
-  }, [globalFile, defaultMode]);
+  }, [globalFile, defaultMode, loadFilesIntoSlots]);
 
   const handleRemoveFile = () => {
     cancelRenderRef.current = true;
@@ -691,47 +679,36 @@ export default function ExcelPdfConverter({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // CONTROLADORES DE SELECCIÓN DE PÁGINAS
-  const togglePageSelection = (pageNum: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const newSet = new Set(targetPages);
-    if (newSet.has(pageNum)) {
-      newSet.delete(pageNum);
-    } else {
-      newSet.add(pageNum);
-    }
-    setSelectedPageSet(newSet);
-    setPageSelectionMode('custom');
-  };
-
   // Sincronizar slot activo con estado de archivo y previsualización
   const loadedSlots = slots.filter((s) => s.file !== null);
   const activeSlot = slots[activeSlotIndex] || slots[0];
 
   useEffect(() => {
-    if (activeSlot && activeSlot.file) {
-      setFile(activeSlot.file);
-      if (activeSlot.totalPages > 0) {
-        setTotalPages(activeSlot.totalPages);
-      }
-      if (Object.keys(activeSlot.pageDataUrls).length > 0) {
-        setPageDataUrls(activeSlot.pageDataUrls);
-      }
-      if (activeSlot.excelSheets && activeSlot.excelSheets.length > 0) {
-        setExcelSheets(activeSlot.excelSheets);
-      }
-    } else {
-      const firstLoaded = slots.find((s) => s.file !== null);
-      if (firstLoaded && firstLoaded.file) {
-        setFile(firstLoaded.file);
-        setTotalPages(firstLoaded.totalPages);
-        setPageDataUrls(firstLoaded.pageDataUrls);
-        if (firstLoaded.excelSheets) setExcelSheets(firstLoaded.excelSheets);
+    queueMicrotask(() => {
+      if (activeSlot && activeSlot.file) {
+        setFile(activeSlot.file);
+        if (activeSlot.totalPages > 0) {
+          setTotalPages(activeSlot.totalPages);
+        }
+        if (Object.keys(activeSlot.pageDataUrls).length > 0) {
+          setPageDataUrls(activeSlot.pageDataUrls);
+        }
+        if (activeSlot.excelSheets && activeSlot.excelSheets.length > 0) {
+          setExcelSheets(activeSlot.excelSheets);
+        }
       } else {
-        setFile(null);
+        const firstLoaded = slots.find((s) => s.file !== null);
+        if (firstLoaded && firstLoaded.file) {
+          setFile(firstLoaded.file);
+          setTotalPages(firstLoaded.totalPages);
+          setPageDataUrls(firstLoaded.pageDataUrls);
+          if (firstLoaded.excelSheets) setExcelSheets(firstLoaded.excelSheets);
+        } else {
+          setFile(null);
+        }
       }
-    }
-  }, [slots, activeSlotIndex]);
+    });
+  }, [slots, activeSlotIndex, activeSlot]);
 
   const handleSelectAll = () => {
     if (totalPages > 0) {

@@ -9,11 +9,8 @@ import {
   Save,
   ArrowLeft,
   Plus,
-  UploadCloud,
   Type,
   Trash2,
-  Lock,
-  Unlock,
   Sliders,
   Sparkles,
   Zap,
@@ -21,7 +18,6 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
-  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFileStore } from '@/store/useFileStore';
@@ -29,7 +25,6 @@ import { useLanguage } from '@/context/LanguageContext';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type { EditWorkerMessageIn, EditWorkerMessageOut } from '@/workers/pdf-edit.worker';
 import NativePdfEditor from '@/components/NativePdfEditor';
 
@@ -49,7 +44,7 @@ export default function PdfEditor() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
-  const [progressPercent, setProgressPercent] = useState(0);
+  const [, setProgressPercent] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
   const [, setViewerInstance] = useState<any>(null);
@@ -73,18 +68,22 @@ export default function PdfEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const viewerInstanceRef = useRef<any>(null);
   const isEsRef = useRef(isEs);
-  isEsRef.current = isEs;
+  useEffect(() => {
+    isEsRef.current = isEs;
+  }, [isEs]);
 
   // Sincronización continua y fiable con el store global de Zustand (inicio -> /editar -> /editar/texto)
   useEffect(() => {
-    if (globalFile) {
-      setFile(globalFile);
-      setFilePrefix(globalFile.name.replace(/\.[^/.]+$/, '') + '_Editado');
-      setStep('edit');
-    } else {
-      setFile(null);
-      setStep('upload');
-    }
+    queueMicrotask(() => {
+      if (globalFile) {
+        setFile(globalFile);
+        setFilePrefix(globalFile.name.replace(/\.[^/.]+$/, '') + '_Editado');
+        setStep('edit');
+      } else {
+        setFile(null);
+        setStep('upload');
+      }
+    });
   }, [globalFile]);
 
   const processSelectedFile = useCallback(
@@ -148,10 +147,10 @@ export default function PdfEditor() {
       setIsLoaded(false);
 
       try {
-        const module = await import('@pdftron/webviewer');
+        const webViewerModule = await import('@pdftron/webviewer');
         if (isDisposed || !viewer.current) return;
 
-        const WebViewer = module.default;
+        const WebViewer = webViewerModule.default;
         const effectiveLicense =
           process.env.NEXT_PUBLIC_PDFTRON_LICENSE ||
           'demo:1785371416175:63a1e8a503000000006760d2ccf8c0f171ee4085a462864d5cc7028d9d';
@@ -167,7 +166,7 @@ export default function PdfEditor() {
         if (isDisposed) {
           try {
             instance.UI?.dispose?.();
-          } catch (e) {}
+          } catch {}
           return;
         }
 
@@ -212,7 +211,7 @@ export default function PdfEditor() {
               },
               true,
             );
-          } catch (e) {}
+          } catch {}
         }
 
         // Protección contra bugs internos de WebViewer v12 en borrado de cajas de contenido
@@ -258,13 +257,13 @@ export default function PdfEditor() {
             setIsLoaded(true);
             try {
               UI.openElements(['leftPanel']);
-            } catch (e) {}
+            } catch {}
             try {
               UI.setToolbarGroup('toolbarGroup-Edit');
-            } catch (e) {
+            } catch {
               try {
                 UI.setToolbarGroup('toolbarGroup-Annotate');
-              } catch (e2) {}
+              } catch {}
             }
             toast.success(
               isEsRef.current
@@ -280,7 +279,7 @@ export default function PdfEditor() {
           setIsLoaded(true);
           try {
             UI.setToolbarGroup('toolbarGroup-Edit');
-          } catch (e) {}
+          } catch {}
         }
       } catch (err: any) {
         if (!isDisposed) {
@@ -354,13 +353,13 @@ export default function PdfEditor() {
       if (viewerInstanceRef.current) {
         try {
           viewerInstanceRef.current.UI?.dispose?.();
-        } catch (e) {}
+        } catch {}
         viewerInstanceRef.current = null;
       }
     };
   }, [step, file, activeEngine]);
 
-  const handleNativeFinish = async (blob: Blob, totalPages: number) => {
+  const handleNativeFinish = async (blob: Blob) => {
     const hasMetadata = Boolean(docTitle.trim() || docAuthor.trim() || docSubject.trim());
     const needsPostProcessing = renumberPages || hasMetadata;
 

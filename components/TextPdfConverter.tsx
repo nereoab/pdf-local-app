@@ -603,6 +603,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
   };
 
   // Sincronizar slot activo con estado de archivo y previsualización
+  const loadedSlots = slots.filter((s) => s.file !== null);
   const activeSlot = slots[activeSlotIndex] || slots[0];
 
   useEffect(() => {

@@ -687,10 +687,6 @@ export default function PdfUnlocker() {
                   ? '004 / DESBLOQUEO Y LIBERACIÓN DE ARCHIVOS PDF'
                   : '004 / PDF UNLOCKING & RESTRICTION REMOVAL'}
               </span>
-              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[9px] font-bold tracking-wide flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
-                {isEs ? 'HERRAMIENTA PRINCIPAL' : 'FLAGSHIP TOOL'}
-              </span>
             </div>
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Unlock className="w-6 h-6 text-white flex-shrink-0" />

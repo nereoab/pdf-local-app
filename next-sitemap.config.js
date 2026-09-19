@@ -76,6 +76,19 @@ module.exports = {
       '/en/contact',
       '/en/legal-notice',
       '/en/dpa',
+      // English Long-tail Solutions
+      '/en/solutions/compress-pdf-to-200kb',
+      '/en/solutions/compress-pdf-to-1mb',
+      '/en/solutions/compress-pdf-to-100kb',
+      '/en/solutions/remove-camscanner-watermark',
+      '/en/solutions/bates-numbering-legal-pdf',
+      '/en/solutions/reverse-bates-numbering-pdf',
+      '/en/solutions/redact-pdf-free-permanently',
+      '/en/solutions/repair-corrupted-pdf-file',
+      '/en/solutions/edit-pdf-text-without-formatting-loss',
+      '/en/solutions/sign-pdf-online-without-printing',
+      '/en/solutions/convert-pdf-to-editable-word-doc',
+      '/en/solutions/extract-tables-from-pdf-to-excel',
     ];
     const results = [];
     for (const r of enRoutes) {
@@ -126,6 +139,20 @@ module.exports = {
       '/contacto': '/en/contact',
       '/aviso-legal': '/en/legal-notice',
       '/dpa': '/en/dpa',
+      // Soluciones Long-Tail (Spanish <-> English)
+      '/soluciones/comprimir-pdf-a-200kb': '/en/solutions/compress-pdf-to-200kb',
+      '/soluciones/comprimir-pdf-a-1mb': '/en/solutions/compress-pdf-to-1mb',
+      '/soluciones/comprimir-pdf-a-100kb': '/en/solutions/compress-pdf-to-100kb',
+      '/soluciones/quitar-marca-agua-camscanner': '/en/solutions/remove-camscanner-watermark',
+      '/soluciones/foliar-expediente-judicial': '/en/solutions/bates-numbering-legal-pdf',
+      '/soluciones/foliar-pdf-de-atras-hacia-adelante': '/en/solutions/reverse-bates-numbering-pdf',
+      '/soluciones/censurar-datos-personales-pdf': '/en/solutions/redact-pdf-free-permanently',
+      '/soluciones/reparar-pdf-danado': '/en/solutions/repair-corrupted-pdf-file',
+      '/soluciones/editar-texto-pdf-sin-desconfigurar':
+        '/en/solutions/edit-pdf-text-without-formatting-loss',
+      '/soluciones/firmar-pdf-sin-imprimir': '/en/solutions/sign-pdf-online-without-printing',
+      '/soluciones/convertir-pdf-a-word-editable': '/en/solutions/convert-pdf-to-editable-word-doc',
+      '/soluciones/convertir-tabla-pdf-a-excel': '/en/solutions/extract-tables-from-pdf-to-excel',
     };
 
     const INVERTED_PAIRS = Object.fromEntries(
@@ -138,7 +165,7 @@ module.exports = {
     if (path === '/' || path === '/en') {
       priority = 1.0;
       changefreq = 'daily';
-    } else if (path.startsWith('/soluciones/')) {
+    } else if (path.startsWith('/soluciones/') || path.startsWith('/en/solutions/')) {
       priority = 0.85;
       changefreq = 'weekly';
     } else if (
@@ -179,21 +206,15 @@ module.exports = {
       changefreq = 'monthly';
     }
 
-    const isSolution = path.startsWith('/soluciones/');
     const isEn = path.startsWith('/en');
     const esPath = isEn ? INVERTED_PAIRS[path] || '/' : path;
     const enPath = isEn ? path : ROUTE_PAIRS[path] || '/en';
 
-    const alternateRefs = isSolution
-      ? [
-          { href: `${config.siteUrl}${path}`, hreflang: 'es', hrefIsAbsolute: true },
-          { href: `${config.siteUrl}${path}`, hreflang: 'x-default', hrefIsAbsolute: true },
-        ]
-      : [
-          { href: `${config.siteUrl}${esPath}`, hreflang: 'es', hrefIsAbsolute: true },
-          { href: `${config.siteUrl}${enPath}`, hreflang: 'en', hrefIsAbsolute: true },
-          { href: `${config.siteUrl}${esPath}`, hreflang: 'x-default', hrefIsAbsolute: true },
-        ];
+    const alternateRefs = [
+      { href: `${config.siteUrl}${esPath}`, hreflang: 'es', hrefIsAbsolute: true },
+      { href: `${config.siteUrl}${enPath}`, hreflang: 'en', hrefIsAbsolute: true },
+      { href: `${config.siteUrl}${enPath}`, hreflang: 'x-default', hrefIsAbsolute: true },
+    ];
 
     return {
       loc: path,

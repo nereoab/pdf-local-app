@@ -1,15 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import {
-  ALL_LONG_TAIL_SLUGS,
-  getSolutionBySlug,
-  getEquivalentSlug,
-} from '@/lib/long-tail-registry';
+import { ALL_LONG_TAIL_SLUGS_EN, getSolutionBySlugEn } from '@/lib/long-tail-registry';
 import OptimizarToolClient from '@/components/OptimizarToolClient';
 import EditarToolClient from '@/components/EditarToolClient';
 import ConverterToolClient from '@/components/ConverterToolClient';
 import OrganizarToolClient from '@/components/OrganizarToolClient';
-import LongTailEditorialSection from '@/components/LongTailEditorialSection';
+import LongTailEditorialSectionEn from '@/components/LongTailEditorialSectionEn';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
@@ -18,20 +14,21 @@ interface PageProps {
 }
 
 export async function generateStaticParams() {
-  return ALL_LONG_TAIL_SLUGS.map((slug) => ({ slug }));
+  return ALL_LONG_TAIL_SLUGS_EN.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const solution = getSolutionBySlug(slug);
+  const solution = getSolutionBySlugEn(slug);
 
   if (!solution) {
     return {};
   }
 
-  const canonicalUrl = `${SITE_URL}/soluciones/${solution.slug}`;
-  const enSlug = getEquivalentSlug(solution.slug, 'es');
-  const enUrl = enSlug ? `${SITE_URL}/en/solutions/${enSlug}` : undefined;
+  const canonicalUrl = `${SITE_URL}/en/solutions/${solution.slug}`;
+  const spanishUrl = solution.esEquivalentSlug
+    ? `${SITE_URL}/soluciones/${solution.esEquivalentSlug}`
+    : undefined;
 
   return {
     title: solution.metaTitle,
@@ -40,8 +37,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: canonicalUrl,
       languages: {
-        es: canonicalUrl,
-        ...(enUrl ? { en: enUrl } : {}),
+        en: canonicalUrl,
+        ...(spanishUrl ? { es: spanishUrl } : {}),
         'x-default': canonicalUrl,
       },
     },
@@ -50,7 +47,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: solution.metaDescription,
       url: canonicalUrl,
       siteName: 'PDFBlack',
-      locale: 'es_ES',
+      locale: 'en_US',
       type: 'website',
     },
     twitter: {
@@ -61,18 +58,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function LongTailSolutionPage({ params }: PageProps) {
+export default async function LongTailSolutionEnPage({ params }: PageProps) {
   const { slug } = await params;
-  const solution = getSolutionBySlug(slug);
+  const solution = getSolutionBySlugEn(slug);
 
   if (!solution) {
     notFound();
   }
 
-  const canonicalUrl = `${SITE_URL}/soluciones/${solution.slug}`;
+  const canonicalUrl = `${SITE_URL}/en/solutions/${solution.slug}`;
   const parentFullUrl = `${SITE_URL}${solution.parentPath}`;
 
-  // ─── ESTRUCTURA DE DATOS SCHEMA.ORG (JSON-LD) ───
+  // ─── STRUCTURED DATA SCHEMAS (JSON-LD) ───
   const softwareSchema = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -101,8 +98,8 @@ export default async function LongTailSolutionPage({ params }: PageProps) {
       {
         '@type': 'ListItem',
         position: 1,
-        name: 'Inicio',
-        item: SITE_URL,
+        name: 'Home',
+        item: `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
@@ -165,7 +162,7 @@ export default async function LongTailSolutionPage({ params }: PageProps) {
 
   return (
     <>
-      {/* ─── METADATOS ESTRUCTURADOS (RICH SNIPPETS) ─── */}
+      {/* ─── STRUCTURED DATA (RICH SNIPPETS) ─── */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
@@ -185,11 +182,11 @@ export default async function LongTailSolutionPage({ params }: PageProps) {
         />
       )}
 
-      {/* ─── HERRAMIENTA INTERACTIVA PRINCIPAL (WASM LOCAL) ─── */}
+      {/* ─── PRIMARY INTERACTIVE TOOL (IN-BROWSER WASM) ─── */}
       <div className="w-full">{renderToolComponent()}</div>
 
-      {/* ─── SECCIÓN EDITORIAL ENRIQUECIDA (REQUISITOS, GUÍA, FAQS, CLUSTER) ─── */}
-      <LongTailEditorialSection solution={solution} />
+      {/* ─── ENRICHED EDITORIAL SECTION (SPECS, STEP-BY-STEP, FAQS, CLUSTER) ─── */}
+      <LongTailEditorialSectionEn solution={solution} />
     </>
   );
 }

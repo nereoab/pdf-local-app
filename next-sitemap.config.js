@@ -138,6 +138,9 @@ module.exports = {
     if (path === '/' || path === '/en') {
       priority = 1.0;
       changefreq = 'daily';
+    } else if (path.startsWith('/soluciones/')) {
+      priority = 0.85;
+      changefreq = 'weekly';
     } else if (
       path.includes('/editar') ||
       path.includes('/organizar') ||
@@ -176,20 +179,28 @@ module.exports = {
       changefreq = 'monthly';
     }
 
+    const isSolution = path.startsWith('/soluciones/');
     const isEn = path.startsWith('/en');
     const esPath = isEn ? INVERTED_PAIRS[path] || '/' : path;
     const enPath = isEn ? path : ROUTE_PAIRS[path] || '/en';
+
+    const alternateRefs = isSolution
+      ? [
+          { href: `${config.siteUrl}${path}`, hreflang: 'es', hrefIsAbsolute: true },
+          { href: `${config.siteUrl}${path}`, hreflang: 'x-default', hrefIsAbsolute: true },
+        ]
+      : [
+          { href: `${config.siteUrl}${esPath}`, hreflang: 'es', hrefIsAbsolute: true },
+          { href: `${config.siteUrl}${enPath}`, hreflang: 'en', hrefIsAbsolute: true },
+          { href: `${config.siteUrl}${esPath}`, hreflang: 'x-default', hrefIsAbsolute: true },
+        ];
 
     return {
       loc: path,
       changefreq,
       priority,
       lastmod: new Date().toISOString(),
-      alternateRefs: [
-        { href: `${config.siteUrl}${esPath}`, hreflang: 'es', hrefIsAbsolute: true },
-        { href: `${config.siteUrl}${enPath}`, hreflang: 'en', hrefIsAbsolute: true },
-        { href: `${config.siteUrl}${esPath}`, hreflang: 'x-default', hrefIsAbsolute: true },
-      ],
+      alternateRefs,
     };
   },
 };

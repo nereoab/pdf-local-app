@@ -6,6 +6,7 @@ import OrganizarToolClient from '@/components/OrganizarToolClient';
 import OptimizarToolClient from '@/components/OptimizarToolClient';
 import EditarToolClient from '@/components/EditarToolClient';
 import ConverterToolClient from '@/components/ConverterToolClient';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 interface PageProps {
   params: Promise<{ tool: string }>;
@@ -74,6 +75,7 @@ export default async function EnglishToolPage({ params }: PageProps) {
         />
       )}
       {renderClientComponent()}
+      <RelatedLongTailSolutions toolKey={config.toolKey} lang="en" />
     </>
   );
 }

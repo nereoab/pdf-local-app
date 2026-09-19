@@ -19,6 +19,7 @@ import {
   X as XIcon,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfMerger = dynamic(() => import('@/components/PdfMerger'), {
   ssr: false,
@@ -779,6 +780,9 @@ export default function UnirPdfPage() {
             })}
           </div>
         </section>
+
+        {/* Soluciones Long-Tail Relacionadas */}
+        <RelatedLongTailSolutions toolKey="unir" />
       </div>
     </main>
   );

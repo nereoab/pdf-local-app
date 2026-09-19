@@ -610,22 +610,75 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             </div>
 
             <nav
-              className="flex items-center gap-5 text-zinc-400"
-              aria-label={isEs ? 'Enlaces legales' : 'Legal links'}
+              className="flex flex-wrap items-center gap-4 sm:gap-5 text-zinc-400"
+              aria-label={isEs ? 'Enlaces legales y comparativas' : 'Legal and comparison links'}
             >
-              <Link href="/privacidad" className="hover:text-white transition-colors">
+              <Link
+                href={isEnRoute ? '/en/industries' : '/industrias'}
+                className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
+              >
+                {isEs ? 'Industrias' : 'Industries'}
+              </Link>
+              <Link
+                href={isEnRoute ? '/en/glossary' : '/glosario'}
+                className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
+              >
+                {isEs ? 'Glosario Técnico' : 'Technical Glossary'}
+              </Link>
+              <Link
+                href={
+                  isEnRoute ? '/en/compare/pdfblack-vs-ilovepdf' : '/comparar/pdfblack-vs-ilovepdf'
+                }
+                className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
+              >
+                {isEs ? 'vs iLovePDF' : 'vs iLovePDF'}
+              </Link>
+              <Link
+                href={
+                  isEnRoute ? '/en/compare/pdfblack-vs-smallpdf' : '/comparar/pdfblack-vs-smallpdf'
+                }
+                className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
+              >
+                {isEs ? 'vs Smallpdf' : 'vs Smallpdf'}
+              </Link>
+              <Link
+                href={
+                  isEnRoute
+                    ? '/en/alternatives/private-ilovepdf-alternative'
+                    : '/alternativas/alternativa-privada-a-ilovepdf'
+                }
+                className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
+              >
+                {isEs ? 'Alternativa Privada' : 'Private Alternative'}
+              </Link>
+              <Link
+                href={isEnRoute ? '/en/privacy' : '/privacidad'}
+                className="hover:text-white transition-colors"
+              >
                 {isEs ? 'Privacidad' : 'Privacy'}
               </Link>
-              <Link href="/terminos" className="hover:text-white transition-colors">
+              <Link
+                href={isEnRoute ? '/en/terms' : '/terminos'}
+                className="hover:text-white transition-colors"
+              >
                 {isEs ? 'Términos' : 'Terms'}
               </Link>
-              <Link href="/faq" className="hover:text-white transition-colors">
+              <Link
+                href={isEnRoute ? '/en/faq' : '/faq'}
+                className="hover:text-white transition-colors"
+              >
                 {isEs ? 'FAQ' : 'FAQ'}
               </Link>
-              <Link href="/contacto" className="hover:text-white transition-colors">
+              <Link
+                href={isEnRoute ? '/en/contact' : '/contacto'}
+                className="hover:text-white transition-colors"
+              >
                 {isEs ? 'Contacto' : 'Contact'}
               </Link>
-              <Link href="/aviso-legal" className="hover:text-white transition-colors">
+              <Link
+                href={isEnRoute ? '/en/legal-notice' : '/aviso-legal'}
+                className="hover:text-white transition-colors"
+              >
                 {isEs ? 'Aviso Legal' : 'Legal Notice'}
               </Link>
             </nav>

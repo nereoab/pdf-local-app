@@ -41,7 +41,24 @@ export interface LongTailSolution {
   enEquivalentSlug?: string;
 }
 
-export const LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
+import {
+  ORGANIZAR_SOLUTIONS_ES,
+  ORGANIZAR_SOLUTIONS_EN,
+  ORGANIZAR_PAIRS,
+} from './long-tail/organizar';
+import {
+  OPTIMIZAR_SOLUTIONS_ES,
+  OPTIMIZAR_SOLUTIONS_EN,
+  OPTIMIZAR_PAIRS,
+} from './long-tail/optimizar';
+import { EDITAR_SOLUTIONS_ES, EDITAR_SOLUTIONS_EN, EDITAR_PAIRS } from './long-tail/editar';
+import {
+  CONVERTIR_SOLUTIONS_ES,
+  CONVERTIR_SOLUTIONS_EN,
+  CONVERTIR_PAIRS,
+} from './long-tail/convertir';
+
+const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
   'comprimir-pdf-a-200kb': {
     slug: 'comprimir-pdf-a-200kb',
     category: 'optimizar',
@@ -926,7 +943,7 @@ export const LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
   },
 };
 
-export const SOLUTION_PAIRS: Record<string, string> = {
+const INITIAL_SOLUTION_PAIRS: Record<string, string> = {
   'comprimir-pdf-a-200kb': 'compress-pdf-to-200kb',
   'comprimir-pdf-a-1mb': 'compress-pdf-to-1mb',
   'comprimir-pdf-a-100kb': 'compress-pdf-to-100kb',
@@ -941,11 +958,27 @@ export const SOLUTION_PAIRS: Record<string, string> = {
   'convertir-tabla-pdf-a-excel': 'extract-tables-from-pdf-to-excel',
 };
 
+export const SOLUTION_PAIRS: Record<string, string> = {
+  ...INITIAL_SOLUTION_PAIRS,
+  ...ORGANIZAR_PAIRS,
+  ...OPTIMIZAR_PAIRS,
+  ...EDITAR_PAIRS,
+  ...CONVERTIR_PAIRS,
+};
+
 export const SOLUTION_PAIRS_EN_TO_ES: Record<string, string> = Object.fromEntries(
   Object.entries(SOLUTION_PAIRS).map(([es, en]) => [en, es]),
 );
 
-export const LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
+export const LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
+  ...INITIAL_LONG_TAIL_SOLUTIONS,
+  ...ORGANIZAR_SOLUTIONS_ES,
+  ...OPTIMIZAR_SOLUTIONS_ES,
+  ...EDITAR_SOLUTIONS_ES,
+  ...CONVERTIR_SOLUTIONS_ES,
+};
+
+const INITIAL_LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
   'compress-pdf-to-200kb': {
     slug: 'compress-pdf-to-200kb',
     category: 'optimizar',
@@ -2065,6 +2098,14 @@ export const LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
   },
 };
 
+export const LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
+  ...INITIAL_LONG_TAIL_SOLUTIONS_EN,
+  ...ORGANIZAR_SOLUTIONS_EN,
+  ...OPTIMIZAR_SOLUTIONS_EN,
+  ...EDITAR_SOLUTIONS_EN,
+  ...CONVERTIR_SOLUTIONS_EN,
+};
+
 export const ALL_LONG_TAIL_SLUGS = Object.keys(LONG_TAIL_SOLUTIONS);
 export const ALL_LONG_TAIL_SLUGS_EN = Object.keys(LONG_TAIL_SOLUTIONS_EN);
 
@@ -2081,4 +2122,12 @@ export function getEquivalentSlug(slug: string, currentLang: 'es' | 'en'): strin
     return SOLUTION_PAIRS[slug];
   }
   return SOLUTION_PAIRS_EN_TO_ES[slug];
+}
+
+export function getSolutionsByToolKey(
+  toolKey: string,
+  lang: 'es' | 'en' = 'es',
+): LongTailSolution[] {
+  const dict = lang === 'es' ? LONG_TAIL_SOLUTIONS : LONG_TAIL_SOLUTIONS_EN;
+  return Object.values(dict).filter((s) => s.toolKey === toolKey);
 }

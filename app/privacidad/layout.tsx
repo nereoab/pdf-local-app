@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 export const metadata: Metadata = {
   title: 'Política de Privacidad — Arquitectura Zero-Knowledge en RAM | PDFBlack',
   description:
@@ -10,7 +12,15 @@ export const metadata: Metadata = {
     'rgpd pdf',
     'zero knowledge pdf',
   ],
-  alternates: { canonical: 'https://pdf-black.com/privacidad' },
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: `${SITE_URL}/privacidad`,
+    languages: {
+      es: `${SITE_URL}/privacidad`,
+      en: `${SITE_URL}/en/privacy`,
+      'x-default': `${SITE_URL}/privacidad`,
+    },
+  },
 };
 
 export default function PrivacidadLayout({ children }: { children: React.ReactNode }) {

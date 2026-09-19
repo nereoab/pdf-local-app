@@ -15,6 +15,7 @@
     "test:coverage": "jest --coverage",
     "analyze": "cross-env ANALYZE=true npm run build",
     "sitemap": "next-sitemap --config next-sitemap.config.js",
+    "postbuild": "next-sitemap --config next-sitemap.config.js",
     "deploy": "firebase deploy",
     "prepare": "husky || true"
   },

@@ -30,6 +30,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? `${SITE_URL}/soluciones/${solution.esEquivalentSlug}`
     : undefined;
 
+  const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
+    solution.h1.split('—')[0].trim(),
+  )}&badge=${encodeURIComponent(solution.badge)}&category=${encodeURIComponent(
+    solution.category,
+  )}&lang=en`;
+
   return {
     title: solution.metaTitle,
     description: solution.metaDescription,
@@ -38,8 +44,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       canonical: canonicalUrl,
       languages: {
         en: canonicalUrl,
-        ...(spanishUrl ? { es: spanishUrl } : {}),
-        'x-default': canonicalUrl,
+        ...(spanishUrl
+          ? { es: spanishUrl, 'x-default': spanishUrl }
+          : { 'x-default': canonicalUrl }),
       },
     },
     openGraph: {
@@ -49,11 +56,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       siteName: 'PDFBlack',
       locale: 'en_US',
       type: 'website',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: solution.metaTitle,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: solution.metaTitle,
       description: solution.metaDescription,
+      images: [ogImageUrl],
     },
   };
 }

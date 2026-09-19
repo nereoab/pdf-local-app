@@ -61,6 +61,11 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: SITE_URL,
+    languages: {
+      es: SITE_URL,
+      en: `${SITE_URL}/en`,
+      'x-default': SITE_URL,
+    },
   },
 
   // ── Open Graph ──

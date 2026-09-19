@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { TOOLS_ROUTES } from './routes-config';
+import type { GlossaryTerm } from './glossary/types';
+import type { IndustryPageData } from './industries/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
@@ -515,6 +517,12 @@ export function buildToolMetadata(
     : `${SITE_URL}/en/${category}/${toolSlug}`;
   const canonicalUrl = isEs ? esUrl : enUrl;
 
+  const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
+    title.split('—')[0].trim(),
+  )}&badge=${encodeURIComponent(category.toUpperCase())}&category=${encodeURIComponent(
+    category,
+  )}&lang=${lang}`;
+
   return {
     title,
     description,
@@ -538,7 +546,7 @@ export function buildToolMetadata(
       type: 'website',
       images: [
         {
-          url: `${SITE_URL}/og-image.png`,
+          url: ogImageUrl,
           width: 1200,
           height: 630,
           alt: title,
@@ -549,7 +557,252 @@ export function buildToolMetadata(
       card: 'summary_large_image',
       title,
       description,
-      images: [`${SITE_URL}/og-image.png`],
+      images: [ogImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+  };
+}
+
+export interface CategoryHubInfo {
+  categoryEs: string;
+  categoryEn: string;
+  titleEs: string;
+  titleEn: string;
+  descEs: string;
+  descEn: string;
+  keywordsEs: string[];
+  keywordsEn: string[];
+  badge: string;
+}
+
+export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
+  organizar: {
+    categoryEs: 'organizar',
+    categoryEn: 'organize',
+    titleEs: 'Organizar PDF Gratis — Unir, Dividir, Rotar, Recortar y Reordenar | PDFBlack',
+    titleEn: 'Organize PDF Files Online for Free — Merge, Split, Rotate & Reorder | PDFBlack',
+    descEs:
+      'Reestructura y organiza tus documentos PDF al instante: une múltiples archivos, divide por páginas, gira la orientación, recorta márgenes y elimina hojas innecesarias. Procesamiento 100% privado en tu navegador sin registro.',
+    descEn:
+      'Free client-side tools to organize your PDF documents. Merge, split, delete, rotate, crop, and reorder pages 100% privately in your browser without file size limits.',
+    keywordsEs: [
+      'organizar pdf gratis',
+      'unir pdf',
+      'dividir pdf',
+      'rotar pdf',
+      'recortar pdf',
+      'eliminar paginas pdf',
+      'reordenar paginas pdf',
+      'organize pdf free online',
+    ],
+    keywordsEn: [
+      'organize pdf',
+      'merge pdf free',
+      'split pdf online',
+      'delete pdf pages',
+      'rotate pdf',
+      'reorder pdf pages',
+      'crop pdf',
+      'private pdf tools',
+    ],
+    badge: 'ORGANIZAR',
+  },
+  optimizar: {
+    categoryEs: 'optimizar',
+    categoryEn: 'optimize',
+    titleEs: 'Optimizar PDF Gratis — Comprimir, Desbloquear, Proteger y Reparar | PDFBlack',
+    titleEn: 'Optimize PDF Files Online for Free — Compress, Protect & Repair | PDFBlack',
+    descEs:
+      'Suite completa de herramientas para optimizar archivos PDF gratis: reduce tamaño, desbloquea permisos, protege con contraseña AES-256, censura datos confidenciales y repara archivos dañados. 100% local en tu navegador con privacidad absoluta.',
+    descEn:
+      'Compress, protect, unlock, redact, and repair PDF files locally in your browser with zero file uploads and complete privacy.',
+    keywordsEs: [
+      'optimizar pdf gratis',
+      'comprimir pdf',
+      'desbloquear pdf',
+      'proteger pdf',
+      'censurar pdf',
+      'reparar pdf',
+      'comparar pdf',
+      'herramientas optimizar pdf',
+      'optimize pdf free',
+    ],
+    keywordsEn: [
+      'optimize pdf',
+      'compress pdf free',
+      'protect pdf password',
+      'unlock pdf',
+      'redact pdf',
+      'repair pdf',
+      'zero upload pdf optimizer',
+    ],
+    badge: 'OPTIMIZAR',
+  },
+  editar: {
+    categoryEs: 'editar',
+    categoryEn: 'edit',
+    titleEs: 'Editar PDF Gratis Online — Texto, Firma, OCR y Marcas de Agua | PDFBlack',
+    titleEn: 'Edit PDF Files Online for Free — Text, Sign, OCR & Watermark | PDFBlack',
+    descEs:
+      'Edita documentos PDF directamente en tu navegador web: modifica texto, añade firmas digitales y sellos, numera folios, inserta marcas de agua y aplica OCR para hacer texto seleccionable. 100% privado en memoria RAM, gratis y sin límites.',
+    descEn:
+      'Edit text, sign documents, apply OCR, number pages, and add watermarks to PDF files 100% privately in your browser without file uploads.',
+    keywordsEs: [
+      'editar pdf gratis',
+      'editor pdf online',
+      'firmar pdf gratis',
+      'ocr pdf',
+      'foliar paginas pdf',
+      'marca de agua pdf',
+      'modificar texto pdf',
+      'edit pdf free online',
+    ],
+    keywordsEn: [
+      'edit pdf',
+      'online pdf editor',
+      'sign pdf free',
+      'ocr pdf',
+      'bates numbering',
+      'watermark pdf',
+      'edit pdf in browser',
+    ],
+    badge: 'EDITAR',
+  },
+  convertir: {
+    categoryEs: 'convertir',
+    categoryEn: 'convert',
+    titleEs: 'Convertir PDF Gratis Online — Word, Excel, PowerPoint, JPG | PDFBlack',
+    titleEn: 'Convert PDF to Word, Excel, PPT, JPG & HTML Online for Free | PDFBlack',
+    descEs:
+      'Convierte archivos PDF a Word, Excel, PowerPoint, imágenes JPG, HTML y Texto online gratis. Motor de conversión de alta fidelidad sin registros ni marcas de agua.',
+    descEn:
+      'Convert PDF documents to and from Word, Excel, PowerPoint, JPG, HTML, and Text. 100% client-side conversion preserving formatting, tables, and vectors without server uploads.',
+    keywordsEs: [
+      'convertir pdf gratis',
+      'convertir pdf a word',
+      'convertir word a pdf',
+      'convertir pdf a excel',
+      'convertir excel a pdf',
+      'convertir pdf a powerpoint',
+      'convertir powerpoint a pdf',
+      'convertir pdf a jpg',
+      'convertir jpg a pdf',
+      'convertir pdf a texto',
+      'convertir texto a pdf',
+      'convertir pdf a html',
+      'convertir html a pdf',
+      'pdf converter free online',
+    ],
+    keywordsEn: [
+      'convert pdf',
+      'pdf to word free',
+      'pdf to excel',
+      'pdf to powerpoint',
+      'pdf to jpg',
+      'word to pdf',
+      'excel to pdf',
+      'free pdf converter',
+    ],
+    badge: 'CONVERTIR',
+  },
+};
+
+/**
+ * Genera la metadata completa de Next.js para una página Hub de Categoría en un idioma dado.
+ */
+export function buildCategoryHubMetadata(
+  category:
+    | 'organizar'
+    | 'optimizar'
+    | 'editar'
+    | 'convertir'
+    | 'organize'
+    | 'optimize'
+    | 'edit'
+    | 'convert',
+  lang: 'es' | 'en' = 'es',
+): Metadata {
+  const normalizedCat =
+    category === 'organize'
+      ? 'organizar'
+      : category === 'optimize'
+        ? 'optimizar'
+        : category === 'edit'
+          ? 'editar'
+          : category === 'convert'
+            ? 'convertir'
+            : category;
+
+  const info = CATEGORY_HUBS_METADATA[normalizedCat];
+  const isEs = lang === 'es';
+
+  const title = info
+    ? isEs
+      ? info.titleEs
+      : info.titleEn
+    : `${normalizedCat.toUpperCase()} — PDFBlack`;
+  const description = info
+    ? isEs
+      ? info.descEs
+      : info.descEn
+    : 'Herramientas PDF gratuitas, rápidas y 100% privadas en tu navegador.';
+  const keywords = info ? (isEs ? info.keywordsEs : info.keywordsEn) : ['pdf gratis', 'pdf tools'];
+
+  const esUrl = `${SITE_URL}/${info?.categoryEs || normalizedCat}`;
+  const enUrl = `${SITE_URL}/en/${info?.categoryEn || normalizedCat}`;
+  const canonicalUrl = isEs ? esUrl : enUrl;
+
+  const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
+    title.split('—')[0].trim(),
+  )}&badge=${encodeURIComponent(info?.badge || normalizedCat.toUpperCase())}&category=${encodeURIComponent(
+    normalizedCat,
+  )}&lang=${lang}`;
+
+  return {
+    title,
+    description,
+    keywords,
+    authors: [{ name: 'PDFBlack Team' }],
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        es: esUrl,
+        en: enUrl,
+        'x-default': esUrl,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: 'PDFBlack',
+      locale: isEs ? 'es_ES' : 'en_US',
+      type: 'website',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
     },
     robots: {
       index: true,
@@ -747,12 +1000,139 @@ export function buildHowToStructuredData(
     '@type': 'HowTo',
     name: title,
     description,
+    totalTime: 'PT1M',
+    estimatedCost: {
+      '@type': 'MonetaryAmount',
+      currency: 'USD',
+      value: '0',
+    },
+    supply: [
+      {
+        '@type': 'HowToSupply',
+        name: isEs ? 'Documentos PDF' : 'PDF Documents',
+      },
+    ],
+    tool: [
+      {
+        '@type': 'HowToTool',
+        name: isEs ? 'Navegador Web con WebAssembly' : 'Web Browser with WebAssembly',
+      },
+    ],
     step: steps.map((s, idx) => ({
       '@type': 'HowToStep',
       position: idx + 1,
       name: s.title,
       text: s.desc,
+      url: `${SITE_URL}${isEs ? `/${category}/${toolSlug}` : `/en/${category}/${toolSlug}`}#step-${idx + 1}`,
     })),
+  };
+}
+
+/**
+ * Genera el esquema DefinedTerm para Google AI Overviews, Perplexity y motores de respuesta AEO.
+ */
+export function buildDefinedTermSchema({
+  term,
+  definition,
+  url,
+  inDefinedTermSetUrl,
+  lang = 'es',
+}: {
+  term: string;
+  definition: string;
+  url: string;
+  inDefinedTermSetUrl: string;
+  lang?: 'es' | 'en';
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'DefinedTerm',
+    name: term,
+    description: definition,
+    url,
+    inDefinedTermSet: inDefinedTermSetUrl,
+    inLanguage: lang,
+  };
+}
+
+/**
+ * Genera la metadata del Índice del Glosario Técnico en español o inglés.
+ */
+export function buildGlossaryIndexMetadata(lang: 'es' | 'en' = 'es'): Metadata {
+  const isEs = lang === 'es';
+  const title = isEs
+    ? 'Glosario Técnico de PDF — Conceptos, Estándares ISO y Seguridad | PDFBlack'
+    : 'Technical PDF Glossary — Specifications, ISO Standards & Security | PDFBlack';
+  const description = isEs
+    ? 'Centro de recursos técnicos sobre PDF: conoce qué es la numeración Bates, diferencias entre PDF/A y PDF estándar, cifrado militar AES-256, censura binaria y arquitectura Zero-Knowledge.'
+    : 'Comprehensive technical PDF knowledge hub: discover Bates numbering, PDF/A versus standard PDF, AES-256 military encryption, forensic redaction, and client-side zero-knowledge architecture.';
+  const canonicalUrl = isEs ? `${SITE_URL}/glosario` : `${SITE_URL}/en/glossary`;
+  const esUrl = `${SITE_URL}/glosario`;
+  const enUrl = `${SITE_URL}/en/glossary`;
+  const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
+    isEs ? 'Glosario Técnico PDF' : 'Technical PDF Glossary',
+  )}&badge=${encodeURIComponent('CENTRO DE RECURSOS')}&category=tecnologia&lang=${lang}`;
+
+  return {
+    title,
+    description,
+    keywords: isEs
+      ? [
+          'glosario pdf',
+          'conceptos tecnicos pdf',
+          'estandares iso pdf',
+          'seguridad en pdf',
+          'cifrado pdf explicacion',
+        ]
+      : [
+          'pdf glossary',
+          'technical pdf terms',
+          'pdf iso standards',
+          'pdf cryptography',
+          'bates numbering explained',
+        ],
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        es: esUrl,
+        en: enUrl,
+        'x-default': esUrl,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: 'PDFBlack',
+      locale: isEs ? 'es_ES' : 'en_US',
+      type: 'website',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
   };
 }
 
@@ -796,5 +1176,360 @@ export function buildFullToolSchemas({
     breadcrumb: buildBreadcrumbStructuredData(category, toolSlug, lang),
     howTo: buildHowToStructuredData(category, toolSlug, lang, steps),
     faq: buildFaqStructuredData(faqs),
+  };
+}
+
+/**
+ * Genera el esquema DefinedTermSet para la página índice del glosario.
+ */
+export function buildDefinedTermSetSchema(terms: GlossaryTerm[], lang: 'es' | 'en' = 'es') {
+  const isEs = lang === 'es';
+  const url = isEs ? `${SITE_URL}/glosario` : `${SITE_URL}/en/glossary`;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'DefinedTermSet',
+    name: isEs
+      ? 'Glosario Técnico de Estándares y Seguridad PDF'
+      : 'Technical PDF & Document Security Glossary',
+    description: isEs
+      ? 'Enciclopedia y centro de recursos de estándares de documentos PDF, criptografía y procesamiento legal.'
+      : 'Technical encyclopedia of PDF document standards, cryptography, and legal document processing.',
+    url,
+    inLanguage: lang,
+    hasDefinedTerm: terms.map((t) => ({
+      '@type': 'DefinedTerm',
+      name: isEs ? t.term : t.termEn,
+      description: t.blufDefinition,
+      url: `${url}/${isEs ? t.slug : t.slugEn}`,
+    })),
+  };
+}
+
+/**
+ * Genera el esquema BreadcrumbList para un término específico del glosario.
+ */
+export function buildGlossaryBreadcrumbSchema(term: GlossaryTerm, lang: 'es' | 'en' = 'es') {
+  const isEs = lang === 'es';
+  const homeUrl = isEs ? SITE_URL : `${SITE_URL}/en`;
+  const glossaryUrl = isEs ? `${SITE_URL}/glosario` : `${SITE_URL}/en/glossary`;
+  const termUrl = isEs
+    ? `${SITE_URL}/glosario/${term.slug}`
+    : `${SITE_URL}/en/glossary/${term.slugEn}`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: isEs ? 'Inicio' : 'Home',
+        item: homeUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: isEs ? 'Glosario Técnico' : 'Technical Glossary',
+        item: glossaryUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: isEs ? term.term : term.termEn,
+        item: termUrl,
+      },
+    ],
+  };
+}
+
+/**
+ * Genera la metadata completa con hreflang 100% recíproco para una página de término del glosario.
+ */
+export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' = 'es'): Metadata {
+  const isEs = lang === 'es';
+  const title = term.metaTitle;
+  const description = term.metaDescription;
+  const canonicalUrl = isEs
+    ? `${SITE_URL}/glosario/${term.slug}`
+    : `${SITE_URL}/en/glossary/${term.slugEn}`;
+  const esUrl = `${SITE_URL}/glosario/${term.slug}`;
+  const enUrl = `${SITE_URL}/en/glossary/${term.slugEn}`;
+  const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
+    isEs ? term.term : term.termEn,
+  )}&badge=${encodeURIComponent(term.badge)}&category=${term.category}&lang=${lang}`;
+
+  return {
+    title,
+    description,
+    keywords: term.keywords,
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        es: esUrl,
+        en: enUrl,
+        'x-default': esUrl,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: 'PDFBlack',
+      locale: isEs ? 'es_ES' : 'en_US',
+      type: 'article',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+  };
+}
+
+/**
+ * Genera la metadata del Hub de Soluciones por Industria (B2B SEO).
+ */
+export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
+  const isEs = lang === 'es';
+  const title = isEs
+    ? 'Soluciones PDF por Industria: Cumplimiento Legal, Salud y Finanzas | PDFBlack'
+    : 'Industry PDF Solutions: Legal, Healthcare & Finance Compliance | PDFBlack';
+  const description = isEs
+    ? 'Descubre cómo despachos de abogados, hospitales, firmas de auditoría y administraciones públicas procesan documentos PDF con 100% privacidad local sin subir archivos a la nube.'
+    : 'Discover how law firms, hospitals, accounting firms, and government agencies process sensitive PDF documents with 100% client-side zero-knowledge privacy.';
+  const canonicalUrl = isEs ? `${SITE_URL}/industrias` : `${SITE_URL}/en/industries`;
+  const esUrl = `${SITE_URL}/industrias`;
+  const enUrl = `${SITE_URL}/en/industries`;
+  const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
+    isEs ? 'Soluciones PDF por Industria' : 'Industry PDF Solutions',
+  )}&badge=${encodeURIComponent('ENTERPRISE & B2B')}&category=organizar&lang=${lang}`;
+
+  return {
+    title,
+    description,
+    keywords: isEs
+      ? [
+          'pdf para empresas',
+          'software pdf por sector',
+          'pdf cumplimiento normativo',
+          'pdf despacho abogados',
+          'pdf sector salud hipaa',
+          'pdf finanzas auditoria',
+        ]
+      : [
+          'enterprise pdf solutions',
+          'industry compliant pdf',
+          'law firm pdf software',
+          'hipaa compliant pdf editor',
+          'financial services pdf security',
+          'government pdf data sovereignty',
+        ],
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        es: esUrl,
+        en: enUrl,
+        'x-default': esUrl,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: 'PDFBlack',
+      locale: isEs ? 'es_ES' : 'en_US',
+      type: 'website',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+  };
+}
+
+/**
+ * Genera la metadata completa con hreflang 100% recíproco para una página de industria específica.
+ */
+export function buildIndustryMetadata(
+  industry: IndustryPageData,
+  lang: 'es' | 'en' = 'es',
+): Metadata {
+  const isEs = lang === 'es';
+  const title = isEs ? industry.metaTitle : industry.metaTitleEn;
+  const description = isEs ? industry.metaDescription : industry.metaDescriptionEn;
+  const canonicalUrl = isEs
+    ? `${SITE_URL}/industrias/${industry.slug}`
+    : `${SITE_URL}/en/industries/${industry.slugEn}`;
+  const esUrl = `${SITE_URL}/industrias/${industry.slug}`;
+  const enUrl = `${SITE_URL}/en/industries/${industry.slugEn}`;
+  const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
+    isEs ? industry.name : industry.nameEn,
+  )}&badge=${encodeURIComponent(industry.heroBadge)}&category=organizar&lang=${lang}`;
+
+  return {
+    title,
+    description,
+    keywords: isEs ? industry.keywords : industry.keywordsEn,
+    metadataBase: new URL(SITE_URL),
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        es: esUrl,
+        en: enUrl,
+        'x-default': esUrl,
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      siteName: 'PDFBlack',
+      locale: isEs ? 'es_ES' : 'en_US',
+      type: 'article',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+  };
+}
+
+/**
+ * Genera el esquema Service / ProfessionalService para páginas B2B de industria.
+ */
+export function buildIndustryServiceSchema(industry: IndustryPageData, lang: 'es' | 'en' = 'es') {
+  const isEs = lang === 'es';
+  const url = isEs
+    ? `${SITE_URL}/industrias/${industry.slug}`
+    : `${SITE_URL}/en/industries/${industry.slugEn}`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: isEs ? industry.h1 : industry.h1En,
+    serviceType: 'Confidential Document Security & Private PDF Processing',
+    provider: {
+      '@type': 'Organization',
+      name: 'PDFBlack',
+      url: SITE_URL,
+    },
+    description: isEs ? industry.metaDescription : industry.metaDescriptionEn,
+    audience: {
+      '@type': 'Audience',
+      audienceType: isEs ? industry.name : industry.nameEn,
+    },
+    url,
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      description: isEs
+        ? 'Procesamiento ilimitado y gratuito sin registro'
+        : 'Unlimited free client-side processing',
+    },
+  };
+}
+
+/**
+ * Genera el esquema BreadcrumbList para una página de industria.
+ */
+export function buildIndustryBreadcrumbSchema(
+  industry: IndustryPageData,
+  lang: 'es' | 'en' = 'es',
+) {
+  const isEs = lang === 'es';
+  const homeUrl = isEs ? SITE_URL : `${SITE_URL}/en`;
+  const hubUrl = isEs ? `${SITE_URL}/industrias` : `${SITE_URL}/en/industries`;
+  const pageUrl = isEs
+    ? `${SITE_URL}/industrias/${industry.slug}`
+    : `${SITE_URL}/en/industries/${industry.slugEn}`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: isEs ? 'Inicio' : 'Home',
+        item: homeUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: isEs ? 'Industrias' : 'Industries',
+        item: hubUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: isEs ? industry.name : industry.nameEn,
+        item: pageUrl,
+      },
+    ],
   };
 }

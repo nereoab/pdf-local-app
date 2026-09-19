@@ -14,6 +14,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 export interface ConverterSeoSectionProps {
   toolKey: string;
@@ -290,6 +291,9 @@ export default function ConverterSeoSection({
             </p>
           </div>
         </div>
+
+        {/* Soluciones Long-Tail Contextuales */}
+        <RelatedLongTailSolutions toolKey={toolKey} />
       </div>
     </section>
   );

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfRotator = dynamic(() => import('@/components/PdfRotator'), {
   ssr: false,
@@ -609,6 +610,9 @@ export default function RotarPdfPage() {
               })}
             </div>
           </section>
+
+          {/* Soluciones Long-Tail Relacionadas */}
+          <RelatedLongTailSolutions toolKey="rotar" />
         </div>
       </main>
     </>

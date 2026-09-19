@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfCompressor = dynamic(() => import('@/components/PdfCompressor'), {
   ssr: false,
@@ -280,6 +281,9 @@ export default function ComprimirPdfPage() {
             })}
           </div>
         </section>
+
+        {/* Soluciones Long-Tail Relacionadas */}
+        <RelatedLongTailSolutions toolKey="comprimir" />
       </div>
     </main>
   );

@@ -89,6 +89,53 @@ module.exports = {
       '/en/solutions/sign-pdf-online-without-printing',
       '/en/solutions/convert-pdf-to-editable-word-doc',
       '/en/solutions/extract-tables-from-pdf-to-excel',
+      // Organizar Long-tail (EN)
+      '/en/solutions/merge-pdf-for-court-filings-and-bids',
+      '/en/solutions/combine-thesis-chapters-pdf',
+      '/en/solutions/extract-specific-pages-from-pdf',
+      '/en/solutions/split-pdf-by-sections-or-chapters',
+      '/en/solutions/remove-blank-pages-from-pdf',
+      '/en/solutions/reverse-pdf-page-order',
+      '/en/solutions/rotate-landscape-blueprints-pdf',
+      '/en/solutions/crop-white-margins-pdf-for-printing',
+      // Optimizar Long-tail (EN)
+      '/en/solutions/compress-pdf-for-email-attachment',
+      '/en/solutions/encrypt-confidential-pdf-aes256-offline',
+      '/en/solutions/unlock-pdf-print-copy-permissions',
+      '/en/solutions/compare-two-pdf-contract-versions',
+      // Editar Long-tail (EN)
+      '/en/solutions/searchable-ocr-pdf-without-uploading',
+      '/en/solutions/watermark-draft-confidential-pdf',
+      // Convertir Long-tail (EN)
+      '/en/solutions/convert-word-to-pdf-exact-formatting',
+      '/en/solutions/fit-excel-spreadsheet-to-single-page-pdf',
+      '/en/solutions/combine-photos-receipts-into-one-pdf',
+      '/en/solutions/convert-pdf-pages-to-high-res-jpg',
+      '/en/solutions/convert-pdf-to-editable-powerpoint-slides',
+      '/en/solutions/save-powerpoint-presentation-as-pdf',
+      '/en/solutions/extract-plain-text-from-pdf-without-format',
+      '/en/solutions/convert-txt-notes-to-formatted-pdf',
+      '/en/solutions/convert-pdf-to-responsive-html-code',
+      '/en/solutions/save-webpage-or-html-code-as-pdf',
+      // Comparisons & Alternatives (EN)
+      '/en/compare/pdfblack-vs-ilovepdf',
+      '/en/compare/pdfblack-vs-smallpdf',
+      '/en/alternatives/private-ilovepdf-alternative',
+      '/en/alternatives/private-smallpdf-alternative',
+      // Technical Glossary & Knowledge Hub (EN)
+      '/en/glossary',
+      '/en/glossary/bates-numbering',
+      '/en/glossary/pdf-a-vs-standard-pdf',
+      '/en/glossary/aes-256-pdf-encryption',
+      '/en/glossary/binary-pdf-redaction',
+      '/en/glossary/ocr-optical-character-recognition-pdf',
+      '/en/glossary/zero-knowledge-pdf-processing',
+      // B2B Enterprise & Industry Solutions (EN)
+      '/en/industries',
+      '/en/industries/legal',
+      '/en/industries/healthcare',
+      '/en/industries/finance',
+      '/en/industries/government',
     ];
     const results = [];
     for (const r of enRoutes) {
@@ -153,6 +200,75 @@ module.exports = {
       '/soluciones/firmar-pdf-sin-imprimir': '/en/solutions/sign-pdf-online-without-printing',
       '/soluciones/convertir-pdf-a-word-editable': '/en/solutions/convert-pdf-to-editable-word-doc',
       '/soluciones/convertir-tabla-pdf-a-excel': '/en/solutions/extract-tables-from-pdf-to-excel',
+      // Organizar Soluciones
+      '/soluciones/unir-pdf-para-licitaciones-y-tramites':
+        '/en/solutions/merge-pdf-for-court-filings-and-bids',
+      '/soluciones/unir-capitulos-tesis-pdf': '/en/solutions/combine-thesis-chapters-pdf',
+      '/soluciones/extraer-paginas-pdf-separadas': '/en/solutions/extract-specific-pages-from-pdf',
+      '/soluciones/dividir-pdf-por-capitulos-rangos':
+        '/en/solutions/split-pdf-by-sections-or-chapters',
+      '/soluciones/quitar-hojas-en-blanco-pdf': '/en/solutions/remove-blank-pages-from-pdf',
+      '/soluciones/invertir-orden-paginas-pdf': '/en/solutions/reverse-pdf-page-order',
+      '/soluciones/rotar-planos-horizontales-pdf': '/en/solutions/rotate-landscape-blueprints-pdf',
+      '/soluciones/recortar-margenes-blancos-pdf':
+        '/en/solutions/crop-white-margins-pdf-for-printing',
+      // Optimizar Soluciones
+      '/soluciones/comprimir-pdf-para-correo-gmail':
+        '/en/solutions/compress-pdf-for-email-attachment',
+      '/soluciones/proteger-pdf-con-contrasena-sin-subir-a-nube':
+        '/en/solutions/encrypt-confidential-pdf-aes256-offline',
+      '/soluciones/desbloquear-pdf-para-imprimir-o-copiar':
+        '/en/solutions/unlock-pdf-print-copy-permissions',
+      '/soluciones/comparar-dos-versiones-contrato-pdf':
+        '/en/solutions/compare-two-pdf-contract-versions',
+      // Editar Soluciones
+      '/soluciones/convertir-pdf-escaneado-a-texto-seleccionable':
+        '/en/solutions/searchable-ocr-pdf-without-uploading',
+      '/soluciones/poner-marca-agua-borrador-confidencial':
+        '/en/solutions/watermark-draft-confidential-pdf',
+      // Convertir Soluciones
+      '/soluciones/convertir-docx-a-pdf-sin-mover-fuentes':
+        '/en/solutions/convert-word-to-pdf-exact-formatting',
+      '/soluciones/ajustar-hoja-excel-a-una-pagina-pdf':
+        '/en/solutions/fit-excel-spreadsheet-to-single-page-pdf',
+      '/soluciones/unir-fotos-e-imagenes-en-un-solo-pdf':
+        '/en/solutions/combine-photos-receipts-into-one-pdf',
+      '/soluciones/extraer-imagenes-pdf-alta-resolucion':
+        '/en/solutions/convert-pdf-pages-to-high-res-jpg',
+      '/soluciones/convertir-pdf-a-diapositivas-powerpoint':
+        '/en/solutions/convert-pdf-to-editable-powerpoint-slides',
+      '/soluciones/guardar-presentacion-powerpoint-a-pdf':
+        '/en/solutions/save-powerpoint-presentation-as-pdf',
+      '/soluciones/extraer-texto-plano-de-pdf-sin-formato':
+        '/en/solutions/extract-plain-text-from-pdf-without-format',
+      '/soluciones/convertir-notas-txt-a-pdf-formateado':
+        '/en/solutions/convert-txt-notes-to-formatted-pdf',
+      '/soluciones/convertir-pdf-a-codigo-html-responsive':
+        '/en/solutions/convert-pdf-to-responsive-html-code',
+      '/soluciones/guardar-pagina-web-o-codigo-html-en-pdf':
+        '/en/solutions/save-webpage-or-html-code-as-pdf',
+      // Comparativas y Alternativas (ES <-> EN)
+      '/comparar/pdfblack-vs-ilovepdf': '/en/compare/pdfblack-vs-ilovepdf',
+      '/comparar/pdfblack-vs-smallpdf': '/en/compare/pdfblack-vs-smallpdf',
+      '/alternativas/alternativa-privada-a-ilovepdf':
+        '/en/alternatives/private-ilovepdf-alternative',
+      '/alternativas/alternativa-privada-a-smallpdf':
+        '/en/alternatives/private-smallpdf-alternative',
+      // Glosario Técnico y Centro de Recursos (ES <-> EN)
+      '/glosario': '/en/glossary',
+      '/glosario/numeracion-bates': '/en/glossary/bates-numbering',
+      '/glosario/pdf-a-vs-pdf-estandar': '/en/glossary/pdf-a-vs-standard-pdf',
+      '/glosario/cifrado-aes-256-pdf': '/en/glossary/aes-256-pdf-encryption',
+      '/glosario/censura-binaria-pdf': '/en/glossary/binary-pdf-redaction',
+      '/glosario/ocr-reconocimiento-optico-pdf':
+        '/en/glossary/ocr-optical-character-recognition-pdf',
+      '/glosario/procesamiento-zero-knowledge-pdf': '/en/glossary/zero-knowledge-pdf-processing',
+      // Soluciones B2B por Industria (ES <-> EN)
+      '/industrias': '/en/industries',
+      '/industrias/legal': '/en/industries/legal',
+      '/industrias/salud': '/en/industries/healthcare',
+      '/industrias/finanzas': '/en/industries/finance',
+      '/industrias/gobierno': '/en/industries/government',
     };
 
     const INVERTED_PAIRS = Object.fromEntries(
@@ -167,6 +283,30 @@ module.exports = {
       changefreq = 'daily';
     } else if (path.startsWith('/soluciones/') || path.startsWith('/en/solutions/')) {
       priority = 0.85;
+      changefreq = 'weekly';
+    } else if (
+      path.startsWith('/comparar/') ||
+      path.startsWith('/en/compare/') ||
+      path.startsWith('/alternativas/') ||
+      path.startsWith('/en/alternatives/')
+    ) {
+      priority = 0.8;
+      changefreq = 'weekly';
+    } else if (
+      path === '/industrias' ||
+      path === '/en/industries' ||
+      path.startsWith('/industrias/') ||
+      path.startsWith('/en/industries/')
+    ) {
+      priority = 0.8;
+      changefreq = 'weekly';
+    } else if (
+      path === '/glosario' ||
+      path === '/en/glossary' ||
+      path.startsWith('/glosario/') ||
+      path.startsWith('/en/glossary/')
+    ) {
+      priority = 0.75;
       changefreq = 'weekly';
     } else if (
       path.includes('/editar') ||
@@ -213,7 +353,7 @@ module.exports = {
     const alternateRefs = [
       { href: `${config.siteUrl}${esPath}`, hreflang: 'es', hrefIsAbsolute: true },
       { href: `${config.siteUrl}${enPath}`, hreflang: 'en', hrefIsAbsolute: true },
-      { href: `${config.siteUrl}${enPath}`, hreflang: 'x-default', hrefIsAbsolute: true },
+      { href: `${config.siteUrl}${esPath}`, hreflang: 'x-default', hrefIsAbsolute: true },
     ];
 
     return {

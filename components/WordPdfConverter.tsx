@@ -1,29 +1,15 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import {
-  PDFDocument,
-  StandardFonts,
-  rgb,
-  degrees,
-  PDFName,
-  PDFDict,
-  PDFRef,
-  PDFRawStream,
-} from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import JSZip from 'jszip';
 import {
-  FileDown,
   Loader2,
-  X,
-  FilePlus,
   RefreshCw,
-  UploadCloud,
   Repeat,
   Layout,
   Sliders,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
   Grid,
   Compass,
@@ -31,33 +17,22 @@ import {
   AlignLeft,
   ShieldCheck,
   ArrowLeft,
-  Zap,
   Cpu,
-  HelpCircle,
   Plus,
   FileText,
-  Check,
   ListChecks,
-  Table as TableIcon,
-  FileSpreadsheet,
-  BookOpen,
   Trash2,
   Image as ImageIcon,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
 } from 'lucide-react';
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
-import PdfPageViewer from '@/components/PdfPageViewer';
-import { Document, Packer, Paragraph, TextRun, PageBreak, ImageRun } from 'docx';
 import { convertPdfToUltraDocx } from '@/lib/high-fidelity-docx-engine';
 import { convertPdfToWordWithApi } from '@/lib/pdf2docx-api-client';
 import { convertWithApi } from '@/lib/adobe-api-client';
@@ -119,11 +94,6 @@ function parseRangeString(numPages: number, rangeStr: string): Set<number> {
   return set;
 }
 
-function sanitizeDocxText(text: string): string {
-  if (!text) return '';
-  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g, '').trim();
-}
-
 interface SlotItem {
   id: string;
   file: File | null;
@@ -145,7 +115,9 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
 
   useEffect(() => {
-    setMode(defaultMode);
+    queueMicrotask(() => {
+      setMode(defaultMode);
+    });
   }, [defaultMode]);
 
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
@@ -179,8 +151,6 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
 
   // SELECCIÓN DE PÁGINAS (PDF -> WORD)
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
@@ -209,102 +179,47 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const [addPageNumbers, setAddPageNumbers] = useState<boolean>(true);
   const [includeWordDocHeader, setIncludeWordDocHeader] = useState<boolean>(true);
   const [watermarkText, setWatermarkText] = useState<string>('');
+  const [, setDownloadUrl] = useState<string | null>(null);
+  const [, setDownloadFilename] = useState<string>('');
 
   // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
-  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState<number>(0);
   const [activePage, setActivePage] = useState<number>(1);
-  const [isRendering, setIsRendering] = useState<boolean>(false);
   const [parsedWordDoc, setParsedWordDoc] = useState<ParsedWordDoc | null>(null);
-  // DOCX PREVIEW ALTA FIDELIDAD
-  const docxContainerRef = useRef<HTMLDivElement>(null);
-  const docxScrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isDocxRendering, setIsDocxRendering] = useState<boolean>(false);
-  const [docxRenderError, setDocxRenderError] = useState<boolean>(false);
-  const [docxZoom, setDocxZoom] = useState<number>(75);
-  const [wordHtml, setWordHtml] = useState<string>('');
 
   // Sincronizar slot activo con estado de archivo y previsualización
   const loadedSlots = slots.filter((s) => s.file !== null);
   const activeSlot = slots[activeSlotIndex] || slots[0];
 
   useEffect(() => {
-    if (activeSlot && activeSlot.file) {
-      setFile(activeSlot.file);
-      if (activeSlot.totalPages > 0) {
-        setTotalPages(activeSlot.totalPages);
-      }
-      if (Object.keys(activeSlot.pageDataUrls).length > 0) {
-        setPageDataUrls(activeSlot.pageDataUrls);
-      }
-    } else {
-      const firstLoaded = slots.find((s) => s.file !== null);
-      if (firstLoaded && firstLoaded.file) {
-        setFile(firstLoaded.file);
-        setTotalPages(firstLoaded.totalPages);
-        setPageDataUrls(firstLoaded.pageDataUrls);
+    queueMicrotask(() => {
+      if (activeSlot && activeSlot.file) {
+        setFile(activeSlot.file);
+        if (activeSlot.totalPages > 0) {
+          setTotalPages(activeSlot.totalPages);
+        }
       } else {
-        setFile(null);
+        const firstLoaded = slots.find((s) => s.file !== null);
+        if (firstLoaded && firstLoaded.file) {
+          setFile(firstLoaded.file);
+          setTotalPages(firstLoaded.totalPages);
+        } else {
+          setFile(null);
+        }
       }
-    }
-  }, [slots, activeSlotIndex]);
-
-  const handleFitDocxWidth = useCallback(() => {
-    if (docxScrollContainerRef.current) {
-      const containerWidth = docxScrollContainerRef.current.clientWidth || 600;
-      const fitPercent = Math.max(
-        35,
-        Math.min(125, Math.floor(((containerWidth - 48) / 814) * 100)),
-      );
-      setDocxZoom(fitPercent);
-    } else {
-      setDocxZoom(75);
-    }
-  }, []);
-  // AUTO-SCROLL DE LA BARRA LATERAL DE MINIATURAS A LA MINIATURA ACTIVA
-  useEffect(() => {
-    if (activePage > 0) {
-      const thumbElem = document.getElementById(`thumb-page-${activePage}`);
-      if (thumbElem) {
-        thumbElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }
-  }, [activePage]);
+    });
+  }, [slots, activeSlotIndex, activeSlot]);
 
   // AUTO-SELECCIÓN DE MOTOR SEGÚN NÚMERO DE PÁGINAS (>200 Motor Local / <=200 Adobe Acrobat)
   useEffect(() => {
-    if (totalPages > 200) {
-      setConversionEngine('local');
-    } else if (totalPages > 0) {
-      setConversionEngine('adobe');
-    }
+    queueMicrotask(() => {
+      if (totalPages > 200) {
+        setConversionEngine('local');
+      } else if (totalPages > 0) {
+        setConversionEngine('adobe');
+      }
+    });
   }, [totalPages]);
-
-  const scrollToDocxPage = (pageNum: number) => {
-    setActivePage(pageNum);
-    const container = docxScrollContainerRef.current;
-    if (!container || !docxContainerRef.current) return;
-
-    const sections = docxContainerRef.current.querySelectorAll(
-      '.docx-wrapper > section.docx, section.docx',
-    );
-    if (sections && sections.length > 1 && sections[pageNum - 1]) {
-      const targetSec = sections[pageNum - 1] as HTMLElement;
-      sections.forEach((s) => s.classList.remove('docx-active-page'));
-      targetSec.classList.add('docx-active-page');
-
-      const containerRect = container.getBoundingClientRect();
-      const targetRect = targetSec.getBoundingClientRect();
-      const diff = targetRect.top - containerRect.top;
-      container.scrollTo({ top: container.scrollTop + diff - 15, behavior: 'smooth' });
-    } else {
-      // Documento continuo con 1 sección: desplazamiento proporcional al total de páginas
-      const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
-      const ratio = totalPages > 1 ? (pageNum - 1) / (totalPages - 1) : 0;
-      const targetScroll = Math.round(ratio * maxScroll);
-      container.scrollTo({ top: targetScroll, behavior: 'smooth' });
-    }
-  };
 
   const pdfUrl = useMemo(() => {
     if (!file || !file.name.toLowerCase().endsWith('.pdf')) return null;
@@ -341,10 +256,8 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }, [totalPages, pageSelectionMode, pageRangeInput, selectedPageSet]);
 
-  const targetPageSet = useMemo(() => new Set(targetPages), [targetPages]);
-
   // PARSEADOR COMPLETO DE ARCHIVO DOCX
-  const parseDocxDetails = async (wordFile: File): Promise<ParsedWordDoc> => {
+  const parseDocxDetails = useCallback(async (wordFile: File): Promise<ParsedWordDoc> => {
     const defaultDoc: ParsedWordDoc = {
       title: wordFile.name.replace(/\.[^/.]+$/, ''),
       paragraphs: [],
@@ -430,150 +343,26 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     } catch {
       return defaultDoc;
     }
-  };
+  }, []);
 
-  const renderWordPageThumbnails = (
-    doc: ParsedWordDoc,
-    pagesCount: number,
-    docxDomContainer?: HTMLElement | null,
-  ): Record<number, string> => {
-    const urls: Record<number, string> = {};
-    const paragraphs = doc.paragraphs || [];
-    const paragraphsPerPage = Math.max(1, Math.ceil(paragraphs.length / Math.max(pagesCount, 1)));
-    const sections = docxDomContainer
-      ? docxDomContainer.querySelectorAll('.docx-wrapper > section.docx, section.docx')
-      : null;
-
-    for (let p = 1; p <= pagesCount; p++) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 180;
-      canvas.height = 250;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) continue;
-
-      const sec = sections && sections[p - 1] ? (sections[p - 1] as HTMLElement) : null;
-      const secText = sec?.innerText?.trim() || '';
-
-      // Hoja de documento Word con sombra y borde
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, 180, 250);
-
-      // Barra superior azul Word
-      ctx.fillStyle = '#1e3a8a';
-      ctx.fillRect(0, 0, 180, 7);
-
-      // Párrafos y textos de la página
-      const pageLines = secText
-        ? secText
-            .split('\n')
-            .map((l) => l.trim())
-            .filter(Boolean)
-        : paragraphs.slice((p - 1) * paragraphsPerPage, p * paragraphsPerPage);
-
-      const heading = pageLines[0] || doc.headings[p - 2] || `Página ${p}`;
-      ctx.fillStyle = '#1e293b';
-      ctx.font = 'bold 8.5px sans-serif';
-      ctx.fillText(heading.substring(0, 24), 12, 24);
-
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(12, 30, 156, 1.5);
-
-      let y = 42;
-      for (let l = 1; l < Math.min(pageLines.length, 12); l++) {
-        const line = pageLines[l] || '';
-        if (line.length > 0) {
-          ctx.fillStyle = '#475569';
-          ctx.font = '7px sans-serif';
-          ctx.fillText(line.substring(0, 32), 12, y);
-        } else {
-          ctx.fillStyle = '#e2e8f0';
-          ctx.fillRect(12, y - 4, 130 - (l % 4) * 20, 3);
-        }
-        y += 13;
-        if (y > 205) break;
-      }
-
-      if (sec?.querySelector('table') || (doc.tables && doc.tables.length > 0)) {
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 0.5;
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(12, Math.min(y, 175), 156, 26);
-        ctx.strokeRect(12, Math.min(y, 175), 156, 26);
-        ctx.beginPath();
-        ctx.moveTo(12, Math.min(y, 175) + 8);
-        ctx.lineTo(168, Math.min(y, 175) + 8);
-        ctx.moveTo(12, Math.min(y, 175) + 17);
-        ctx.lineTo(168, Math.min(y, 175) + 17);
-        ctx.moveTo(64, Math.min(y, 175));
-        ctx.lineTo(64, Math.min(y, 175) + 26);
-        ctx.moveTo(116, Math.min(y, 175));
-        ctx.lineTo(116, Math.min(y, 175) + 26);
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 7.5px monospace';
-      ctx.fillText(`Pág. ${p} / ${pagesCount}`, 12, 240);
-
-      urls[p] = canvas.toDataURL('image/jpeg', 0.88);
-    }
-    return urls;
-  };
-
-  const prepararWordDocCompleto = async (wordFile: File) => {
-    setIsRendering(true);
-    setPageDataUrls({});
-    setWordHtml('');
-    try {
-      const arrayBuffer = await wordFile.arrayBuffer();
-
-      // 1. Extraer HTML enriquecido con Mammoth (con imágenes base64 y tablas estilizadas)
+  const prepararWordDocCompleto = useCallback(
+    async (wordFile: File) => {
       try {
-        const mammothRes = await mammoth.convertToHtml(
-          { arrayBuffer: arrayBuffer.slice(0) },
-          {
-            convertImage: mammoth.images.imgElement((image) => {
-              return image.read('base64').then((imageBuffer) => {
-                return {
-                  src: `data:${image.contentType};base64,${imageBuffer}`,
-                };
-              });
-            }),
-          },
-        );
-        if (mammothRes && mammothRes.value) {
-          setWordHtml(mammothRes.value);
-        }
-      } catch (mErr) {
-        console.warn('Mammoth HTML conversion error:', mErr);
+        const doc = await parseDocxDetails(wordFile);
+        setParsedWordDoc(doc);
+        const estPages = Math.max(doc.estPages, 1);
+        setTotalPages(estPages);
+        setSelectedPageSet(new Set(Array.from({ length: estPages }, (_, i) => i + 1)));
+        setPageRangeInput(`1-${estPages}`);
+        setActivePage(1);
+      } catch (err) {
+        console.error(err);
       }
+    },
+    [parseDocxDetails],
+  );
 
-      const doc = await parseDocxDetails(wordFile);
-      setParsedWordDoc(doc);
-      const estPages = Math.max(doc.estPages, 1);
-      setTotalPages(estPages);
-      setSelectedPageSet(new Set(Array.from({ length: estPages }, (_, i) => i + 1)));
-      setPageRangeInput(`1-${estPages}`);
-      setActivePage(1);
-
-      const urls = renderWordPageThumbnails(doc, estPages);
-      setPageDataUrls(urls);
-    } catch (err) {
-      console.error('Error preparando documento Word:', err);
-    } finally {
-      setIsRendering(false);
-    }
-  };
-
-  // CARGA ULTRA RÁPIDA DE MINIATURAS (ESCALA 0.22 + STREAMING EN SEGUNDO PLANO)
-  const cargarMiniaturasPdfUltraFast = async (pdfFile: File) => {
-    cancelRenderRef.current = true;
-    await new Promise((r) => setTimeout(r, 20));
-    cancelRenderRef.current = false;
-
-    setIsRendering(true);
-    setPageDataUrls({});
-
+  const parsePdfPageCount = useCallback(async (pdfFile: File) => {
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
@@ -589,74 +378,14 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
       setTotalPages(count);
       setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
       setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
-
-      // Lote inicial rápido (8 páginas a escala liviana 0.22)
-      const initialBatch = Math.min(count, 8);
-      const initialUrls: Record<number, string> = {};
-
-      for (let p = 1; p <= initialBatch; p++) {
-        if (cancelRenderRef.current) return;
-        try {
-          const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 0.22 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
-            initialUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
-          }
-        } catch {}
-      }
-
-      setPageDataUrls({ ...initialUrls });
-      setIsRendering(false);
-
-      // Carga progresiva en segundo plano
-      if (initialBatch < count) {
-        (async () => {
-          const loadedUrls = { ...initialUrls };
-          for (let p = initialBatch + 1; p <= count; p++) {
-            if (cancelRenderRef.current) return;
-            try {
-              const page = await pdfDoc.getPage(p);
-              const viewport = page.getViewport({ scale: 0.22 });
-              const canvas = document.createElement('canvas');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-                  typeof page.render
-                >[0]).promise;
-                loadedUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
-              }
-            } catch {}
-
-            if (p % 6 === 0 || p === count) {
-              setPageDataUrls({ ...loadedUrls });
-              await new Promise((r) => setTimeout(r, 10));
-            }
-          }
-        })();
-      }
     } catch (err) {
-      console.error('Error miniaturas PDF:', err);
-      setIsRendering(false);
+      console.error(err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!file) {
       queueMicrotask(() => {
-        setPageDataUrls({});
         setTotalPages(0);
         setParsedWordDoc(null);
         setSelectedPageSet(new Set());
@@ -667,110 +396,12 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     queueMicrotask(() => {
       const name = file.name.toLowerCase();
       if (name.endsWith('.pdf')) {
-        cargarMiniaturasPdfUltraFast(file);
+        parsePdfPageCount(file);
       } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
         prepararWordDocCompleto(file);
       }
     });
-  }, [file]);
-
-  // EFECTO DE RENDERIZADO ALTA FIDELIDAD DE DOCX CON DOCX-PREVIEW Y MAMMOTH
-  useEffect(() => {
-    let isMounted = true;
-    if (
-      file &&
-      (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.doc'))
-    ) {
-      setIsDocxRendering(true);
-      setDocxRenderError(false);
-      (async () => {
-        try {
-          const buffer = await file.arrayBuffer();
-
-          // Intentar renderizar con docx-preview
-          try {
-            const docx = await import('docx-preview');
-            if (docxContainerRef.current && isMounted) {
-              docxContainerRef.current.innerHTML = '';
-              await docx.renderAsync(buffer.slice(0), docxContainerRef.current, undefined, {
-                className: 'docx-preview-rendered',
-                inWrapper: true,
-                ignoreWidth: false,
-                ignoreHeight: false,
-                ignoreFonts: false,
-                breakPages: true,
-                useBase64URL: true,
-                renderHeaders: true,
-                renderFooters: true,
-                renderFootnotes: true,
-                renderEndnotes: true,
-              });
-
-              if (isMounted) {
-                const sections = docxContainerRef.current.querySelectorAll(
-                  '.docx-wrapper > section.docx, section.docx',
-                );
-                if (sections && sections.length > 0) {
-                  setDocxRenderError(false);
-                  const total = Math.max(
-                    sections.length,
-                    parsedWordDoc?.estPages || totalPages || 1,
-                  );
-                  setTotalPages(total);
-                  setSelectedPageSet(new Set(Array.from({ length: total }, (_, i) => i + 1)));
-                  setPageRangeInput(`1-${total}`);
-                  setActivePage(1);
-
-                  sections.forEach((sec, idx) => {
-                    sec.setAttribute('id', `docx-page-${idx + 1}`);
-                    (sec as HTMLElement).style.position = 'relative';
-
-                    const badge = document.createElement('div');
-                    badge.className = 'docx-page-badge';
-                    badge.innerText = `Página ${idx + 1} de ${total}`;
-                    sec.insertBefore(badge, sec.firstChild);
-
-                    if (idx === 0) sec.classList.add('docx-active-page');
-                  });
-
-                  if (parsedWordDoc) {
-                    const richThumbs = renderWordPageThumbnails(
-                      parsedWordDoc,
-                      total,
-                      docxContainerRef.current,
-                    );
-                    setPageDataUrls(richThumbs);
-                  }
-                } else {
-                  setDocxRenderError(true);
-                }
-              }
-            }
-          } catch (docxErr) {
-            console.warn('docx-preview warning, using high-fidelity Mammoth Word Engine:', docxErr);
-            if (isMounted) {
-              setDocxRenderError(true);
-            }
-          }
-        } catch (err) {
-          console.warn('Document buffer read error:', err);
-          if (isMounted) {
-            setDocxRenderError(true);
-          }
-        } finally {
-          if (isMounted) {
-            setIsDocxRendering(false);
-            setTimeout(() => {
-              handleFitDocxWidth();
-            }, 60);
-          }
-        }
-      })();
-    }
-    return () => {
-      isMounted = false;
-    };
-  }, [file, handleFitDocxWidth, parsedWordDoc]);
+  }, [file, parsePdfPageCount, prepararWordDocCompleto]);
 
   const handleClearAllSlots = () => {
     setSlots([
@@ -789,8 +420,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     setMode(newMode);
     setGlobalFile(null);
     setDownloadUrl(null);
-    setDownloadFilename('');
-    setParsedWordDoc(null);
+    setCompletedResult(null);
     setCompletedResult(null);
     setHeaderHidden(false);
   };
@@ -804,85 +434,88 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   };
 
   // CARGA AISLADA DE UN ARCHIVO EN UNA CAJA ESPECÍFICA (SIN DUPLICAR)
-  const loadSingleFileIntoSlot = async (slotIdx: number, newFile: File) => {
-    setSlots((prev) => {
-      const next = [...prev];
-      next[slotIdx] = {
-        ...next[slotIdx],
-        file: newFile,
-        pageDataUrls: {},
-        totalPages: 0,
-      };
-      return next;
-    });
-    setActiveSlotIndex(slotIdx);
+  const loadSingleFileIntoSlot = useCallback(
+    async (slotIdx: number, newFile: File) => {
+      setSlots((prev) => {
+        const next = [...prev];
+        next[slotIdx] = {
+          ...next[slotIdx],
+          file: newFile,
+          pageDataUrls: {},
+          totalPages: 0,
+        };
+        return next;
+      });
+      setActiveSlotIndex(slotIdx);
 
-    // Cargar previsualización para este slot específico
-    const name = newFile.name.toLowerCase();
-    if (name.endsWith('.pdf')) {
-      try {
-        const arrayBuffer = await newFile.arrayBuffer();
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-        const pdf = await pdfjsLib.getDocument({
-          data: arrayBuffer.slice(0),
-          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-          cMapPacked: true,
-        }).promise;
+      // Cargar previsualización para este slot específico
+      const name = newFile.name.toLowerCase();
+      if (name.endsWith('.pdf')) {
+        try {
+          const arrayBuffer = await newFile.arrayBuffer();
+          const pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+          const pdf = await pdfjsLib.getDocument({
+            data: arrayBuffer.slice(0),
+            cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+            cMapPacked: true,
+          }).promise;
 
-        const count = pdf.numPages;
-        const pageUrls: Record<number, string> = {};
-        const maxPagesToRender = Math.min(count, 5);
+          const count = pdf.numPages;
+          const pageUrls: Record<number, string> = {};
+          const maxPagesToRender = Math.min(count, 5);
 
-        for (let p = 1; p <= maxPagesToRender; p++) {
-          const page = await pdf.getPage(p);
-          const vp = page.getViewport({ scale: 1.2 });
-          const canvas = document.createElement('canvas');
-          canvas.width = vp.width;
-          canvas.height = vp.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            await page.render({ canvasContext: ctx, viewport: vp } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
-            pageUrls[p] = canvas.toDataURL('image/png', 0.85);
+          for (let p = 1; p <= maxPagesToRender; p++) {
+            const page = await pdf.getPage(p);
+            const vp = page.getViewport({ scale: 1.2 });
+            const canvas = document.createElement('canvas');
+            canvas.width = vp.width;
+            canvas.height = vp.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              await page.render({ canvasContext: ctx, viewport: vp } as unknown as Parameters<
+                typeof page.render
+              >[0]).promise;
+              pageUrls[p] = canvas.toDataURL('image/png', 0.85);
+            }
           }
+
+          setSlots((prev) => {
+            const next = [...prev];
+            if (next[slotIdx]) {
+              next[slotIdx] = {
+                ...next[slotIdx],
+                pageDataUrls: pageUrls,
+                totalPages: count,
+                thumbnailUrl: pageUrls[1] || '',
+              };
+            }
+            return next;
+          });
+        } catch (err) {
+          console.warn('Error previsualizando PDF en slot', slotIdx, err);
         }
-
-        setSlots((prev) => {
-          const next = [...prev];
-          if (next[slotIdx]) {
-            next[slotIdx] = {
-              ...next[slotIdx],
-              pageDataUrls: pageUrls,
-              totalPages: count,
-              thumbnailUrl: pageUrls[1] || '',
-            };
-          }
-          return next;
-        });
-      } catch (err) {
-        console.warn('Error previsualizando PDF en slot', slotIdx, err);
+      } else {
+        // Archivo Word: procesar documento
+        try {
+          const parsed = await parseDocxDetails(newFile);
+          setSlots((prev) => {
+            const next = [...prev];
+            if (next[slotIdx]) {
+              next[slotIdx] = {
+                ...next[slotIdx],
+                totalPages: parsed.estPages || 1,
+              };
+            }
+            return next;
+          });
+        } catch (err) {
+          console.warn('Error previsualizando Word en slot', slotIdx, err);
+        }
       }
-    } else {
-      // Archivo Word: procesar documento
-      try {
-        const parsed = await parseDocxDetails(newFile);
-        setSlots((prev) => {
-          const next = [...prev];
-          if (next[slotIdx]) {
-            next[slotIdx] = {
-              ...next[slotIdx],
-              totalPages: parsed.estPages || 1,
-            };
-          }
-          return next;
-        });
-      } catch (err) {
-        console.warn('Error previsualizando Word en slot', slotIdx, err);
-      }
-    }
-  };
+    },
+    [parseDocxDetails],
+  );
 
   const handleSlotFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -910,96 +543,95 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     }
   };
 
-  const loadFilesIntoSlots = (fileList: FileList | File[], specificSlotIndex?: number) => {
-    const filesArray = Array.from(fileList);
-    const validFiles: File[] = [];
+  const loadFilesIntoSlots = useCallback(
+    (fileList: FileList | File[], specificSlotIndex?: number) => {
+      const filesArray = Array.from(fileList);
+      const validFiles: File[] = [];
 
-    // Auto-detección inteligente de modo
-    let currentMode = mode;
-    const hasWord = filesArray.some((f) => {
-      const n = f.name.toLowerCase();
-      return n.endsWith('.docx') || n.endsWith('.doc');
-    });
-    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+      // Auto-detección inteligente de modo
+      let currentMode = mode;
+      const hasWord = filesArray.some((f) => {
+        const n = f.name.toLowerCase();
+        return n.endsWith('.docx') || n.endsWith('.doc');
+      });
+      const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
 
-    if (mode === 'word-to-pdf' && !hasWord && hasPdf) {
-      currentMode = 'pdf-to-word';
-      setMode('pdf-to-word');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a PDF a Word' : 'Switched to PDF to Word mode',
-      );
-    } else if (mode === 'pdf-to-word' && !hasPdf && hasWord) {
-      currentMode = 'word-to-pdf';
-      setMode('word-to-pdf');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a Word a PDF' : 'Switched to Word to PDF mode',
-      );
-    }
-
-    for (const f of filesArray) {
-      const name = f.name.toLowerCase();
-      const isPdf = name.endsWith('.pdf');
-      const isWord = name.endsWith('.docx') || name.endsWith('.doc');
-
-      if (currentMode === 'word-to-pdf' && isWord) {
-        validFiles.push(f);
-      } else if (currentMode === 'pdf-to-word' && isPdf) {
-        validFiles.push(f);
+      if (mode === 'word-to-pdf' && !hasWord && hasPdf) {
+        currentMode = 'pdf-to-word';
+        setMode('pdf-to-word');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a PDF a Word' : 'Switched to PDF to Word mode',
+        );
+      } else if (mode === 'pdf-to-word' && !hasPdf && hasWord) {
+        currentMode = 'word-to-pdf';
+        setMode('word-to-pdf');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a Word a PDF' : 'Switched to Word to PDF mode',
+        );
       }
-    }
 
-    if (validFiles.length === 0) {
-      toast.error(
-        currentMode === 'word-to-pdf'
-          ? isEs
-            ? 'Por favor selecciona archivos de Word (.docx o .doc)'
-            : 'Please select Word files (.docx or .doc)'
-          : isEs
-            ? 'Por favor selecciona archivos PDF (.pdf)'
-            : 'Please select PDF files (.pdf)',
-      );
-      return;
-    }
+      for (const f of filesArray) {
+        const name = f.name.toLowerCase();
+        const isPdf = name.endsWith('.pdf');
+        const isWord = name.endsWith('.docx') || name.endsWith('.doc');
 
-    if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
-      loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
-    } else {
-      let validIdx = 0;
-      for (let i = 0; i < 3; i++) {
-        if (validIdx >= validFiles.length) break;
-        if (!slots[i].file) {
-          loadSingleFileIntoSlot(i, validFiles[validIdx]);
-          validIdx++;
+        if (currentMode === 'word-to-pdf' && isWord) {
+          validFiles.push(f);
+        } else if (currentMode === 'pdf-to-word' && isPdf) {
+          validFiles.push(f);
         }
       }
-      if (validIdx === 0 && validFiles.length > 0) {
-        validFiles.slice(0, 3).forEach((f, idx) => {
-          loadSingleFileIntoSlot(idx, f);
-        });
+
+      if (validFiles.length === 0) {
+        toast.error(
+          currentMode === 'word-to-pdf'
+            ? isEs
+              ? 'Por favor selecciona archivos de Word (.docx o .doc)'
+              : 'Please select Word files (.docx or .doc)'
+            : isEs
+              ? 'Por favor selecciona archivos PDF (.pdf)'
+              : 'Please select PDF files (.pdf)',
+        );
+        return;
       }
-      setActiveSlotIndex(0);
-    }
 
-    setGlobalFile(validFiles[0]);
-    setDownloadUrl(null);
-    setCompletedResult(null);
+      if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+        loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
+      } else {
+        let validIdx = 0;
+        for (let i = 0; i < 3; i++) {
+          if (validIdx >= validFiles.length) break;
+          if (!slots[i].file) {
+            loadSingleFileIntoSlot(i, validFiles[validIdx]);
+            validIdx++;
+          }
+        }
+        if (validIdx === 0 && validFiles.length > 0) {
+          validFiles.slice(0, 3).forEach((f, idx) => {
+            loadSingleFileIntoSlot(idx, f);
+          });
+        }
+        setActiveSlotIndex(0);
+      }
 
-    toast.success(
-      isEs
-        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
-        : `${validFiles.length} file(s) ready in boxes`,
-    );
-  };
+      setGlobalFile(validFiles[0]);
+      setDownloadUrl(null);
+      setCompletedResult(null);
+
+      toast.success(
+        isEs
+          ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+          : `${validFiles.length} file(s) ready in boxes`,
+      );
+    },
+    [mode, isEs, slots, setGlobalFile, loadSingleFileIntoSlot],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       loadFilesIntoSlots(e.target.files);
     }
     e.target.value = '';
-  };
-
-  const processSelectedFile = (selected: File) => {
-    loadFilesIntoSlots([selected]);
   };
 
   const initialGlobalFileLoadedRef = useRef<boolean>(false);
@@ -1023,24 +655,10 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     setFile(null);
     setGlobalFile(null);
     setDownloadUrl(null);
-    setDownloadFilename('');
     setParsedWordDoc(null);
     setCompletedResult(null);
     setHeaderHidden(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // CONTROLADORES DE SELECCIÓN DE PÁGINAS
-  const togglePageSelection = (pageNum: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const newSet = new Set(targetPages);
-    if (newSet.has(pageNum)) {
-      newSet.delete(pageNum);
-    } else {
-      newSet.add(pageNum);
-    }
-    setSelectedPageSet(newSet);
-    setPageSelectionMode('custom');
   };
 
   const handleSelectAll = () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useRef, useEffect, useSyncExternalStore } from 'react';
+import { Suspense, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, animate } from 'framer-motion';
 import Link from 'next/link';
@@ -24,19 +24,14 @@ import {
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 function EditarContent() {
   const searchParams = useSearchParams();
   const selectedToolParam = searchParams.get('tool');
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
-
-  const emptySubscribe = () => () => {};
-  const isMounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
 
   const editingTools = [
     {
@@ -112,10 +107,63 @@ function EditarContent() {
     },
   ];
 
-  if (!isMounted) return null;
-
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'CollectionPage',
+                '@id': `${SITE_URL}${isEs ? '/editar' : '/en/editar'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/editar' : '/en/editar'}`,
+                name: isEs
+                  ? 'Editar PDF Gratis Online — Texto, Firmas, Marcas de Agua, OCR | PDFBlack'
+                  : 'Edit PDF Online Free — Text, Signatures, Watermarks, OCR | PDFBlack',
+                description: isEs
+                  ? 'Edita documentos PDF directamente en tu navegador: modifica texto, añade firmas digitales, coloca marcas de agua, numera páginas y aplica OCR.'
+                  : 'Edit PDF documents directly in your browser: modify text, add digital signatures, insert watermarks, number pages, and apply OCR.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+                mainEntity: {
+                  '@type': 'ItemList',
+                  name: isEs ? 'Herramientas de Edición PDF' : 'PDF Editing Tools',
+                  numberOfItems: editingTools.length,
+                  itemListElement: editingTools.map((t, idx) => ({
+                    '@type': 'ListItem',
+                    position: idx + 1,
+                    name: isEs ? t.titleEs : t.titleEn,
+                    description: isEs ? t.descEs : t.descEn,
+                    url: `${SITE_URL}${isEs ? t.path : `/en${t.path}`}`,
+                  })),
+                },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Editar PDF' : 'Edit PDF',
+                    item: `${SITE_URL}${isEs ? '/editar' : '/en/editar'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="w-full max-w-7xl relative z-10">
         <motion.div
           key="workspace-view"

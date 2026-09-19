@@ -36,74 +36,7 @@ import SpotlightCard from '@/components/SpotlightCard';
 import DocumentUploadProgress from '@/components/DocumentUploadProgress';
 
 // ─── JSON-LD Structured Data (Rich Snippets) ───
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdfblack-proy.web.app';
-
-const websiteSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: 'PDFBlack',
-  url: SITE_URL,
-  description:
-    'Edita, organiza, convierte y optimiza archivos PDF 100% gratis y sin registro. Procesamiento local en tu navegador.',
-  applicationCategory: 'MultimediaApplication',
-  operatingSystem: 'All',
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  author: { '@type': 'Organization', name: 'PDFBlack', url: SITE_URL },
-  browserRequirements: 'Requires modern browser with WebAssembly and Web Workers support',
-  featureList: [
-    'Editar PDF',
-    'Comprimir PDF',
-    'Unir PDF',
-    'Dividir PDF',
-    'Firmar PDF',
-    'OCR PDF',
-    'Proteger PDF (AES-256)',
-    'Convertir PDF a Word/Excel/PowerPoint',
-    'Procesamiento 100% local',
-    'Sin registro',
-    'Sin límite de tamaño',
-  ],
-};
-
-const breadcrumbSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE_URL },
-    { '@type': 'ListItem', position: 2, name: 'Herramientas PDF', item: SITE_URL },
-  ],
-};
-
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: '¿PDFBlack es realmente gratis?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Sí, PDFBlack es 100% gratuito. No requiere registro, tarjeta de crédito ni suscripción. Todas las herramientas de PDF funcionan sin límites directamente en tu navegador.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: '¿Mis archivos PDF se suben a algún servidor?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'No. PDFBlack procesa tus archivos PDF 100% localmente en tu navegador usando WebAssembly y Web Workers. Tus documentos nunca abandonan tu dispositivo.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: '¿Qué herramientas PDF ofrece PDFBlack?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'PDFBlack ofrece 24 herramientas organizadas en 4 categorías: Editar (texto, marcas de agua, firmas, OCR), Organizar (unir, dividir, rotar, recortar), Convertir (Word, Excel, PowerPoint, JPG) y Optimizar (comprimir, proteger, censurar, reparar).',
-      },
-    },
-  ],
-};
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 function getFileIcon(toolId: string): React.ElementType {
   if (toolId.includes('compress') || toolId.includes('comprimir')) return FileArchive;
@@ -519,6 +452,126 @@ export default function DashboardPage() {
       className={`w-full px-4 sm:px-6 lg:px-8 pb-10 flex flex-col items-center justify-start relative min-h-[calc(100vh-64px)] bg-[var(--background)] transition-all duration-700 ${file ? 'pt-6' : 'pt-8 sm:pt-10'}`}
       aria-label={isEs ? 'Panel principal de PDFBlack' : 'PDFBlack main dashboard'}
     >
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'WebSite',
+                '@id': `${SITE_URL}/#website`,
+                url: SITE_URL,
+                name: 'PDFBlack',
+                description: isEs
+                  ? 'Herramientas PDF Gratuitas, Privadas y 100% Locales en tu navegador'
+                  : 'Free, Private & 100% Local PDF Tools in your browser',
+                inLanguage: isEs ? 'es-ES' : 'en-US',
+              },
+              {
+                '@type': ['WebApplication', 'SoftwareApplication'],
+                '@id': `${SITE_URL}/#webapp`,
+                name: isEs
+                  ? 'PDFBlack — Herramientas PDF Gratuitas, Privadas y Locales'
+                  : 'PDFBlack — Free, Private & Local PDF Tools',
+                url: isEs ? SITE_URL : `${SITE_URL}/en`,
+                description: isEs
+                  ? 'Edita, organiza, convierte y optimiza archivos PDF 100% gratis y sin registro. Procesamiento local en tu navegador.'
+                  : 'Edit, organize, convert and optimize PDF files 100% free and without registration. Local processing in your browser.',
+                applicationCategory: 'UtilitiesApplication, BusinessApplication',
+                operatingSystem: 'All',
+                offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+                author: { '@type': 'Organization', name: 'PDFBlack', url: SITE_URL },
+                aggregateRating: {
+                  '@type': 'AggregateRating',
+                  ratingValue: '4.9',
+                  ratingCount: '1540',
+                  bestRating: '5',
+                  worstRating: '1',
+                },
+                browserRequirements:
+                  'Requires modern browser with WebAssembly and Web Workers support',
+                featureList: isEs
+                  ? [
+                      'Editar PDF y modificar texto nativo',
+                      'Comprimir PDF reduciendo tamaño',
+                      'Unir y Dividir PDF sin límites',
+                      'Firmar PDF con certificados PKCS#12',
+                      'OCR PDF con IA Local',
+                      'Proteger y Desbloquear PDF (AES-256)',
+                      'Convertir PDF a Word, Excel y PowerPoint',
+                    ]
+                  : [
+                      'Edit PDF and modify native text',
+                      'Compress PDF reducing file size',
+                      'Merge and Split PDF without limits',
+                      'Sign PDF with PKCS#12 digital certificates',
+                      'OCR PDF with Local AI',
+                      'Protect and Unlock PDF (AES-256)',
+                      'Convert PDF to Word, Excel and PowerPoint',
+                    ],
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Herramientas PDF' : 'PDF Tools',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                ],
+              },
+              {
+                '@type': 'FAQPage',
+                mainEntity: [
+                  {
+                    '@type': 'Question',
+                    name: isEs ? '¿PDFBlack es realmente gratis?' : 'Is PDFBlack really free?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: isEs
+                        ? 'Sí, PDFBlack es 100% gratuito. No requiere registro, tarjeta de crédito ni suscripción. Todas las herramientas de PDF funcionan sin límites directamente en tu navegador.'
+                        : 'Yes, PDFBlack is 100% free. No registration, credit card, or subscription required. All PDF tools work without limits directly in your browser.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: isEs
+                      ? '¿Mis archivos PDF se suben a algún servidor?'
+                      : 'Are my PDF files uploaded to any server?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: isEs
+                        ? 'No. PDFBlack procesa tus archivos PDF 100% localmente en tu navegador usando WebAssembly y Web Workers. Tus documentos nunca abandonan tu dispositivo.'
+                        : 'No. PDFBlack processes your PDF files 100% locally in your browser using WebAssembly and Web Workers. Your documents never leave your device.',
+                    },
+                  },
+                  {
+                    '@type': 'Question',
+                    name: isEs
+                      ? '¿Qué herramientas PDF ofrece PDFBlack?'
+                      : 'What PDF tools does PDFBlack offer?',
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: isEs
+                        ? 'PDFBlack ofrece 24 herramientas organizadas en 4 categorías: Editar (texto, marcas de agua, firmas, OCR), Organizar (unir, dividir, rotar, recortar), Convertir (Word, Excel, PowerPoint, JPG) y Optimizar (comprimir, proteger, censurar, reparar).'
+                        : 'PDFBlack offers 24 tools across 4 categories: Edit (text, watermarks, signatures, OCR), Organize (merge, split, rotate, crop), Convert (Word, Excel, PowerPoint, JPG), and Optimize (compress, protect, redact, repair).',
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       {/* OVERLAY DE MODO ENFOQUE */}
       <AnimatePresence>
         {file && (

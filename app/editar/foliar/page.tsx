@@ -129,7 +129,7 @@ export default function FoliarPage() {
     name: isEs
       ? 'Foliar PDF Gratis Online — Numeración de Páginas PDF | PDFBlack'
       : 'Number PDF Pages Online Free — Bates & Notarial Stamping | PDFBlack',
-    url: `${SITE_URL}/editar/foliar`,
+    url: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/editar/foliar`,
     description: isEs
       ? 'Herramienta profesional para foliar y numerar páginas de documentos PDF online. Formatos notariales, foliado judicial Bates, páginas enfrentadas para encuadernación y escudo protector. 100% privado en memoria RAM.'
       : 'Professional tool to number and foliate PDF documents online. Notarial formats, legal Bates stamping, facing pages for book binding, and protective shield. 100% in-browser RAM privacy.',
@@ -180,19 +180,19 @@ export default function FoliarPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: `${SITE_URL}/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/editar`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Foliar Páginas' : 'Number Pages',
-        item: `${SITE_URL}/editar/foliar`,
+        item: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/editar/foliar`,
       },
     ],
   };
@@ -751,20 +751,13 @@ export default function FoliarPage() {
                         <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />
                       )}
                     </button>
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <div className="px-4 sm:px-5 pb-5 pt-1 text-xs text-zinc-400 font-mono leading-relaxed border-t border-zinc-800/60">
-                            {faq.a}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <div
+                      className={`px-4 sm:px-5 pb-5 pt-1 text-xs text-zinc-400 font-mono leading-relaxed border-t border-zinc-800/60 transition-all duration-200 ${
+                        isOpen ? 'block' : 'hidden'
+                      }`}
+                    >
+                      {faq.a}
+                    </div>
                   </div>
                 );
               })}

@@ -9,6 +9,7 @@ import SharedLayout from '../components/SharedLayout';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 const SITE_NAME = 'PDFBlack';
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-L18LM8EQYJ';
+const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
 export const viewport: Viewport = {
   themeColor: '#09090b',
@@ -105,7 +106,7 @@ export const metadata: Metadata = {
 
   // ── Verificación search engines ──
   verification: {
-    google: undefined, // Agregar código de verificación cuando esté disponible
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
   },
 
   // ── App Links / Mobile ──
@@ -124,6 +125,18 @@ export const metadata: Metadata = {
 const globalJsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: 'PDFBlack',
+      description:
+        'Herramientas PDF Gratuitas, Privadas y 100% Locales en tu navegador sin servidores.',
+      publisher: {
+        '@id': `${SITE_URL}/#organization`,
+      },
+      inLanguage: ['es', 'en'],
+    },
     {
       '@type': ['WebApplication', 'SoftwareApplication'],
       '@id': `${SITE_URL}/#webapp`,
@@ -190,12 +203,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           httpEquiv="Content-Security-Policy"
           content={
             "default-src 'self'; " +
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com; " +
-            "script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com; " +
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com https://www.clarity.ms https://scripts.clarity.ms; " +
+            "script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com https://www.clarity.ms https://scripts.clarity.ms; " +
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.syncfusion.com; " +
             "font-src 'self' data: https://fonts.gstatic.com; " +
-            "img-src 'self' data: blob: https: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com; " +
-            "connect-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; " +
+            "img-src 'self' data: blob: https: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com https://*.clarity.ms; " +
+            "connect-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.clarity.ms https://*.bing.com; " +
             "frame-src 'self' blob:; " +
             "worker-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; " +
             "media-src 'self'; " +
@@ -204,8 +217,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             "form-action 'self'"
           }
         />
-        {/* Google Analytics 4 (GA4 / Firebase Analytics) */}
-        {GA_MEASUREMENT_ID && (
+        {/* Google Analytics 4 (GA4 / Firebase Analytics) — Solo en producción */}
+        {process.env.NODE_ENV === 'production' && GA_MEASUREMENT_ID && (
           <>
             <Script
               strategy="afterInteractive"
@@ -226,6 +239,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               }}
             />
           </>
+        )}
+        {/* Microsoft Clarity — Solo en producción */}
+        {process.env.NODE_ENV === 'production' && CLARITY_PROJECT_ID && (
+          <Script
+            id="microsoft-clarity-init"
+            strategy="afterInteractive"
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
+              `,
+            }}
+          />
         )}
       </head>
       <body

@@ -50,16 +50,16 @@ export default function QuitarMarcaAguaPage() {
   const faqs = isEs
     ? [
         {
-          q: '¿Cómo funciona la eliminación de marcas de agua sin perder calidad en PDFBlack?',
-          a: 'A diferencia de las herramientas convencionales que rasterizan la página a imagen JPEG para luego retocarla (lo que destruye la nitidez tipográfica y la búsqueda de texto), PDFBlack analiza directamente los flujos de contenido internos (Content Streams) del archivo PDF. Localiza y desensambla las instrucciones vectoriales y operadores de marcado (BDC/EMC, operadores Tj) de los sellos sin alterar el texto original, fuentes incrustadas ni gráficos legítimos.',
+          q: '¿Cómo quitar marcas de agua de un PDF gratis online sin programas?',
+          a: 'Para quitar una marca de agua de un PDF online: 1. Arrastra tu documento PDF al visor de PDFBlack. 2. Elige el modo Inteligente o escribe el texto del sello (ej. Confidencial, Borrador, CamScanner). 3. Pulsa «Remover Sello de Agua» y descarga tu archivo limpio en segundos con fidelidad vectorial 100% intacta.',
+        },
+        {
+          q: '¿Cómo borrar marcas de agua de CamScanner o sellos de versión de prueba?',
+          a: 'El motor de PDFBlack incluye heurísticas forenses para identificar y eliminar sellos de aplicaciones móviles como CamScanner, Apryse, SmallPDF, Sejda, Wondershare y banners de prueba «TRIAL/DEMO». También puedes ingresar palabras clave personalizadas para forzar su supresión inmediata.',
         },
         {
           q: '¿Qué diferencia hay entre el modo «Inteligente» y el modo «Forense Profundo»?',
-          a: 'El modo Inteligente elimina sellos de texto habituales (Confidencial, Borrador, Apryse, iLovePDF, etc.) y anotaciones superpuestas con mínima intervención. El modo Forense Profundo realiza una purga exhaustiva de capas OCG (Optional Content Groups), vacía XObjects de marcas gráficas (/WM, /FM), elimina transparencias residuales y limpia metadatos en diccionarios PieceInfo.',
-        },
-        {
-          q: '¿Puedo eliminar marcas de agua de escáneres móviles como CamScanner o software de prueba?',
-          a: 'Sí. El motor incluye bibliotecas de patrones para marcas comerciales habituales (CamScanner, Apryse, SmallPDF, Sejda, Wondershare, Nitro, marcas de versión de prueba «TRIAL/DEMO», etc.). Además, puedes añadir cualquier texto específico en la casilla de búsqueda para forzar su eliminación.',
+          a: 'El modo Inteligente elimina sellos de texto habituales (Confidencial, Borrador, etc.) con mínima intervención. El modo Forense Profundo realiza una purga exhaustiva de capas OCG (Optional Content Groups), vacía XObjects de marcas gráficas (/WM, /FM), elimina transparencias residuales y limpia diccionarios PieceInfo.',
         },
         {
           q: '¿Se borran las firmas digitales, textos útiles o imágenes del documento?',
@@ -88,16 +88,16 @@ export default function QuitarMarcaAguaPage() {
       ]
     : [
         {
-          q: 'How does watermark removal work in PDFBlack without quality loss?',
-          a: 'Unlike traditional tools that rasterize the entire page into a JPEG image (destroying text sharpness and searchability), PDFBlack directly parses native PDF Content Streams. It identifies and disassembles vector watermark instructions (BDC/EMC marked content and Tj text operators) without touching body text, embedded fonts, or legitimate graphics.',
-        },
-        {
-          q: 'What is the difference between "Smart" and "Deep Forensic" cleaning modes?',
-          a: 'Smart mode targets common text stamps (Confidential, Draft, Apryse, iLovePDF, etc.) and floating annotations with minimal dictionary impact. Deep Forensic mode aggressively purges OCG layers (Optional Content Groups), empties graphic watermark XObjects (/WM, /FM), removes residual transparency states, and clears PieceInfo metadata.',
+          q: 'How to remove watermark from PDF free online without software?',
+          a: 'To remove watermarks from a PDF online: 1. Drag your PDF document into the PDFBlack workspace. 2. Select Smart mode or type the stamp text (e.g. Confidential, Draft, CamScanner). 3. Click "Remove Watermark" and download your pristine PDF with 100% intact native vector quality.',
         },
         {
           q: 'Can it remove mobile scanner watermarks like CamScanner or software trial banners?',
-          a: 'Yes. The engine includes heuristic patterns for common commercial stamps (CamScanner, Apryse, SmallPDF, Sejda, Wondershare, Nitro, TRIAL/DEMO banners, etc.). You can also type custom keywords into the search box to force targeted removal.',
+          a: 'Yes. PDFBlack includes forensic heuristics to detect and strip commercial stamps from apps like CamScanner, Apryse, SmallPDF, Sejda, Wondershare, and "TRIAL/DEMO" banners. You can also specify custom keywords to target unique background watermarks.',
+        },
+        {
+          q: 'What is the difference between "Smart" and "Deep Forensic" cleaning modes?',
+          a: 'Smart mode targets common text stamps (Confidential, Draft, etc.) with minimal dictionary impact. Deep Forensic mode aggressively purges OCG layers (Optional Content Groups), empties graphic watermark XObjects (/WM, /FM), removes residual transparency states, and clears PieceInfo metadata.',
         },
         {
           q: 'Does it erase legitimate text, signatures, or embedded images?',
@@ -131,7 +131,7 @@ export default function QuitarMarcaAguaPage() {
     name: isEs
       ? 'Quitar Marca de Agua de PDF Gratis Online — Eliminar Sellos | PDFBlack'
       : 'Remove Watermark from PDF Online Free — Clean Stamps | PDFBlack',
-    url: `${SITE_URL}/editar/quitar-marca-agua`,
+    url: isEs ? `${SITE_URL}/editar/quitar-marca-agua` : `${SITE_URL}/en/editar/quitar-marca-agua`,
     description: isEs
       ? 'Herramienta profesional para eliminar marcas de agua y sellos de fondo en documentos PDF online sin perder calidad vectorial ni subir archivos a la nube.'
       : 'Professional tool to remove watermarks and background stamps from PDF files online without vector quality loss or cloud uploads.',
@@ -181,19 +181,21 @@ export default function QuitarMarcaAguaPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: `${SITE_URL}/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/editar`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Quitar Marca de Agua' : 'Remove Watermark',
-        item: `${SITE_URL}/editar/quitar-marca-agua`,
+        item: isEs
+          ? `${SITE_URL}/editar/quitar-marca-agua`
+          : `${SITE_URL}/en/editar/quitar-marca-agua`,
       },
     ],
   };
@@ -714,20 +716,13 @@ export default function QuitarMarcaAguaPage() {
                         <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />
                       )}
                     </button>
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <div className="px-4 sm:px-5 pb-5 pt-1 text-xs text-zinc-400 font-mono leading-relaxed border-t border-zinc-800/60">
-                            {faq.a}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <div
+                      className={`px-4 sm:px-5 pb-5 pt-1 text-xs text-zinc-400 font-mono leading-relaxed border-t border-zinc-800/60 transition-all duration-200 ${
+                        isOpen ? 'block' : 'hidden'
+                      }`}
+                    >
+                      {faq.a}
+                    </div>
                   </div>
                 );
               })}

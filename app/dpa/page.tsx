@@ -6,12 +6,57 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ShieldCheck, FileText, ClipboardCheck, Download } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 export default function DPAPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12 font-sans">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'WebPage',
+                '@id': `${SITE_URL}${isEs ? '/dpa' : '/en/dpa'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/dpa' : '/en/dpa'}`,
+                name: isEs
+                  ? 'Acuerdo de Procesamiento de Datos (DPA) — GDPR | PDFBlack'
+                  : 'Data Processing Agreement (DPA) — GDPR | PDFBlack',
+                description: isEs
+                  ? 'Acuerdo estándar de tratamiento de datos personales conforme al artículo 28 del Reglamento General de Protección de Datos (RGPD).'
+                  : 'Standard Data Processing Agreement in accordance with Article 28 of the GDPR.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Acuerdo DPA' : 'DPA Agreement',
+                    item: `${SITE_URL}${isEs ? '/dpa' : '/en/dpa'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-4xl mx-auto">
         <div
           className="mb-8 flex items-center justify-between font-mono"

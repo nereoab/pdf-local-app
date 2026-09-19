@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   FileDown,
   Loader2,
@@ -45,121 +45,144 @@ export default function WordToPdf() {
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
   // Parsear .docx y pre-generar PDF local para vista previa
-  const generarPdfLocal = async (wordFile: File): Promise<Uint8Array> => {
-    const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const generarPdfLocal = useCallback(
+    async (wordFile: File): Promise<Uint8Array> => {
+      const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    // Configuración de dimensiones
-    let width = 595.28;
-    let height = 841.89;
-    if (pageSize === 'letter') {
-      width = orientation === 'landscape' ? 792 : 612;
-      height = orientation === 'landscape' ? 612 : 792;
-    } else if (pageSize === 'legal') {
-      width = orientation === 'landscape' ? 1008 : 612;
-      height = orientation === 'landscape' ? 612 : 1008;
-    } else {
-      width = orientation === 'landscape' ? 841.89 : 595.28;
-      height = orientation === 'landscape' ? 595.28 : 841.89;
-    }
+      // Configuración de dimensiones
+      let width = 595.28;
+      let height = 841.89;
+      if (pageSize === 'letter') {
+        width = orientation === 'landscape' ? 792 : 612;
+        height = orientation === 'landscape' ? 612 : 792;
+      } else if (pageSize === 'legal') {
+        width = orientation === 'landscape' ? 1008 : 612;
+        height = orientation === 'landscape' ? 612 : 1008;
+      } else {
+        width = orientation === 'landscape' ? 841.89 : 595.28;
+        height = orientation === 'landscape' ? 595.28 : 841.89;
+      }
 
-    const marginOffset = margin === 'narrow' ? 25 : margin === 'none' ? 10 : 45;
+      const marginOffset = margin === 'narrow' ? 25 : margin === 'none' ? 10 : 45;
 
-    // Extraer texto de word/document.xml mediante JSZip
-    const extractedParagraphs: string[] = [];
+      // Extraer texto de word/document.xml mediante JSZip
+      const extractedParagraphs: string[] = [];
 
-    try {
-      const zip = new JSZip();
-      const zipContent = await zip.loadAsync(await wordFile.arrayBuffer());
-      const documentXml = await zipContent.file('word/document.xml')?.async('text');
+      try {
+        const zip = new JSZip();
+        const zipContent = await zip.loadAsync(await wordFile.arrayBuffer());
+        const documentXml = await zipContent.file('word/document.xml')?.async('text');
 
-      if (documentXml) {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(documentXml, 'text/xml');
-        const pElements = xmlDoc.getElementsByTagName('w:p');
+        if (documentXml) {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(documentXml, 'text/xml');
+          const pElements = xmlDoc.getElementsByTagName('w:p');
 
-        for (let i = 0; i < pElements.length; i++) {
-          const p = pElements[i];
-          const tElements = p.getElementsByTagName('w:t');
-          let pText = '';
-          for (let j = 0; j < tElements.length; j++) {
-            pText += tElements[j].textContent || '';
-          }
-          if (pText.trim().length > 0) {
-            extractedParagraphs.push(pText.trim());
+          for (let i = 0; i < pElements.length; i++) {
+            const p = pElements[i];
+            const tElements = p.getElementsByTagName('w:t');
+            let pText = '';
+            for (let j = 0; j < tElements.length; j++) {
+              pText += tElements[j].textContent || '';
+            }
+            if (pText.trim().length > 0) {
+              extractedParagraphs.push(pText.trim());
+            }
           }
         }
+      } catch (e) {
+        console.warn('No se pudo descomprimir el XML de Word, usando fallback básico:', e);
       }
-    } catch (e) {
-      console.warn('No se pudo descomprimir el XML de Word, usando fallback básico:', e);
-    }
 
-    if (extractedParagraphs.length === 0) {
-      extractedParagraphs.push(`DOCUMENTO: ${wordFile.name.replace(/\.[^/.]+$/, '')}`);
-      extractedParagraphs.push('Contenido procesado y convertido desde el archivo Word.');
-    }
-
-    // Paginado y maquetación de texto en PDF
-    let currentPage = pdfDoc.addPage([width, height]);
-    let currentY = height - marginOffset - 20;
-
-    const drawWatermark = (p: any) => {
-      if (watermarkText.trim().length > 0) {
-        p.drawText(watermarkText.toUpperCase(), {
-          x: width / 5,
-          y: height / 2,
-          size: 36,
-          font: fontBold,
-          color: rgb(0.85, 0.15, 0.15),
-          opacity: 0.18,
-        });
+      if (extractedParagraphs.length === 0) {
+        extractedParagraphs.push(`DOCUMENTO: ${wordFile.name.replace(/\.[^/.]+$/, '')}`);
+        extractedParagraphs.push('Contenido procesado y convertido desde el archivo Word.');
       }
-    };
 
-    drawWatermark(currentPage);
+      // Paginado y maquetación de texto en PDF
+      let currentPage = pdfDoc.addPage([width, height]);
+      let currentY = height - marginOffset - 20;
 
-    // Cabecera de documento
-    currentPage.drawText(wordFile.name.replace(/\.[^/.]+$/, '').toUpperCase(), {
-      x: marginOffset,
-      y: currentY,
-      size: 14,
-      font: fontBold,
-      color: rgb(0.1, 0.3, 0.7),
-    });
-    currentY -= 25;
+      const drawWatermark = (p: any) => {
+        if (watermarkText.trim().length > 0) {
+          p.drawText(watermarkText.toUpperCase(), {
+            x: width / 5,
+            y: height / 2,
+            size: 36,
+            font: fontBold,
+            color: rgb(0.85, 0.15, 0.15),
+            opacity: 0.18,
+          });
+        }
+      };
 
-    const sanitizeText = (str: string) => {
-      return str
-        .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
-        .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
-        .replace(/[\u2013\u2014\u2015]/g, '-')
-        .replace(/\u2026/g, '...')
-        .replace(/\u00A0/g, ' ')
-        .replace(/[^\x00-\xFF]/g, (char) => {
-          const norm = char.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          return norm.length > 0 && norm.charCodeAt(0) <= 255 ? norm : '?';
-        });
-    };
+      drawWatermark(currentPage);
 
-    const printableWidth = width - marginOffset * 2;
-    const fontSize = 10;
-    const lineHeight = 14;
+      // Cabecera de documento
+      currentPage.drawText(wordFile.name.replace(/\.[^/.]+$/, '').toUpperCase(), {
+        x: marginOffset,
+        y: currentY,
+        size: 14,
+        font: fontBold,
+        color: rgb(0.1, 0.3, 0.7),
+      });
+      currentY -= 25;
 
-    for (const rawPara of extractedParagraphs) {
-      const para = sanitizeText(rawPara);
-      const words = para.split(' ');
-      let currentLine = '';
+      const sanitizeText = (str: string) => {
+        return str
+          .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
+          .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+          .replace(/[\u2013\u2014\u2015]/g, '-')
+          .replace(/\u2026/g, '...')
+          .replace(/\u00A0/g, ' ')
+          .replace(/[^\x00-\xFF]/g, (char) => {
+            const norm = char.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return norm.length > 0 && norm.charCodeAt(0) <= 255 ? norm : '?';
+          });
+      };
 
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        let testWidth = testLine.length * (fontSize * 0.52);
-        try {
-          testWidth = font.widthOfTextAtSize(testLine, fontSize);
-        } catch {}
+      const printableWidth = width - marginOffset * 2;
+      const fontSize = 10;
+      const lineHeight = 14;
 
-        if (testWidth > printableWidth) {
+      for (const rawPara of extractedParagraphs) {
+        const para = sanitizeText(rawPara);
+        const words = para.split(' ');
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          let testWidth = testLine.length * (fontSize * 0.52);
+          try {
+            testWidth = font.widthOfTextAtSize(testLine, fontSize);
+          } catch {}
+
+          if (testWidth > printableWidth) {
+            if (currentY < marginOffset + 30) {
+              currentPage = pdfDoc.addPage([width, height]);
+              drawWatermark(currentPage);
+              currentY = height - marginOffset - 20;
+            }
+            try {
+              currentPage.drawText(currentLine, {
+                x: marginOffset,
+                y: currentY,
+                size: fontSize,
+                font,
+                color: rgb(0.15, 0.15, 0.15),
+              });
+            } catch {}
+            currentY -= lineHeight;
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+
+        if (currentLine) {
           if (currentY < marginOffset + 30) {
             currentPage = pdfDoc.addPage([width, height]);
             drawWatermark(currentPage);
@@ -174,80 +197,63 @@ export default function WordToPdf() {
               color: rgb(0.15, 0.15, 0.15),
             });
           } catch {}
-          currentY -= lineHeight;
-          currentLine = word;
-        } else {
-          currentLine = testLine;
+          currentY -= lineHeight + 6; // Espacio entre párrafos
         }
       }
 
-      if (currentLine) {
-        if (currentY < marginOffset + 30) {
-          currentPage = pdfDoc.addPage([width, height]);
-          drawWatermark(currentPage);
-          currentY = height - marginOffset - 20;
-        }
-        try {
-          currentPage.drawText(currentLine, {
-            x: marginOffset,
-            y: currentY,
-            size: fontSize,
-            font,
-            color: rgb(0.15, 0.15, 0.15),
-          });
-        } catch {}
-        currentY -= lineHeight + 6; // Espacio entre párrafos
-      }
-    }
+      return await pdfDoc.save();
+    },
+    [pageSize, orientation, margin, watermarkText],
+  );
 
-    return await pdfDoc.save();
-  };
+  const prepararPrevisualizacionWord = useCallback(
+    async (wordFile: File) => {
+      setIsRendering(true);
+      setPageDataUrls({});
+      setProgressMsg(isEs ? 'Renderizando previsualización PDF...' : 'Rendering PDF preview...');
 
-  const prepararPrevisualizacionWord = async (wordFile: File) => {
-    setIsRendering(true);
-    setPageDataUrls({});
-    setProgressMsg(isEs ? 'Renderizando previsualización PDF...' : 'Rendering PDF preview...');
+      try {
+        const pdfBytes = await generarPdfLocal(wordFile);
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-    try {
-      const pdfBytes = await generarPdfLocal(wordFile);
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: pdfBytes,
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
 
-      const pdfDoc = await pdfjsLib.getDocument({
-        data: pdfBytes,
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-        cMapPacked: true,
-      }).promise;
+        const count = pdfDoc.numPages;
+        setTotalPages(count);
 
-      const count = pdfDoc.numPages;
-      setTotalPages(count);
-
-      const urls: Record<number, string> = {};
-      for (let p = 1; p <= count; p++) {
-        try {
-          const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
-            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+        const urls: Record<number, string> = {};
+        for (let p = 1; p <= count; p++) {
+          try {
+            const page = await pdfDoc.getPage(p);
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                typeof page.render
+              >[0]).promise;
+              urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+            }
+          } catch {
+            /* omit page errors */
           }
-        } catch {
-          /* omit page errors */
         }
+        setPageDataUrls(urls);
+      } catch (err) {
+        console.error('Error al generar previsualización:', err);
+      } finally {
+        setIsRendering(false);
       }
-      setPageDataUrls(urls);
-    } catch (err) {
-      console.error('Error al generar previsualización:', err);
-    } finally {
-      setIsRendering(false);
-    }
-  };
+    },
+    [generarPdfLocal, isEs],
+  );
 
   useEffect(() => {
     if (file) {
@@ -255,7 +261,7 @@ export default function WordToPdf() {
         prepararPrevisualizacionWord(file);
       });
     }
-  }, [file, pageSize, orientation, margin, watermarkText]);
+  }, [file, prepararPrevisualizacionWord]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

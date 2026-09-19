@@ -57,5 +57,8 @@ tess-out.json
 # python cache
 __pycache__/
 *.pyc
-*.pyo
+# credentials
+*credentials*.json
+gsc-credentials.json
+service-account*.json
 

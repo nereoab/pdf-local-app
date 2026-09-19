@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { PDFDocument } from 'pdf-lib';
 import {
   Trash2,
   FileText,
   X,
   Loader2,
   Sliders,
-  UploadCloud,
   Filter,
   Sparkles,
   ZoomIn,
@@ -69,6 +67,8 @@ export default function PdfPageDeleter() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [completedResult, setCompletedResult] = useState<CompletedDeleteResult | null>(null);
+  const [, setDownloadUrl] = useState<string | null>(null);
+  const [, setDownloadFilename] = useState<string>('');
 
   const [isDragging, setIsDragging] = useState(false);
 
@@ -101,10 +101,6 @@ export default function PdfPageDeleter() {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [unlockedPassword, setUnlockedPassword] = useState<string | undefined>(undefined);
-
-  // RESULTADOS Y PREVIAS
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
 
   // OPCIONES AVANZADAS Y METADATOS
   const [rangeInput, setRangeInput] = useState<string>('');
@@ -221,7 +217,9 @@ export default function PdfPageDeleter() {
 
   useEffect(() => {
     if (file && pages.length === 0 && !isEncrypted) {
-      renderThumbnails(file);
+      queueMicrotask(() => {
+        renderThumbnails(file);
+      });
     }
   }, [file, pages.length, isEncrypted, renderThumbnails]);
 
@@ -229,7 +227,6 @@ export default function PdfPageDeleter() {
     if (selected.type === 'application/pdf' || selected.name.toLowerCase().endsWith('.pdf')) {
       setFile(selected);
       setGlobalFile(selected);
-      setDownloadUrl(null);
       setPages([]);
       setIsEncrypted(false);
       setIsUnlocked(false);
@@ -255,7 +252,7 @@ export default function PdfPageDeleter() {
       setUnlockedPassword(passwordInput);
       setIsUnlocked(true);
       toast.success(isEs ? 'Contraseña correcta' : 'Password correct');
-    } catch (e) {
+    } catch {
       toast.error(isEs ? 'Contraseña incorrecta' : 'Incorrect password');
     }
   };
@@ -265,7 +262,6 @@ export default function PdfPageDeleter() {
     setFile(null);
     setGlobalFile(null);
     setPages([]);
-    setDownloadUrl(null);
     setCompletedResult(null);
     setRangeInput('');
     setIsEncrypted(false);

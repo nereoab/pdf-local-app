@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useRef, useEffect, useSyncExternalStore } from 'react';
+import { Suspense, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, animate } from 'framer-motion';
 import Link from 'next/link';
@@ -23,19 +23,14 @@ import {
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 function OptimizarContent() {
   const searchParams = useSearchParams();
   const selectedToolParam = searchParams.get('tool');
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
-
-  const emptySubscribe = () => () => {};
-  const isMounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
 
   const optimizationTools = [
     {
@@ -113,10 +108,63 @@ function OptimizarContent() {
     },
   ];
 
-  if (!isMounted) return null;
-
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-8 flex flex-col items-center justify-start relative min-h-[calc(100vh-80px)] bg-[#09090b]">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'CollectionPage',
+                '@id': `${SITE_URL}${isEs ? '/optimizar' : '/en/optimizar'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimizar'}`,
+                name: isEs
+                  ? 'Optimizar PDF Gratis Online — Comprimir, Proteger, Reparar | PDFBlack'
+                  : 'Optimize PDF Online Free — Compress, Protect, Repair | PDFBlack',
+                description: isEs
+                  ? 'Optimiza tus archivos PDF localmente: comprime el tamaño sin pérdida visual, cifra con contraseña AES-256, desbloquea permisos, repara documentos corruptos y censura datos confidenciales.'
+                  : 'Optimize your PDF files locally: compress size without visual loss, encrypt with AES-256 password, unlock permissions, repair corrupted documents, and redact sensitive data.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+                mainEntity: {
+                  '@type': 'ItemList',
+                  name: isEs ? 'Herramientas de Optimización PDF' : 'PDF Optimization Tools',
+                  numberOfItems: optimizationTools.length,
+                  itemListElement: optimizationTools.map((t, idx) => ({
+                    '@type': 'ListItem',
+                    position: idx + 1,
+                    name: isEs ? t.titleEs : t.titleEn,
+                    description: isEs ? t.descEs : t.descEn,
+                    url: `${SITE_URL}${isEs ? t.path : `/en${t.path}`}`,
+                  })),
+                },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Optimizar PDF' : 'Optimize PDF',
+                    item: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimizar'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="w-full max-w-7xl relative z-10">
         <motion.div
           key="workspace-view"

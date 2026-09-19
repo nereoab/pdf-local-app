@@ -244,7 +244,7 @@ export default function PdfRedacter() {
     setRedoStack([]);
   };
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
     setRedoStack((r) => [
@@ -254,9 +254,9 @@ export default function PdfRedacter() {
     setRedactions(prev.redactions);
     setAutoRedactions(prev.autoRedactions);
     setUndoStack((s) => s.slice(0, -1));
-  };
+  }, [undoStack, redactions, autoRedactions]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (redoStack.length === 0) return;
     const next = redoStack[redoStack.length - 1];
     setUndoStack((s) => [
@@ -266,7 +266,7 @@ export default function PdfRedacter() {
     setRedactions(next.redactions);
     setAutoRedactions(next.autoRedactions);
     setRedoStack((s) => s.slice(0, -1));
-  };
+  }, [redoStack, redactions, autoRedactions]);
 
   // Result + Security
   const [, setDownloadUrl] = useState<string | null>(null);
@@ -317,13 +317,13 @@ export default function PdfRedacter() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const measureTextWidth = (text: string, fontSize: number): number => {
+  const measureTextWidth = useCallback((text: string, fontSize: number): number => {
     if (typeof window === 'undefined') return text.length * fontSize * 0.55;
     const ctx = getCachedMeasureCtx();
     if (!ctx) return text.length * fontSize * 0.55;
     ctx.font = `${fontSize}px sans-serif, Arial, "Times New Roman"`;
     return ctx.measureText(text).width;
-  };
+  }, []);
 
   // ============================================================
   // MOTOR DE AUDITORÍA FORENSE INTELIGENTE (DEEP SCANNER)
@@ -481,7 +481,7 @@ export default function PdfRedacter() {
         );
       }
     },
-    [isEs],
+    [isEs, measureTextWidth],
   );
 
   // Cargar y analizar PDF
@@ -590,63 +590,62 @@ export default function PdfRedacter() {
   };
 
   // Coincidencias de búsqueda por sub-palabra
-  const getSubWordMatches = (
-    queryStr: string,
-    textItems: ExtractedTextItem[],
-    isExact: boolean,
-  ): SensitiveMatch[] => {
-    const query = queryStr.trim();
-    if (!query) return [];
-    const matches: SensitiveMatch[] = [];
-    const queryLower = query.toLowerCase();
+  const getSubWordMatches = useCallback(
+    (queryStr: string, textItems: ExtractedTextItem[], isExact: boolean): SensitiveMatch[] => {
+      const query = queryStr.trim();
+      if (!query) return [];
+      const matches: SensitiveMatch[] = [];
+      const queryLower = query.toLowerCase();
 
-    textItems.forEach((item, idx) => {
-      const textStr = item.str;
-      const textLower = textStr.toLowerCase();
-      let startIndex = 0;
-      let matchPos = isExact
-        ? textStr.indexOf(query, startIndex)
-        : textLower.indexOf(queryLower, startIndex);
-
-      while (matchPos !== -1) {
-        const matchedText = textStr.slice(matchPos, matchPos + query.length);
-        const fullTextWidth = measureTextWidth(textStr, item.fontHeight);
-        const prefixTextWidth = measureTextWidth(textStr.slice(0, matchPos), item.fontHeight);
-        const wordTextWidth = measureTextWidth(matchedText, item.fontHeight);
-        const scaleRatio = fullTextWidth > 0 ? item.itemWidth / fullTextWidth : 1;
-        const wordVx = item.vx + prefixTextWidth * scaleRatio;
-        const wordWidth = Math.max(wordTextWidth * scaleRatio, 8);
-        const wordVyTop = item.vy - item.fontHeight * 0.82;
-        const xPct = (wordVx / item.viewportWidth) * 100;
-        const yPct = (wordVyTop / item.viewportHeight) * 100;
-        const wPct = (wordWidth / item.viewportWidth) * 100;
-        const hPct = Math.max(1.5, ((item.fontHeight * 1.15) / item.viewportHeight) * 100);
-
-        matches.push({
-          id: `text-${item.page}-${idx}-${matchPos}`,
-          page: item.page,
-          category: 'confidential',
-          severity: 'high',
-          matchedText,
-          redactionBox: {
-            id: `text-box-${item.page}-${idx}-${matchPos}`,
-            page: item.page,
-            word: matchedText,
-            xPercent: Math.max(0, Math.min(98, xPct)),
-            yPercent: Math.max(0, Math.min(98, yPct)),
-            widthPercent: Math.min(100 - xPct, wPct),
-            heightPercent: Math.min(100 - yPct, hPct),
-          },
-        });
-
-        startIndex = matchPos + query.length;
-        matchPos = isExact
+      textItems.forEach((item, idx) => {
+        const textStr = item.str;
+        const textLower = textStr.toLowerCase();
+        let startIndex = 0;
+        let matchPos = isExact
           ? textStr.indexOf(query, startIndex)
           : textLower.indexOf(queryLower, startIndex);
-      }
-    });
-    return matches;
-  };
+
+        while (matchPos !== -1) {
+          const matchedText = textStr.slice(matchPos, matchPos + query.length);
+          const fullTextWidth = measureTextWidth(textStr, item.fontHeight);
+          const prefixTextWidth = measureTextWidth(textStr.slice(0, matchPos), item.fontHeight);
+          const wordTextWidth = measureTextWidth(matchedText, item.fontHeight);
+          const scaleRatio = fullTextWidth > 0 ? item.itemWidth / fullTextWidth : 1;
+          const wordVx = item.vx + prefixTextWidth * scaleRatio;
+          const wordWidth = Math.max(wordTextWidth * scaleRatio, 8);
+          const wordVyTop = item.vy - item.fontHeight * 0.82;
+          const xPct = (wordVx / item.viewportWidth) * 100;
+          const yPct = (wordVyTop / item.viewportHeight) * 100;
+          const wPct = (wordWidth / item.viewportWidth) * 100;
+          const hPct = Math.max(1.5, ((item.fontHeight * 1.15) / item.viewportHeight) * 100);
+
+          matches.push({
+            id: `text-${item.page}-${idx}-${matchPos}`,
+            page: item.page,
+            category: 'confidential',
+            severity: 'high',
+            matchedText,
+            redactionBox: {
+              id: `text-box-${item.page}-${idx}-${matchPos}`,
+              page: item.page,
+              word: matchedText,
+              xPercent: Math.max(0, Math.min(98, xPct)),
+              yPercent: Math.max(0, Math.min(98, yPct)),
+              widthPercent: Math.min(100 - xPct, wPct),
+              heightPercent: Math.min(100 - yPct, hPct),
+            },
+          });
+
+          startIndex = matchPos + query.length;
+          matchPos = isExact
+            ? textStr.indexOf(query, startIndex)
+            : textLower.indexOf(queryLower, startIndex);
+        }
+      });
+      return matches;
+    },
+    [measureTextWidth],
+  );
 
   // Búsqueda en vivo al escribir texto único
   useEffect(() => {
@@ -658,13 +657,18 @@ export default function PdfRedacter() {
         setAutoRedactions([]);
       }
     });
-  }, [searchQuery, extractedTextItems, exactMatch]);
+  }, [searchQuery, extractedTextItems, exactMatch, getSubWordMatches]);
+
+  const cargarPdfRef = useRef(cargarPdf);
+  useEffect(() => {
+    cargarPdfRef.current = cargarPdf;
+  });
 
   // Cargar PDF activo cuando cambie el slot
   useEffect(() => {
     queueMicrotask(() => {
       if (activeFile) {
-        cargarPdf(activeFile);
+        cargarPdfRef.current(activeFile);
       } else {
         setFile(null);
         setGlobalFile(null);
@@ -675,7 +679,7 @@ export default function PdfRedacter() {
         setAutoRedactions([]);
       }
     });
-  }, [activeSlotIndex, activeFile]);
+  }, [activeSlotIndex, activeFile, setGlobalFile]);
 
   const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
     setSlots((prev) => {
@@ -1024,7 +1028,12 @@ export default function PdfRedacter() {
     }
   };
 
-  // Atajos de teclado
+  const executeRedactRef = useRef(executeRedact);
+  useEffect(() => {
+    executeRedactRef.current = executeRedact;
+  });
+
+  // Atajos de teclado: Ctrl+Z / Ctrl+Y para Deshacer/Rehacer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
@@ -1041,7 +1050,7 @@ export default function PdfRedacter() {
       } else if (ctrl && e.key === 'Enter') {
         e.preventDefault();
         if (!isProcessing && redactions.length + autoRedactions.length > 0) {
-          executeRedact();
+          executeRedactRef.current();
         }
       }
     };
@@ -1860,6 +1869,7 @@ export default function PdfRedacter() {
                           className="relative max-h-full max-w-full flex items-center justify-center select-none"
                         >
                           <div className="relative inline-block" data-img-wrapper>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={pageDataUrls[pageNum]}
                               alt={`Página ${pageNum}`}
@@ -1997,6 +2007,7 @@ export default function PdfRedacter() {
                           }`}
                         >
                           {pageDataUrls[pNum] ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={pageDataUrls[pNum]}
                               alt={`Página ${pNum}`}
@@ -2709,6 +2720,7 @@ export default function PdfRedacter() {
                 </button>
               </div>
               <div className="p-4 overflow-auto flex items-center justify-center bg-black/50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={zoomModalImage}
                   alt="Zoom preview"

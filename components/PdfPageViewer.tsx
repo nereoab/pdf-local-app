@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BookOpen, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';

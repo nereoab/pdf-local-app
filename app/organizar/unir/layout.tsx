@@ -33,8 +33,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://pdf-black.com/organizar/unir',
     languages: {
-      'es-ES': 'https://pdf-black.com/organizar/unir',
-      'en-US': 'https://pdf-black.com/organizar/unir',
+      es: 'https://pdf-black.com/organizar/unir',
+      en: 'https://pdf-black.com/en/organizar/unir',
+      'x-default': 'https://pdf-black.com/organizar/unir',
     },
   },
   openGraph: {

@@ -8,7 +8,6 @@ import {
   X,
   Loader2,
   Sliders,
-  UploadCloud,
   Plus,
   Check,
   Trash2,
@@ -22,17 +21,10 @@ import {
   Unlock,
   Eye,
   RefreshCw,
-  Download,
-  ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   CheckSquare,
-  Square,
   Split,
-  Info,
-  Sparkle,
-  Filter,
   FileArchive,
   Zap,
 } from 'lucide-react';
@@ -150,11 +142,6 @@ export default function PdfSplitter() {
   // DENSIDAD DE CUADRÍCULA
   const [gridDensity, setGridDensity] = useState<GridDensity>('standard');
 
-  // RESULTADOS
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
-  const [createdCount, setCreatedCount] = useState<number>(0);
-
   // TABS Y MODOS DE RANGO
   const [mainTab, setMainTab] = useState<MainTab>('rango');
   const [rangeSubMode, setRangeSubMode] = useState<RangeSubMode>('personalizado');
@@ -170,7 +157,6 @@ export default function PdfSplitter() {
   const [addPageFooterNumbering, setAddPageFooterNumbering] = useState<boolean>(false);
 
   // METADATOS PERSONALIZADOS (PLEGABLE)
-  const [showMetadata, setShowMetadata] = useState<boolean>(false);
   const [docTitle, setDocTitle] = useState<string>('');
   const [docAuthor, setDocAuthor] = useState<string>('');
   const [docSubject, setDocSubject] = useState<string>('');
@@ -336,7 +322,9 @@ export default function PdfSplitter() {
 
   useEffect(() => {
     if (file && totalPages === 0 && !isEncrypted) {
-      inspectPdf(file);
+      queueMicrotask(() => {
+        inspectPdf(file);
+      });
     }
   }, [file, totalPages, isEncrypted, inspectPdf]);
 
@@ -349,8 +337,6 @@ export default function PdfSplitter() {
       }
       setFile(selected);
       setGlobalFile(selected);
-      setDownloadUrl(null);
-      setCreatedCount(0);
       setIsEncrypted(false);
       setIsUnlocked(false);
       setUnlockedPassword(undefined);
@@ -386,8 +372,6 @@ export default function PdfSplitter() {
       }
       setFile(dropped);
       setGlobalFile(dropped);
-      setDownloadUrl(null);
-      setCreatedCount(0);
       setIsEncrypted(false);
       setIsUnlocked(false);
       setUnlockedPassword(undefined);
@@ -418,10 +402,8 @@ export default function PdfSplitter() {
     setHeaderHidden(false);
     setFile(null);
     setTotalPages(0);
-    setDownloadUrl(null);
     setCompletedResult(null);
     setGlobalFile(null);
-    setCreatedCount(0);
     setIsEncrypted(false);
     setIsUnlocked(false);
     setUnlockedPassword(undefined);
@@ -508,13 +490,11 @@ export default function PdfSplitter() {
       ...prev,
       { id: `${Date.now()}-${Math.random()}`, from: newFrom, to: newTo },
     ]);
-    setDownloadUrl(null);
   };
 
   const handleRemoveRange = (id: string) => {
     if (ranges.length === 1) return;
     setRanges((prev) => prev.filter((r) => r.id !== id));
-    setDownloadUrl(null);
   };
 
   const handleUpdateRange = (id: string, field: 'from' | 'to', value: number) => {
@@ -530,7 +510,6 @@ export default function PdfSplitter() {
         return r;
       }),
     );
-    setDownloadUrl(null);
   };
 
   const handleSplitInHalf = () => {
@@ -544,20 +523,6 @@ export default function PdfSplitter() {
       isEs
         ? `Dividido en 2 mitades (Págs 1-${mid} y ${mid + 1}-${totalPages})`
         : `Split into 2 halves`,
-    );
-  };
-
-  const handleOnePagePerRange = () => {
-    if (totalPages === 0) return;
-    const newRanges: RangeItem[] = [];
-    for (let i = 1; i <= totalPages; i++) {
-      newRanges.push({ id: `range-${i}`, from: i, to: i });
-    }
-    setRanges(newRanges);
-    toast.success(
-      isEs
-        ? `Se crearon ${totalPages} rangos (1 página cada uno)`
-        : `Created ${totalPages} ranges (1 page each)`,
     );
   };
 
@@ -844,9 +809,6 @@ export default function PdfSplitter() {
       const sizeFormatted = formatFileSize(blob.size);
       const origSizeFormatted = file ? formatFileSize(file.size) : '—';
 
-      setDownloadUrl(localUrl);
-      setDownloadFilename(result.filename);
-      setCreatedCount(result.createdCount);
       setCompletedResult({
         downloadUrl: localUrl,
         filename: result.filename,
@@ -1337,6 +1299,7 @@ export default function PdfSplitter() {
                         {/* LIENZO DE LA MINIATURA */}
                         <div className="w-full flex-1 min-h-0 bg-zinc-900/90 rounded-xl overflow-hidden flex items-center justify-center border border-white/5 relative p-1.5 shadow-inner">
                           {p.dataUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={p.dataUrl}
                               alt={`Página ${p.pageIndex + 1}`}
@@ -2047,6 +2010,7 @@ export default function PdfSplitter() {
               {/* IMAGEN DE ALTA RESOLUCIÓN */}
               <div className="flex-1 min-h-[350px] max-h-[60vh] bg-zinc-950 rounded-xl overflow-hidden flex items-center justify-center p-3 border border-white/10 relative shadow-inner">
                 {pageThumbnails[zoomIndex].dataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={pageThumbnails[zoomIndex].dataUrl}
                     alt={`Página ${zoomIndex + 1}`}

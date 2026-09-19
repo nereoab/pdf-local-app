@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   ShieldCheck,
@@ -12,19 +12,11 @@ import {
   Eye,
   EyeOff,
   Settings,
-  UploadCloud,
   Shield,
   KeyRound,
-  Check,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
   SlidersHorizontal,
-  Sliders,
   Database,
   Package,
-  FilePlus,
-  RefreshCw,
   Sparkles,
   Trash2,
   Plus,
@@ -82,6 +74,7 @@ export default function PdfProtector() {
   const [thumbnails, setThumbnails] = useState<{ pageNum: number; dataUrl: string }[]>([]);
   const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
   const [zoomModalImage, setZoomModalImage] = useState<string | null>(null);
+  const controlPanelRef = useRef<HTMLDivElement>(null);
 
   // === CONTRASEÑAS ===
   const [userPassword, setUserPassword] = useState('');
@@ -148,7 +141,6 @@ export default function PdfProtector() {
 
   // === OPCIONES ===
   const [enableRasterize, setEnableRasterize] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [customSuffix, setCustomSuffix] = useState('_Protegido');
 
   // === ESTADO DE PROCESAMIENTO ===
@@ -159,7 +151,7 @@ export default function PdfProtector() {
   const [totalFilesCount, setTotalFilesCount] = useState(0);
 
   // === RESULTADOS ===
-  const [results, setResults] = useState<ProtectResult[]>([]);
+  const [, setResults] = useState<ProtectResult[]>([]);
 
   // Estado de éxito para pantalla de descarga
   const [completedResult, setCompletedResult] = useState<{
@@ -172,42 +164,6 @@ export default function PdfProtector() {
     pageCount: number;
     restrictions: string[];
   } | null>(null);
-
-  const hasResults = results.length > 0;
-
-  // Altura sincronizada para igualar panel de vista previa al panel de control
-  const controlPanelRef = useRef<HTMLDivElement>(null);
-  const [previewHeight, setPreviewHeight] = useState<number>(0);
-  const [isDesktop, setIsDesktop] = useState<boolean>(false);
-
-  useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
-
-  // Sincronizar altura del panel de vista previa con la del panel de control
-  useEffect(() => {
-    if (!controlPanelRef.current) return;
-    const updateHeight = () => {
-      if (controlPanelRef.current) {
-        const h = controlPanelRef.current.getBoundingClientRect().height;
-        if (h > 0) setPreviewHeight(h);
-      }
-    };
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const h = entry.target.getBoundingClientRect().height;
-        if (h > 0) {
-          setPreviewHeight(h);
-        }
-      }
-    });
-    observer.observe(controlPanelRef.current);
-    updateHeight();
-    return () => observer.disconnect();
-  }, [files, activeSlotIndex, userPassword, ownerPassword, showAdvanced, isProcessing, results]);
 
   // === EFECTOS ===
   // Ocultar barra superior global y posicionar la vista en el tope de la página
@@ -246,13 +202,20 @@ export default function PdfProtector() {
   }, [setHeaderHidden]);
 
   useEffect(() => {
-    if (globalFile && !slots.some((s) => s.file !== null)) {
-      setSlots([
-        { id: 'slot-1', file: globalFile },
-        { id: 'slot-2', file: null },
-        { id: 'slot-3', file: null },
-      ]);
-      setActiveSlotIndex(0);
+    if (globalFile) {
+      queueMicrotask(() => {
+        setSlots((prev) => {
+          if (!prev.some((s) => s.file !== null)) {
+            return [
+              { id: 'slot-1', file: globalFile },
+              { id: 'slot-2', file: null },
+              { id: 'slot-3', file: null },
+            ];
+          }
+          return prev;
+        });
+        setActiveSlotIndex(0);
+      });
     }
   }, [globalFile]);
 
@@ -306,11 +269,15 @@ export default function PdfProtector() {
 
   useEffect(() => {
     if (activeFile) {
-      setPreviewPageNum(1);
-      loadFileThumbnails(activeFile);
+      queueMicrotask(() => {
+        setPreviewPageNum(1);
+        loadFileThumbnails(activeFile);
+      });
     } else {
-      setThumbnails([]);
-      setTotalPages(1);
+      queueMicrotask(() => {
+        setThumbnails([]);
+        setTotalPages(1);
+      });
     }
   }, [activeFile, loadFileThumbnails]);
 
@@ -470,7 +437,7 @@ export default function PdfProtector() {
       const worker = new Worker(workerUrl, { type: 'module' });
       workerRef.current = worker;
 
-      let newResults: ProtectResult[] = [];
+      const newResults: ProtectResult[] = [];
 
       worker.onmessage = (event: MessageEvent) => {
         const msg = event.data;
@@ -571,7 +538,6 @@ export default function PdfProtector() {
   };
 
   const userPwdStrength = passwordStrength(userPassword);
-  const ownerPwdStrength = passwordStrength(ownerPassword);
 
   return (
     <div className="w-full max-w-7xl mx-auto">
@@ -879,6 +845,7 @@ export default function PdfProtector() {
                         </div>
                       ) : thumbnails.find((t) => t.pageNum === previewPageNum) ? (
                         <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={thumbnails.find((t) => t.pageNum === previewPageNum)?.dataUrl}
                             alt={`Pág ${previewPageNum}`}
@@ -1541,6 +1508,7 @@ export default function PdfProtector() {
             <span className="text-xs font-mono text-zinc-400 mb-3">
               {isEs ? 'Vista previa de página' : 'Page preview'}
             </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={zoomModalImage}
               alt="Zoom preview"

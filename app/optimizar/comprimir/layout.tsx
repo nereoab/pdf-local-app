@@ -25,6 +25,11 @@ export const metadata: Metadata = {
   category: 'productivity',
   alternates: {
     canonical: 'https://pdf-black.com/optimizar/comprimir',
+    languages: {
+      es: 'https://pdf-black.com/optimizar/comprimir',
+      en: 'https://pdf-black.com/en/optimizar/comprimir',
+      'x-default': 'https://pdf-black.com/optimizar/comprimir',
+    },
   },
   openGraph: {
     title: 'Comprimir PDF Gratis Online — Reducir Tamaño sin Perder Calidad | PDFBlack',

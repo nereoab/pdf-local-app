@@ -32,115 +32,97 @@ const PdfCompressor = dynamic(() => import('@/components/PdfCompressor'), {
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
+import { buildFullToolSchemas } from '@/lib/seo-metadata';
+
 export default function ComprimirPdfPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
-  // FAQs data
+  // FAQs calibradas para Posición Cero (Featured Snippet) y PAA
   const faqs = isEs
     ? [
         {
-          q: '¿Cómo logra PDFBlack comprimir archivos PDF sin perder calidad en el texto?',
-          a: 'PDFBlack utiliza una estrategia híbrida avanzada: aplica el algoritmo Deflate Nivel 9 a las estructuras vectoriales y fuentes del documento, preservando la nitidez matemática al 100%, mientras que re-codifica y optimiza las imágenes incrustadas según la resolución seleccionada (72, 96 o 150 DPI).',
+          q: '¿Cómo reducir el tamaño de un PDF a menos de 1 MB o 2 MB para enviar por correo?',
+          a: 'Para reducir el peso de tu PDF para Gmail o Outlook: 1. Arrastra tu documento a la caja de compresión de PDFBlack. 2. Selecciona el perfil «Para Correo (<2 MB)» o compresión equilibrada. 3. Pulsa Descargar. El motor Deflate Nivel 9 reduce el tamaño hasta un 80% manteniendo el texto y las firmas vectoriales nítidas.',
         },
         {
-          q: '¿Mis archivos PDF se suben a algún servidor en internet?',
-          a: 'No. El procesamiento de PDFBlack es 100% local en tu navegador mediante WebAssembly y Web Workers. Tus documentos nunca abandonan tu computadora ni pasan por la nube, garantizando máxima privacidad corporativa y confidencialidad.',
+          q: '¿Cómo logra PDFBlack comprimir archivos PDF online gratis sin perder calidad?',
+          a: 'PDFBlack utiliza una arquitectura híbrida inteligente: aplica el algoritmo matemático Deflate Nivel 9 a los flujos de contenido y fuentes vectoriales sin rasterizar el texto, mientras que recodifica las imágenes incrustadas a la resolución óptima seleccionada (72, 96 o 150 DPI) sin introducir artefactos visuales.',
         },
         {
-          q: '¿Qué perfil de compresión debo elegir para enviar archivos por correo electrónico?',
-          a: 'Para enviar documentos por correo electrónico, WhatsApp o portales con límite de 2 a 5 MB, recomendamos el preset «Para Correo» o «Alta (Máxima Compresión)». Este perfil optimiza imágenes a 96 DPI y comprime flujos con Deflate Nivel 9 asegurando texto 100% legible.',
+          q: '¿Es seguro comprimir archivos PDF confidenciales en PDFBlack?',
+          a: '100% privado y confidencial. A diferencia de otros sitios que suben tus documentos a servidores externos en la nube, PDFBlack procesa todo localmente en la memoria RAM de tu navegador mediante Web Workers. Ningún archivo ni dato sale de tu computadora, cumpliendo con RGPD e HIPAA.',
+        },
+        {
+          q: '¿Por qué mi archivo PDF pesa tanto y cómo bajarle los megabytes?',
+          a: 'Un PDF pesa demasiado debido a imágenes en alta resolución sin comprimir, flujos de fuentes duplicadas o metadatos innecesarios. PDFBlack elimina diccionarios redundantes, limpia capas invisibles y compacta los flujos binarios para reducir los megabytes al mínimo posible.',
         },
         {
           q: '¿Es compatible con planos CAD y documentos con millones de vectores?',
-          a: 'Sí. A diferencia de otros compresores que rasterizan y pixelan los planos, PDFBlack mantiene los trazos vectoriales y aplica compresión matemática profunda sin pérdida, reduciendo megabytes de coordenadas sin alterar la precisión técnica.',
+          a: 'Sí. A diferencia de otros compresores que pixelan y vuelven borrosos los planos técnicos de arquitectura o ingeniería, PDFBlack conserva intactas las coordenadas vectoriales y aplica compresión matemática profunda sin pérdida.',
         },
         {
-          q: '¿Qué sucede si mi PDF ya está comprimido previamente?',
-          a: 'Si un archivo ya fue optimizado al límite físico, nuestro motor detectará inteligentemente que una recompresión adicional no aportaría reducción de bytes y mantendrá la integridad original sin degradar innecesariamente imágenes ni romper fuentes.',
-        },
-        {
-          q: '¿Hay límite de tamaño o número de archivos a comprimir?',
-          a: 'No hay límites artificiales. Puedes subir múltiples archivos PDF a la vez y procesar documentos de cualquier tamaño de manera totalmente gratuita y sin necesidad de registro, descargándolos de forma individual o en un paquete .ZIP unificado.',
+          q: '¿Hay límite de tamaño o número de archivos PDF a comprimir?',
+          a: 'No hay límites artificiales. Puedes procesar múltiples documentos PDF pesados a la vez de forma 100% gratuita y sin registro, descargándolos individualmente o agrupados en un archivo .ZIP.',
         },
       ]
     : [
         {
-          q: 'How does PDFBlack compress PDF files without losing text quality?',
-          a: 'PDFBlack uses an advanced hybrid engine: it applies Level 9 Deflate compression to vector coordinates and fonts preserving 100% crispness, while selectively downsampling embedded images according to your chosen DPI (72, 96, or 150 DPI).',
+          q: 'How to reduce PDF file size to under 1 MB or 2 MB for email attachment?',
+          a: 'To shrink your PDF for Gmail or Outlook: 1. Drag your document into the PDFBlack compression dropzone. 2. Choose the "For Email (<2 MB)" or balanced compression preset. 3. Click Download. The Level 9 Deflate engine compresses files by up to 80% while keeping text and vector stamps perfectly sharp.',
         },
         {
-          q: 'Are my PDF files uploaded to any remote server?',
-          a: 'No. PDFBlack operates 100% locally in your browser using WebAssembly and Web Workers. Your files never leave your device, ensuring maximum confidentiality and compliance.',
+          q: 'How does PDFBlack compress PDF files without losing text or image quality?',
+          a: 'PDFBlack uses a smart hybrid engine: it applies lossless Level 9 Deflate compression to vector instructions and embedded font glyphs without rasterization, while optimizing bitmap photos to your selected target DPI (72, 96, or 150 DPI) without introducing visible artifacts.',
         },
         {
-          q: 'Which compression profile is best for email attachments?',
-          a: 'For email, WhatsApp, or portals with 2-5 MB limits, choose the "For Email" or "High (Maximum Compression)" preset. It optimizes images to 96 DPI while maintaining 100% legible text.',
+          q: 'Is it safe to compress confidential legal, medical, and financial PDFs?',
+          a: '100% secure and confidential. Unlike traditional tools that upload your files to third-party cloud servers, PDFBlack processes all documents locally in your browser memory via Web Workers. Not a single byte ever leaves your device, fully GDPR and HIPAA compliant.',
         },
         {
-          q: 'Is it compatible with CAD blueprints and vector-dense documents?',
-          a: 'Yes. Unlike tools that rasterize and blur technical drawings, PDFBlack preserves native vector paths and applies lossless coordinate compression.',
+          q: 'Why is my PDF file size so large and how can I shrink it?',
+          a: 'PDFs bloat due to uncompressed high-resolution images, duplicated embedded font subsets, and residual metadata. PDFBlack strips redundant dictionaries, purges invisible layers, and compacts binary content streams to reduce file size to the theoretical minimum.',
         },
         {
-          q: 'What happens if my PDF is already heavily compressed?',
-          a: 'If a document is already compressed to its theoretical limits, our engine smartly detects that further recompression yields negligible byte reduction and keeps the original stream intact without degrading image clarity.',
+          q: 'Is it compatible with CAD blueprints and dense architectural drawings?',
+          a: 'Yes. Unlike tools that rasterize blueprints into fuzzy JPEG images, PDFBlack preserves native vector geometries and applies mathematical coordinate compression without resolution loss.',
         },
         {
-          q: 'Is there a limit on file size or batch quantity?',
-          a: 'No limits. You can upload multiple PDFs at once and compress files of any size completely free with no registration required, downloading individual files or a unified .ZIP package.',
+          q: 'Is there a file size or batch quantity limit when compressing PDFs?',
+          a: 'No artificial limits. You can process multiple large PDF files simultaneously completely free with no registration required, downloading individual files or a unified .ZIP archive.',
         },
       ];
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: isEs ? 'Comprimir PDF Gratis Online — PDFBlack' : 'Compress PDF Online Free — PDFBlack',
-    url: `${SITE_URL}/optimizar/comprimir`,
-    description: isEs
-      ? 'Comprime y reduce el tamaño de tus archivos PDF online gratis sin perder calidad ni nitidez. Procesamiento 100% local en tu navegador con Deflate Nivel 9.'
-      : 'Compress and reduce PDF file size online for free with no quality loss. 100% local in-browser processing with Deflate Level 9.',
-    applicationCategory: 'UtilitiesApplication',
-    operatingSystem: 'All',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    featureList: [
-      'Compresión Deflate Nivel 9 sin pérdida',
-      'Preservación de texto vectorial nítido',
-      'Procesamiento por lotes (Batch) con descarga ZIP',
-      'Presets para Correo (<2 MB), Web y Planos CAD',
-      'Procesamiento 100% local y privado',
-    ],
-  };
-
-  const faqSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.q,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.a,
-      },
-    })),
-  };
+  const schemas = buildFullToolSchemas({
+    category: 'optimizar',
+    toolSlug: 'comprimir',
+    lang: isEs ? 'es' : 'en',
+    faqs,
+  });
 
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center justify-start min-h-[calc(100vh-100px)] bg-[#09090b]">
       {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.webApp) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.breadcrumb) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.howTo) }}
+      />
+      {schemas.faq && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.faq) }}
+        />
+      )}
 
       <div className="w-full max-w-7xl space-y-12">
         {/* COMPONENTE PRINCIPAL */}
@@ -286,21 +268,13 @@ export default function ComprimirPdfPage() {
                     </div>
                   </button>
 
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-5 pb-5 pt-1 text-xs text-zinc-400 leading-relaxed font-sans border-t border-zinc-800/60 mt-1">
-                          {faq.a}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div
+                    className={`px-5 pb-5 pt-1 text-xs text-zinc-400 leading-relaxed font-sans border-t border-zinc-800/60 mt-1 transition-all duration-200 ${
+                      isOpen ? 'block' : 'hidden'
+                    }`}
+                  >
+                    {faq.a}
+                  </div>
                 </div>
               );
             })}

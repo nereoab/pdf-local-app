@@ -8,7 +8,6 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
-  FileText,
   HelpCircle,
   Scissors,
   FileArchive,
@@ -18,8 +17,6 @@ import {
   Stethoscope,
   Briefcase,
   GraduationCap,
-  Building2,
-  Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';

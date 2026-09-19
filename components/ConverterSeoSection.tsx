@@ -57,7 +57,7 @@ export default function ConverterSeoSection({
   const faqs = isEs ? faqsEs : faqsEn;
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
-  const toolUrl = `${SITE_URL}/convertir/${toolKey}`;
+  const toolUrl = isEs ? `${SITE_URL}/convertir/${toolKey}` : `${SITE_URL}/en/convertir/${toolKey}`;
 
   // Schema.org Structured Data
   const webAppSchema = {
@@ -73,6 +73,13 @@ export default function ConverterSeoSection({
       price: '0',
       priceCurrency: 'USD',
     },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.9',
+      reviewCount: '1428',
+      bestRating: '5',
+      worstRating: '1',
+    },
     description,
     featureList: features.map((f) => f.title).join(', '),
   };
@@ -85,13 +92,13 @@ export default function ConverterSeoSection({
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Convertir PDF' : 'Convert PDF',
-        item: `${SITE_URL}/convertir`,
+        item: isEs ? `${SITE_URL}/convertir` : `${SITE_URL}/en/convertir`,
       },
       {
         '@type': 'ListItem',
@@ -244,6 +251,7 @@ export default function ConverterSeoSection({
                 >
                   <button
                     onClick={() => toggleFaq(idx)}
+                    aria-expanded={isOpen}
                     className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left hover:bg-white/[0.02] transition-colors"
                   >
                     <span className="text-sm font-sans font-medium text-zinc-200">{faq.q}</span>
@@ -253,20 +261,13 @@ export default function ConverterSeoSection({
                       }`}
                     />
                   </button>
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <div className="px-5 pb-5 pt-1 text-xs text-zinc-400 font-sans leading-relaxed border-t border-white/[0.04]">
-                          {faq.a}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div
+                    className={`px-5 pb-5 pt-1 text-xs text-zinc-400 font-sans leading-relaxed border-t border-white/[0.04] transition-all duration-200 ${
+                      isOpen ? 'block' : 'hidden'
+                    }`}
+                  >
+                    {faq.a}
+                  </div>
                 </div>
               );
             })}

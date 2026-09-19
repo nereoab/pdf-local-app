@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { HelpCircle, ArrowLeft, ChevronDown, ShieldCheck, Sparkles } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 export default function FaqPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -51,6 +53,57 @@ export default function FaqPage() {
 
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12 font-sans">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'FAQPage',
+                '@id': `${SITE_URL}${isEs ? '/faq' : '/en/faq'}#faq`,
+                url: `${SITE_URL}${isEs ? '/faq' : '/en/faq'}`,
+                name: isEs
+                  ? 'Preguntas Frecuentes sobre PDFBlack — Privacidad y Seguridad'
+                  : 'Frequently Asked Questions about PDFBlack — Privacy & Security',
+                description: isEs
+                  ? 'Preguntas frecuentes y respuestas técnicas sobre la privacidad, procesamiento local en navegador, límites de tamaño y uso gratuito de PDFBlack.'
+                  : 'Frequently asked questions and technical answers about privacy, local browser processing, file size limits, and free usage of PDFBlack.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+                mainEntity: faqs.map((f) => ({
+                  '@type': 'Question',
+                  name: isEs ? f.qEs : f.qEn,
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: isEs ? f.aEs : f.aEn,
+                  },
+                })),
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Preguntas Frecuentes' : 'FAQ',
+                    item: `${SITE_URL}${isEs ? '/faq' : '/en/faq'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-4xl mx-auto">
         {/* ENCABEZADO Y REGRESO */}
         <div className="mb-8 flex items-center justify-between font-mono">

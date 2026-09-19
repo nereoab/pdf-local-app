@@ -6,12 +6,57 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Globe, ShieldCheck, FileText } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 export default function AvisoLegalPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12 font-sans">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'WebPage',
+                '@id': `${SITE_URL}${isEs ? '/aviso-legal' : '/en/aviso-legal'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/aviso-legal' : '/en/aviso-legal'}`,
+                name: isEs
+                  ? 'Aviso Legal y Datos Identificativos | PDFBlack'
+                  : 'Legal Notice & Identifying Information | PDFBlack',
+                description: isEs
+                  ? 'Información legal, identificación del titular, condiciones de propiedad intelectual y exenciones de responsabilidad de PDFBlack.'
+                  : 'Legal information, owner identification, intellectual property conditions, and liability disclaimers for PDFBlack.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Aviso Legal' : 'Legal Notice',
+                    item: `${SITE_URL}${isEs ? '/aviso-legal' : '/en/aviso-legal'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-4xl mx-auto">
         <div
           className="mb-8 flex items-center justify-between font-mono"

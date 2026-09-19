@@ -1,30 +1,21 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import {
-  FileDown,
   Loader2,
-  X,
-  FilePlus,
   RefreshCw,
-  UploadCloud,
   Repeat,
   Layout,
   Sliders,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
   Grid,
   Code,
   ShieldCheck,
   ArrowLeft,
-  Zap,
   Cpu,
-  HelpCircle,
   Plus,
   FileText,
-  Check,
   ListChecks,
   Trash2,
 } from 'lucide-react';
@@ -33,11 +24,10 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
-import PdfPageViewer from '@/components/PdfPageViewer';
 
 type ConversionDirection = 'html-to-pdf' | 'pdf-to-html';
 type PageSize = 'a4' | 'letter' | 'legal';
@@ -160,7 +150,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
 
   // SELECCIÓN DE PÁGINAS (PDF -> HTML)
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
@@ -184,13 +173,10 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
   // OPCIONES AVANZADAS HTML -> PDF
   const [pageSize, setPageSize] = useState<PageSize>('a4');
   const [orientation, setOrientation] = useState<PageOrientation>('portrait');
-  const [includeBackgrounds, setIncludeBackgrounds] = useState<boolean>(true);
 
   // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
-  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState<number>(0);
   const [activePage, setActivePage] = useState<number>(1);
-  const [isRendering, setIsRendering] = useState<boolean>(false);
 
   // CÁLCULO DE PÁGINAS SELECCIONADAS
   const targetPages = useMemo(() => {
@@ -216,8 +202,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }, [totalPages, pageSelectionMode, pageRangeInput, selectedPageSet]);
 
-  const targetPageSet = useMemo(() => new Set(targetPages), [targetPages]);
-
   const parseHtmlContent = async (htmlFile: File): Promise<number> => {
     try {
       const text = await htmlFile.text();
@@ -228,15 +212,8 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     }
   };
 
-  // CARGA ULTRA RÁPIDA DE MINIATURAS (ESCALA 0.22 + STREAMING EN SEGUNDO PLANO)
-  const cargarMiniaturasPdfUltraFast = async (pdfFile: File) => {
-    cancelRenderRef.current = true;
-    await new Promise((r) => setTimeout(r, 20));
-    cancelRenderRef.current = false;
-
-    setIsRendering(true);
-    setPageDataUrls({});
-
+  // CARGA RÁPIDA DE ESTRUCTURA PDF
+  const parsePdfPageCount = async (pdfFile: File) => {
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
@@ -252,74 +229,14 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
       setTotalPages(count);
       setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
       setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
-
-      // Lote inicial rápido (8 páginas en <100ms)
-      const initialBatch = Math.min(count, 8);
-      const initialUrls: Record<number, string> = {};
-
-      for (let p = 1; p <= initialBatch; p++) {
-        if (cancelRenderRef.current) return;
-        try {
-          const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 0.22 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
-            initialUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
-          }
-        } catch {}
-      }
-
-      setPageDataUrls({ ...initialUrls });
-      setIsRendering(false);
-
-      // Carga progresiva en segundo plano
-      if (initialBatch < count) {
-        (async () => {
-          const loadedUrls = { ...initialUrls };
-          for (let p = initialBatch + 1; p <= count; p++) {
-            if (cancelRenderRef.current) return;
-            try {
-              const page = await pdfDoc.getPage(p);
-              const viewport = page.getViewport({ scale: 0.22 });
-              const canvas = document.createElement('canvas');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-                  typeof page.render
-                >[0]).promise;
-                loadedUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
-              }
-            } catch {}
-
-            if (p % 6 === 0 || p === count) {
-              setPageDataUrls({ ...loadedUrls });
-              await new Promise((r) => setTimeout(r, 10));
-            }
-          }
-        })();
-      }
     } catch (err) {
       console.error(err);
-      setIsRendering(false);
     }
   };
 
   useEffect(() => {
     if (!file) {
       queueMicrotask(() => {
-        setPageDataUrls({});
         setTotalPages(0);
         setSelectedPageSet(new Set());
       });
@@ -329,7 +246,7 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
       if (file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
         parseHtmlContent(file).then((count) => setHtmlTagCount(count));
       } else if (file.name.toLowerCase().endsWith('.pdf')) {
-        cargarMiniaturasPdfUltraFast(file);
+        parsePdfPageCount(file);
       }
     });
   }, [file]);
@@ -351,7 +268,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     setMode(newMode);
     setGlobalFile(null);
     setDownloadUrl(null);
-    setDownloadFilename('');
     setCompletedResult(null);
     setHeaderHidden(false);
   };
@@ -472,96 +388,95 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     }
   };
 
-  const loadFilesIntoSlots = (fileList: FileList | File[], specificSlotIndex?: number) => {
-    const filesArray = Array.from(fileList);
-    const validFiles: File[] = [];
+  const loadFilesIntoSlots = useCallback(
+    (fileList: FileList | File[], specificSlotIndex?: number) => {
+      const filesArray = Array.from(fileList);
+      const validFiles: File[] = [];
 
-    // Auto-detección inteligente de modo
-    let currentMode = mode;
-    const hasHtml = filesArray.some((f) => {
-      const n = f.name.toLowerCase();
-      return n.endsWith('.html') || n.endsWith('.htm') || n.endsWith('.zip');
-    });
-    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+      // Auto-detección inteligente de modo
+      let currentMode = mode;
+      const hasHtml = filesArray.some((f) => {
+        const n = f.name.toLowerCase();
+        return n.endsWith('.html') || n.endsWith('.htm') || n.endsWith('.zip');
+      });
+      const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
 
-    if (mode === 'html-to-pdf' && !hasHtml && hasPdf) {
-      currentMode = 'pdf-to-html';
-      setMode('pdf-to-html');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a PDF a HTML' : 'Switched to PDF to HTML mode',
-      );
-    } else if (mode === 'pdf-to-html' && !hasPdf && hasHtml) {
-      currentMode = 'html-to-pdf';
-      setMode('html-to-pdf');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a HTML a PDF' : 'Switched to HTML to PDF mode',
-      );
-    }
-
-    for (const f of filesArray) {
-      const name = f.name.toLowerCase();
-      const isPdf = name.endsWith('.pdf');
-      const isHtml = name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.zip');
-
-      if (currentMode === 'html-to-pdf' && isHtml) {
-        validFiles.push(f);
-      } else if (currentMode === 'pdf-to-html' && isPdf) {
-        validFiles.push(f);
+      if (mode === 'html-to-pdf' && !hasHtml && hasPdf) {
+        currentMode = 'pdf-to-html';
+        setMode('pdf-to-html');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a PDF a HTML' : 'Switched to PDF to HTML mode',
+        );
+      } else if (mode === 'pdf-to-html' && !hasPdf && hasHtml) {
+        currentMode = 'html-to-pdf';
+        setMode('html-to-pdf');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a HTML a PDF' : 'Switched to HTML to PDF mode',
+        );
       }
-    }
 
-    if (validFiles.length === 0) {
-      toast.error(
-        currentMode === 'html-to-pdf'
-          ? isEs
-            ? 'Por favor selecciona archivos HTML (.html/.htm)'
-            : 'Please select HTML files (.html/.htm)'
-          : isEs
-            ? 'Por favor selecciona archivos PDF (.pdf)'
-            : 'Please select PDF files (.pdf)',
-      );
-      return;
-    }
+      for (const f of filesArray) {
+        const name = f.name.toLowerCase();
+        const isPdf = name.endsWith('.pdf');
+        const isHtml = name.endsWith('.html') || name.endsWith('.htm') || name.endsWith('.zip');
 
-    if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
-      loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
-    } else {
-      let validIdx = 0;
-      for (let i = 0; i < 3; i++) {
-        if (validIdx >= validFiles.length) break;
-        if (!slots[i].file) {
-          loadSingleFileIntoSlot(i, validFiles[validIdx]);
-          validIdx++;
+        if (currentMode === 'html-to-pdf' && isHtml) {
+          validFiles.push(f);
+        } else if (currentMode === 'pdf-to-html' && isPdf) {
+          validFiles.push(f);
         }
       }
-      if (validIdx === 0 && validFiles.length > 0) {
-        validFiles.slice(0, 3).forEach((f, idx) => {
-          loadSingleFileIntoSlot(idx, f);
-        });
+
+      if (validFiles.length === 0) {
+        toast.error(
+          currentMode === 'html-to-pdf'
+            ? isEs
+              ? 'Por favor selecciona archivos HTML (.html/.htm)'
+              : 'Please select HTML files (.html/.htm)'
+            : isEs
+              ? 'Por favor selecciona archivos PDF (.pdf)'
+              : 'Please select PDF files (.pdf)',
+        );
+        return;
       }
-      setActiveSlotIndex(0);
-    }
 
-    setGlobalFile(validFiles[0]);
-    setDownloadUrl(null);
-    setCompletedResult(null);
+      if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+        loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
+      } else {
+        let validIdx = 0;
+        for (let i = 0; i < 3; i++) {
+          if (validIdx >= validFiles.length) break;
+          if (!slots[i].file) {
+            loadSingleFileIntoSlot(i, validFiles[validIdx]);
+            validIdx++;
+          }
+        }
+        if (validIdx === 0 && validFiles.length > 0) {
+          validFiles.slice(0, 3).forEach((f, idx) => {
+            loadSingleFileIntoSlot(idx, f);
+          });
+        }
+        setActiveSlotIndex(0);
+      }
 
-    toast.success(
-      isEs
-        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
-        : `${validFiles.length} file(s) ready in boxes`,
-    );
-  };
+      setGlobalFile(validFiles[0]);
+      setDownloadUrl(null);
+      setCompletedResult(null);
+
+      toast.success(
+        isEs
+          ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+          : `${validFiles.length} file(s) ready in boxes`,
+      );
+    },
+    [mode, isEs, slots, setGlobalFile],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       loadFilesIntoSlots(e.target.files);
     }
     e.target.value = '';
-  };
-
-  const processSelectedFile = (selected: File) => {
-    loadFilesIntoSlots([selected]);
   };
 
   const initialGlobalFileLoadedRef = useRef<boolean>(false);
@@ -585,23 +500,9 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
     setFile(null);
     setGlobalFile(null);
     setDownloadUrl(null);
-    setDownloadFilename('');
     setCompletedResult(null);
     setHeaderHidden(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // CONTROLADORES DE SELECCIÓN DE PÁGINAS
-  const togglePageSelection = (pageNum: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const newSet = new Set(targetPages);
-    if (newSet.has(pageNum)) {
-      newSet.delete(pageNum);
-    } else {
-      newSet.add(pageNum);
-    }
-    setSelectedPageSet(newSet);
-    setPageSelectionMode('custom');
   };
 
   // Sincronizar slot activo con estado de archivo y previsualización
@@ -615,15 +516,11 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         if (activeSlot.totalPages > 0) {
           setTotalPages(activeSlot.totalPages);
         }
-        if (Object.keys(activeSlot.pageDataUrls).length > 0) {
-          setPageDataUrls(activeSlot.pageDataUrls);
-        }
       } else {
         const firstLoaded = slots.find((s) => s.file !== null);
         if (firstLoaded && firstLoaded.file) {
           setFile(firstLoaded.file);
           setTotalPages(firstLoaded.totalPages);
-          setPageDataUrls(firstLoaded.pageDataUrls);
         } else {
           setFile(null);
         }
@@ -933,7 +830,6 @@ export default function HtmlPdfConverter({ defaultMode = 'pdf-to-html' }: HtmlPd
         localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${file.name.replace(/\.[^/.]+$/, '')}.pdf`;
-        setDownloadFilename(outName);
         setDownloadUrl(localUrl);
 
         if (resultBlob) {
@@ -1259,7 +1155,6 @@ ${p.html}
         localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${docTitle}_Web.html`;
-        setDownloadFilename(outName);
         setDownloadUrl(localUrl);
 
         if (resultBlob) {

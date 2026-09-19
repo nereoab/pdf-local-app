@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   FileText,
   Loader2,
@@ -19,23 +19,28 @@ import DownloadSuccessCard from './DownloadSuccessCard';
 import { convertPdfToUltraDocx } from '@/lib/high-fidelity-docx-engine';
 import { convertPdfToWordWithApi } from '@/lib/pdf2docx-api-client';
 
-export default function PdfToWord() {
+interface PdfToWordProps {
+  onSuccess?: () => void;
+}
+
+export default function PdfToWord({ onSuccess }: PdfToWordProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
-  const { globalFile, setGlobalFile } = useFileStore();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { globalFile, setGlobalFile } = useFileStore();
 
   const [file, setFile] = useState<File | null>(() => globalFile || null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isRendering, setIsRendering] = useState(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [progressPct, setProgressPct] = useState<number>(0);
+  const [progressMsg, setProgressMsg] = useState<string>('');
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [completedBlob, setCompletedBlob] = useState<Blob | null>(null);
   const [outFilename, setOutFilename] = useState<string>('');
   const [outFileSize, setOutFileSize] = useState<string>('');
-  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState<number>(0);
-  const [progressMsg, setProgressMsg] = useState('');
-  const [progressPct, setProgressPct] = useState<number>(0);
+  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
+  const [isRendering, setIsRendering] = useState<boolean>(false);
 
   // Opciones de conversión
   const [layoutMode, setLayoutMode] = useState<'flowing' | 'exact'>('flowing');
@@ -44,55 +49,58 @@ export default function PdfToWord() {
   const [docFormat, setDocFormat] = useState<'docx' | 'rtf'>('docx');
   const [customSuffix, setCustomSuffix] = useState<string>('_Convertido');
 
-  const cargarPdf = async (selectedFile: File) => {
-    setIsRendering(true);
-    setPageDataUrls({});
-    setProgressMsg(
-      isEs ? 'Analizando y renderizando páginas...' : 'Analyzing & rendering pages...',
-    );
+  const cargarPdf = useCallback(
+    async (selectedFile: File) => {
+      setIsRendering(true);
+      setPageDataUrls({});
+      setProgressMsg(
+        isEs ? 'Analizando y renderizando páginas...' : 'Analyzing & rendering pages...',
+      );
 
-    try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
+      try {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
 
-      const pdfDoc = await pdfjsLib.getDocument({
-        data: arrayBuffer.slice(0),
-        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
-        cMapPacked: true,
-      }).promise;
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
+          cMapPacked: true,
+        }).promise;
 
-      const count = pdfDoc.numPages;
-      setTotalPages(count);
+        const count = pdfDoc.numPages;
+        setTotalPages(count);
 
-      const urls: Record<number, string> = {};
-      const maxThumbnails = Math.min(count, 30);
-      for (let p = 1; p <= maxThumbnails; p++) {
-        try {
-          const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 0.5 });
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.ceil(viewport.width);
-          canvas.height = Math.ceil(viewport.height);
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
-            urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+        const urls: Record<number, string> = {};
+        const maxThumbnails = Math.min(count, 30);
+        for (let p = 1; p <= maxThumbnails; p++) {
+          try {
+            const page = await pdfDoc.getPage(p);
+            const viewport = page.getViewport({ scale: 0.5 });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.ceil(viewport.width);
+            canvas.height = Math.ceil(viewport.height);
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                typeof page.render
+              >[0]).promise;
+              urls[p] = canvas.toDataURL('image/jpeg', 0.8);
+            }
+          } catch {
+            /* omit page errors */
           }
-        } catch {
-          /* omit page errors */
         }
+        setPageDataUrls(urls);
+      } catch (err) {
+        console.error('Error al cargar PDF:', err);
+        toast.error(isEs ? 'Error al abrir el archivo PDF' : 'Error opening PDF file');
+      } finally {
+        setIsRendering(false);
       }
-      setPageDataUrls(urls);
-    } catch (err) {
-      console.error('Error al cargar PDF:', err);
-      toast.error(isEs ? 'Error al abrir el archivo PDF' : 'Error opening PDF file');
-    } finally {
-      setIsRendering(false);
-    }
-  };
+    },
+    [isEs],
+  );
 
   useEffect(() => {
     if (file) {
@@ -100,7 +108,7 @@ export default function PdfToWord() {
         cargarPdf(file);
       });
     }
-  }, [file]);
+  }, [file, cargarPdf]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -178,6 +186,7 @@ export default function PdfToWord() {
           ? '¡Documento Word generado con texto, tablas e imágenes!'
           : 'Word document generated with text, tables & images!',
       );
+      onSuccess?.();
     } catch (error) {
       console.error('Error al convertir PDF a Word:', error);
       toast.error(isEs ? 'Ocurrió un error en la conversión' : 'Conversion error occurred');

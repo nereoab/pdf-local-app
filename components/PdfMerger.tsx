@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 import {
   Merge,
   FileText,
@@ -11,21 +11,10 @@ import {
   ArrowDown,
   Plus,
   Sliders,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  UploadCloud,
   ShieldCheck,
   ArrowLeft,
   Sparkles,
   LayoutGrid,
-  CheckCircle2,
-  Compass,
-  Grid,
-  Layers,
-  Zap,
-  Cpu,
-  Settings2,
   GripVertical,
   Eye,
   RotateCw,
@@ -34,13 +23,10 @@ import {
   Square,
   Lock,
   Unlock,
-  KeyRound,
   List,
   ArrowDownAZ,
   ArrowUpDown,
   BookOpen,
-  Bookmark,
-  Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -160,8 +146,8 @@ export default function PdfMerger() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [passwordsMap, setPasswordsMap] = useState<Record<string, string>>({});
+  const [, setDownloadUrl] = useState<string | null>(null);
 
   // METADATA STATE
   const [docTitle, setDocTitle] = useState<string>('');
@@ -289,7 +275,7 @@ export default function PdfMerger() {
               await page.render({ canvasContext: context, viewport, canvas } as any).promise;
               thumbUrl = canvas.toDataURL();
             }
-          } catch (e) {
+          } catch {
             console.warn(`Could not render thumbnail for page ${i}`);
           }
 
@@ -304,7 +290,7 @@ export default function PdfMerger() {
         setFiles((prev) =>
           prev.map((f) => (f.id === item.id ? { ...f, pagesDetail: details } : f)),
         );
-      } catch (e) {
+      } catch {
         toast.error(
           isEs ? 'Error al cargar páginas del documento' : 'Error loading document pages',
         );
@@ -349,7 +335,6 @@ export default function PdfMerger() {
   };
 
   // OPCIONES AVANZADAS DE UNIÓN
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(true);
   const [orientation, setOrientation] = useState<PageOrientation>('original');
   const [pageSize, setPageSize] = useState<PageSizeOption>('original');
   const [separatorMode, setSeparatorMode] = useState<SeparatorOption>('none');
@@ -395,7 +380,7 @@ export default function PdfMerger() {
           await page.render({ canvasContext: context, viewport, canvas } as any).promise;
           thumbUrl = canvas.toDataURL();
         }
-      } catch (e) {
+      } catch {
         console.warn('Could not generate thumbnail after unlock:', item.file.name);
       }
 
@@ -418,7 +403,7 @@ export default function PdfMerger() {
       toast.success(
         isEs ? '¡Archivo PDF desbloqueado correctamente!' : 'PDF file unlocked successfully!',
       );
-    } catch (err) {
+    } catch {
       toast.error(
         isEs
           ? 'Contraseña incorrecta. Inténtalo de nuevo.'
@@ -438,39 +423,16 @@ export default function PdfMerger() {
     for (const f of selected) {
       try {
         const buffer = await f.arrayBuffer();
-
-        let isEncrypted = false;
-        let needsPassword = false;
-
-        try {
-          await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)), password: '' })
-            .promise;
-        } catch (err: any) {
-          if (err?.name === 'PasswordException' || err?.code === 1) {
-            isEncrypted = true;
-            needsPassword = true;
-          }
-        }
-
-        if (needsPassword) {
-          newItems.push({
-            id: `${f.name}-${Date.now()}-${Math.random()}`,
-            file: f,
-            pageCount: 1,
-            pageRange: 'all',
-            isEncrypted: true,
-            needsPassword: true,
-          });
-          continue;
-        }
-
-        const doc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-        const count = doc.getPageCount();
+        const pdfjsDoc = await pdfjsLib.getDocument({
+          data: new Uint8Array(buffer.slice(0)),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+        const count = pdfjsDoc.numPages;
 
         let thumbUrl: string | undefined = undefined;
+        const isEncrypted = false;
         try {
-          const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)) })
-            .promise;
           const page = await pdfjsDoc.getPage(1);
           const viewport = page.getViewport({ scale: 0.3 });
           const canvas = document.createElement('canvas');
@@ -481,7 +443,7 @@ export default function PdfMerger() {
             await page.render({ canvasContext: context, viewport, canvas } as any).promise;
             thumbUrl = canvas.toDataURL();
           }
-        } catch (e) {
+        } catch {
           console.warn('Could not generate thumbnail for file:', f.name);
         }
 
@@ -540,12 +502,10 @@ export default function PdfMerger() {
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((item) => item.id !== id));
-    setDownloadUrl(null);
   };
 
   const handleRemoveAllFiles = () => {
     setFiles([]);
-    setDownloadUrl(null);
   };
 
   const moveFile = (index: number, direction: 'up' | 'down') => {
@@ -558,39 +518,10 @@ export default function PdfMerger() {
       updated[targetIndex] = temp;
       return updated;
     });
-    setDownloadUrl(null);
   };
 
   const updatePageRange = (id: string, range: string) => {
     setFiles((prev) => prev.map((item) => (item.id === id ? { ...item, pageRange: range } : item)));
-  };
-
-  const parsePageRange = (rangeStr: string, totalPages: number): number[] => {
-    if (!rangeStr || rangeStr.trim().toLowerCase() === 'all') {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    const indices: Set<number> = new Set();
-    const parts = rangeStr.split(',');
-
-    parts.forEach((part) => {
-      const trimmed = part.trim();
-      if (trimmed.includes('-')) {
-        const [startStr, endStr] = trimmed.split('-');
-        const start = Math.max(1, parseInt(startStr, 10) || 1);
-        const end = Math.min(totalPages, parseInt(endStr, 10) || totalPages);
-        for (let i = start; i <= end; i++) {
-          indices.add(i - 1);
-        }
-      } else {
-        const p = parseInt(trimmed, 10);
-        if (!isNaN(p) && p >= 1 && p <= totalPages) {
-          indices.add(p - 1);
-        }
-      }
-    });
-
-    return Array.from(indices).sort((a, b) => a - b);
   };
 
   const executeMerge = async () => {
@@ -1164,6 +1095,7 @@ export default function PdfMerger() {
                                 </div>
                               </div>
                             ) : item.thumbnailUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={item.thumbnailUrl}
                                 alt={item.file.name}
@@ -1278,6 +1210,7 @@ export default function PdfMerger() {
                             </span>
                             <div className="w-10 h-10 bg-zinc-900 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center flex-shrink-0">
                               {item.thumbnailUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={item.thumbnailUrl}
                                   alt={item.file.name}
@@ -1849,6 +1782,7 @@ export default function PdfMerger() {
 
                           <div className="w-full aspect-[3/4] bg-zinc-900 rounded-xl overflow-hidden flex items-center justify-center border border-white/5 mb-2 relative">
                             {page.thumbnailUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={page.thumbnailUrl}
                                 alt={`Página ${page.pageIndex + 1}`}

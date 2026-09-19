@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { Globe, ArrowLeft, ShieldCheck, Spade, ChevronDown, User, LogOut } from 'lucide-react';
@@ -12,13 +12,17 @@ import { useUIStore } from '../store/useUIStore';
 import AuthModal from './AuthModal';
 import CookieConsent from './CookieConsent';
 import Breadcrumbs from './Breadcrumbs';
+import { getEnglishUrlForSpanish, getSpanishUrlForEnglish } from '@/lib/routes-config';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
   const { lang, setLang } = useLanguage();
   const pathname = usePathname();
-  const isEs = lang === 'es';
+  const router = useRouter();
+  const isEnRoute = pathname?.startsWith('/en');
+  const langPrefix = isEnRoute ? '/en' : '';
+  const isEs = !isEnRoute && lang === 'es';
   const isZh = lang === 'zh';
-  const isHome = pathname === '/';
+  const isHome = pathname === '/' || pathname === '/en';
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { currentUser, logout, hydrate: hydrateAuth, isHydrated } = useAuthStore();
   const isHeaderHidden = useUIStore((s) => s.isHeaderHidden);
@@ -250,25 +254,37 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 aria-label={isEs ? 'Seleccionar idioma' : 'Select language'}
               >
                 <button
-                  onClick={() => setLang('es')}
+                  onClick={() => {
+                    setLang('es');
+                    if (pathname?.startsWith('/en')) {
+                      const target = getSpanishUrlForEnglish(pathname);
+                      router.push(target);
+                    }
+                  }}
                   className={`px-3 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    lang === 'es'
+                    !isEnRoute && lang === 'es'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-300 hover:text-white'
                   }`}
-                  aria-pressed={lang === 'es'}
+                  aria-pressed={!isEnRoute && lang === 'es'}
                   title="Español"
                 >
                   ES
                 </button>
                 <button
-                  onClick={() => setLang('en')}
+                  onClick={() => {
+                    setLang('en');
+                    if (!pathname?.startsWith('/en')) {
+                      const target = getEnglishUrlForSpanish(pathname || '/');
+                      router.push(target);
+                    }
+                  }}
                   className={`px-3 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    lang === 'en'
+                    isEnRoute || lang === 'en'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-300 hover:text-white'
                   }`}
-                  aria-pressed={lang === 'en'}
+                  aria-pressed={isEnRoute || lang === 'en'}
                   title="English"
                 >
                   EN
@@ -351,46 +367,269 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
       <CookieConsent />
 
       <footer
-        className="w-full border-t border-zinc-800 py-10 z-10 mt-auto bg-[#09090b]"
+        className="w-full border-t border-zinc-800 pt-12 pb-10 z-10 mt-auto bg-[#09090b]"
         role="contentinfo"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs">
-          <Link
-            href="/"
-            onClick={handleLogoClick}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-            aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
-          >
-            <Spade className="w-4 h-4 text-white" fill="currentColor" aria-hidden="true" />
-            <span className="text-zinc-400 font-medium">PDFBLACK © {new Date().getFullYear()}</span>
-          </Link>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* SEO INTERNAL LINKING DIRECTORY GRID */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 pb-12 border-b border-zinc-800/80 text-xs">
+            {/* 01: EDITAR */}
+            <div>
+              <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                {isEs ? 'Editar PDF' : 'Edit PDF'}
+              </div>
+              <ul className="space-y-2 text-zinc-400 font-sans">
+                <li>
+                  <Link href="/editar/texto" className="hover:text-white transition-colors">
+                    {isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/editar/foliar" className="hover:text-white transition-colors">
+                    {isEs ? 'Foliar PDF (Páginas)' : 'Add Page Numbers'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/editar/marca-agua" className="hover:text-white transition-colors">
+                    {isEs ? 'Poner Marca de Agua' : 'Add Watermark'}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/editar/quitar-marca-agua"
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'Quitar Marca de Agua' : 'Remove Watermark'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/editar/firmar" className="hover:text-white transition-colors">
+                    {isEs ? 'Firmar PDF' : 'Sign PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/editar/ocr" className="hover:text-white transition-colors">
+                    {isEs ? 'OCR (Reconocer Texto)' : 'OCR Searchable PDF'}
+                  </Link>
+                </li>
+              </ul>
+            </div>
 
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[11px]">
-            <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-            <span>
-              {isEs
-                ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR'
-                : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}
-            </span>
+            {/* 02: ORGANIZAR */}
+            <div>
+              <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                {isEs ? 'Organizar PDF' : 'Organize PDF'}
+              </div>
+              <ul className="space-y-2 text-zinc-400 font-sans">
+                <li>
+                  <Link href="/organizar/unir" className="hover:text-white transition-colors">
+                    {isEs ? 'Unir PDF' : 'Merge PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/organizar/dividir" className="hover:text-white transition-colors">
+                    {isEs ? 'Dividir PDF' : 'Split PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/organizar/eliminar" className="hover:text-white transition-colors">
+                    {isEs ? 'Eliminar Páginas' : 'Delete Pages'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/organizar/reordenar" className="hover:text-white transition-colors">
+                    {isEs ? 'Ordenar Páginas' : 'Reorder Pages'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/organizar/rotar" className="hover:text-white transition-colors">
+                    {isEs ? 'Rotar PDF' : 'Rotate PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/organizar/recortar" className="hover:text-white transition-colors">
+                    {isEs ? 'Recortar PDF' : 'Crop PDF'}
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* 03: OPTIMIZAR */}
+            <div>
+              <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                {isEs ? 'Optimizar PDF' : 'Optimize PDF'}
+              </div>
+              <ul className="space-y-2 text-zinc-400 font-sans">
+                <li>
+                  <Link href="/optimizar/comprimir" className="hover:text-white transition-colors">
+                    {isEs ? 'Comprimir PDF' : 'Compress PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/optimizar/reparar" className="hover:text-white transition-colors">
+                    {isEs ? 'Reparar PDF' : 'Repair PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/optimizar/proteger" className="hover:text-white transition-colors">
+                    {isEs ? 'Proteger PDF' : 'Protect PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/optimizar/desbloquear"
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'Desbloquear PDF' : 'Unlock PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/optimizar/censurar" className="hover:text-white transition-colors">
+                    {isEs ? 'Censurar PDF' : 'Redact PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/optimizar/comparar" className="hover:text-white transition-colors">
+                    {isEs ? 'Comparar PDFs' : 'Compare PDFs'}
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* 04: CONVERTIR A PDF */}
+            <div>
+              <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                {isEs ? 'Convertir a PDF' : 'Convert to PDF'}
+              </div>
+              <ul className="space-y-2 text-zinc-400 font-sans">
+                <li>
+                  <Link href="/convertir/word-pdf" className="hover:text-white transition-colors">
+                    Word a PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/excel-pdf" className="hover:text-white transition-colors">
+                    Excel a PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/convertir/powerpoint-pdf"
+                    className="hover:text-white transition-colors"
+                  >
+                    PowerPoint a PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/jpg-pdf" className="hover:text-white transition-colors">
+                    JPG / Imagen a PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/html-pdf" className="hover:text-white transition-colors">
+                    HTML a PDF
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/texto-pdf" className="hover:text-white transition-colors">
+                    Texto TXT a PDF
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* 05: CONVERTIR DESDE PDF */}
+            <div>
+              <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                {isEs ? 'Desde PDF' : 'From PDF'}
+              </div>
+              <ul className="space-y-2 text-zinc-400 font-sans">
+                <li>
+                  <Link href="/convertir/pdf-word" className="hover:text-white transition-colors">
+                    PDF a Word (DOCX)
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/pdf-excel" className="hover:text-white transition-colors">
+                    PDF a Excel (XLSX)
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/convertir/pdf-powerpoint"
+                    className="hover:text-white transition-colors"
+                  >
+                    PDF a PowerPoint
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/pdf-jpg" className="hover:text-white transition-colors">
+                    PDF a JPG / PNG
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/pdf-html" className="hover:text-white transition-colors">
+                    PDF a HTML
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/convertir/pdf-texto" className="hover:text-white transition-colors">
+                    PDF a Texto Plano
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <nav
-            className="flex items-center gap-5 text-zinc-300"
-            aria-label={isEs ? 'Enlaces legales' : 'Legal links'}
-          >
-            <Link href="/privacidad" className="hover:text-white transition-colors">
-              {isEs ? 'Privacidad' : 'Privacy'}
+          {/* BARRA INFERIOR DE LEGALIDAD & COPYRIGHT */}
+          <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs">
+            <Link
+              href="/"
+              onClick={handleLogoClick}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
+            >
+              <Spade className="w-4 h-4 text-white" fill="currentColor" aria-hidden="true" />
+              <span className="text-zinc-400 font-medium">
+                PDFBLACK © {new Date().getFullYear()}
+              </span>
             </Link>
-            <Link href="/terminos" className="hover:text-white transition-colors">
-              {isEs ? 'Términos' : 'Terms'}
-            </Link>
-            <Link href="/faq" className="hover:text-white transition-colors">
-              {isEs ? 'FAQ' : 'FAQ'}
-            </Link>
-            <Link href="/contacto" className="hover:text-white transition-colors">
-              {isEs ? 'Contacto' : 'Contact'}
-            </Link>
-          </nav>
+
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[11px]">
+              <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+              <span>
+                {isEs
+                  ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR'
+                  : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}
+              </span>
+            </div>
+
+            <nav
+              className="flex items-center gap-5 text-zinc-400"
+              aria-label={isEs ? 'Enlaces legales' : 'Legal links'}
+            >
+              <Link href="/privacidad" className="hover:text-white transition-colors">
+                {isEs ? 'Privacidad' : 'Privacy'}
+              </Link>
+              <Link href="/terminos" className="hover:text-white transition-colors">
+                {isEs ? 'Términos' : 'Terms'}
+              </Link>
+              <Link href="/faq" className="hover:text-white transition-colors">
+                {isEs ? 'FAQ' : 'FAQ'}
+              </Link>
+              <Link href="/contacto" className="hover:text-white transition-colors">
+                {isEs ? 'Contacto' : 'Contact'}
+              </Link>
+              <Link href="/aviso-legal" className="hover:text-white transition-colors">
+                {isEs ? 'Aviso Legal' : 'Legal Notice'}
+              </Link>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>
@@ -412,12 +651,15 @@ function DropdownMenu({
   items: DropdownItem[];
 }) {
   const pathname = usePathname();
-  const isActive = pathname.startsWith(basePath);
+  const isEn = pathname?.startsWith('/en');
+  const langPrefix = isEn ? '/en' : '';
+  const resolvedBasePath = `${langPrefix}${basePath}`;
+  const isActive = pathname.startsWith(resolvedBasePath) || pathname.startsWith(basePath);
 
   return (
     <div className="relative group">
       <Link
-        href={basePath}
+        href={resolvedBasePath}
         className="flex items-center gap-1.5 py-2 px-2.5 rounded-lg hover:bg-white/10 outline-none transition-colors"
         aria-haspopup="true"
         aria-expanded={undefined}
@@ -443,11 +685,12 @@ function DropdownMenu({
       >
         <div className="bg-[#0d0d12] border border-zinc-700 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl backdrop-blur-xl">
           {items.map((item, idx) => {
-            const isItemActive = pathname === item.path;
+            const resolvedPath = `${langPrefix}${item.path}`;
+            const isItemActive = pathname === resolvedPath;
             return (
               <Link
                 key={`${item.path}-${idx}`}
-                href={item.path}
+                href={resolvedPath}
                 className={`text-left px-3 py-2 text-xs font-mono transition-colors rounded-lg font-medium ${isItemActive ? 'bg-white text-black font-bold' : 'text-zinc-200 hover:text-white hover:bg-zinc-800'}`}
                 role="menuitem"
               >

@@ -19,7 +19,6 @@ import {
   X as XIcon,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const PdfMerger = dynamic(() => import('@/components/PdfMerger'), {
   ssr: false,
@@ -43,6 +42,10 @@ export default function UnirPdfPage() {
 
   const faqs = isEs
     ? [
+        {
+          q: '¿Cómo unir varios archivos PDF en uno solo gratis sin límites de tamaño?',
+          a: 'Para unir múltiples archivos PDF gratis: 1. Arrastra todos tus documentos a la plataforma PDFBlack. 2. Ordena visualmente las páginas o activa el Índice Corporativo y numeración continua. 3. Haz clic en «Unir Archivos PDF» y descarga al instante tu documento unificado sin marcas de agua ni límites.',
+        },
         {
           q: '¿Existe algún límite en la cantidad de archivos o tamaño total para unir?',
           a: 'No hay límites artificiales impuestos por servidores. Gracias al motor Web Worker con transferencia de memoria zero-copy de PDFBlack, puedes unir decenas de documentos PDF o archivos de cientos de megabytes directamente en la memoria RAM de tu equipo, siempre que tu navegador disponga de memoria física suficiente.',
@@ -73,7 +76,7 @@ export default function UnirPdfPage() {
         },
         {
           q: '¿Cómo combinar solo ciertas páginas de cada PDF y no el documento completo?',
-          a: 'Al cargar tus archivos en la bandeja de trabajo, puedes hacer clic en cada documento para especificar un rango exacto de páginas (ejemplo: «1-3, 5, 8-12») o expandir la cuadrícula visual para desmarcar y rotar páginas individuales con un solo clic antes de proceder con la unión.',
+          a: 'Al subir tus documentos, puedes pulsar en la tarjeta de cada archivo para definir un rango de páginas personalizado (por ejemplo: «1-3, 5, 8-12») o abrir el visor de miniaturas para seleccionar, girar o deseleccionar páginas individuales antes de iniciar la compilación.',
         },
         {
           q: '¿Se pueden unir archivos PDF desde teléfonos móviles iPhone o Android?',
@@ -81,6 +84,10 @@ export default function UnirPdfPage() {
         },
       ]
     : [
+        {
+          q: 'How to merge multiple PDF files into one for free without size limits?',
+          a: 'To merge multiple PDF files for free: 1. Drag all your documents into the PDFBlack workspace. 2. Visually arrange pages or enable the automatic Table of Contents. 3. Click "Merge PDF Files" and download your unified document instantly without watermarks, limits, or signup.',
+        },
         {
           q: 'Is there a limit on the number of files or total size I can merge?',
           a: 'No artificial server limits. Thanks to PDFBlack zero-copy Web Worker memory architecture, you can merge dozens of PDF files or large multi-megabyte documents directly inside your browser RAM, constrained only by your physical device resources.',
@@ -125,7 +132,7 @@ export default function UnirPdfPage() {
     name: isEs
       ? 'Unir PDF Gratis Online — Combinar Archivos PDF | PDFBlack'
       : 'Merge PDF Online Free — Combine PDF Files | PDFBlack',
-    url: `${SITE_URL}/organizar/unir`,
+    url: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/organizar/unir`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
@@ -179,19 +186,19 @@ export default function UnirPdfPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: `${SITE_URL}/organizar`,
+        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organizar`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Unir PDF' : 'Merge PDF',
-        item: `${SITE_URL}/organizar/unir`,
+        item: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/organizar/unir`,
       },
     ],
   };
@@ -760,21 +767,13 @@ export default function UnirPdfPage() {
                     </div>
                   </button>
 
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-5 pb-5 pt-1 text-xs text-zinc-400 leading-relaxed font-sans border-t border-zinc-800/60 mt-1">
-                          {faq.a}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div
+                    className={`px-5 pb-5 pt-1 text-xs text-zinc-400 leading-relaxed font-sans border-t border-zinc-800/60 mt-1 transition-all duration-200 ${
+                      isOpen ? 'block' : 'hidden'
+                    }`}
+                  >
+                    {faq.a}
+                  </div>
                 </div>
               );
             })}

@@ -1,41 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
   Unlock,
-  FileDown,
   Loader2,
   X,
   ShieldCheck,
-  FilePlus,
   KeyRound,
   CheckCircle2,
-  RefreshCw,
   FileText,
-  UploadCloud,
   Lock,
   Eye,
   EyeOff,
-  SlidersHorizontal,
   Sliders,
-  ChevronDown,
-  ChevronUp,
-  Shield,
   Zap,
-  Info,
   Database,
   Package,
   Search,
   Trash2,
   Plus,
   Maximize2,
-  Check,
-  AlertCircle,
   Sparkles,
-  Layers,
-  FileArchive,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -45,21 +32,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard, { BatchDownloadItem } from './DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
-type PageScope = 'todas' | 'rango';
-
-interface AuditReportEntry {
-  fileName: string;
-  encryptionType: string;
-  checksumSha256: string;
-  timestamp: string;
-  originalSize: number;
-  unlockedSize: number;
-  userProvidedPassword: boolean;
-}
-
 import type {
   EncryptionDetection,
-  DetectionResult,
   UnlockProgress,
   UnlockResult,
   BatchReport,
@@ -116,7 +90,7 @@ export default function PdfUnlocker() {
   const [recoveryTestedKeys, setRecoveryTestedKeys] = useState<number>(0);
 
   // === RESULTADOS Y DESCARGA ===
-  const [results, setResults] = useState<UnlockResult[]>([]);
+  const [, setResults] = useState<UnlockResult[]>([]);
   const [batchZipBlob, setBatchZipBlob] = useState<Blob | null>(null);
   const [completedResult, setCompletedResult] = useState<{
     downloadUrl: string;
@@ -184,178 +158,181 @@ export default function PdfUnlocker() {
     }
   }, [globalFile, slots]);
 
-  const detectFileStatus = async (f: File, idx: number) => {
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-      const buffer = await f.arrayBuffer();
-      const uint8 = new Uint8Array(buffer);
-      const scanSize = Math.min(uint8.length, 2 * 1024 * 1024);
-      const text = new TextDecoder('latin1').decode(uint8.slice(0, scanSize));
-      const hasEncrypt = text.includes('/Encrypt');
-
-      let algorithm = 'Sin Cifrado';
-      let pValue: number | undefined;
-      const pMatch = text.match(/\/P\s+(-?\d+)/);
-      if (pMatch) pValue = parseInt(pMatch[1], 10);
-
-      if (text.includes('/R 6') || text.includes('/R 5')) {
-        algorithm = 'AES-256 (ISO 32000-2 / R=6)';
-      } else if (text.includes('/AESV3')) {
-        algorithm = 'AES-256 (ISO 32000-1 Extension 3)';
-      } else if (text.includes('/AESV2') || text.includes('/R 4')) {
-        algorithm = 'AES-128 (Crypt Filter / R=4)';
-      } else if (text.includes('/R 3')) {
-        algorithm = 'RC4 128-bit (Standard R=3)';
-      } else if (text.includes('/R 2')) {
-        algorithm = 'RC4 40-bit (Standard R=2)';
-      }
-
-      const permissions =
-        pValue !== undefined
-          ? {
-              printing: (pValue & 4) !== 0,
-              modifying: (pValue & 8) !== 0,
-              copying: (pValue & 16) !== 0,
-              annotating: (pValue & 32) !== 0,
-              fillingForms: (pValue & 256) !== 0,
-              extraction: (pValue & 512) !== 0,
-              assembly: (pValue & 1024) !== 0,
-              highQualityPrint: (pValue & 2048) !== 0,
-            }
-          : {
-              printing: false,
-              highQualityPrint: false,
-              copying: false,
-              modifying: false,
-              annotating: false,
-              fillingForms: false,
-              extraction: false,
-              assembly: false,
-            };
-
+  const detectFileStatus = useCallback(
+    async (f: File, idx: number) => {
       try {
-        await pdfjsLib.getDocument({ data: buffer.slice(0), password: '', stopAtErrors: false })
-          .promise;
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-        if (hasEncrypt) {
-          setDetectionMap((prev) => ({
-            ...prev,
-            [idx]: {
-              type: 'owner-only',
-              needsPassword: false,
-              hasDigitalSignature: text.includes('/Sig'),
-              pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
-              encryptionAlgorithm: algorithm,
-              permissions,
-              warnings: [],
-              message: isEs
-                ? 'Solo restricciones de permisos (Owner Password)'
-                : 'Permissions restrictions only (Owner Password)',
-              details: isEs
-                ? 'El archivo abre libremente pero tiene bloqueada la copia/impresión/edición. ¡Listo para desbloqueo instantáneo con 1 clic!'
-                : 'Opens freely but copy/print/edit is locked. Ready for instant 1-click unlock!',
-            },
-          }));
-        } else {
-          setDetectionMap((prev) => ({
-            ...prev,
-            [idx]: {
-              type: 'none',
-              needsPassword: false,
-              hasDigitalSignature: text.includes('/Sig'),
-              pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
-              encryptionAlgorithm: 'Sin Cifrado',
-              permissions: {
-                printing: true,
-                highQualityPrint: true,
-                copying: true,
-                modifying: true,
-                annotating: true,
-                fillingForms: true,
-                extraction: true,
-                assembly: true,
+        const buffer = await f.arrayBuffer();
+        const uint8 = new Uint8Array(buffer);
+        const scanSize = Math.min(uint8.length, 2 * 1024 * 1024);
+        const text = new TextDecoder('latin1').decode(uint8.slice(0, scanSize));
+        const hasEncrypt = text.includes('/Encrypt');
+
+        let algorithm = 'Sin Cifrado';
+        let pValue: number | undefined;
+        const pMatch = text.match(/\/P\s+(-?\d+)/);
+        if (pMatch) pValue = parseInt(pMatch[1], 10);
+
+        if (text.includes('/R 6') || text.includes('/R 5')) {
+          algorithm = 'AES-256 (ISO 32000-2 / R=6)';
+        } else if (text.includes('/AESV3')) {
+          algorithm = 'AES-256 (ISO 32000-1 Extension 3)';
+        } else if (text.includes('/AESV2') || text.includes('/R 4')) {
+          algorithm = 'AES-128 (Crypt Filter / R=4)';
+        } else if (text.includes('/R 3')) {
+          algorithm = 'RC4 128-bit (Standard R=3)';
+        } else if (text.includes('/R 2')) {
+          algorithm = 'RC4 40-bit (Standard R=2)';
+        }
+
+        const permissions =
+          pValue !== undefined
+            ? {
+                printing: (pValue & 4) !== 0,
+                modifying: (pValue & 8) !== 0,
+                copying: (pValue & 16) !== 0,
+                annotating: (pValue & 32) !== 0,
+                fillingForms: (pValue & 256) !== 0,
+                extraction: (pValue & 512) !== 0,
+                assembly: (pValue & 1024) !== 0,
+                highQualityPrint: (pValue & 2048) !== 0,
+              }
+            : {
+                printing: false,
+                highQualityPrint: false,
+                copying: false,
+                modifying: false,
+                annotating: false,
+                fillingForms: false,
+                extraction: false,
+                assembly: false,
+              };
+
+        try {
+          await pdfjsLib.getDocument({ data: buffer.slice(0), password: '', stopAtErrors: false })
+            .promise;
+
+          if (hasEncrypt) {
+            setDetectionMap((prev) => ({
+              ...prev,
+              [idx]: {
+                type: 'owner-only',
+                needsPassword: false,
+                hasDigitalSignature: text.includes('/Sig'),
+                pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
+                encryptionAlgorithm: algorithm,
+                permissions,
+                warnings: [],
+                message: isEs
+                  ? 'Solo restricciones de permisos (Owner Password)'
+                  : 'Permissions restrictions only (Owner Password)',
+                details: isEs
+                  ? 'El archivo abre libremente pero tiene bloqueada la copia/impresión/edición. ¡Listo para desbloqueo instantáneo con 1 clic!'
+                  : 'Opens freely but copy/print/edit is locked. Ready for instant 1-click unlock!',
               },
-              warnings: [],
-              message: isEs ? 'Sin protección detectada' : 'No protection detected',
-              details: isEs
-                ? 'Documento sin restricciones ni cifrado activo.'
-                : 'Document without restrictions or active encryption.',
-            },
-          }));
-        }
-      } catch (err: unknown) {
-        const isPasswordError =
-          err &&
-          typeof err === 'object' &&
-          'name' in err &&
-          (err as { name: string }).name === 'PasswordException';
+            }));
+          } else {
+            setDetectionMap((prev) => ({
+              ...prev,
+              [idx]: {
+                type: 'none',
+                needsPassword: false,
+                hasDigitalSignature: text.includes('/Sig'),
+                pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
+                encryptionAlgorithm: 'Sin Cifrado',
+                permissions: {
+                  printing: true,
+                  highQualityPrint: true,
+                  copying: true,
+                  modifying: true,
+                  annotating: true,
+                  fillingForms: true,
+                  extraction: true,
+                  assembly: true,
+                },
+                warnings: [],
+                message: isEs ? 'Sin protección detectada' : 'No protection detected',
+                details: isEs
+                  ? 'Documento sin restricciones ni cifrado activo.'
+                  : 'Document without restrictions or active encryption.',
+              },
+            }));
+          }
+        } catch (err: unknown) {
+          const isPasswordError =
+            err &&
+            typeof err === 'object' &&
+            'name' in err &&
+            (err as { name: string }).name === 'PasswordException';
 
-        if (isPasswordError) {
-          setDetectionMap((prev) => ({
-            ...prev,
-            [idx]: {
-              type: 'encrypted',
-              needsPassword: true,
-              hasDigitalSignature: text.includes('/Sig'),
-              pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
-              encryptionAlgorithm: algorithm,
-              permissions,
-              warnings: [],
-              message: isEs
-                ? 'Protegido con Contraseña de Apertura'
-                : 'Protected with Opening Password',
-              details: isEs
-                ? 'Requiere contraseña de lectura para desencriptar los flujos de datos.'
-                : 'Requires opening password to decrypt data streams.',
-            },
-          }));
-        } else {
-          setDetectionMap((prev) => ({
-            ...prev,
-            [idx]: {
-              type: 'owner-only',
-              needsPassword: false,
-              hasDigitalSignature: text.includes('/Sig'),
-              pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
-              encryptionAlgorithm: algorithm,
-              permissions,
-              warnings: [],
-              message: isEs ? 'Cifrado de restricciones' : 'Permissions encryption',
-              details: isEs
-                ? 'Se intentará desbloqueo estructural inmediato en Web Worker.'
-                : 'Will attempt immediate structural unlock in Web Worker.',
-            },
-          }));
+          if (isPasswordError) {
+            setDetectionMap((prev) => ({
+              ...prev,
+              [idx]: {
+                type: 'encrypted',
+                needsPassword: true,
+                hasDigitalSignature: text.includes('/Sig'),
+                pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
+                encryptionAlgorithm: algorithm,
+                permissions,
+                warnings: [],
+                message: isEs
+                  ? 'Protegido con Contraseña de Apertura'
+                  : 'Protected with Opening Password',
+                details: isEs
+                  ? 'Requiere contraseña de lectura para desencriptar los flujos de datos.'
+                  : 'Requires opening password to decrypt data streams.',
+              },
+            }));
+          } else {
+            setDetectionMap((prev) => ({
+              ...prev,
+              [idx]: {
+                type: 'owner-only',
+                needsPassword: false,
+                hasDigitalSignature: text.includes('/Sig'),
+                pdfVersion: text.match(/%PDF-(\d+\.\d+)/)?.[1] || '1.7',
+                encryptionAlgorithm: algorithm,
+                permissions,
+                warnings: [],
+                message: isEs ? 'Cifrado de restricciones' : 'Permissions encryption',
+                details: isEs
+                  ? 'Se intentará desbloqueo estructural inmediato en Web Worker.'
+                  : 'Will attempt immediate structural unlock in Web Worker.',
+              },
+            }));
+          }
         }
-      }
-    } catch {
-      setDetectionMap((prev) => ({
-        ...prev,
-        [idx]: {
-          type: 'none',
-          needsPassword: false,
-          hasDigitalSignature: false,
-          pdfVersion: '1.7',
-          encryptionAlgorithm: 'Estándar',
-          permissions: {
-            printing: true,
-            highQualityPrint: true,
-            copying: true,
-            modifying: true,
-            annotating: true,
-            fillingForms: true,
-            extraction: true,
-            assembly: true,
+      } catch {
+        setDetectionMap((prev) => ({
+          ...prev,
+          [idx]: {
+            type: 'none',
+            needsPassword: false,
+            hasDigitalSignature: false,
+            pdfVersion: '1.7',
+            encryptionAlgorithm: 'Estándar',
+            permissions: {
+              printing: true,
+              highQualityPrint: true,
+              copying: true,
+              modifying: true,
+              annotating: true,
+              fillingForms: true,
+              extraction: true,
+              assembly: true,
+            },
+            warnings: [],
+            message: isEs ? 'Análisis completado' : 'Analysis complete',
+            details: '',
           },
-          warnings: [],
-          message: isEs ? 'Análisis completado' : 'Analysis complete',
-          details: '',
-        },
-      }));
-    }
-  };
+        }));
+      }
+    },
+    [isEs],
+  );
 
   // === GENERACIÓN DE MINIATURAS ===
   const loadFileThumbnails = useCallback(async (pdfFile: File, pwd: string) => {
@@ -412,7 +389,7 @@ export default function PdfUnlocker() {
         setTotalPages(1);
       });
     }
-  }, [activeFile, password, activeSlotIndex, loadFileThumbnails]);
+  }, [activeFile, password, activeSlotIndex, loadFileThumbnails, detectFileStatus]);
 
   // === GESTIÓN DE ARCHIVOS Y SLOTS ===
   const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
@@ -534,7 +511,6 @@ export default function PdfUnlocker() {
       workerRef.current = worker;
 
       const collectedResults: UnlockResult[] = [];
-      let latestZipBlob: Blob | null = null;
 
       worker.onmessage = (event: MessageEvent) => {
         const msg = event.data;
@@ -562,7 +538,6 @@ export default function PdfUnlocker() {
 
           if (b.zipBytes) {
             const zipBlob = new Blob([b.zipBytes], { type: 'application/zip' });
-            latestZipBlob = zipBlob;
             setBatchZipBlob(zipBlob);
           }
 
@@ -647,45 +622,29 @@ export default function PdfUnlocker() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const downloadAuditReport = () => {
-    if (results.length === 0) return;
-    const report: AuditReportEntry[] = results.map((r) => ({
-      fileName: r.fileName,
-      encryptionType: r.encryptionType || 'unknown',
-      checksumSha256: r.checksumSha256 || 'no-disponible',
-      timestamp: r.timestamp || new Date().toISOString(),
-      originalSize: r.originalSize || 0,
-      unlockedSize: r.unlockedSize || 0,
-      userProvidedPassword: !!password,
-    }));
-    const json = JSON.stringify(report, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `auditoria-desbloqueo-${new Date().toISOString().replace(/:/g, '-').slice(0, 19)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(isEs ? 'Reporte de auditoría descargado' : 'Audit report downloaded');
-  };
-
   const activeDetection = detectionMap[activeSlotIndex] || null;
   const isOwnerOnly = activeDetection?.type === 'owner-only';
   const isEncryptedWithOpenPassword = activeDetection?.type === 'encrypted';
   const hasAnyEncrypted = Object.values(detectionMap).some((d) => d.type === 'encrypted');
+
+  const executeUnlockRef = useRef(executeUnlock);
+  const executeRecoveryUnlockRef = useRef(executeRecoveryUnlock);
+  useEffect(() => {
+    executeUnlockRef.current = executeUnlock;
+    executeRecoveryUnlockRef.current = executeRecoveryUnlock;
+  });
 
   // Atajos de teclado (Ctrl+Enter = Desbloquear, Ctrl+R = Recuperar)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
-        if (!isProcessing && files.length > 0 && !completedResult) executeUnlock();
+        if (!isProcessing && files.length > 0 && !completedResult) executeUnlockRef.current();
       }
       if (e.ctrlKey && e.key === 'r') {
         e.preventDefault();
-        if (!isProcessing && files.length > 0 && !completedResult) executeRecoveryUnlock();
+        if (!isProcessing && files.length > 0 && !completedResult)
+          executeRecoveryUnlockRef.current();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -994,6 +953,7 @@ export default function PdfUnlocker() {
                         thumbnails.find((t) => t.pageNum === previewPageNum) || thumbnails[0];
                       return (
                         <div className="relative group max-h-[300px] max-w-full flex items-center justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={activeThumb.dataUrl}
                             alt={`Página ${activeThumb.pageNum}`}
@@ -1063,6 +1023,7 @@ export default function PdfUnlocker() {
                               : 'border-zinc-800 opacity-60 hover:opacity-100'
                           }`}
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={thumb.dataUrl}
                             alt={`Thumb ${thumb.pageNum}`}
@@ -1580,6 +1541,7 @@ export default function PdfUnlocker() {
                 </button>
               </div>
               <div className="p-4 overflow-auto flex items-center justify-center bg-black/50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={zoomModalImage}
                   alt="Zoom preview"

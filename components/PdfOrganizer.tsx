@@ -8,9 +8,7 @@ import {
   X,
   Loader2,
   Sliders,
-  UploadCloud,
   Sparkles,
-  ZoomIn,
   RotateCw,
   Copy,
   Trash2,
@@ -22,14 +20,10 @@ import {
   ArrowLeft,
   Lock,
   Unlock,
-  ChevronDown,
   Undo2,
   Redo2,
   RefreshCw,
-  Grid,
   Eye,
-  Check,
-  Maximize2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -80,6 +74,8 @@ export default function PdfOrganizer() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [completedResult, setCompletedResult] = useState<CompletedReorderResult | null>(null);
+  const [, setDownloadUrl] = useState<string | null>(null);
+  const [, setDownloadFilename] = useState<string>('');
 
   // ZOOM DE CUADRÍCULA (VISTA COMPACTA / ESTÁNDAR / GRANDE)
   const [gridZoom, setGridZoom] = useState<'sm' | 'md' | 'lg'>('md');
@@ -178,10 +174,6 @@ export default function PdfOrganizer() {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [unlockedPassword, setUnlockedPassword] = useState<string | undefined>(undefined);
-
-  // RESULTADOS Y PREVIAS
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
 
   // ESTADO DE ARRASTRE Y SELECCIÓN
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -365,7 +357,9 @@ export default function PdfOrganizer() {
       );
       if (validPdfs.length > 0 && !isEncrypted) {
         loadedStoreRef.current = true;
-        procesarArchivosPDF(validPdfs);
+        queueMicrotask(() => {
+          procesarArchivosPDF(validPdfs);
+        });
       }
     }
   }, [globalFiles, globalFile, files.length, isEncrypted, procesarArchivosPDF]);
@@ -376,7 +370,6 @@ export default function PdfOrganizer() {
         (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'),
       );
       if (selected.length > 0) {
-        setDownloadUrl(null);
         setIsEncrypted(false);
         setIsUnlocked(false);
         setUnlockedPassword(undefined);
@@ -529,13 +522,6 @@ export default function PdfOrganizer() {
     toast.success(
       isEs ? `Todas las páginas rotadas ${degreesToAdd}°` : `All pages rotated ${degreesToAdd}°`,
     );
-  };
-
-  const handleResetRotations = () => {
-    pushHistory(pages);
-    setPages((prev) => prev.map((p) => ({ ...p, rotation: 0 })));
-    setDownloadUrl(null);
-    toast.success(isEs ? 'Rotaciones restablecidas a 0°' : 'Rotations reset to 0°');
   };
 
   const handleInsertBlankPage = () => {

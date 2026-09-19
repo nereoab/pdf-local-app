@@ -1,14 +1,13 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { PDFDocument } from 'pdf-lib';
 import {
   Crop,
   FileText,
   X,
   Loader2,
   Sliders,
-  UploadCloud,
   Sparkles,
   ZoomIn,
   ZoomOut,
@@ -27,10 +26,6 @@ import {
   ChevronDown,
   ChevronUp,
   Maximize2,
-  Eye,
-  Split,
-  Info,
-  Check,
   Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -105,11 +100,8 @@ export default function PdfCropper() {
   // ZOOM & VISTA
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [previewZoom, setPreviewZoom] = useState<boolean>(false);
-  const [showThumbnailsBar, setShowThumbnailsBar] = useState<boolean>(false);
-
-  // RESULTADOS Y PREVIAS
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
+  const [, setDownloadUrl] = useState<string | null>(null);
+  const [, setDownloadFilename] = useState<string>('');
 
   // OPCIONES AVANZADAS Y METADATOS
   const [filePrefix, setFilePrefix] = useState<string>('Documento_Recortado');
@@ -240,7 +232,9 @@ export default function PdfCropper() {
 
   useEffect(() => {
     if (file && !isEncrypted) {
-      renderCurrentPage(file, currentPage, unlockedPassword);
+      queueMicrotask(() => {
+        renderCurrentPage(file, currentPage, unlockedPassword);
+      });
     }
   }, [file, currentPage, isEncrypted, unlockedPassword, renderCurrentPage]);
 
@@ -995,7 +989,6 @@ export default function PdfCropper() {
                   style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
                 >
                   {/* IMAGEN DE LA PÁGINA */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={pageDataUrl}
                     alt={`Página ${currentPage}`}
@@ -1110,7 +1103,6 @@ export default function PdfCropper() {
                             isEs ? `Ir a página ${thumb.pageNum}` : `Go to page ${thumb.pageNum}`
                           }
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={thumb.dataUrl}
                             alt={`Pg ${thumb.pageNum}`}
@@ -1611,7 +1603,6 @@ export default function PdfCropper() {
               </div>
 
               <div className="w-full max-h-[70vh] bg-zinc-950 rounded-xl overflow-hidden p-3 flex items-center justify-center shadow-inner relative border border-white/10">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <div className="relative inline-block max-h-[65vh] max-w-full overflow-hidden rounded">
                   <img
                     src={pageDataUrl}

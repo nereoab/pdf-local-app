@@ -1,13 +1,7 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  ReactNode,
-} from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 
 export type Language = 'es' | 'en' | 'zh';
 
@@ -41,7 +35,10 @@ const translations = {
         title: 'Rotar PDF',
         desc: 'Gira las páginas de tus documentos escaneados al revés.',
       },
-      crop: { title: 'Recortar PDF', desc: 'Recorta los márgenes o ajusta el tamaño de las páginas fácilmente.' },
+      crop: {
+        title: 'Recortar PDF',
+        desc: 'Recorta los márgenes o ajusta el tamaño de las páginas fácilmente.',
+      },
       number: {
         title: 'Numerar Páginas',
         desc: 'Añade números de página (folios) a tus documentos con posición personalizable.',
@@ -243,8 +240,7 @@ const translations = {
     nav: { back: '返回工具列表' },
     hero: {
       title: '浏览器内置的全套 PDF 工具',
-      subtitle:
-        '100% 本地修改、合并和拆分 PDF 文档。无需上传文件至网络，保障绝对隐私。',
+      subtitle: '100% 本地修改、合并和拆分 PDF 文档。无需上传文件至网络，保障绝对隐私。',
     },
     tools: {
       organize: {
@@ -411,27 +407,33 @@ const LanguageContext = createContext<LanguageContextType>(defaultContextValue);
 
 // ─── Provider ─────────────────────────────────────
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Language>('es');
+  const pathname = usePathname();
+  const [lang, setLangState] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname;
+      if (p.startsWith('/en')) return 'en';
+      if (p.startsWith('/zh')) return 'zh';
+    }
+    return 'es';
+  });
   const [mounted, setMounted] = useState(false);
 
-  // Inicializar idioma desde localStorage/navegador — diferido para evitar cascading renders
+  // Sincronizar idioma automáticamente según la URL (SEO Internacional /en/ y /zh/)
   useEffect(() => {
-    const id = setTimeout(() => {
-      setLangState(detectBrowserLanguage());
-      setMounted(true);
-    }, 0);
-    return () => clearTimeout(id);
-  }, []);
+    if (pathname?.startsWith('/en')) {
+      setLangState('en');
+    } else if (pathname?.startsWith('/zh')) {
+      setLangState('zh');
+    } else {
+      setLangState('es');
+    }
+    setMounted(true);
+  }, [pathname]);
 
-  // Sincronizar <html lang> y localStorage
+  // Sincronizar <html lang>
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.lang = lang;
-    try {
-      localStorage.setItem('pdfblack-lang', lang);
-    } catch {
-      // ignorar
-    }
   }, [lang, mounted]);
 
   const setLang = useCallback((newLang: Language) => {

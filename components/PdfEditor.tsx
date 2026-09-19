@@ -151,14 +151,12 @@ export default function PdfEditor() {
         if (isDisposed || !viewer.current) return;
 
         const WebViewer = webViewerModule.default;
-        const effectiveLicense =
-          process.env.NEXT_PUBLIC_PDFTRON_LICENSE ||
-          'demo:1785371416175:63a1e8a503000000006760d2ccf8c0f171ee4085a462864d5cc7028d9d';
+        const effectiveLicense = process.env.NEXT_PUBLIC_PDFTRON_LICENSE?.trim() || undefined;
 
         const webviewerOptions: any = {
           path: '/webviewer',
           enableCompositionInput: true,
-          licenseKey: effectiveLicense,
+          ...(effectiveLicense ? { licenseKey: effectiveLicense } : {}),
         };
 
         const initViewer = (WebViewer as any).Iframe || WebViewer;
@@ -214,7 +212,7 @@ export default function PdfEditor() {
           } catch {}
         }
 
-        // Protección contra bugs internos de WebViewer v12 en borrado de cajas de contenido
+        // Protección segura en borrado de anotaciones sin interferir con cajas de texto
         if (Core?.annotationManager) {
           try {
             const originalDelete = Core.annotationManager.deleteAnnotations.bind(
@@ -225,16 +223,10 @@ export default function PdfEditor() {
               ...args: any[]
             ) {
               try {
-                if (Array.isArray(annotations)) {
-                  const safeList = annotations.filter(
-                    (a) => a != null && (a.Id || a.id || typeof a.getRect === 'function'),
-                  );
-                  if (safeList.length > 0) {
-                    return originalDelete(safeList, ...args);
-                  }
-                  return Promise.resolve();
+                if (annotations != null) {
+                  return originalDelete(annotations, ...args);
                 }
-                return originalDelete(annotations, ...args);
+                return Promise.resolve();
               } catch (delErr) {
                 console.warn(
                   '[PDFBLACK] Excepción prevenida en deleteAnnotations de WebViewer:',
@@ -244,7 +236,7 @@ export default function PdfEditor() {
               }
             };
           } catch (patchErr) {
-            console.warn('[PDFBLACK] No se pudo parchar deleteAnnotations:', patchErr);
+            console.warn('[PDFBLACK] No se pudo envolver deleteAnnotations:', patchErr);
           }
         }
 
@@ -252,7 +244,7 @@ export default function PdfEditor() {
 
         const loadOptions: any = { filename: file.name, extension: 'pdf', password: '' };
 
-        Core.documentViewer.addEventListener('documentLoaded', () => {
+        Core.documentViewer.addEventListener('documentLoaded', async () => {
           if (!isDisposed) {
             setIsLoaded(true);
             try {
@@ -265,10 +257,28 @@ export default function PdfEditor() {
                 UI.setToolbarGroup('toolbarGroup-Annotate');
               } catch {}
             }
+
+            // Activar automáticamente el modo de edición de contenido de Apryse (cajas delimitadoras sobre texto)
+            try {
+              const contentEditManager = Core.documentViewer.getContentEditManager();
+              if (contentEditManager) {
+                try {
+                  await Core.ContentEdit?.preloadWorker?.(contentEditManager);
+                } catch {}
+                await contentEditManager.startContentEditMode();
+                const editTool = Core.documentViewer.getTool(Core.Tools.ToolNames.CONTENT_EDIT);
+                if (editTool) {
+                  Core.documentViewer.setToolMode(editTool);
+                }
+              }
+            } catch (ceErr) {
+              console.warn('[PDFBLACK] Inicialización de ContentEdit:', ceErr);
+            }
+
             toast.success(
               isEsRef.current
-                ? '¡Documento abierto y listo para editar!'
-                : 'Document loaded and ready to edit!',
+                ? '¡Documento abierto y listo para editar texto!'
+                : 'Document loaded and ready to edit text!',
             );
           }
         });
@@ -277,9 +287,6 @@ export default function PdfEditor() {
 
         if (!isDisposed) {
           setIsLoaded(true);
-          try {
-            UI.setToolbarGroup('toolbarGroup-Edit');
-          } catch {}
         }
       } catch (err: any) {
         if (!isDisposed) {
@@ -451,31 +458,56 @@ export default function PdfEditor() {
       const { documentViewer, annotationManager } = instance.Core;
       const doc = documentViewer.getDocument();
 
-      // ── PASO 0: Forzar desenfoque (blur) del campo activo y finalizar modo de edición para consolidar el texto ──
+      // ── PASO 0: Forzar desenfoque y consolidación de cajas de texto activas en Apryse ──
       try {
         if (instance.UI && instance.UI.iframeWindow) {
-          const activeEl = instance.UI.iframeWindow.document?.activeElement as HTMLElement;
+          const win = instance.UI.iframeWindow;
+          const activeEl = win.document?.activeElement as HTMLElement;
           if (activeEl && typeof activeEl.blur === 'function') {
             activeEl.blur();
+          }
+          const shadowEl = (activeEl as any)?.shadowRoot?.activeElement;
+          if (shadowEl && typeof shadowEl.blur === 'function') {
+            shadowEl.blur();
           }
         }
       } catch (blurErr) {
         console.warn('Error al desenfocar elemento activo:', blurErr);
       }
 
+      // Detener cualquier ContentBox que se encuentre en modo de edición para que vuelque su texto al motor
       try {
         const contentEditManager = documentViewer?.getContentEditManager?.();
-        if (contentEditManager && typeof contentEditManager.endContentEditMode === 'function') {
-          contentEditManager.endContentEditMode();
+        if (contentEditManager) {
+          const tSt = (contentEditManager as any).tSt;
+          if (tSt && typeof tSt === 'object') {
+            for (const box of Object.values(tSt) as any[]) {
+              if (box && typeof box.isEditing === 'function' && box.isEditing()) {
+                if (typeof box.stopContentEditing === 'function') {
+                  box.stopContentEditing();
+                }
+              }
+            }
+          }
         }
-      } catch (ceErr) {
-        console.warn('Error al finalizar ContentEditManager:', ceErr);
+      } catch (boxErr) {
+        console.warn('Error al confirmar cajas de edición de texto:', boxErr);
       }
 
-      // Esperar brevemente a que el motor WASM consolide las capas de texto
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      // Deseleccionar todas las anotaciones para disparar los listeners internos de commit de texto
+      try {
+        if (annotationManager && typeof annotationManager.deselectAllAnnotations === 'function') {
+          annotationManager.deselectAllAnnotations();
+        }
+      } catch (deselErr) {
+        console.warn('Error al deseleccionar anotaciones:', deselErr);
+      }
 
-      setProgressPercent(30);
+      // Pausa indispensable para que el worker WebAssembly (Infix) termine de procesar
+      // las modificaciones vectoriales y reescribir los streams de texto en el PDF
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      setProgressPercent(35);
       setProgressMsg(
         isEs
           ? 'Consolidando capas y anotaciones del PDF...'
@@ -483,22 +515,40 @@ export default function PdfEditor() {
       );
 
       // ── PASO 1: Exportar anotaciones (textos agregados, notas, firmas, sellos) en formato XFDF ──
-      let xfdfString = '';
+      let xfdfString: string | undefined = undefined;
       try {
         if (annotationManager && typeof annotationManager.exportAnnotations === 'function') {
-          xfdfString = await annotationManager.exportAnnotations();
+          const exported = await annotationManager.exportAnnotations({
+            links: true,
+            widgets: true,
+            fields: true,
+          });
+          if (exported && typeof exported === 'string' && exported.trim().length > 0) {
+            xfdfString = exported;
+          }
         }
       } catch (errXfdf) {
         console.warn('Anotaciones XFDF no disponibles o vacías:', errXfdf);
       }
 
-      setProgressPercent(50);
+      setProgressPercent(55);
       setProgressMsg(
         isEs ? 'Exportando bytes del documento editado...' : 'Exporting edited document bytes...',
       );
 
       // ── PASO 2: Obtener buffer con ediciones de texto nativas y anotaciones fusionadas ──
-      const data = await doc.getFileData({ xfdfString, downloadType: 'pdf' });
+      const saveOptions: Record<string, any> = {
+        downloadType: 'pdf',
+        includeAnnotations: true,
+      };
+      if (xfdfString) {
+        saveOptions.xfdfString = xfdfString;
+      }
+      if (instance.Core?.SaveOptions?.REMOVE_UNUSED) {
+        saveOptions.flags = instance.Core.SaveOptions.REMOVE_UNUSED;
+      }
+
+      const data = await doc.getFileData(saveOptions);
 
       let rawBuffer: ArrayBuffer;
       if (data instanceof ArrayBuffer) {
@@ -1140,6 +1190,43 @@ export default function PdfEditor() {
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                  {/* Botón explícito para activar modo edición de texto en Apryse */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const instance = viewerInstanceRef.current;
+                        if (instance) {
+                          instance.UI?.setToolbarGroup('toolbarGroup-Edit');
+                          const cem = instance.Core?.documentViewer?.getContentEditManager();
+                          if (cem) {
+                            await cem.startContentEditMode();
+                            const editTool = instance.Core.documentViewer.getTool(
+                              instance.Core.Tools.ToolNames.CONTENT_EDIT,
+                            );
+                            if (editTool) {
+                              instance.Core.documentViewer.setToolMode(editTool);
+                            }
+                          }
+                          toast.success(
+                            isEs
+                              ? 'Modo edición de texto activado. Haz clic sobre cualquier texto.'
+                              : 'Text edit mode active. Click any text to edit.',
+                          );
+                        }
+                      } catch (err) {
+                        console.error('Error al activar modo texto en Apryse:', err);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 bg-purple-950/70 hover:bg-purple-900 text-purple-200 border border-purple-500/60 hover:border-purple-400 px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]"
+                    title={
+                      isEs ? 'Activar recuadros de edición de texto' : 'Enable text editing boxes'
+                    }
+                  >
+                    <Type className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{isEs ? 'Modo Editar Texto' : 'Edit Text Mode'}</span>
+                  </button>
+
                   {/* Botón rápido para alternar a Motor Nativo */}
                   <button
                     type="button"

@@ -5,20 +5,13 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   ArrowLeft,
   Activity,
-  FileDown,
   Loader2,
   X,
-  FilePlus,
   FileText,
-  UploadCloud,
-  ChevronDown,
-  ChevronUp,
   SlidersHorizontal,
-  Shield,
   Zap,
   Target,
   Archive,
-  RotateCcw,
   FileCheck2,
   AlertTriangle,
   CheckCircle2,
@@ -30,8 +23,6 @@ import {
   FileCode2,
   Lock,
   Eye,
-  ZoomIn,
-  ZoomOut,
   ShieldCheck,
   Trash2,
   Plus,
@@ -45,7 +36,6 @@ import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import DownloadSuccessCard from './DownloadSuccessCard';
 import JSZip from 'jszip';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type {
   RepairOptions,
   DiagnosticResult,
@@ -134,8 +124,10 @@ export default function PdfRepairer() {
 
   // Sincronizar activeFile con file y globalFile
   useEffect(() => {
-    setFile(activeFile);
-    setGlobalFile(activeFile);
+    queueMicrotask(() => {
+      setFile(activeFile);
+      setGlobalFile(activeFile);
+    });
   }, [activeFile, setGlobalFile]);
 
   const loadSingleFileIntoSlot = (slotIdx: number, newFile: File) => {
@@ -145,9 +137,7 @@ export default function PdfRepairer() {
       return next;
     });
     setActiveSlotIndex(slotIdx);
-    setDownloadUrl(null);
     setDiagnostic(null);
-    setShowDiagnostic(false);
     setRecoveryReport(null);
     setCompletedResult(null);
     toast.success(isEs ? `PDF cargado en Caja ${slotIdx + 1}` : `PDF loaded in Box ${slotIdx + 1}`);
@@ -190,13 +180,11 @@ export default function PdfRepairer() {
     setGlobalFile(null);
     setCompletedResult(null);
     setDiagnostic(null);
-    setShowDiagnostic(false);
     setRecoveryReport(null);
   };
 
   // Modo & opciones
   const [repairMode, setRepairMode] = useState<RepairMode>('smart');
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [recoveryPriority, setRecoveryPriority] = useState<RecoveryPriority>('todo');
   const [pageScope, setPageScope] = useState<PageScope>('todas');
   const [pageRange, setPageRange] = useState('');
@@ -211,11 +199,9 @@ export default function PdfRepairer() {
   const [progressPercent, setProgressPercent] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPhase, setProgressPhase] = useState<string>('');
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   // Diagnóstico previo
   const [diagnostic, setDiagnostic] = useState<DiagnosticDisplay | null>(null);
-  const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [previewTab, setPreviewTab] = useState<'thumbnails' | 'diagnostic'>('thumbnails');
 
   // Reporte de recuperación
@@ -241,39 +227,6 @@ export default function PdfRepairer() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [thumbnails, setThumbnails] = useState<{ pageNum: number; dataUrl: string }[]>([]);
   const [isLoadingThumbnails, setIsLoadingThumbnails] = useState<boolean>(false);
-
-  // Altura sincronizada para igualar panel de vista previa al panel de control
-  const controlPanelRef = useRef<HTMLDivElement>(null);
-  const [previewHeight, setPreviewHeight] = useState<number>(0);
-  const [isDesktop, setIsDesktop] = useState<boolean>(false);
-
-  useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
-
-  useEffect(() => {
-    if (!controlPanelRef.current) return;
-    const updateHeight = () => {
-      if (controlPanelRef.current) {
-        const h = controlPanelRef.current.getBoundingClientRect().height;
-        if (h > 0) setPreviewHeight(h);
-      }
-    };
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const h = entry.target.getBoundingClientRect().height;
-        if (h > 0) {
-          setPreviewHeight(h);
-        }
-      }
-    });
-    observer.observe(controlPanelRef.current);
-    updateHeight();
-    return () => observer.disconnect();
-  }, [file]);
 
   // Ocultar barra superior global y posicionar la vista en el tope de la página
   useEffect(() => {
@@ -359,11 +312,15 @@ export default function PdfRepairer() {
 
   useEffect(() => {
     if (file) {
-      setPreviewPageNum(1);
-      loadFileThumbnails(file);
+      queueMicrotask(() => {
+        setPreviewPageNum(1);
+        loadFileThumbnails(file);
+      });
     } else {
-      setThumbnails([]);
-      setTotalPages(1);
+      queueMicrotask(() => {
+        setThumbnails([]);
+        setTotalPages(1);
+      });
     }
   }, [file, loadFileThumbnails]);
 
@@ -393,7 +350,6 @@ export default function PdfRepairer() {
           return next;
         });
         setActiveSlotIndex(0);
-        setDownloadUrl(null);
         setCompletedResult(null);
         toast.success(
           isEs
@@ -438,7 +394,6 @@ export default function PdfRepairer() {
         return next;
       });
       setActiveSlotIndex(0);
-      setDownloadUrl(null);
       setCompletedResult(null);
       toast.success(
         isEs
@@ -448,10 +403,6 @@ export default function PdfRepairer() {
     }
   };
 
-  const removeFile = useCallback(() => {
-    handleRemoveAllFiles();
-  }, []);
-
   // ---------------------------------------------------------------------------
   // DIAGNÓSTICO PREVIO (rápido, sin worker completo — escanea header/EOF/xref/obj en el hilo principal)
   // ---------------------------------------------------------------------------
@@ -459,7 +410,6 @@ export default function PdfRepairer() {
   const runPreliminaryDiagnosis = async () => {
     if (!file) return;
     setDiagnostic(null);
-    setShowDiagnostic(true);
 
     const uint8 = new Uint8Array(await file.arrayBuffer());
     const issues: DiagnosticDisplay['issues'] = [];
@@ -669,7 +619,6 @@ export default function PdfRepairer() {
       isEs ? 'Iniciando motor de reparación en Worker...' : 'Starting repair engine in Worker...',
     );
     setRecoveryReport(null);
-    setDownloadUrl(null);
 
     const repairedItems: RepairedItem[] = [];
     let totalPagesRecovered = 0;
@@ -1247,6 +1196,7 @@ export default function PdfRepairer() {
                         thumbnails.find((t) => t.pageNum === previewPageNum) || thumbnails[0];
                       return (
                         <div className="relative group max-h-[280px] max-w-full flex items-center justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={activeThumb.dataUrl}
                             alt={`Página ${activeThumb.pageNum}`}
@@ -1314,6 +1264,7 @@ export default function PdfRepairer() {
                               : 'border-zinc-800 opacity-60 hover:opacity-100'
                           }`}
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={thumb.dataUrl}
                             alt={`Thumb ${thumb.pageNum}`}
@@ -1429,10 +1380,7 @@ export default function PdfRepairer() {
           </div>
 
           {/* SECCIÓN 2: PANEL DE CONTROL DEBAJO A ANCHO COMPLETO */}
-          <div
-            ref={controlPanelRef}
-            className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden font-sans"
-          >
+          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700/80 hover:border-zinc-500 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-5 relative overflow-hidden font-sans">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
 
             {/* CABECERA PANEL */}
@@ -1903,6 +1851,7 @@ export default function PdfRepairer() {
                 </button>
               </div>
               <div className="p-4 overflow-auto flex items-center justify-center bg-black/50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={zoomModalImage}
                   alt="Zoom preview"

@@ -27,14 +27,18 @@ self.onmessage = async (e: MessageEvent<EditWorkerMessageIn>) => {
   if (action !== 'process') return;
 
   const postProgress = (percent: number, message: string) => {
-    (self as unknown as Worker).postMessage({ type: 'progress', percent, message } as EditWorkerMessageOut);
+    (self as unknown as Worker).postMessage({
+      type: 'progress',
+      percent,
+      message,
+    } as EditWorkerMessageOut);
   };
 
   try {
     const hasMetadata = Boolean(
       options.metadata?.title?.trim() ||
       options.metadata?.author?.trim() ||
-      options.metadata?.subject?.trim()
+      options.metadata?.subject?.trim(),
     );
     const needsPdfLib = options.renumberPages || hasMetadata;
 
@@ -47,7 +51,7 @@ self.onmessage = async (e: MessageEvent<EditWorkerMessageIn>) => {
           buffer: arrayBuffer,
           totalPages: 1,
         } as EditWorkerMessageOut,
-        [arrayBuffer]
+        [arrayBuffer],
       );
       return;
     }
@@ -93,13 +97,16 @@ self.onmessage = async (e: MessageEvent<EditWorkerMessageIn>) => {
       }
 
       postProgress(85, 'Compilando y optimizando bytes del PDF editado...');
-      const resultBytes = await pdfDoc.save();
+      const resultBytes = await pdfDoc.save({ useObjectStreams: false });
       resultBuffer = resultBytes.buffer.slice(
         resultBytes.byteOffset,
-        resultBytes.byteOffset + resultBytes.byteLength
+        resultBytes.byteOffset + resultBytes.byteLength,
       ) as ArrayBuffer;
     } catch (pdfLibErr) {
-      console.warn('pdf-lib no pudo re-serializar el PDF de Apryse; usando buffer nativo:', pdfLibErr);
+      console.warn(
+        'pdf-lib no pudo re-serializar el PDF de Apryse; usando buffer nativo:',
+        pdfLibErr,
+      );
       resultBuffer = arrayBuffer;
     }
 
@@ -110,7 +117,7 @@ self.onmessage = async (e: MessageEvent<EditWorkerMessageIn>) => {
         buffer: resultBuffer,
         totalPages,
       } as EditWorkerMessageOut,
-      [resultBuffer]
+      [resultBuffer],
     );
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);

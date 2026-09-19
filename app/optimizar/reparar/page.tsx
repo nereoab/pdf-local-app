@@ -34,6 +34,8 @@ const PdfRepairer = dynamic(() => import('@/components/PdfRepairer'), {
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
+import { buildFullToolSchemas } from '@/lib/seo-metadata';
+
 export default function RepararPdfPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -41,8 +43,12 @@ export default function RepararPdfPage() {
   const faqs = isEs
     ? [
         {
-          q: '¿Cómo puede PDFBlack reparar archivos PDF corruptos o que no abren?',
-          a: 'La mayoría de los archivos PDF dañados sufren de tablas xref truncadas, punteros startxref incorrectos debido a descargas incompletas o flujos stream desbalanceados. El motor de PDFBlack analiza la estructura binaria en bajo nivel, localiza los objetos válidos dispersos y reconstruye una nueva tabla de referencias cruzadas sana directamente en la memoria del navegador.',
+          q: '¿Cómo reparar un archivo PDF dañado o corrupto que no abre?',
+          a: 'Para reparar un archivo PDF corrupto: 1. Carga tu documento dañado en PDFBlack. 2. El motor forense escanea los bytes binarios y reconstruye la tabla xref y los objetos /Page perdidos. 3. Descarga de inmediato tu PDF reparado con texto seleccionable, tablas y fotos recuperadas sin marcas de agua.',
+        },
+        {
+          q: '¿Por qué Adobe Acrobat dice que el archivo está dañado y no se puede reparar?',
+          a: 'Acrobat aplica directivas de seguridad muy estrictas: si el puntero de la tabla xref final está corrupto o faltan los últimos bytes del archivo, bloquea la apertura por precaución. Nuestro motor barre el archivo secuencialmente desde el inicio rescatando todos los objetos /Page, /Font y /XObject existentes aunque el pie de página (trailer) se haya perdido.',
         },
         {
           q: '¿Cuál es la diferencia entre Smart Repair y Deep Rescue?',
@@ -51,10 +57,6 @@ export default function RepararPdfPage() {
         {
           q: '¿Es seguro subir archivos con información confidencial o contable dañada?',
           a: 'Totalmente seguro. PDFBlack funciona con arquitectura 100% local en tu navegador. Ni el archivo dañado ni el documento reparado se envían jamás a servidores externos ni quedan almacenados en la nube. Todo el proceso de reconstrucción binaria ocurre en la memoria RAM de tu equipo.',
-        },
-        {
-          q: '¿Por qué Adobe Acrobat dice que el archivo está dañado y no se puede reparar?',
-          a: 'Acrobat aplica directivas de seguridad muy estrictas: si el puntero de la tabla xref final está corrupto o faltan los últimos bytes del archivo, bloquea la apertura por precaución. Nuestro motor barre el archivo secuencialmente desde el inicio rescatando todos los objetos /Page, /Font y /XObject existentes aunque el pie de página (trailer) se haya perdido.',
         },
         {
           q: '¿Se conservan las fuentes tipográficas y los gráficos vectoriales al reparar?',
@@ -67,8 +69,12 @@ export default function RepararPdfPage() {
       ]
     : [
         {
-          q: 'How does PDFBlack repair corrupt or unopenable PDF files?',
-          a: 'Most damaged PDFs suffer from truncated xref tables, incorrect startxref offsets from interrupted downloads, or unbalanced stream tags. The PDFBlack engine analyzes the raw binary structure, locates valid objects, and reconstructs a clean cross-reference table directly inside your browser memory.',
+          q: 'How to repair a damaged or corrupted PDF file that cannot be opened?',
+          a: 'To repair a damaged PDF file: 1. Upload your unopenable document to PDFBlack. 2. The forensic engine parses raw binary streams and rebuilds corrupted xref tables and missing /Page dictionaries. 3. Download your recovered PDF with intact selectable text, tables, and images instantly.',
+        },
+        {
+          q: 'Why does Adobe Acrobat report that the file is damaged and cannot be repaired?',
+          a: 'Acrobat enforces strict compliance: if the final xref offset is broken or trailing bytes are missing, it blocks opening entirely. Our engine sweeps the file sequentially from byte 0, recovering all /Page, /Font, and /XObject dictionaries even when the trailer is completely lost.',
         },
         {
           q: 'What is the difference between Smart Repair and Deep Rescue?',
@@ -77,10 +83,6 @@ export default function RepararPdfPage() {
         {
           q: 'Is it safe to repair sensitive financial or legal documents on PDFBlack?',
           a: '100% safe. PDFBlack operates with 100% client-side architecture in your browser. Neither your damaged file nor the recovered PDF is ever uploaded to external servers or stored in the cloud. Binary parsing takes place purely in local RAM.',
-        },
-        {
-          q: 'Why does Adobe Acrobat report that the file is damaged and cannot be repaired?',
-          a: 'Acrobat enforces strict compliance: if the final xref offset is broken or trailing bytes are missing, it blocks opening entirely. Our engine sweeps the file sequentially from byte 0, recovering all /Page, /Font, and /XObject dictionaries even when the trailer is completely lost.',
         },
         {
           q: 'Are fonts and vector graphics preserved during repair?',
@@ -94,56 +96,34 @@ export default function RepararPdfPage() {
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: isEs ? 'Reparar PDF Gratis Online — PDFBlack' : 'Repair PDF Online Free — PDFBlack',
-    url: `${SITE_URL}/optimizar/reparar`,
-    applicationCategory: 'BusinessApplication, UtilityApplication',
-    operatingSystem: 'All',
-    browserRequirements: 'Requires JavaScript. Requires HTML5.',
-    description: isEs
-      ? 'Repara y recupera archivos PDF dañados o corruptos online. Reconstruye tablas xref, restaura streams y recupera páginas ilegibles con motor local 100% privado.'
-      : 'Repair and recover damaged or corrupted PDF files online. Reconstruct xref tables, restore streams and unreadable pages with 100% private local engine.',
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    featureList: [
-      'Diagnóstico de integridad binaria en tiempo real',
-      'Reconstrucción inteligente de tablas xref y trailers rotos',
-      'Modo Deep Rescue para archivos con daño catastrófico',
-      'Preservación de texto seleccionable y trazados vectoriales',
-      'Procesamiento 100% local en navegador sin subida a servidores',
-      'Descarga individual o en paquete ZIP por lotes',
-    ],
-  };
-
-  const faqStructuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: faqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.q,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.a,
-      },
-    })),
-  };
+  const schemas = buildFullToolSchemas({
+    category: 'optimizar',
+    toolSlug: 'reparar',
+    lang: isEs ? 'es' : 'en',
+    faqs,
+  });
 
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center justify-start min-h-[calc(100vh-100px)] bg-[#09090b]">
       {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.webApp) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.breadcrumb) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.howTo) }}
+      />
+      {schemas.faq && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.faq) }}
+        />
+      )}
 
       <div className="w-full max-w-7xl space-y-12">
         {/* COMPONENTE PRINCIPAL */}
@@ -289,21 +269,13 @@ export default function RepararPdfPage() {
                     </div>
                   </button>
 
-                  <AnimatePresence initial={false}>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-5 pb-5 pt-1 text-xs text-zinc-400 leading-relaxed font-sans border-t border-zinc-800/60 mt-1">
-                          {faq.a}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div
+                    className={`px-5 pb-5 pt-1 text-xs text-zinc-400 leading-relaxed font-sans border-t border-zinc-800/60 mt-1 transition-all duration-200 ${
+                      isOpen ? 'block' : 'hidden'
+                    }`}
+                  >
+                    {faq.a}
+                  </div>
                 </div>
               );
             })}

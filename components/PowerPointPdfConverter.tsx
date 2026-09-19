@@ -1,49 +1,39 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import JSZip from 'jszip';
 import {
-  FileDown,
   Loader2,
-  X,
   FilePlus,
   RefreshCw,
-  UploadCloud,
   Repeat,
   Layout,
   Sliders,
-  ChevronDown,
-  ChevronUp,
   Grid,
   ShieldCheck,
   ArrowLeft,
   Zap,
   Cpu,
-  HelpCircle,
   Plus,
   FileText,
   Presentation,
   Sparkles,
-  Check,
-  CheckSquare,
-  Square,
-  Filter,
   ListChecks,
   Trash2,
   Eye,
-  Image as ImageIcon,
+  UploadCloud,
 } from 'lucide-react';
 import { PowerPointIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
-import PdfPageViewer from '@/components/PdfPageViewer';
 import { convertWithApi } from '@/lib/adobe-api-client';
 
 type ConversionDirection = 'powerpoint-to-pdf' | 'pdf-to-powerpoint';
@@ -362,7 +352,9 @@ export default function PowerPointPdfConverter({
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
 
   useEffect(() => {
-    setMode(defaultMode);
+    queueMicrotask(() => {
+      setMode(defaultMode);
+    });
   }, [defaultMode]);
 
   // 3 CAJAS / RANURAS INDEPENDIENTES PARA PROCESAR HASTA 3 ARCHIVOS
@@ -419,10 +411,7 @@ export default function PowerPointPdfConverter({
       prev.map((s, idx) => (idx === activeSlotIndex ? { ...s, activePage: p } : s)),
     );
   };
-  const pageDataUrls = activeSlot?.pageDataUrls || {};
-  const isRendering = activeSlot?.isRendering || false;
   const extractedSlides = activeSlot?.extractedSlides || [];
-  const extractedSlideCount = activeSlot?.extractedSlideCount || 0;
   const loadedSlots = useMemo(() => slots.filter((s) => s.file !== null), [slots]);
 
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
@@ -430,8 +419,6 @@ export default function PowerPointPdfConverter({
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
 
   // SELECCIÓN DE PÁGINAS
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
@@ -445,7 +432,9 @@ export default function PowerPointPdfConverter({
 
   useEffect(() => {
     if (defaultMode === 'powerpoint-to-pdf') {
-      setConversionEngine('local');
+      queueMicrotask(() => {
+        setConversionEngine('local');
+      });
     }
   }, [defaultMode]);
 
@@ -487,92 +476,91 @@ export default function PowerPointPdfConverter({
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }, [totalPages, pageSelectionMode, pageRangeInput, selectedPageSet]);
 
-  const targetPageSet = useMemo(() => new Set(targetPages), [targetPages]);
-
   // Sincronizar selección de páginas al cambiar de caja activa o totalPages
   useEffect(() => {
     if (totalPages > 0) {
-      setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
-      setPageRangeInput(totalPages > 10 ? `1-${Math.min(10, totalPages)}` : `1-${totalPages}`);
+      queueMicrotask(() => {
+        setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
+        setPageRangeInput(totalPages > 10 ? `1-${Math.min(10, totalPages)}` : `1-${totalPages}`);
+      });
     }
   }, [activeSlotIndex, totalPages]);
 
-  const parsePptxContent = async (
-    pptFile: File,
-  ): Promise<{ count: number; slides: PptxSlideData[] }> => {
-    try {
-      const zip = await JSZip.loadAsync(pptFile);
-      const slideKeys = Object.keys(zip.files)
-        .filter((k) => k.startsWith('ppt/slides/slide') && k.endsWith('.xml'))
-        .sort((a, b) => {
-          const numA = parseInt(a.replace(/[^0-9]/g, '') || '0', 10);
-          const numB = parseInt(b.replace(/[^0-9]/g, '') || '0', 10);
-          return numA - numB;
-        });
+  const parsePptxContent = useCallback(
+    async (pptFile: File): Promise<{ count: number; slides: PptxSlideData[] }> => {
+      try {
+        const zip = await JSZip.loadAsync(pptFile);
+        const slideKeys = Object.keys(zip.files)
+          .filter((k) => k.startsWith('ppt/slides/slide') && k.endsWith('.xml'))
+          .sort((a, b) => {
+            const numA = parseInt(a.replace(/[^0-9]/g, '') || '0', 10);
+            const numB = parseInt(b.replace(/[^0-9]/g, '') || '0', 10);
+            return numA - numB;
+          });
 
-      const parsed: PptxSlideData[] = [];
+        const parsed: PptxSlideData[] = [];
 
-      for (let i = 0; i < slideKeys.length; i++) {
-        const key = slideKeys[i];
-        const text = await zip.files[key].async('text');
-        const matches = Array.from(text.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g))
-          .map((m) => m[1].trim())
-          .filter(Boolean);
-        const title = matches[0] || (isEs ? `Diapositiva ${i + 1}` : `Slide ${i + 1}`);
-        const paragraphs = matches.slice(1);
+        for (let i = 0; i < slideKeys.length; i++) {
+          const key = slideKeys[i];
+          const text = await zip.files[key].async('text');
+          const matches = Array.from(text.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g))
+            .map((m) => m[1].trim())
+            .filter(Boolean);
+          const title = matches[0] || (isEs ? `Diapositiva ${i + 1}` : `Slide ${i + 1}`);
+          const paragraphs = matches.slice(1);
 
-        // Extraer imágenes asociadas a esta diapositiva
-        const slideBasename = key.split('/').pop() || `slide${i + 1}.xml`;
-        const relsKey = `ppt/slides/_rels/${slideBasename}.rels`;
-        const slideImages: SlideImageItem[] = [];
+          // Extraer imágenes asociadas a esta diapositiva
+          const slideBasename = key.split('/').pop() || `slide${i + 1}.xml`;
+          const relsKey = `ppt/slides/_rels/${slideBasename}.rels`;
+          const slideImages: SlideImageItem[] = [];
 
-        if (zip.files[relsKey]) {
-          try {
-            const relsText = await zip.files[relsKey].async('text');
-            const targetMatches = Array.from(
-              relsText.matchAll(/Target="(?:\.\.\/)?media\/([^"]+)"/g),
-            );
-            for (const tMatch of targetMatches) {
-              const mediaFilename = tMatch[1];
-              const mediaKey = `ppt/media/${mediaFilename}`;
-              if (zip.files[mediaKey]) {
-                const isPng = mediaFilename.toLowerCase().endsWith('.png');
-                const isJpg =
-                  mediaFilename.toLowerCase().endsWith('.jpg') ||
-                  mediaFilename.toLowerCase().endsWith('.jpeg');
-                if (isPng || isJpg) {
-                  const format = isPng ? 'png' : 'jpeg';
-                  const imgBytes = await zip.files[mediaKey].async('uint8array');
-                  const base64 = await zip.files[mediaKey].async('base64');
-                  slideImages.push({
-                    dataUrl: `data:image/${format};base64,${base64}`,
-                    format,
-                    bytes: imgBytes,
-                  });
+          if (zip.files[relsKey]) {
+            try {
+              const relsText = await zip.files[relsKey].async('text');
+              const targetMatches = Array.from(
+                relsText.matchAll(/Target="(?:\.\.\/)?media\/([^"]+)"/g),
+              );
+              for (const tMatch of targetMatches) {
+                const mediaFilename = tMatch[1];
+                const mediaKey = `ppt/media/${mediaFilename}`;
+                if (zip.files[mediaKey]) {
+                  const isPng = mediaFilename.toLowerCase().endsWith('.png');
+                  const isJpg =
+                    mediaFilename.toLowerCase().endsWith('.jpg') ||
+                    mediaFilename.toLowerCase().endsWith('.jpeg');
+                  if (isPng || isJpg) {
+                    const format = isPng ? 'png' : 'jpeg';
+                    const imgBytes = await zip.files[mediaKey].async('uint8array');
+                    const base64 = await zip.files[mediaKey].async('base64');
+                    slideImages.push({
+                      dataUrl: `data:image/${format};base64,${base64}`,
+                      format,
+                      bytes: imgBytes,
+                    });
+                  }
                 }
               }
+            } catch (relErr) {
+              console.warn('Error al extraer relaciones de imagen:', relErr);
             }
-          } catch (relErr) {
-            console.warn('Error al extraer relaciones de imagen:', relErr);
           }
+
+          parsed.push({
+            slideNumber: i + 1,
+            title,
+            paragraphs,
+            images: slideImages,
+          });
         }
 
-        parsed.push({
-          slideNumber: i + 1,
-          title,
-          paragraphs,
-          images: slideImages,
-        });
+        return { count: parsed.length, slides: parsed };
+      } catch (e) {
+        console.error('Error al parsear PPTX:', e);
+        return { count: 1, slides: [] };
       }
-
-      return {
-        count: parsed.length > 0 ? parsed.length : 1,
-        slides: parsed,
-      };
-    } catch {
-      return { count: 1, slides: [] };
-    }
-  };
+    },
+    [isEs],
+  );
 
   const loadPdfMetadataForSlot = async (slotIndex: number, pdfFile: File) => {
     try {
@@ -626,237 +614,245 @@ export default function PowerPointPdfConverter({
     }
   };
 
-  const loadPptxMetadataForSlot = async (slotIndex: number, pptFile: File) => {
-    try {
-      const { count, slides } = await parsePptxContent(pptFile);
-      setSlots((prev) =>
-        prev.map((s, idx) =>
-          idx === slotIndex
-            ? {
-                ...s,
-                totalPages: count,
-                extractedSlideCount: count,
-                extractedSlides: slides,
-                activePage: 1,
-                isRendering: false,
-              }
-            : s,
-        ),
-      );
-    } catch (err) {
-      console.error('Error al cargar metadatos de PPTX:', err);
-    }
-  };
-
-  const renderActivePdfPage = async (slotIndex: number, pageNum: number) => {
-    const currentSlot = slots[slotIndex];
-    if (!currentSlot?.file || !currentSlot.file.name.toLowerCase().endsWith('.pdf')) return;
-    if (currentSlot.pageDataUrls[pageNum]) return;
-
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-      const arrayBuffer = await currentSlot.file.arrayBuffer();
-      const pdfDoc = await pdfjsLib.getDocument({
-        data: arrayBuffer.slice(0),
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-        cMapPacked: true,
-      }).promise;
-
-      const page = await pdfDoc.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 0.5 });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-          typeof page.render
-        >[0]).promise;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
+  const loadPptxMetadataForSlot = useCallback(
+    async (slotIndex: number, pptFile: File) => {
+      try {
+        const { count, slides } = await parsePptxContent(pptFile);
         setSlots((prev) =>
           prev.map((s, idx) =>
             idx === slotIndex
-              ? { ...s, pageDataUrls: { ...s.pageDataUrls, [pageNum]: dataUrl } }
+              ? {
+                  ...s,
+                  totalPages: count,
+                  extractedSlideCount: count,
+                  extractedSlides: slides,
+                  activePage: 1,
+                  isRendering: false,
+                }
               : s,
           ),
         );
+      } catch (err) {
+        console.error('Error al cargar metadatos de PPTX:', err);
       }
-    } catch (e) {
-      console.error('Error al renderizar página:', e);
-    }
-  };
+    },
+    [parsePptxContent],
+  );
+
+  const renderActivePdfPage = useCallback(
+    async (slotIndex: number, pageNum: number) => {
+      const currentSlot = slots[slotIndex];
+      if (!currentSlot?.file || !currentSlot.file.name.toLowerCase().endsWith('.pdf')) return;
+      if (currentSlot.pageDataUrls[pageNum]) return;
+
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const arrayBuffer = await currentSlot.file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 0.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+            typeof page.render
+          >[0]).promise;
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          setSlots((prev) =>
+            prev.map((s, idx) =>
+              idx === slotIndex
+                ? { ...s, pageDataUrls: { ...s.pageDataUrls, [pageNum]: dataUrl } }
+                : s,
+            ),
+          );
+        }
+      } catch (e) {
+        console.error('Error al renderizar página:', e);
+      }
+    },
+    [slots],
+  );
 
   useEffect(() => {
     if (file && file.name.toLowerCase().endsWith('.pdf')) {
-      renderActivePdfPage(activeSlotIndex, activePage);
+      queueMicrotask(() => {
+        renderActivePdfPage(activeSlotIndex, activePage);
+      });
     }
-  }, [activeSlotIndex, activePage, file]);
+  }, [activeSlotIndex, activePage, file, renderActivePdfPage]);
 
   // CARGA DE ARCHIVOS EN LAS CAJAS CON AISLAMIENTO ESTRICTO
-  const loadFilesIntoSlots = (fileList: File[] | FileList, specificSlotIndex?: number) => {
-    const validFiles: File[] = [];
-    const filesArray = Array.from(fileList);
+  const loadFilesIntoSlots = useCallback(
+    (fileList: File[] | FileList, specificSlotIndex?: number) => {
+      const validFiles: File[] = [];
+      const filesArray = Array.from(fileList);
 
-    // Auto-detección inteligente de modo
-    let currentMode = mode;
-    const hasPpt = filesArray.some((f) => {
-      const n = f.name.toLowerCase();
-      return n.endsWith('.pptx') || n.endsWith('.ppt');
-    });
-    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+      // Auto-detección inteligente de modo
+      let currentMode = mode;
+      const hasPpt = filesArray.some((f) => {
+        const n = f.name.toLowerCase();
+        return n.endsWith('.pptx') || n.endsWith('.ppt');
+      });
+      const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
 
-    if (mode === 'powerpoint-to-pdf' && !hasPpt && hasPdf) {
-      currentMode = 'pdf-to-powerpoint';
-      setMode('pdf-to-powerpoint');
-      toast.info(
-        isEs
-          ? 'Modo cambiado automáticamente a PDF a PowerPoint'
-          : 'Switched to PDF to PowerPoint mode',
-      );
-    } else if (mode === 'pdf-to-powerpoint' && !hasPdf && hasPpt) {
-      currentMode = 'powerpoint-to-pdf';
-      setMode('powerpoint-to-pdf');
-      toast.info(
-        isEs
-          ? 'Modo cambiado automáticamente a PowerPoint a PDF'
-          : 'Switched to PowerPoint to PDF mode',
-      );
-    }
-
-    for (const f of filesArray) {
-      const name = f.name.toLowerCase();
-      const isPdf = name.endsWith('.pdf');
-      const isPpt = name.endsWith('.pptx') || name.endsWith('.ppt');
-
-      if (currentMode === 'powerpoint-to-pdf' && isPpt) {
-        validFiles.push(f);
-      } else if (currentMode === 'pdf-to-powerpoint' && isPdf) {
-        validFiles.push(f);
+      if (mode === 'powerpoint-to-pdf' && !hasPpt && hasPdf) {
+        currentMode = 'pdf-to-powerpoint';
+        setMode('pdf-to-powerpoint');
+        toast.info(
+          isEs
+            ? 'Modo cambiado automáticamente a PDF a PowerPoint'
+            : 'Switched to PDF to PowerPoint mode',
+        );
+      } else if (mode === 'pdf-to-powerpoint' && !hasPdf && hasPpt) {
+        currentMode = 'powerpoint-to-pdf';
+        setMode('powerpoint-to-pdf');
+        toast.info(
+          isEs
+            ? 'Modo cambiado automáticamente a PowerPoint a PDF'
+            : 'Switched to PowerPoint to PDF mode',
+        );
       }
-    }
 
-    if (validFiles.length === 0) {
-      toast.error(
-        currentMode === 'powerpoint-to-pdf'
-          ? isEs
-            ? 'Por favor selecciona archivos PowerPoint (.pptx/.ppt)'
-            : 'Please select PowerPoint files (.pptx/.ppt)'
-          : isEs
-            ? 'Por favor selecciona archivos PDF (.pdf)'
-            : 'Please select PDF files (.pdf)',
-      );
-      return;
-    }
+      for (const f of filesArray) {
+        const name = f.name.toLowerCase();
+        const isPdf = name.endsWith('.pdf');
+        const isPpt = name.endsWith('.pptx') || name.endsWith('.ppt');
 
-    setSlots((prev) => {
-      const next = [...prev];
-      if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
-        const f = validFiles[0];
-        const prevUrl = next[specificSlotIndex].previewUrl;
-        if (prevUrl) URL.revokeObjectURL(prevUrl);
+        if (currentMode === 'powerpoint-to-pdf' && isPpt) {
+          validFiles.push(f);
+        } else if (currentMode === 'pdf-to-powerpoint' && isPdf) {
+          validFiles.push(f);
+        }
+      }
 
-        next[specificSlotIndex] = {
-          id: specificSlotIndex,
-          file: f,
-          previewUrl: null,
-          thumbnailUrl: null,
-          totalPages: 1,
-          activePage: 1,
-          pageDataUrls: {},
-          extractedSlideCount: 0,
-          extractedSlides: [],
-          isRendering: true,
-        };
+      if (validFiles.length === 0) {
+        toast.error(
+          currentMode === 'powerpoint-to-pdf'
+            ? isEs
+              ? 'Por favor selecciona archivos PowerPoint (.pptx/.ppt)'
+              : 'Please select PowerPoint files (.pptx/.ppt)'
+            : isEs
+              ? 'Por favor selecciona archivos PDF (.pdf)'
+              : 'Please select PDF files (.pdf)',
+        );
+        return;
+      }
 
-        if (f.name.toLowerCase().endsWith('.pdf')) {
-          loadPdfMetadataForSlot(specificSlotIndex, f);
+      setSlots((prev) => {
+        const next = [...prev];
+        if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+          const f = validFiles[0];
+          const prevUrl = next[specificSlotIndex].previewUrl;
+          if (prevUrl) URL.revokeObjectURL(prevUrl);
+
+          next[specificSlotIndex] = {
+            id: specificSlotIndex,
+            file: f,
+            previewUrl: null,
+            thumbnailUrl: null,
+            totalPages: 1,
+            activePage: 1,
+            pageDataUrls: {},
+            extractedSlideCount: 0,
+            extractedSlides: [],
+            isRendering: true,
+          };
+
+          if (f.name.toLowerCase().endsWith('.pdf')) {
+            loadPdfMetadataForSlot(specificSlotIndex, f);
+          } else {
+            loadPptxMetadataForSlot(specificSlotIndex, f);
+          }
         } else {
-          loadPptxMetadataForSlot(specificSlotIndex, f);
-        }
-      } else {
-        let validIdx = 0;
-        for (let i = 0; i < 3; i++) {
-          if (validIdx >= validFiles.length) break;
-          if (!next[i].file) {
-            const f = validFiles[validIdx];
-            const prevUrl = next[i].previewUrl;
-            if (prevUrl) URL.revokeObjectURL(prevUrl);
+          let validIdx = 0;
+          for (let i = 0; i < 3; i++) {
+            if (validIdx >= validFiles.length) break;
+            if (!next[i].file) {
+              const f = validFiles[validIdx];
+              const prevUrl = next[i].previewUrl;
+              if (prevUrl) URL.revokeObjectURL(prevUrl);
 
-            next[i] = {
-              id: i,
-              file: f,
-              previewUrl: null,
-              thumbnailUrl: null,
-              totalPages: 1,
-              activePage: 1,
-              pageDataUrls: {},
-              extractedSlideCount: 0,
-              extractedSlides: [],
-              isRendering: true,
-            };
+              next[i] = {
+                id: i,
+                file: f,
+                previewUrl: null,
+                thumbnailUrl: null,
+                totalPages: 1,
+                activePage: 1,
+                pageDataUrls: {},
+                extractedSlideCount: 0,
+                extractedSlides: [],
+                isRendering: true,
+              };
 
-            if (f.name.toLowerCase().endsWith('.pdf')) {
-              loadPdfMetadataForSlot(i, f);
-            } else {
-              loadPptxMetadataForSlot(i, f);
+              if (f.name.toLowerCase().endsWith('.pdf')) {
+                loadPdfMetadataForSlot(i, f);
+              } else {
+                loadPptxMetadataForSlot(i, f);
+              }
+              validIdx++;
             }
-            validIdx++;
           }
-        }
 
-        if (validIdx === 0 && validFiles.length > 0) {
-          for (let i = 0; i < Math.min(3, validFiles.length); i++) {
-            const f = validFiles[i];
-            const prevUrl = next[i].previewUrl;
-            if (prevUrl) URL.revokeObjectURL(prevUrl);
+          if (validIdx === 0 && validFiles.length > 0) {
+            for (let i = 0; i < Math.min(3, validFiles.length); i++) {
+              const f = validFiles[i];
+              const prevUrl = next[i].previewUrl;
+              if (prevUrl) URL.revokeObjectURL(prevUrl);
 
-            next[i] = {
-              id: i,
-              file: f,
-              previewUrl: null,
-              thumbnailUrl: null,
-              totalPages: 1,
-              activePage: 1,
-              pageDataUrls: {},
-              extractedSlideCount: 0,
-              extractedSlides: [],
-              isRendering: true,
-            };
+              next[i] = {
+                id: i,
+                file: f,
+                previewUrl: null,
+                thumbnailUrl: null,
+                totalPages: 1,
+                activePage: 1,
+                pageDataUrls: {},
+                extractedSlideCount: 0,
+                extractedSlides: [],
+                isRendering: true,
+              };
 
-            if (f.name.toLowerCase().endsWith('.pdf')) {
-              loadPdfMetadataForSlot(i, f);
-            } else {
-              loadPptxMetadataForSlot(i, f);
+              if (f.name.toLowerCase().endsWith('.pdf')) {
+                loadPdfMetadataForSlot(i, f);
+              } else {
+                loadPptxMetadataForSlot(i, f);
+              }
             }
           }
         }
+        return next;
+      });
+
+      if (validFiles.length > 0) {
+        setGlobalFile(validFiles[0]);
       }
-      return next;
-    });
 
-    if (validFiles.length > 0) {
-      setGlobalFile(validFiles[0]);
-    }
+      if (specificSlotIndex !== undefined) {
+        setActiveSlotIndex(specificSlotIndex);
+      } else {
+        setActiveSlotIndex(0);
+      }
 
-    if (specificSlotIndex !== undefined) {
-      setActiveSlotIndex(specificSlotIndex);
-    } else {
-      setActiveSlotIndex(0);
-    }
-
-    setDownloadUrl(null);
-    setCompletedResult(null);
-
-    toast.success(
-      isEs
-        ? `${validFiles.length} presentación(es) lista(s) en las cajas`
-        : `${validFiles.length} presentation(s) ready in boxes`,
-    );
-  };
+      toast.success(
+        isEs
+          ? `${validFiles.length} presentación(es) lista(s) en las cajas`
+          : `${validFiles.length} presentation(s) ready in boxes`,
+      );
+    },
+    [mode, isEs, setGlobalFile, loadPptxMetadataForSlot],
+  );
 
   const initialGlobalFileLoadedRef = useRef<boolean>(false);
 
@@ -871,9 +867,11 @@ export default function PowerPointPdfConverter({
       (defaultMode === 'powerpoint-to-pdf' && isPpt)
     ) {
       initialGlobalFileLoadedRef.current = true;
-      loadFilesIntoSlots([globalFile], 0);
+      queueMicrotask(() => {
+        loadFilesIntoSlots([globalFile], 0);
+      });
     }
-  }, [globalFile, defaultMode]);
+  }, [globalFile, defaultMode, loadFilesIntoSlots]);
 
   const handleClearSlot = (slotIndex: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -954,14 +952,7 @@ export default function PowerPointPdfConverter({
     cancelRenderRef.current = true;
     handleClearAllSlots();
     setMode(newMode);
-    setDownloadUrl(null);
-    setDownloadFilename('');
-    setCompletedResult(null);
     setHeaderHidden(false);
-  };
-
-  const handleRemoveFile = () => {
-    handleClearAllSlots();
   };
 
   const handleSelectAll = () => {
@@ -1041,7 +1032,7 @@ export default function PowerPointPdfConverter({
             const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
             const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-            const { count, slides } = await parsePptxContent(currentFile);
+            const { slides } = await parsePptxContent(currentFile);
             const slidesToRender =
               slides.length > 0
                 ? slides
@@ -1140,8 +1131,6 @@ export default function PowerPointPdfConverter({
           }
 
           const outName = `${currentFile.name.replace(/\.[^/.]+$/, '')}.pdf`;
-          setDownloadFilename(outName);
-          setDownloadUrl(localUrl);
 
           if (resultBlob) {
             setCompletedResult({
@@ -1187,7 +1176,7 @@ export default function PowerPointPdfConverter({
               const pdfDoc = await PDFDocument.create();
               const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
               const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-              const { count, slides } = await parsePptxContent(currentFile);
+              const { slides } = await parsePptxContent(currentFile);
               const slidesToRender =
                 slides.length > 0
                   ? slides
@@ -1238,8 +1227,6 @@ export default function PowerPointPdfConverter({
           resultBlob = zipBlob;
 
           const outName = `Presentaciones_PDF_${readySlots.length}_Archivos.zip`;
-          setDownloadFilename(outName);
-          setDownloadUrl(localUrl);
 
           setCompletedResult({
             downloadUrl: localUrl,
@@ -1405,9 +1392,7 @@ export default function PowerPointPdfConverter({
             localUrl = URL.createObjectURL(pptxBlob);
           }
 
-          const outName = `${currentFile.name.replace(/\.[^/.]+$/, '')}_Diapositivas.pptx`;
-          setDownloadFilename(outName);
-          setDownloadUrl(localUrl);
+          const outName = `${currentFile.name.replace(/\.[^/.]+$/, '')}.pptx`;
 
           if (resultBlob) {
             setCompletedResult({
@@ -1486,8 +1471,6 @@ export default function PowerPointPdfConverter({
           resultBlob = zipBlob;
 
           const outName = `Presentaciones_PPTX_${readySlots.length}_Archivos.zip`;
-          setDownloadFilename(outName);
-          setDownloadUrl(localUrl);
 
           setCompletedResult({
             downloadUrl: localUrl,

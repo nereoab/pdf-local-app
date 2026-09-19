@@ -1,19 +1,15 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import JSZip from 'jszip';
 import {
-  FileDown,
   Loader2,
-  X,
   FilePlus,
   RefreshCw,
-  UploadCloud,
   Repeat,
   Sliders,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
   Grid,
   Compass,
@@ -22,25 +18,22 @@ import {
   ArrowLeft,
   Zap,
   Cpu,
-  HelpCircle,
   Plus,
   FileText,
-  Check,
   ListChecks,
   Trash2,
   Eye,
-  Layers,
+  UploadCloud,
 } from 'lucide-react';
 import { JpgIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
-import PdfPageViewer from '@/components/PdfPageViewer';
 import { convertWithApi } from '@/lib/adobe-api-client';
 
 type ConversionDirection = 'jpg-to-pdf' | 'pdf-to-jpg';
@@ -155,14 +148,15 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const topHeaderRef = useRef<HTMLDivElement>(null);
   const cancelRenderRef = useRef<boolean>(false);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
 
   useEffect(() => {
-    setMode(defaultMode);
+    queueMicrotask(() => {
+      setMode(defaultMode);
+    });
   }, [defaultMode]);
 
   // 3 CAJAS / RANURAS INDEPENDIENTES PARA PROCESAR HASTA 3 ARCHIVOS
@@ -213,8 +207,6 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
       prev.map((s, idx) => (idx === activeSlotIndex ? { ...s, activePage: p } : s)),
     );
   };
-  const pageDataUrls = activeSlot?.pageDataUrls || {};
-  const isRendering = activeSlot?.isRendering || false;
   const loadedSlots = useMemo(() => slots.filter((s) => s.file !== null), [slots]);
 
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
@@ -222,8 +214,9 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
+  const [, setFileInput] = useState<File | null>(null);
+  const [, setDownloadUrl] = useState<string | null>(null);
+  const [, setDownloadFilename] = useState<string>('');
 
   // SELECCIÓN DE PÁGINAS (PDF -> JPG)
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
@@ -285,35 +278,96 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }, [totalPages, pageSelectionMode, pageRangeInput, selectedPageSet]);
 
-  const targetPageSet = useMemo(() => new Set(targetPages), [targetPages]);
-
   useEffect(() => {
     if (totalPages > 0) {
-      setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
-      setPageRangeInput(totalPages > 10 ? `1-${Math.min(10, totalPages)}` : `1-${totalPages}`);
+      queueMicrotask(() => {
+        setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
+        setPageRangeInput(totalPages > 10 ? `1-${Math.min(10, totalPages)}` : `1-${totalPages}`);
+      });
     }
   }, [activeSlotIndex, totalPages]);
 
   // CARGA DE METADATOS Y MINIATURA (ESCALA 0.5) PARA UNA CAJA ESPECÍFICA
-  const loadPdfMetadataForSlot = async (slotIndex: number, pdfFile: File) => {
-    try {
-      const arrayBuffer = await pdfFile.arrayBuffer();
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
-      const pdfDoc = await pdfjsLib.getDocument({
-        data: arrayBuffer.slice(0),
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-        cMapPacked: true,
-      }).promise;
-
-      const count = pdfDoc.numPages;
-
-      // Render de la página 1 a escala 0.50 (súper miniatura a mitad de tamaño)
-      let page1DataUrl: string | null = null;
+  const loadPdfMetadataForSlot = useCallback(
+    async (slotIndex: number, pdfFile: File) => {
       try {
-        const page1 = await pdfDoc.getPage(1);
-        const viewport = page1.getViewport({ scale: 0.5 });
+        const arrayBuffer = await pdfFile.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const count = pdfDoc.numPages;
+
+        // Render de la página 1 a escala 0.50 (súper miniatura a mitad de tamaño)
+        let page1DataUrl: string | null = null;
+        try {
+          const page1 = await pdfDoc.getPage(1);
+          const viewport = page1.getViewport({ scale: 0.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            await page1.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+              typeof page1.render
+            >[0]).promise;
+            page1DataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          }
+        } catch {}
+
+        setSlots((prev) =>
+          prev.map((s, idx) =>
+            idx === slotIndex
+              ? {
+                  ...s,
+                  totalPages: count,
+                  thumbnailUrl: page1DataUrl,
+                  previewUrl: page1DataUrl,
+                  activePage: 1,
+                  pageDataUrls: page1DataUrl ? { 1: page1DataUrl } : {},
+                  isRendering: false,
+                }
+              : s,
+          ),
+        );
+
+        if (slotIndex === activeSlotIndex) {
+          setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
+          setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
+        }
+      } catch (err) {
+        console.error('Error al cargar metadatos de PDF:', err);
+      }
+    },
+    [activeSlotIndex],
+  );
+
+  // RENDERIZA LA PÁGINA ACTIVA A ESCALA 0.5 CUANDO SE CAMBIA DE PÁGINA
+  const renderActivePdfPage = useCallback(
+    async (slotIndex: number, pageNum: number) => {
+      const currentSlot = slots[slotIndex];
+      if (!currentSlot?.file || !currentSlot.file.name.toLowerCase().endsWith('.pdf')) return;
+      if (currentSlot.pageDataUrls[pageNum]) return;
+
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const arrayBuffer = await currentSlot.file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 0.5 });
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -321,248 +375,199 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
         if (ctx) {
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          await page1.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-            typeof page1.render
+          await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+            typeof page.render
           >[0]).promise;
-          page1DataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          setSlots((prev) =>
+            prev.map((s, idx) =>
+              idx === slotIndex
+                ? { ...s, pageDataUrls: { ...s.pageDataUrls, [pageNum]: dataUrl } }
+                : s,
+            ),
+          );
         }
-      } catch {}
-
-      setSlots((prev) =>
-        prev.map((s, idx) =>
-          idx === slotIndex
-            ? {
-                ...s,
-                totalPages: count,
-                thumbnailUrl: page1DataUrl,
-                previewUrl: page1DataUrl,
-                activePage: 1,
-                pageDataUrls: page1DataUrl ? { 1: page1DataUrl } : {},
-                isRendering: false,
-              }
-            : s,
-        ),
-      );
-
-      if (slotIndex === activeSlotIndex) {
-        setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
-        setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
+      } catch (e) {
+        console.error('Error al renderizar página:', e);
       }
-    } catch (err) {
-      console.error('Error al cargar metadatos de PDF:', err);
-    }
-  };
-
-  // RENDERIZA LA PÁGINA ACTIVA A ESCALA 0.5 CUANDO SE CAMBIA DE PÁGINA
-  const renderActivePdfPage = async (slotIndex: number, pageNum: number) => {
-    const currentSlot = slots[slotIndex];
-    if (!currentSlot?.file || !currentSlot.file.name.toLowerCase().endsWith('.pdf')) return;
-    if (currentSlot.pageDataUrls[pageNum]) return;
-
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-      const arrayBuffer = await currentSlot.file.arrayBuffer();
-      const pdfDoc = await pdfjsLib.getDocument({
-        data: arrayBuffer.slice(0),
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
-        cMapPacked: true,
-      }).promise;
-
-      const page = await pdfDoc.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 0.5 });
-      const canvas = document.createElement('canvas');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-          typeof page.render
-        >[0]).promise;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-        setSlots((prev) =>
-          prev.map((s, idx) =>
-            idx === slotIndex
-              ? { ...s, pageDataUrls: { ...s.pageDataUrls, [pageNum]: dataUrl } }
-              : s,
-          ),
-        );
-      }
-    } catch (e) {
-      console.error('Error al renderizar página:', e);
-    }
-  };
+    },
+    [slots],
+  );
 
   useEffect(() => {
     if (file && file.name.toLowerCase().endsWith('.pdf')) {
-      renderActivePdfPage(activeSlotIndex, activePage);
+      queueMicrotask(() => {
+        renderActivePdfPage(activeSlotIndex, activePage);
+      });
     }
-  }, [activeSlotIndex, activePage, file]);
+  }, [activeSlotIndex, activePage, file, renderActivePdfPage]);
 
-  const loadFilesIntoSlots = (fileList: File[] | FileList, specificSlotIndex?: number) => {
-    const validFiles: File[] = [];
-    const filesArray = Array.from(fileList);
+  const loadFilesIntoSlots = useCallback(
+    (fileList: File[] | FileList, specificSlotIndex?: number) => {
+      const validFiles: File[] = [];
+      const filesArray = Array.from(fileList);
 
-    // Auto-detección inteligente de modo
-    let currentMode = mode;
-    const hasImg = filesArray.some((f) => {
-      const n = f.name.toLowerCase();
-      return n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.png') || n.endsWith('.webp');
-    });
-    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+      // Auto-detección inteligente de modo
+      let currentMode = mode;
+      const hasImg = filesArray.some((f) => {
+        const n = f.name.toLowerCase();
+        return (
+          n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.png') || n.endsWith('.webp')
+        );
+      });
+      const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
 
-    if (mode === 'jpg-to-pdf' && !hasImg && hasPdf) {
-      currentMode = 'pdf-to-jpg';
-      setMode('pdf-to-jpg');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a PDF a JPG' : 'Switched to PDF to JPG mode',
-      );
-    } else if (mode === 'pdf-to-jpg' && !hasPdf && hasImg) {
-      currentMode = 'jpg-to-pdf';
-      setMode('jpg-to-pdf');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a JPG a PDF' : 'Switched to JPG to PDF mode',
-      );
-    }
-
-    for (const f of filesArray) {
-      const name = f.name.toLowerCase();
-      const isPdf = name.endsWith('.pdf');
-      const isImg =
-        name.endsWith('.jpg') ||
-        name.endsWith('.jpeg') ||
-        name.endsWith('.png') ||
-        name.endsWith('.webp');
-
-      if (currentMode === 'jpg-to-pdf' && isImg) {
-        validFiles.push(f);
-      } else if (currentMode === 'pdf-to-jpg' && isPdf) {
-        validFiles.push(f);
+      if (mode === 'jpg-to-pdf' && !hasImg && hasPdf) {
+        currentMode = 'pdf-to-jpg';
+        setMode('pdf-to-jpg');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a PDF a JPG' : 'Switched to PDF to JPG mode',
+        );
+      } else if (mode === 'pdf-to-jpg' && !hasPdf && hasImg) {
+        currentMode = 'jpg-to-pdf';
+        setMode('jpg-to-pdf');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a JPG a PDF' : 'Switched to JPG to PDF mode',
+        );
       }
-    }
 
-    if (validFiles.length === 0) {
-      toast.error(
-        currentMode === 'jpg-to-pdf'
-          ? isEs
-            ? 'Por favor selecciona imágenes válidas (JPG, PNG, WebP)'
-            : 'Please select valid images (JPG, PNG, WebP)'
-          : isEs
-            ? 'Por favor selecciona archivos PDF (.pdf)'
-            : 'Please select PDF files (.pdf)',
-      );
-      return;
-    }
+      for (const f of filesArray) {
+        const name = f.name.toLowerCase();
+        const isPdf = name.endsWith('.pdf');
+        const isImg =
+          name.endsWith('.jpg') ||
+          name.endsWith('.jpeg') ||
+          name.endsWith('.png') ||
+          name.endsWith('.webp');
 
-    setSlots((prev) => {
-      const next = [...prev];
-      if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
-        const f = validFiles[0];
-        const prevUrl = next[specificSlotIndex].previewUrl;
-        if (prevUrl && !next[specificSlotIndex].file?.name.toLowerCase().endsWith('.pdf')) {
-          URL.revokeObjectURL(prevUrl);
+        if (currentMode === 'jpg-to-pdf' && isImg) {
+          validFiles.push(f);
+        } else if (currentMode === 'pdf-to-jpg' && isPdf) {
+          validFiles.push(f);
         }
+      }
 
-        const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf') ? null : URL.createObjectURL(f);
-        next[specificSlotIndex] = {
-          id: specificSlotIndex,
-          file: f,
-          previewUrl: newPreviewUrl,
-          thumbnailUrl: newPreviewUrl,
-          totalPages: 1,
-          activePage: 1,
-          pageDataUrls: {},
-          isRendering: f.name.toLowerCase().endsWith('.pdf'),
-        };
+      if (validFiles.length === 0) {
+        toast.error(
+          currentMode === 'jpg-to-pdf'
+            ? isEs
+              ? 'Por favor selecciona imágenes válidas (JPG, PNG, WebP)'
+              : 'Please select valid images (JPG, PNG, WebP)'
+            : isEs
+              ? 'Por favor selecciona archivos PDF (.pdf)'
+              : 'Please select PDF files (.pdf)',
+        );
+        return;
+      }
 
-        if (f.name.toLowerCase().endsWith('.pdf')) {
-          loadPdfMetadataForSlot(specificSlotIndex, f);
+      setSlots((prev) => {
+        const next = [...prev];
+        if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+          const f = validFiles[0];
+          const prevUrl = next[specificSlotIndex].previewUrl;
+          if (prevUrl && !next[specificSlotIndex].file?.name.toLowerCase().endsWith('.pdf')) {
+            URL.revokeObjectURL(prevUrl);
+          }
+
+          const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf')
+            ? null
+            : URL.createObjectURL(f);
+          next[specificSlotIndex] = {
+            id: specificSlotIndex,
+            file: f,
+            previewUrl: newPreviewUrl,
+            thumbnailUrl: newPreviewUrl,
+            totalPages: 1,
+            activePage: 1,
+            pageDataUrls: {},
+            isRendering: f.name.toLowerCase().endsWith('.pdf'),
+          };
+
+          if (f.name.toLowerCase().endsWith('.pdf')) {
+            loadPdfMetadataForSlot(specificSlotIndex, f);
+          }
+        } else {
+          let validIdx = 0;
+          for (let i = 0; i < 3; i++) {
+            if (validIdx >= validFiles.length) break;
+            if (!next[i].file) {
+              const f = validFiles[validIdx];
+              const prevUrl = next[i].previewUrl;
+              if (prevUrl && !next[i].file?.name.toLowerCase().endsWith('.pdf')) {
+                URL.revokeObjectURL(prevUrl);
+              }
+
+              const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf')
+                ? null
+                : URL.createObjectURL(f);
+              next[i] = {
+                id: i,
+                file: f,
+                previewUrl: newPreviewUrl,
+                thumbnailUrl: newPreviewUrl,
+                totalPages: 1,
+                activePage: 1,
+                pageDataUrls: {},
+                isRendering: f.name.toLowerCase().endsWith('.pdf'),
+              };
+
+              if (f.name.toLowerCase().endsWith('.pdf')) {
+                loadPdfMetadataForSlot(i, f);
+              }
+              validIdx++;
+            }
+          }
+
+          if (validIdx === 0 && validFiles.length > 0) {
+            for (let i = 0; i < Math.min(3, validFiles.length); i++) {
+              const f = validFiles[i];
+              const prevUrl = next[i].previewUrl;
+              if (prevUrl && !next[i].file?.name.toLowerCase().endsWith('.pdf')) {
+                URL.revokeObjectURL(prevUrl);
+              }
+
+              const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf')
+                ? null
+                : URL.createObjectURL(f);
+              next[i] = {
+                id: i,
+                file: f,
+                previewUrl: newPreviewUrl,
+                thumbnailUrl: newPreviewUrl,
+                totalPages: 1,
+                activePage: 1,
+                pageDataUrls: {},
+                isRendering: f.name.toLowerCase().endsWith('.pdf'),
+              };
+
+              if (f.name.toLowerCase().endsWith('.pdf')) {
+                loadPdfMetadataForSlot(i, f);
+              }
+            }
+          }
         }
+        return next;
+      });
+
+      if (validFiles.length > 0) {
+        setGlobalFile(validFiles[0]);
+      }
+
+      if (specificSlotIndex !== undefined) {
+        setActiveSlotIndex(specificSlotIndex);
       } else {
-        let validIdx = 0;
-        for (let i = 0; i < 3; i++) {
-          if (validIdx >= validFiles.length) break;
-          if (!next[i].file) {
-            const f = validFiles[validIdx];
-            const prevUrl = next[i].previewUrl;
-            if (prevUrl && !next[i].file?.name.toLowerCase().endsWith('.pdf')) {
-              URL.revokeObjectURL(prevUrl);
-            }
-
-            const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf')
-              ? null
-              : URL.createObjectURL(f);
-            next[i] = {
-              id: i,
-              file: f,
-              previewUrl: newPreviewUrl,
-              thumbnailUrl: newPreviewUrl,
-              totalPages: 1,
-              activePage: 1,
-              pageDataUrls: {},
-              isRendering: f.name.toLowerCase().endsWith('.pdf'),
-            };
-
-            if (f.name.toLowerCase().endsWith('.pdf')) {
-              loadPdfMetadataForSlot(i, f);
-            }
-            validIdx++;
-          }
-        }
-
-        if (validIdx === 0 && validFiles.length > 0) {
-          for (let i = 0; i < Math.min(3, validFiles.length); i++) {
-            const f = validFiles[i];
-            const prevUrl = next[i].previewUrl;
-            if (prevUrl && !next[i].file?.name.toLowerCase().endsWith('.pdf')) {
-              URL.revokeObjectURL(prevUrl);
-            }
-
-            const newPreviewUrl = f.name.toLowerCase().endsWith('.pdf')
-              ? null
-              : URL.createObjectURL(f);
-            next[i] = {
-              id: i,
-              file: f,
-              previewUrl: newPreviewUrl,
-              thumbnailUrl: newPreviewUrl,
-              totalPages: 1,
-              activePage: 1,
-              pageDataUrls: {},
-              isRendering: f.name.toLowerCase().endsWith('.pdf'),
-            };
-
-            if (f.name.toLowerCase().endsWith('.pdf')) {
-              loadPdfMetadataForSlot(i, f);
-            }
-          }
-        }
+        setActiveSlotIndex(0);
       }
-      return next;
-    });
 
-    if (validFiles.length > 0) {
-      setGlobalFile(validFiles[0]);
-    }
-
-    if (specificSlotIndex !== undefined) {
-      setActiveSlotIndex(specificSlotIndex);
-    } else {
-      setActiveSlotIndex(0);
-    }
-
-    setDownloadUrl(null);
-    setCompletedResult(null);
-
-    toast.success(
-      isEs
-        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
-        : `${validFiles.length} file(s) ready in boxes`,
-    );
-  };
+      toast.success(
+        isEs
+          ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+          : `${validFiles.length} file(s) ready in boxes`,
+      );
+    },
+    [mode, isEs, setGlobalFile, loadPdfMetadataForSlot],
+  );
 
   const initialGlobalFileLoadedRef = useRef<boolean>(false);
 
@@ -578,9 +583,11 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
 
     if ((defaultMode === 'pdf-to-jpg' && isPdf) || (defaultMode === 'jpg-to-pdf' && isImg)) {
       initialGlobalFileLoadedRef.current = true;
-      loadFilesIntoSlots([globalFile], 0);
+      queueMicrotask(() => {
+        loadFilesIntoSlots([globalFile], 0);
+      });
     }
-  }, [globalFile, defaultMode]);
+  }, [globalFile, defaultMode, loadFilesIntoSlots]);
 
   useEffect(() => {
     return () => {
@@ -672,25 +679,6 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
     setDownloadFilename('');
     setCompletedResult(null);
     setHeaderHidden(false);
-  };
-
-  const setFileInput = (_: unknown) => {};
-
-  const handleRemoveFile = () => {
-    handleClearAllSlots();
-  };
-
-  // CONTROLADORES DE SELECCIÓN DE PÁGINAS
-  const togglePageSelection = (pageNum: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const newSet = new Set(targetPages);
-    if (newSet.has(pageNum)) {
-      newSet.delete(pageNum);
-    } else {
-      newSet.add(pageNum);
-    }
-    setSelectedPageSet(newSet);
-    setPageSelectionMode('custom');
   };
 
   const handleSelectAll = () => {
@@ -1522,17 +1510,21 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                         <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
                           {mode === 'pdf-to-jpg' || file.name.toLowerCase().endsWith('.pdf') ? (
                             activeSlot.pageDataUrls[activePage] ? (
-                              <img
-                                src={activeSlot.pageDataUrls[activePage]}
-                                alt={`Pág ${activePage}`}
-                                className="w-full h-full object-contain select-none"
-                              />
+                              <>
+                                <img
+                                  src={activeSlot.pageDataUrls[activePage]}
+                                  alt={`Pág ${activePage}`}
+                                  className="w-full h-full object-contain select-none"
+                                />
+                              </>
                             ) : activeSlot.thumbnailUrl ? (
-                              <img
-                                src={activeSlot.thumbnailUrl}
-                                alt="Pág 1"
-                                className="w-full h-full object-contain select-none"
-                              />
+                              <>
+                                <img
+                                  src={activeSlot.thumbnailUrl}
+                                  alt="Pág 1"
+                                  className="w-full h-full object-contain select-none"
+                                />
+                              </>
                             ) : (
                               <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
                                 <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
@@ -1542,11 +1534,13 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                               </div>
                             )
                           ) : activeSlot.previewUrl ? (
-                            <img
-                              src={activeSlot.previewUrl}
-                              alt="Vista previa"
-                              className="w-full h-full object-contain select-none"
-                            />
+                            <>
+                              <img
+                                src={activeSlot.previewUrl}
+                                alt="Vista previa"
+                                className="w-full h-full object-contain select-none"
+                              />
+                            </>
                           ) : null}
 
                           {/* INDICADOR DE PÁGINA EN LA ESQUINA */}
@@ -1638,11 +1632,13 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                                 className="w-16 h-20 bg-white rounded-lg overflow-hidden border border-zinc-300 flex-shrink-0 flex items-center justify-center cursor-pointer relative shadow group"
                               >
                                 {slot.thumbnailUrl ? (
-                                  <img
-                                    src={slot.thumbnailUrl}
-                                    alt={`Miniatura ${idx + 1}`}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform select-none"
-                                  />
+                                  <>
+                                    <img
+                                      src={slot.thumbnailUrl}
+                                      alt={`Miniatura ${idx + 1}`}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform select-none"
+                                    />
+                                  </>
                                 ) : (
                                   <FileText className="w-7 h-7 text-purple-600" />
                                 )}

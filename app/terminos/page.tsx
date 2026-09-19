@@ -14,12 +14,57 @@ import {
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 export default function TerminosPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12 font-sans">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'WebPage',
+                '@id': `${SITE_URL}${isEs ? '/terminos' : '/en/terminos'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/terminos' : '/en/terminos'}`,
+                name: isEs
+                  ? 'Términos y Condiciones de Uso | PDFBlack'
+                  : 'Terms and Conditions of Use | PDFBlack',
+                description: isEs
+                  ? 'Consulta los términos y condiciones del servicio gratuito y local de procesamiento de documentos de PDFBlack.'
+                  : 'Review the terms and conditions for the free and local document processing service at PDFBlack.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Términos y Condiciones' : 'Terms & Conditions',
+                    item: `${SITE_URL}${isEs ? '/terminos' : '/en/terminos'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-4xl mx-auto">
         <div
           className="mb-8 flex items-center justify-between font-mono"

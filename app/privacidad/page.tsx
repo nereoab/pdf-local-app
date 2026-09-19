@@ -15,12 +15,57 @@ import {
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 export default function PrivacidadPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
 
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12 font-sans">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'WebPage',
+                '@id': `${SITE_URL}${isEs ? '/privacidad' : '/en/privacidad'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/privacidad' : '/en/privacidad'}`,
+                name: isEs
+                  ? 'Política de Privacidad — Cumplimiento GDPR | PDFBlack'
+                  : 'Privacy Policy — GDPR Compliance | PDFBlack',
+                description: isEs
+                  ? 'Conoce la política de privacidad de PDFBlack: procesamiento 100% local, cero almacenamiento en la nube y total cumplimiento GDPR.'
+                  : 'Learn about PDFBlack privacy policy: 100% local browser processing, zero cloud storage, and strict GDPR compliance.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Política de Privacidad' : 'Privacy Policy',
+                    item: `${SITE_URL}${isEs ? '/privacidad' : '/en/privacidad'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-4xl mx-auto">
         {/* ENCABEZADO Y REGRESO */}
         <div

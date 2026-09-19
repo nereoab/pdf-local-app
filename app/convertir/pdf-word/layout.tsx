@@ -29,8 +29,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE_URL}/convertir/pdf-word`,
     languages: {
-      'es-ES': `${SITE_URL}/convertir/pdf-word`,
-      'en-US': `${SITE_URL}/convertir/pdf-word?lang=en`,
+      es: `${SITE_URL}/convertir/pdf-word`,
+      en: `${SITE_URL}/en/convertir/pdf-word`,
+      'x-default': `${SITE_URL}/convertir/pdf-word`,
     },
   },
   openGraph: {

@@ -14,10 +14,7 @@ import {
   Check,
   X as XIcon,
   Scale,
-  Stethoscope,
-  Briefcase,
   GraduationCap,
-  Sparkles,
   Sliders,
   Maximize2,
 } from 'lucide-react';

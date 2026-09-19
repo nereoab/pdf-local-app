@@ -181,7 +181,7 @@ export default function PdfComparator() {
     toast.info(isEs ? 'Archivos eliminados' : 'Files cleared');
   };
 
-  const loadPdfDocs = async () => {
+  const loadPdfDocs = useCallback(async () => {
     setIsRendering(true);
     setCompareResult(null);
     setCompletedResult(null);
@@ -232,7 +232,7 @@ export default function PdfComparator() {
     } finally {
       setIsRendering(false);
     }
-  };
+  }, [fileA, fileB, isEs]);
 
   // Carga de Documentos en PDF.js para renderizado de vistas previas
   useEffect(() => {
@@ -248,7 +248,7 @@ export default function PdfComparator() {
     queueMicrotask(() => {
       loadPdfDocs();
     });
-  }, [fileA, fileB]);
+  }, [fileA, fileB, loadPdfDocs]);
 
   // Renderizar página individual bajo demanda
   const renderPage = useCallback(
@@ -322,7 +322,7 @@ export default function PdfComparator() {
     }, 50);
 
     return () => clearTimeout(t);
-  }, [zoomLevel]);
+  }, [zoomLevel, totalPages1, totalPages2]);
 
   // Desplazamiento sincronizado
   const handlePanelScroll = useCallback(
@@ -491,22 +491,27 @@ export default function PdfComparator() {
     });
   };
 
+  const keyActionsRef = useRef({ cancel, executeCompare, gotoNextDiff, gotoPrevDiff });
+  useEffect(() => {
+    keyActionsRef.current = { cancel, executeCompare, gotoNextDiff, gotoPrevDiff };
+  });
+
   // Atajos de teclado
   useEffect(() => {
     const handleKeydown = (e: KeyboardEvent) => {
       const isCtrl = e.ctrlKey || e.metaKey;
       if (isCtrl && e.key === 'Enter') {
         e.preventDefault();
-        if (fileA && fileB && !isComparing) executeCompare();
+        if (fileA && fileB && !isComparing) keyActionsRef.current.executeCompare();
       } else if (e.key === 'Escape') {
-        if (isComparing) cancel();
+        if (isComparing) keyActionsRef.current.cancel();
         else if (zoomModalImage) setZoomModalImage(null);
       } else if (isCtrl && e.key === 'ArrowRight') {
         e.preventDefault();
-        gotoNextDiff();
+        keyActionsRef.current.gotoNextDiff();
       } else if (isCtrl && e.key === 'ArrowLeft') {
         e.preventDefault();
-        gotoPrevDiff();
+        keyActionsRef.current.gotoPrevDiff();
       } else if (isCtrl && e.key === 's') {
         e.preventDefault();
         setScrollSync((prev) => !prev);
@@ -1583,6 +1588,7 @@ export default function PdfComparator() {
                             })()}
 
                           {canvas1Urls[pNum] ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={canvas1Urls[pNum]}
                               alt={`Doc A Page ${pNum}`}
@@ -1677,6 +1683,7 @@ export default function PdfComparator() {
                             })()}
 
                           {canvas2Urls[pNum] ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={canvas2Urls[pNum]}
                               alt={`Doc B Page ${pNum}`}
@@ -1741,6 +1748,7 @@ export default function PdfComparator() {
                   >
                     {/* Capa Inferior: Documento A */}
                     {canvas1Urls[sliderPage] ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={canvas1Urls[sliderPage]}
                         alt={`Doc A Page ${sliderPage}`}
@@ -1760,6 +1768,7 @@ export default function PdfComparator() {
                           clipPath: `inset(0 0 0 ${sliderPosition}%)`,
                         }}
                       >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={canvas2Urls[sliderPage]}
                           alt={`Doc B Page ${sliderPage}`}
@@ -1819,6 +1828,7 @@ export default function PdfComparator() {
 
                   <div className="relative max-w-2xl w-full rounded-2xl shadow-2xl border border-zinc-700 bg-zinc-950 overflow-hidden">
                     {canvas2Urls[sliderPage] || canvas1Urls[sliderPage] ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={canvas2Urls[sliderPage] || canvas1Urls[sliderPage]}
                         alt={`Heatmap Page ${sliderPage}`}
@@ -1833,6 +1843,7 @@ export default function PdfComparator() {
                     {/* Capa de heatmap si está disponible */}
                     {compareResult?.pageDiffs.find((p) => p.page === sliderPage)
                       ?.heatmapDataUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={
                           compareResult.pageDiffs.find((p) => p.page === sliderPage)!
@@ -1852,6 +1863,7 @@ export default function PdfComparator() {
                   {Array.from({ length: totalPages1 || 1 }, (_, i) => i + 1).map((pNum) => (
                     <div key={pNum} className="w-full max-w-xl flex flex-col items-center">
                       {canvas1Urls[pNum] ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={canvas1Urls[pNum]}
                           alt={`Doc A Page ${pNum}`}
@@ -1876,6 +1888,7 @@ export default function PdfComparator() {
                   {Array.from({ length: totalPages2 || 1 }, (_, i) => i + 1).map((pNum) => (
                     <div key={pNum} className="w-full max-w-xl flex flex-col items-center">
                       {canvas2Urls[pNum] ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={canvas2Urls[pNum]}
                           alt={`Doc B Page ${pNum}`}
@@ -2553,6 +2566,7 @@ export default function PdfComparator() {
             >
               <X className="w-5 h-5" />
             </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={zoomModalImage}
               alt="Zoom Preview"

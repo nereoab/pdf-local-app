@@ -69,30 +69,46 @@ export const CONVERTER_SEO_DATA: Record<string, ConverterSeoSectionProps> = {
     ],
     faqsEs: [
       {
-        q: '¿El archivo Word resultante es totalmente editable?',
-        a: 'Sí, todas las cajas de texto, títulos, tablas e imágenes se convierten en elementos nativos de Microsoft Word para que puedas modificarlos libremente.',
+        q: '¿Cómo convertir un PDF a Word editable gratis sin desconfigurar tablas ni diseño?',
+        a: 'Para convertir tu PDF a DOCX sin perder formato: 1. Arrastra tu documento a la caja de PDFBlack. 2. Nuestro motor Adobe reconstruye párrafos, tablas, imágenes y fuentes originales. 3. Pulsa Descargar para obtener tu archivo Word 100% editable al instante, sin marcas de agua ni registro.',
       },
       {
-        q: '¿Se mantienen los formatos complejos como folletos o brochures?',
-        a: 'Absolutamente. Gracias al motor oficial de Adobe Acrobat Pro, los diseños horizontales, trípticos y folletos con fondos vectoriales se respetan íntegramente.',
+        q: '¿Se pueden editar las imágenes, el texto y las tablas en el Word resultante?',
+        a: 'Sí, absolutamente. Todas las cajas de texto, títulos, tablas numéricas, columnas e imágenes se convierten en elementos nativos de Microsoft Word (.docx). Podrás modificar frases, aplicar estilos tipográficos, agregar filas a tablas o reemplazar gráficos como en cualquier documento creado desde cero.',
       },
       {
-        q: '¿Mis documentos están seguros?',
-        a: 'Sí. Todos los archivos se transfieren bajo cifrado TLS de 256 bits y se eliminan automáticamente de nuestros servidores.',
+        q: '¿Es posible convertir un archivo PDF escaneado con imágenes a texto Word?',
+        a: 'Sí. El motor de PDFBlack analiza las capas visuales mediante reconocimiento óptico de caracteres (OCR) integrado para identificar los caracteres de texto dentro de páginas escaneadas o fotocopiadas, transfiriéndolos a párrafos editables en lugar de simples imágenes incrustadas.',
+      },
+      {
+        q: '¿Es seguro convertir contratos confidenciales, nóminas o datos bancarios en PDFBlack?',
+        a: '100% seguro y confidencial. PDFBlack aplica cifrado SSL/TLS de 256 bits durante la transferencia y ejecuta una eliminación automática irreversible de los archivos de nuestros servidores inmediatamente tras la descarga, garantizando pleno cumplimiento con el RGPD y estándares de privacidad corporativa.',
+      },
+      {
+        q: '¿Hay algún límite de páginas o costo por convertir documentos PDF a Word?',
+        a: 'No, el conversor de PDF a Word de PDFBlack es 100% gratuito e ilimitado. Puedes transformar documentos de cientos de páginas, manuales técnicos o reportes extensos sin necesidad de crear una cuenta, ingresar tarjetas de crédito ni pagar suscripciones mensuales.',
       },
     ],
     faqsEn: [
       {
-        q: 'Is the resulting Word file fully editable?',
-        a: 'Yes, all text boxes, headings, tables, and images are converted into native Microsoft Word elements so you can modify them freely.',
+        q: 'How to convert PDF to editable Word for free without losing formatting?',
+        a: 'To convert PDF to DOCX with exact formatting: 1. Drag your document into PDFBlack dropzone. 2. The Adobe engine reconstructs paragraphs, tables, images, and fonts. 3. Click Download to get your 100% editable Word document instantly, completely free with no watermarks or signup.',
       },
       {
-        q: 'Are complex layouts like brochures or flyers preserved?',
-        a: 'Absolutely. Thanks to the official Adobe Acrobat Pro engine, landscape designs, brochures, and vector-heavy layouts are fully preserved.',
+        q: 'Can I edit text, tables, and images in the resulting Word document?',
+        a: 'Yes, absolutely. All text boxes, headlines, data tables, columns, and embedded images convert into native Microsoft Word (.docx) objects. You can modify paragraphs, format fonts, add spreadsheet rows, or replace graphic elements exactly like an original Word file.',
       },
       {
-        q: 'Are my documents safe?',
-        a: 'Yes. All files are transferred under 256-bit TLS encryption and automatically deleted from our servers.',
+        q: 'Can I convert scanned PDFs or photo documents into editable Word text?',
+        a: 'Yes. PDFBlack utilizes intelligent OCR (Optical Character Recognition) to inspect scanned document layers and camera photos, accurately extracting printed characters and converting them into editable typography rather than locked static bitmap pictures.',
+      },
+      {
+        q: 'Is it safe to convert confidential legal contracts and financial statements?',
+        a: '100% secure and private. PDFBlack employs 256-bit SSL/TLS transport encryption and enforces an automated Zero-Retention policy where documents are permanently deleted from processing servers immediately upon download, ensuring full compliance with GDPR and confidentiality standards.',
+      },
+      {
+        q: 'Is there any page count limit or fee for converting PDF to Word?',
+        a: 'None at all. The PDF to Word converter on PDFBlack is 100% free and unlimited. You can convert multi-page contracts, extensive thesis papers, or thick corporate reports without creating an account, paying subscription fees, or hitting artificial paywalls.',
       },
     ],
   },
@@ -119,40 +135,71 @@ export const CONVERTER_SEO_DATA: Record<string, ConverterSeoSectionProps> = {
     ],
     stepsEn: [
       { title: 'Upload your Word file', desc: 'Select your .docx or .doc file.' },
-      { title: 'Vector Compilation', desc: 'We generate a printable PDF with all embedded fonts.' },
-      { title: 'Instant Download', desc: 'Download your PDF document ready to share or print.' },
+      {
+        title: 'Vector Compilation',
+        desc: 'We generate a print-ready PDF with all fonts embedded.',
+      },
+      {
+        title: 'Instant Download',
+        desc: 'Download your PDF file ready to share or print.',
+      },
     ],
     featuresEs: [
       {
         title: 'Fuentes Incrustadas',
-        desc: 'Tu PDF se verá idéntico en celulares, Mac o Windows.',
+        desc: 'Tipografía exacta sin sustitución de letras ni glifos.',
       },
-      { title: 'Calidad de Impresión', desc: 'Gráficos vectoriales nítidos a 300 DPI.' },
-      { title: 'Procesamiento Rápido', desc: 'Conversión en menos de 5 segundos.' },
+      {
+        title: 'Calidad de Impresión',
+        desc: 'Gráficos vectoriales nítidos a 300 DPI.',
+      },
+      {
+        title: 'Procesamiento Rápido',
+        desc: 'Conversión en menos de 5 segundos.',
+      },
     ],
     featuresEn: [
-      { title: 'Embedded Fonts', desc: 'Your PDF will look identical on phones, Mac, or Windows.' },
+      {
+        title: 'Embedded Fonts',
+        desc: 'Exact typography without character substitution.',
+      },
       { title: 'Print Quality', desc: 'Crisp vector graphics at 300 DPI.' },
       { title: 'Fast Processing', desc: 'Conversion in less than 5 seconds.' },
     ],
     faqsEs: [
       {
-        q: '¿Puedo convertir archivos .doc antiguos y .docx modernos?',
-        a: 'Sí, admitimos todos los formatos de Microsoft Word desde versiones clásicas hasta las más recientes.',
+        q: '¿Cómo convertir un documento Word a PDF de alta resolución gratis?',
+        a: 'Para pasar de Word a PDF con máxima fidelidad: 1. Sube tu archivo .doc o .docx a la plataforma. 2. El motor compila fuentes, márgenes, gráficos vectoriales e hipervínculos. 3. Descarga de inmediato tu documento PDF optimizado para imprimir o enviar por correo electrónico sin marcas de agua.',
       },
       {
-        q: '¿Se respetan las tablas y numeración de páginas?',
-        a: 'Sí, todas las tablas, pies de página, encabezados y estilos de párrafo se mantienen exactamente iguales.',
+        q: '¿Se mantienen los márgenes, tablas, imágenes y tipografías originales de Word?',
+        a: 'Sí, al 100%. La compilación vectorial incrusta las fuentes y respeta el espaciado entre párrafos, la alineación de tablas, numeración de páginas en pie de página y la resolución de imágenes a 300 DPI, garantizando que el PDF se visualice exactamente igual en cualquier dispositivo.',
+      },
+      {
+        q: '¿Puedo convertir tanto archivos DOC antiguos como DOCX modernos?',
+        a: 'Sí. El conversor de PDFBlack es compatible con documentos heredados de Microsoft Word (.doc de Word 97-2003) así como los formatos modernos (.docx, .dotx, .rtf) generados por Microsoft Office, Office 365, Google Docs, LibreOffice y Apple Pages.',
+      },
+      {
+        q: '¿Mis archivos Word se guardan o comparten en internet?',
+        a: 'No. Toda la transferencia está protegida con cifrado bancario TLS de 256 bits y los documentos temporales se purgan automáticamente de manera irreversible al finalizar la descarga. Tus contratos, tesis y trabajos permanecen completamente privados.',
       },
     ],
     faqsEn: [
       {
-        q: 'Can I convert old .doc and modern .docx files?',
-        a: 'Yes, we support all Microsoft Word formats from legacy versions to the latest.',
+        q: 'How to convert Word document to high-quality PDF online for free?',
+        a: 'To convert Word to PDF with pristine layout: 1. Drag your .doc or .docx file into PDFBlack. 2. The engine compiles fonts, vector graphics, table borders, and hyperlinks. 3. Download your print-ready PDF instantly without watermarks, registration, or hidden fees.',
       },
       {
-        q: 'Are tables and page numbering preserved?',
-        a: 'Yes, all tables, footers, headers, and paragraph styles remain identical.',
+        q: 'Are original Word fonts, margins, tables, and image resolution preserved?',
+        a: 'Yes, 100%. Vector compilation embeds fonts and retains exact paragraph line-spacing, table column widths, header/footer page numbers, and 300 DPI image fidelity, ensuring your PDF looks flawless across any smartphone, tablet, or PC.',
+      },
+      {
+        q: 'Can I convert both legacy .DOC and modern .DOCX Word documents?',
+        a: 'Yes. PDFBlack supports all Microsoft Word formats including legacy .doc (Word 97-2003) as well as modern .docx, .dotx, and .rtf generated by Office 365, Google Docs, Apple Pages, and LibreOffice Writer.',
+      },
+      {
+        q: 'Are my uploaded Word documents saved or shared anywhere?',
+        a: 'No. All communication is secured with bank-grade 256-bit TLS encryption, and uploaded files are automatically and permanently purged upon session completion. Your private files and sensitive data remain strictly confidential.',
       },
     ],
   },
@@ -173,18 +220,21 @@ export const CONVERTER_SEO_DATA: Record<string, ConverterSeoSectionProps> = {
       },
       {
         title: 'Detección de celdas',
-        desc: 'El motor reconoce la grilla numérica y la estructura tabular.',
+        desc: 'El algoritmo identifica cuadrículas, números y encabezados.',
       },
-      { title: 'Descarga tu Excel', desc: 'Abre tu libro XLSX y realiza cálculos de inmediato.' },
+      {
+        title: 'Descarga tu Excel',
+        desc: 'Abre tu libro XLSX y realiza cálculos inmediatamente.',
+      },
     ],
     stepsEn: [
       {
-        title: 'Upload your table PDF',
+        title: 'Upload your PDF with tables',
         desc: 'Select balance sheets, invoices, or financial reports.',
       },
       {
         title: 'Cell Detection',
-        desc: 'The engine recognizes numerical grids and tabular structures.',
+        desc: 'The algorithm identifies grids, numbers, and headers.',
       },
       {
         title: 'Download your Excel',
@@ -221,22 +271,38 @@ export const CONVERTER_SEO_DATA: Record<string, ConverterSeoSectionProps> = {
     ],
     faqsEs: [
       {
-        q: '¿Qué pasa si mi PDF tiene tablas sin bordes?',
-        a: 'El motor inteligente detecta la alineación de columnas y texto para agrupar las celdas correctamente.',
+        q: '¿Cómo convertir un PDF a Excel con tablas editables y números limpios?',
+        a: 'Para extraer tablas de PDF a Excel: 1. Sube tu balance, estado de cuenta o factura en PDF a PDFBlack. 2. El motor forense detecta filas, columnas y separadores numéricos. 3. Descarga tu libro de Microsoft Excel (.xlsx) con celdas y fórmulas listas para calcular sin errores.',
       },
       {
-        q: '¿Puedo exportar a formato CSV?',
-        a: 'Sí, puedes elegir exportar directamente a Microsoft Excel (.xlsx) o a valores separados por comas (.csv).',
+        q: '¿Qué sucede si las tablas en mi PDF no tienen bordes o líneas visibles?',
+        a: 'El algoritmo de detección de PDFBlack analiza las coordenadas espaciales del texto y la alineación de columnas para reconstruir la cuadrícula de la tabla aunque no existan líneas dibujadas, evitando que los números queden pegados o en celdas equivocadas.',
+      },
+      {
+        q: '¿Reconoce automáticamente formatos de moneda, decimales y fechas?',
+        a: 'Sí. A diferencia de conversores básicos que exportan números como texto estático, PDFBlack clasifica números, monedas y porcentajes en tipos de datos nativos de Excel para que puedas aplicar funciones SUMA, PROMEDIO y tablas dinámicas de inmediato.',
+      },
+      {
+        q: '¿Puedo exportar tanto a formato Microsoft Excel (.xlsx) como a CSV?',
+        a: 'Sí. Puedes descargar el resultado en formato estándar .xlsx compatible con Microsoft Excel, Google Sheets y LibreOffice Calc, o copiar datos para integrarlos directamente en sistemas contables y ERP.',
       },
     ],
     faqsEn: [
       {
-        q: 'What happens if my PDF has borderless tables?',
-        a: 'The smart engine detects column alignment and text flow to group cells accurately.',
+        q: 'How to convert PDF to Excel with clean editable tables and numbers?',
+        a: 'To extract PDF tables to Excel: 1. Drag your financial statement, invoice, or balance PDF into PDFBlack. 2. The forensic engine identifies rows, columns, and numeric delimiters. 3. Download your Microsoft Excel (.xlsx) workbook with clean formula-ready cells in seconds.',
       },
       {
-        q: 'Can I export to CSV format?',
-        a: 'Yes, you can choose to export directly to Microsoft Excel (.xlsx) or comma-separated values (.csv).',
+        q: 'What happens if my PDF tables have no visible grid lines or borders?',
+        a: 'PDFBlack spatial mapping algorithm inspects text coordinates and column whitespace to reconstruct accurate table matrices even on borderless reports, ensuring values land in their proper spreadsheet cells without merging errors.',
+      },
+      {
+        q: 'Does it recognize currency, decimal amounts, and dates automatically?',
+        a: 'Yes. Unlike crude converters that treat numbers as plain text strings, PDFBlack maps digits and percentages into native Excel numeric types, allowing you to instantly run SUM, AVERAGE, and pivot table formulas without manual reformatting.',
+      },
+      {
+        q: 'Can I open the generated spreadsheet in Google Sheets or Apple Numbers?',
+        a: 'Yes. The output .xlsx workbook strictly adheres to OpenXML standards, guaranteeing full compatibility with Microsoft Excel, Google Sheets, LibreOffice Calc, and Apple Numbers on macOS and iOS.',
       },
     ],
   },

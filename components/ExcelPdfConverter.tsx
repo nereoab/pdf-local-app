@@ -1,6 +1,7 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as XLSX from 'xlsx';
 import {
@@ -562,86 +563,89 @@ export default function ExcelPdfConverter({
     }
   };
 
-  const loadFilesIntoSlots = (fileList: FileList | File[], specificSlotIndex?: number) => {
-    const filesArray = Array.from(fileList);
-    const validFiles: File[] = [];
+  const loadFilesIntoSlots = useCallback(
+    (fileList: FileList | File[], specificSlotIndex?: number) => {
+      const filesArray = Array.from(fileList);
+      const validFiles: File[] = [];
 
-    // Auto-detección inteligente de modo
-    let currentMode = mode;
-    const hasExcel = filesArray.some((f) => {
-      const n = f.name.toLowerCase();
-      return n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.csv');
-    });
-    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+      // Auto-detección inteligente de modo
+      let currentMode = mode;
+      const hasExcel = filesArray.some((f) => {
+        const n = f.name.toLowerCase();
+        return n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.csv');
+      });
+      const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
 
-    if (mode === 'excel-to-pdf' && !hasExcel && hasPdf) {
-      currentMode = 'pdf-to-excel';
-      setMode('pdf-to-excel');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a PDF a Excel' : 'Switched to PDF to Excel mode',
-      );
-    } else if (mode === 'pdf-to-excel' && !hasPdf && hasExcel) {
-      currentMode = 'excel-to-pdf';
-      setMode('excel-to-pdf');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a Excel a PDF' : 'Switched to Excel to PDF mode',
-      );
-    }
-
-    for (const f of filesArray) {
-      const name = f.name.toLowerCase();
-      const isPdf = name.endsWith('.pdf');
-      const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv');
-
-      if (currentMode === 'excel-to-pdf' && isExcel) {
-        validFiles.push(f);
-      } else if (currentMode === 'pdf-to-excel' && isPdf) {
-        validFiles.push(f);
+      if (mode === 'excel-to-pdf' && !hasExcel && hasPdf) {
+        currentMode = 'pdf-to-excel';
+        setMode('pdf-to-excel');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a PDF a Excel' : 'Switched to PDF to Excel mode',
+        );
+      } else if (mode === 'pdf-to-excel' && !hasPdf && hasExcel) {
+        currentMode = 'excel-to-pdf';
+        setMode('excel-to-pdf');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a Excel a PDF' : 'Switched to Excel to PDF mode',
+        );
       }
-    }
 
-    if (validFiles.length === 0) {
-      toast.error(
-        currentMode === 'excel-to-pdf'
-          ? isEs
-            ? 'Por favor selecciona archivos Excel (.xlsx/.xls/.csv)'
-            : 'Please select Excel files (.xlsx/.xls/.csv)'
-          : isEs
-            ? 'Por favor selecciona archivos PDF (.pdf)'
-            : 'Please select PDF files (.pdf)',
-      );
-      return;
-    }
+      for (const f of filesArray) {
+        const name = f.name.toLowerCase();
+        const isPdf = name.endsWith('.pdf');
+        const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv');
 
-    if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
-      loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
-    } else {
-      let validIdx = 0;
-      for (let i = 0; i < 3; i++) {
-        if (validIdx >= validFiles.length) break;
-        if (!slots[i].file) {
-          loadSingleFileIntoSlot(i, validFiles[validIdx]);
-          validIdx++;
+        if (currentMode === 'excel-to-pdf' && isExcel) {
+          validFiles.push(f);
+        } else if (currentMode === 'pdf-to-excel' && isPdf) {
+          validFiles.push(f);
         }
       }
-      if (validIdx === 0 && validFiles.length > 0) {
-        validFiles.slice(0, 3).forEach((f, idx) => {
-          loadSingleFileIntoSlot(idx, f);
-        });
+
+      if (validFiles.length === 0) {
+        toast.error(
+          currentMode === 'excel-to-pdf'
+            ? isEs
+              ? 'Por favor selecciona archivos Excel (.xlsx/.xls/.csv)'
+              : 'Please select Excel files (.xlsx/.xls/.csv)'
+            : isEs
+              ? 'Por favor selecciona archivos PDF (.pdf)'
+              : 'Please select PDF files (.pdf)',
+        );
+        return;
       }
-      setActiveSlotIndex(0);
-    }
 
-    setGlobalFile(validFiles[0]);
-    setDownloadUrl(null);
-    setCompletedResult(null);
+      if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+        loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
+      } else {
+        let validIdx = 0;
+        for (let i = 0; i < 3; i++) {
+          if (validIdx >= validFiles.length) break;
+          if (!slots[i].file) {
+            loadSingleFileIntoSlot(i, validFiles[validIdx]);
+            validIdx++;
+          }
+        }
+        if (validIdx === 0 && validFiles.length > 0) {
+          validFiles.slice(0, 3).forEach((f, idx) => {
+            loadSingleFileIntoSlot(idx, f);
+          });
+        }
+        setActiveSlotIndex(0);
+      }
 
-    toast.success(
-      isEs
-        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
-        : `${validFiles.length} file(s) ready in boxes`,
-    );
-  };
+      setGlobalFile(validFiles[0]);
+      setDownloadUrl(null);
+      setCompletedResult(null);
+
+      toast.success(
+        isEs
+          ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+          : `${validFiles.length} file(s) ready in boxes`,
+      );
+    },
+    [mode, isEs, slots, setGlobalFile],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

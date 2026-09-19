@@ -8,6 +8,8 @@ import { Mail, ArrowLeft, Send, CheckCircle2, MessageSquare, ShieldCheck } from 
 import { toast } from 'sonner';
 import SpotlightCard from '@/components/SpotlightCard';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+
 export default function ContactoPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -52,6 +54,47 @@ export default function ContactoPage() {
 
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-white px-4 sm:px-6 lg:px-8 py-12">
+      {/* ── DATOS ESTRUCTURADOS SCHEMA.ORG (JSON-LD) ── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@graph': [
+              {
+                '@type': 'ContactPage',
+                '@id': `${SITE_URL}${isEs ? '/contacto' : '/en/contacto'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/contacto' : '/en/contacto'}`,
+                name: isEs ? 'Contacto y Soporte — PDFBlack' : 'Contact & Support — PDFBlack',
+                description: isEs
+                  ? 'Ponte en contacto con el equipo de PDFBlack para dudas, sugerencias o asistencia técnica.'
+                  : 'Get in touch with the PDFBlack team for questions, feedback, or technical assistance.',
+                isPartOf: {
+                  '@type': 'WebSite',
+                  '@id': `${SITE_URL}/#website`,
+                },
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: isEs ? 'Inicio' : 'Home',
+                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                  },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: isEs ? 'Contacto' : 'Contact',
+                    item: `${SITE_URL}${isEs ? '/contacto' : '/en/contacto'}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       <div className="max-w-3xl mx-auto">
         {/* ENCABEZADO Y REGRESO */}
         <div className="mb-8 flex items-center justify-between font-mono">

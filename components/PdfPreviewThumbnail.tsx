@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, Lock, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -110,24 +111,30 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
   }, [file, renderPage]);
 
   // Cambiar a la página anterior
-  const handlePrevPage = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (currentPage > 1 && pdfDocRef.current) {
-      const prev = currentPage - 1;
-      setCurrentPage(prev);
-      renderPage(pdfDocRef.current, prev);
-    }
-  };
+  const handlePrevPage = useCallback(
+    (e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      if (currentPage > 1 && pdfDocRef.current) {
+        const prev = currentPage - 1;
+        setCurrentPage(prev);
+        renderPage(pdfDocRef.current, prev);
+      }
+    },
+    [currentPage, renderPage],
+  );
 
   // Cambiar a la página siguiente
-  const handleNextPage = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (currentPage < numPages && pdfDocRef.current) {
-      const next = currentPage + 1;
-      setCurrentPage(next);
-      renderPage(pdfDocRef.current, next);
-    }
-  };
+  const handleNextPage = useCallback(
+    (e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      if (currentPage < numPages && pdfDocRef.current) {
+        const next = currentPage + 1;
+        setCurrentPage(next);
+        renderPage(pdfDocRef.current, next);
+      }
+    },
+    [currentPage, numPages, renderPage],
+  );
 
   // Soporte de navegación por teclado (Flechas Izquierda / Derecha)
   useEffect(() => {
@@ -139,12 +146,14 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, numPages]);
+  }, [numPages, handlePrevPage, handleNextPage]);
 
   if (!file) return null;
 
   return (
-    <div className={`w-full h-full flex-1 flex flex-col items-center justify-center p-1.5 sm:p-2 relative group select-none ${className}`}>
+    <div
+      className={`w-full h-full flex-1 flex flex-col items-center justify-center p-1.5 sm:p-2 relative group select-none ${className}`}
+    >
       {isLoading ? (
         <div className="flex flex-col items-center justify-center gap-2.5 text-zinc-500 font-mono text-xs">
           <Loader2 className="w-7 h-7 animate-spin text-zinc-400" />
@@ -160,7 +169,9 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
               {isEs ? 'Documento Protegido' : 'Protected Document'}
             </span>
             <span className="text-zinc-400 text-[11px] font-mono leading-relaxed">
-              {isEs ? 'El archivo requiere contraseña para visualizarse' : 'File requires password to view'}
+              {isEs
+                ? 'El archivo requiere contraseña para visualizarse'
+                : 'File requires password to view'}
             </span>
           </div>
         </div>
@@ -187,7 +198,9 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
                 onClick={handlePrevPage}
                 disabled={currentPage <= 1 || isPageRendering}
                 className={`absolute left-3 p-2.5 rounded-full bg-black/70 hover:bg-black/90 text-white border border-white/20 shadow-2xl transition-all z-20 cursor-pointer backdrop-blur-md ${
-                  currentPage <= 1 ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100 hover:scale-110'
+                  currentPage <= 1
+                    ? 'opacity-20 cursor-not-allowed'
+                    : 'opacity-80 hover:opacity-100 hover:scale-110'
                 }`}
                 aria-label={isEs ? 'Página anterior' : 'Previous page'}
                 title={isEs ? 'Página anterior (←)' : 'Previous page (←)'}
@@ -199,7 +212,9 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
                 onClick={handleNextPage}
                 disabled={currentPage >= numPages || isPageRendering}
                 className={`absolute right-3 p-2.5 rounded-full bg-black/70 hover:bg-black/90 text-white border border-white/20 shadow-2xl transition-all z-20 cursor-pointer backdrop-blur-md ${
-                  currentPage >= numPages ? 'opacity-20 cursor-not-allowed' : 'opacity-80 hover:opacity-100 hover:scale-110'
+                  currentPage >= numPages
+                    ? 'opacity-20 cursor-not-allowed'
+                    : 'opacity-80 hover:opacity-100 hover:scale-110'
                 }`}
                 aria-label={isEs ? 'Página siguiente' : 'Next page'}
                 title={isEs ? 'Página siguiente (→)' : 'Next page (→)'}
@@ -222,7 +237,9 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
               </button>
 
               <span className="font-medium text-[11px] whitespace-nowrap px-1">
-                {isEs ? `Página ${currentPage} de ${numPages}` : `Page ${currentPage} of ${numPages}`}
+                {isEs
+                  ? `Página ${currentPage} de ${numPages}`
+                  : `Page ${currentPage} of ${numPages}`}
               </span>
 
               <button
@@ -245,4 +262,3 @@ export default function PdfPreviewThumbnail({ file, className = '' }: PdfPreview
     </div>
   );
 }
-

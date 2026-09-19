@@ -1132,6 +1132,7 @@ export default function PdfCompressor() {
                         </div>
                       ) : thumbnails.find((t) => t.pageNum === previewPageNum) ? (
                         <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={thumbnails.find((t) => t.pageNum === previewPageNum)?.dataUrl}
                             alt={`Pág ${previewPageNum}`}
@@ -1770,6 +1771,7 @@ export default function PdfCompressor() {
             <span className="text-xs font-mono text-zinc-400 mb-3">
               {isEs ? 'Vista previa de página' : 'Page preview'}
             </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={zoomModalImage}
               alt="Zoom preview"

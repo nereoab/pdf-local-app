@@ -1,31 +1,20 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import {
-  FileDown,
   Loader2,
-  X,
-  FilePlus,
   RefreshCw,
-  UploadCloud,
   Repeat,
   Layout,
   Sliders,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
-  Grid,
-  AlignLeft,
   Type,
   FileText,
   ShieldCheck,
   ArrowLeft,
-  Zap,
   Cpu,
-  HelpCircle,
   Plus,
-  Check,
   ListChecks,
   Trash2,
 } from 'lucide-react';
@@ -34,11 +23,10 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import DownloadSuccessCard from '@/components/DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import { useUIStore } from '@/store/useUIStore';
-import PdfPageViewer from '@/components/PdfPageViewer';
 
 type ConversionDirection = 'pdf-to-text' | 'text-to-pdf';
 type PageSize = 'a4' | 'letter' | 'legal';
@@ -138,12 +126,11 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
   });
 
   const [manualText, setManualText] = useState<string>('');
-  const [extractedText, setExtractedText] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
+  const [, setExtractedText] = useState<string>('');
 
   // SELECCIÓN DE PÁGINAS (PDF -> TEXTO)
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
@@ -164,8 +151,8 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
 
   // OPCIONES AVANZADAS TEXTO -> PDF
   const [fontFamily, setFontFamily] = useState<FontFamily>('helvetica');
-  const [fontSize, setFontSize] = useState<number>(10);
-  const [lineSpacing, setLineSpacing] = useState<number>(1.5);
+  const fontSize = 10;
+  const lineSpacing = 1.5;
   const [pageSize, setPageSize] = useState<PageSize>('a4');
   const [addPageNumbers, setAddPageNumbers] = useState<boolean>(true);
 
@@ -183,10 +170,8 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
   }, [pdfUrl]);
 
   // ESTADO DE MINIATURAS (1 COLUMNA) Y VISOR A TAMAÑO NORMAL
-  const [pageDataUrls, setPageDataUrls] = useState<Record<number, string>>({});
   const [totalPages, setTotalPages] = useState<number>(0);
   const [activePage, setActivePage] = useState<number>(1);
-  const [isRendering, setIsRendering] = useState<boolean>(false);
 
   // CÁLCULO DE PÁGINAS SELECCIONADAS
   const targetPages = useMemo(() => {
@@ -212,17 +197,8 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }, [totalPages, pageSelectionMode, pageRangeInput, selectedPageSet]);
 
-  const targetPageSet = useMemo(() => new Set(targetPages), [targetPages]);
-
-  // CARGA ULTRA RÁPIDA DE MINIATURAS (ESCALA 0.22 + STREAMING ASÍNCRONO)
-  const cargarMiniaturasPdfUltraFast = async (pdfFile: File) => {
-    cancelRenderRef.current = true;
-    await new Promise((r) => setTimeout(r, 20));
-    cancelRenderRef.current = false;
-
-    setIsRendering(true);
-    setPageDataUrls({});
-
+  // CARGA RÁPIDA DE ESTRUCTURA PDF
+  const parsePdfPageCount = async (pdfFile: File) => {
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
@@ -238,84 +214,23 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
       setTotalPages(count);
       setSelectedPageSet(new Set(Array.from({ length: count }, (_, i) => i + 1)));
       setPageRangeInput(count > 10 ? `1-${Math.min(10, count)}` : `1-${count}`);
-
-      // Lote inicial rápido (8 páginas en <100ms)
-      const initialBatch = Math.min(count, 8);
-      const initialUrls: Record<number, string> = {};
-
-      for (let p = 1; p <= initialBatch; p++) {
-        if (cancelRenderRef.current) return;
-        try {
-          const page = await pdfDoc.getPage(p);
-          const viewport = page.getViewport({ scale: 0.22 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-              typeof page.render
-            >[0]).promise;
-            initialUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
-          }
-        } catch {}
-      }
-
-      setPageDataUrls({ ...initialUrls });
-      setIsRendering(false);
-
-      // Carga progresiva en segundo plano
-      if (initialBatch < count) {
-        (async () => {
-          const loadedUrls = { ...initialUrls };
-          for (let p = initialBatch + 1; p <= count; p++) {
-            if (cancelRenderRef.current) return;
-            try {
-              const page = await pdfDoc.getPage(p);
-              const viewport = page.getViewport({ scale: 0.22 });
-              const canvas = document.createElement('canvas');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
-                  typeof page.render
-                >[0]).promise;
-                loadedUrls[p] = canvas.toDataURL('image/jpeg', 0.65);
-              }
-            } catch {}
-
-            if (p % 6 === 0 || p === count) {
-              setPageDataUrls({ ...loadedUrls });
-              await new Promise((r) => setTimeout(r, 10));
-            }
-          }
-        })();
-      }
     } catch (err) {
       console.error(err);
-      setIsRendering(false);
     }
   };
 
   useEffect(() => {
     if (!file) {
       queueMicrotask(() => {
-        setPageDataUrls({});
         setTotalPages(0);
         setSelectedPageSet(new Set());
         setManualText('');
-        setExtractedText('');
       });
       return;
     }
     queueMicrotask(() => {
       if (file.name.toLowerCase().endsWith('.pdf')) {
-        cargarMiniaturasPdfUltraFast(file);
+        parsePdfPageCount(file);
       } else if (
         file.name.toLowerCase().endsWith('.txt') ||
         file.name.toLowerCase().endsWith('.text')
@@ -345,9 +260,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     setMode(newMode);
     setGlobalFile(null);
     setManualText('');
-    setExtractedText('');
     setDownloadUrl(null);
-    setDownloadFilename('');
     setCompletedResult(null);
     setHeaderHidden(false);
   };
@@ -468,96 +381,95 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     }
   };
 
-  const loadFilesIntoSlots = (fileList: FileList | File[], specificSlotIndex?: number) => {
-    const filesArray = Array.from(fileList);
-    const validFiles: File[] = [];
+  const loadFilesIntoSlots = useCallback(
+    (fileList: FileList | File[], specificSlotIndex?: number) => {
+      const filesArray = Array.from(fileList);
+      const validFiles: File[] = [];
 
-    // Auto-detección inteligente de modo
-    let currentMode = mode;
-    const hasText = filesArray.some((f) => {
-      const n = f.name.toLowerCase();
-      return n.endsWith('.txt') || n.endsWith('.text');
-    });
-    const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
+      // Auto-detección inteligente de modo
+      let currentMode = mode;
+      const hasText = filesArray.some((f) => {
+        const n = f.name.toLowerCase();
+        return n.endsWith('.txt') || n.endsWith('.text');
+      });
+      const hasPdf = filesArray.some((f) => f.name.toLowerCase().endsWith('.pdf'));
 
-    if (mode === 'text-to-pdf' && !hasText && hasPdf) {
-      currentMode = 'pdf-to-text';
-      setMode('pdf-to-text');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a PDF a Texto' : 'Switched to PDF to Text mode',
-      );
-    } else if (mode === 'pdf-to-text' && !hasPdf && hasText) {
-      currentMode = 'text-to-pdf';
-      setMode('text-to-pdf');
-      toast.info(
-        isEs ? 'Modo cambiado automáticamente a Texto a PDF' : 'Switched to Text to PDF mode',
-      );
-    }
-
-    for (const f of filesArray) {
-      const name = f.name.toLowerCase();
-      const isPdf = name.endsWith('.pdf');
-      const isText = name.endsWith('.txt') || name.endsWith('.text');
-
-      if (currentMode === 'text-to-pdf' && isText) {
-        validFiles.push(f);
-      } else if (currentMode === 'pdf-to-text' && isPdf) {
-        validFiles.push(f);
+      if (mode === 'text-to-pdf' && !hasText && hasPdf) {
+        currentMode = 'pdf-to-text';
+        setMode('pdf-to-text');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a PDF a Texto' : 'Switched to PDF to Text mode',
+        );
+      } else if (mode === 'pdf-to-text' && !hasPdf && hasText) {
+        currentMode = 'text-to-pdf';
+        setMode('text-to-pdf');
+        toast.info(
+          isEs ? 'Modo cambiado automáticamente a Texto a PDF' : 'Switched to Text to PDF mode',
+        );
       }
-    }
 
-    if (validFiles.length === 0) {
-      toast.error(
-        currentMode === 'text-to-pdf'
-          ? isEs
-            ? 'Por favor selecciona archivos de texto (.txt)'
-            : 'Please select text files (.txt)'
-          : isEs
-            ? 'Por favor selecciona archivos PDF (.pdf)'
-            : 'Please select PDF files (.pdf)',
-      );
-      return;
-    }
+      for (const f of filesArray) {
+        const name = f.name.toLowerCase();
+        const isPdf = name.endsWith('.pdf');
+        const isText = name.endsWith('.txt') || name.endsWith('.text');
 
-    if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
-      loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
-    } else {
-      let validIdx = 0;
-      for (let i = 0; i < 3; i++) {
-        if (validIdx >= validFiles.length) break;
-        if (!slots[i].file) {
-          loadSingleFileIntoSlot(i, validFiles[validIdx]);
-          validIdx++;
+        if (currentMode === 'text-to-pdf' && isText) {
+          validFiles.push(f);
+        } else if (currentMode === 'pdf-to-text' && isPdf) {
+          validFiles.push(f);
         }
       }
-      if (validIdx === 0 && validFiles.length > 0) {
-        validFiles.slice(0, 3).forEach((f, idx) => {
-          loadSingleFileIntoSlot(idx, f);
-        });
+
+      if (validFiles.length === 0) {
+        toast.error(
+          currentMode === 'text-to-pdf'
+            ? isEs
+              ? 'Por favor selecciona archivos de texto (.txt)'
+              : 'Please select text files (.txt)'
+            : isEs
+              ? 'Por favor selecciona archivos PDF (.pdf)'
+              : 'Please select PDF files (.pdf)',
+        );
+        return;
       }
-      setActiveSlotIndex(0);
-    }
 
-    setGlobalFile(validFiles[0]);
-    setDownloadUrl(null);
-    setCompletedResult(null);
+      if (specificSlotIndex !== undefined && specificSlotIndex >= 0 && specificSlotIndex < 3) {
+        loadSingleFileIntoSlot(specificSlotIndex, validFiles[0]);
+      } else {
+        let validIdx = 0;
+        for (let i = 0; i < 3; i++) {
+          if (validIdx >= validFiles.length) break;
+          if (!slots[i].file) {
+            loadSingleFileIntoSlot(i, validFiles[validIdx]);
+            validIdx++;
+          }
+        }
+        if (validIdx === 0 && validFiles.length > 0) {
+          validFiles.slice(0, 3).forEach((f, idx) => {
+            loadSingleFileIntoSlot(idx, f);
+          });
+        }
+        setActiveSlotIndex(0);
+      }
 
-    toast.success(
-      isEs
-        ? `${validFiles.length} archivo(s) listo(s) en las cajas`
-        : `${validFiles.length} file(s) ready in boxes`,
-    );
-  };
+      setGlobalFile(validFiles[0]);
+      setDownloadUrl(null);
+      setCompletedResult(null);
+
+      toast.success(
+        isEs
+          ? `${validFiles.length} archivo(s) listo(s) en las cajas`
+          : `${validFiles.length} file(s) ready in boxes`,
+      );
+    },
+    [mode, isEs, slots, setGlobalFile],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       loadFilesIntoSlots(e.target.files);
     }
     e.target.value = '';
-  };
-
-  const processSelectedFile = (selected: File) => {
-    loadFilesIntoSlots([selected]);
   };
 
   const initialGlobalFileLoadedRef = useRef<boolean>(false);
@@ -581,25 +493,10 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     setFile(null);
     setGlobalFile(null);
     setManualText('');
-    setExtractedText('');
     setDownloadUrl(null);
-    setDownloadFilename('');
     setCompletedResult(null);
     setHeaderHidden(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // CONTROLADORES DE SELECCIÓN DE PÁGINAS
-  const togglePageSelection = (pageNum: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const newSet = new Set(targetPages);
-    if (newSet.has(pageNum)) {
-      newSet.delete(pageNum);
-    } else {
-      newSet.add(pageNum);
-    }
-    setSelectedPageSet(newSet);
-    setPageSelectionMode('custom');
   };
 
   // Sincronizar slot activo con estado de archivo y previsualización
@@ -613,9 +510,6 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
         if (activeSlot.totalPages > 0) {
           setTotalPages(activeSlot.totalPages);
         }
-        if (Object.keys(activeSlot.pageDataUrls).length > 0) {
-          setPageDataUrls(activeSlot.pageDataUrls);
-        }
         if (activeSlot.textSnippet) {
           setManualText(activeSlot.textSnippet);
         }
@@ -624,8 +518,9 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
         if (firstLoaded && firstLoaded.file) {
           setFile(firstLoaded.file);
           setTotalPages(firstLoaded.totalPages);
-          setPageDataUrls(firstLoaded.pageDataUrls);
-          if (firstLoaded.textSnippet) setManualText(firstLoaded.textSnippet);
+          if (firstLoaded.textSnippet) {
+            setManualText(firstLoaded.textSnippet);
+          }
         } else {
           setFile(null);
         }
@@ -848,7 +743,6 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
         localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${(file ? file.name : 'Documento').replace(/\.[^/.]+$/, '')}.pdf`;
-        setDownloadFilename(outName);
         setDownloadUrl(localUrl);
 
         if (resultBlob) {
@@ -968,7 +862,6 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
         localUrl = URL.createObjectURL(resultBlob);
 
         const outName = `${docTitle}_Texto.txt`;
-        setDownloadFilename(outName);
         setDownloadUrl(localUrl);
 
         if (resultBlob) {

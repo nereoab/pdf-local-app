@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { PDFDocument } from 'pdf-lib';
 import {
   RotateCw,
   RotateCcw,
@@ -9,7 +8,6 @@ import {
   X,
   Loader2,
   Sliders,
-  UploadCloud,
   Filter,
   Sparkles,
   RefreshCw,
@@ -70,6 +68,8 @@ export default function PdfRotator() {
   const [progressMsg, setProgressMsg] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
   const [completedResult, setCompletedResult] = useState<CompletedRotateResult | null>(null);
+  const [, setDownloadUrl] = useState<string | null>(null);
+  const [, setDownloadFilename] = useState<string>('');
 
   const [isDragging, setIsDragging] = useState(false);
 
@@ -103,10 +103,6 @@ export default function PdfRotator() {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [unlockedPassword, setUnlockedPassword] = useState<string | undefined>(undefined);
 
-  // RESULTADOS Y PREVIAS
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-  const [downloadFilename, setDownloadFilename] = useState<string>('');
-
   // OPCIONES AVANZADAS Y METADATOS
   const [rangeInput, setRangeInput] = useState<string>('');
   const [filePrefix, setFilePrefix] = useState<string>('Documento_Rotado');
@@ -116,7 +112,7 @@ export default function PdfRotator() {
   // METADATOS PERSONALIZADOS
   const [docTitle, setDocTitle] = useState<string>('');
   const [docAuthor, setDocAuthor] = useState<string>('');
-  const [docSubject, setDocSubject] = useState<string>('');
+  const docSubject = '';
 
   const rotatedCount = useMemo(() => {
     return pages.filter((p) => p.rotation !== 0).length;
@@ -213,7 +209,9 @@ export default function PdfRotator() {
 
   useEffect(() => {
     if (file && pages.length === 0 && !isEncrypted) {
-      renderThumbnails(file);
+      queueMicrotask(() => {
+        renderThumbnails(file);
+      });
     }
   }, [file, pages.length, isEncrypted, renderThumbnails]);
 
@@ -221,7 +219,6 @@ export default function PdfRotator() {
     if (selected.type === 'application/pdf' || selected.name.toLowerCase().endsWith('.pdf')) {
       setFile(selected);
       setGlobalFile(selected);
-      setDownloadUrl(null);
       setPages([]);
       setIsEncrypted(false);
       setIsUnlocked(false);
@@ -259,7 +256,6 @@ export default function PdfRotator() {
     setHeaderHidden(false);
     setFile(null);
     setPages([]);
-    setDownloadUrl(null);
     setCompletedResult(null);
     setGlobalFile(null);
     setRangeInput('');

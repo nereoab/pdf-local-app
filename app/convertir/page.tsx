@@ -193,39 +193,6 @@ function ConvertirContent() {
                 </p>
               </div>
             </div>
-
-            <div className="flex flex-wrap items-center gap-3 font-mono">
-              <KpiPill
-                icon={FileText}
-                title={isEs ? 'Archivos' : 'Files'}
-                value={24}
-                tooltip={
-                  isEs ? 'Tus archivos convertidos esta semana' : 'Files converted this week'
-                }
-                color="text-white"
-              />
-              <KpiPill
-                icon={HardDrive}
-                title={isEs ? 'Ahorrado' : 'Saved'}
-                value={3.6}
-                decimals={1}
-                suffix=" GB"
-                tooltip={
-                  isEs ? 'Almacenamiento optimizado localmente' : 'Locally optimized storage'
-                }
-                color="text-zinc-200"
-              />
-              <KpiPill
-                icon={Clock}
-                title={isEs ? 'Tiempo' : 'Time'}
-                value={50}
-                suffix=" min"
-                tooltip={
-                  isEs ? 'Tiempo ahorrado en tu sesión actual' : 'Time saved in current session'
-                }
-                color="text-zinc-200"
-              />
-            </div>
           </div>
 
           {/* CUADRÍCULA DE HERRAMIENTAS DE CONVERSIÓN (FULL-WIDTH 3 COLUMNAS) */}
@@ -547,75 +514,6 @@ function ConvertirContent() {
           </div>
         </motion.div>
       </div>
-    </div>
-  );
-}
-
-function AnimatedCounter({
-  from = 0,
-  to,
-  decimals = 0,
-  suffix = '',
-}: {
-  from?: number;
-  to: number;
-  decimals?: number;
-  suffix?: string;
-}) {
-  const nodeRef = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const node = nodeRef.current;
-    if (node) {
-      const controls = animate(from, to, {
-        duration: 1.5,
-        ease: 'easeOut',
-        onUpdate(value: number) {
-          node.textContent = value.toFixed(decimals) + suffix;
-        },
-      });
-      return () => controls.stop();
-    }
-  }, [from, to, decimals, suffix]);
-  return (
-    <span ref={nodeRef}>
-      {from.toFixed(decimals)}
-      {suffix}
-    </span>
-  );
-}
-
-function KpiPill({
-  icon: Icon,
-  title,
-  value,
-  decimals = 0,
-  suffix = '',
-  tooltip,
-  color,
-}: {
-  icon: React.ElementType;
-  title: string;
-  value: number;
-  decimals?: number;
-  suffix?: string;
-  tooltip?: string;
-  color?: string;
-}) {
-  return (
-    <div className="relative group/kpi">
-      <div className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-800 border border-zinc-600 hover:border-white rounded-full transition-all cursor-help font-mono shadow-sm">
-        <Icon className={`w-3.5 h-3.5 ${color || 'text-white'}`} />
-        <span className="text-xs font-bold text-white">
-          <AnimatedCounter to={value} decimals={decimals} suffix={suffix} />
-        </span>
-        <span className="text-[10px] text-zinc-300 font-bold uppercase">{title}</span>
-      </div>
-
-      {tooltip && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-zinc-800 border border-zinc-600 rounded-xl text-[10px] font-mono text-zinc-100 opacity-0 group-hover/kpi:opacity-100 transition-opacity duration-200 pointer-events-none shadow-2xl whitespace-nowrap z-50">
-          {tooltip}
-        </div>
-      )}
     </div>
   );
 }

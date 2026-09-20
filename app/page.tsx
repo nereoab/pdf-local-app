@@ -34,6 +34,7 @@ import { SkeletonTableRow } from '../components/Skeleton';
 import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 import SpotlightCard from '@/components/SpotlightCard';
 import DocumentUploadProgress from '@/components/DocumentUploadProgress';
+import CategoryQuickTools from '@/components/CategoryQuickTools';
 
 // ─── JSON-LD Structured Data (Rich Snippets) ───
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
@@ -648,13 +649,22 @@ export default function DashboardPage() {
 
         <div className={`relative ${file ? 'z-[50]' : 'z-10'}`}>
           {/* HERO CONTENT ARCHITECTURE STYLING */}
-          <div className="mb-8 text-center md:text-left flex flex-col items-center md:items-start">
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold text-zinc-900 dark:text-white tracking-tight leading-[1.05] antialiased">
-              {isEs ? 'Procesamiento PDF local. ' : 'Local PDF engine. '}
-              <span className="text-zinc-400 dark:text-zinc-300 font-light">
-                {isEs ? 'Sin servidores, privacidad total.' : 'Zero servers, absolute privacy.'}
-              </span>
-            </h1>
+          <div className="mb-8 flex flex-col items-center md:items-start gap-6">
+            <div className="text-center md:text-left">
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold text-zinc-900 dark:text-white tracking-tight leading-[1.05] antialiased">
+                <span className="block">
+                  {isEs ? 'Procesamiento PDF local. ' : 'Local PDF engine. '}
+                </span>
+                <span className="text-zinc-400 dark:text-zinc-300 font-light block">
+                  {isEs ? 'Sin servidores, privacidad total.' : 'Zero servers, absolute privacy.'}
+                </span>
+              </h1>
+            </div>
+
+            {/* BARRA DE 4 ACCESOS DIRECTOS EN UNA SOLA LÍNEA */}
+            <div className="w-full max-w-4xl">
+              <CategoryQuickTools layout="row" />
+            </div>
           </div>
 
           {/* DROPZONE / FILE PREVIEW / UPLOAD PROGRESS - FULL WIDTH */}

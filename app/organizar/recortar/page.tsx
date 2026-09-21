@@ -125,7 +125,7 @@ export default function RecortarPdfPage() {
     name: isEs
       ? 'Recortar PDF Gratis Online — PDFBlack'
       : 'Crop PDF Margins Online Free — PDFBlack',
-    url: `${SITE_URL}/organizar/recortar`,
+    url: isEs ? `${SITE_URL}/organizar/recortar` : `${SITE_URL}/en/crop-pdf`,
     description: isEs
       ? 'Herramienta profesional para recortar márgenes de documentos PDF de forma visual o milimétrica con conservación vectorial y privacidad total en memoria local.'
       : 'Professional web tool to crop PDF margins interactively or with millimeter precision with full vector preservation and local in-browser privacy.',
@@ -175,19 +175,19 @@ export default function RecortarPdfPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: `${SITE_URL}/organizar`,
+        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Recortar PDF' : 'Crop PDF',
-        item: `${SITE_URL}/organizar/recortar`,
+        item: isEs ? `${SITE_URL}/organizar/recortar` : `${SITE_URL}/en/crop-pdf`,
       },
     ],
   };

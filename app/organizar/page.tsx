@@ -115,8 +115,8 @@ function OrganizarContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/organizar' : '/en/organizar'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/organizar' : '/en/organizar'}`,
+                '@id': `${SITE_URL}${isEs ? '/organizar' : '/en/organize'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/organizar' : '/en/organize'}`,
                 name: isEs
                   ? 'Organizar PDF Gratis Online — Unir, Dividir, Rotar, Eliminar | PDFBlack'
                   : 'Organize PDF Online Free — Merge, Split, Rotate, Delete | PDFBlack',
@@ -153,7 +153,7 @@ function OrganizarContent() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Organizar PDF' : 'Organize PDF',
-                    item: `${SITE_URL}${isEs ? '/organizar' : '/en/organizar'}`,
+                    item: `${SITE_URL}${isEs ? '/organizar' : '/en/organize'}`,
                   },
                 ],
               },

@@ -129,7 +129,7 @@ export default function OcrPage() {
     name: isEs
       ? 'Reconocimiento OCR en PDF Gratis Online — Hacer PDF Buscable | PDFBlack'
       : 'OCR PDF Online Free — Make PDF Searchable & Selectable | PDFBlack',
-    url: `${SITE_URL}/editar/ocr`,
+    url: isEs ? `${SITE_URL}/editar/ocr` : `${SITE_URL}/en/ocr-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
@@ -183,19 +183,19 @@ export default function OcrPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: `${SITE_URL}/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Reconocimiento OCR' : 'OCR PDF',
-        item: `${SITE_URL}/editar/ocr`,
+        item: isEs ? `${SITE_URL}/editar/ocr` : `${SITE_URL}/en/ocr-pdf`,
       },
     ],
   };

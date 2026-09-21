@@ -58,7 +58,7 @@ export default function PrivacidadPage() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Política de Privacidad' : 'Privacy Policy',
-                    item: `${SITE_URL}${isEs ? '/privacidad' : '/en/privacidad'}`,
+                    item: `${SITE_URL}${isEs ? '/privacidad' : '/en/privacy'}`,
                   },
                 ],
               },

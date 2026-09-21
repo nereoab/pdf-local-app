@@ -118,8 +118,8 @@ function EditarContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/editar' : '/en/editar'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/editar' : '/en/editar'}`,
+                '@id': `${SITE_URL}${isEs ? '/editar' : '/en/edit'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/editar' : '/en/edit'}`,
                 name: isEs
                   ? 'Editar PDF Gratis Online — Texto, Firmas, Marcas de Agua, OCR | PDFBlack'
                   : 'Edit PDF Online Free — Text, Signatures, Watermarks, OCR | PDFBlack',
@@ -156,7 +156,7 @@ function EditarContent() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Editar PDF' : 'Edit PDF',
-                    item: `${SITE_URL}${isEs ? '/editar' : '/en/editar'}`,
+                    item: `${SITE_URL}${isEs ? '/editar' : '/en/edit'}`,
                   },
                 ],
               },

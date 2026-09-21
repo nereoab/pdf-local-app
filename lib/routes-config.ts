@@ -353,6 +353,17 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     clientType: 'convertir',
     toolKey: 'texto-pdf',
   },
+  {
+    id: 'pdf-blanco-negro',
+    category: 'convertir',
+    categoryEn: 'convert',
+    slugEs: 'pdf-blanco-negro',
+    slugEn: 'convert-pdf-to-black-and-white',
+    pathEs: '/convertir/pdf-blanco-negro',
+    pathEn: '/en/convert-pdf-to-black-and-white',
+    clientType: 'convertir',
+    toolKey: 'pdf-blanco-negro',
+  },
 ];
 
 // ── HUBS Y PÁGINAS ESTÁTICAS ─────────────────────────────────

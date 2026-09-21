@@ -94,7 +94,7 @@ export default function DesbloquearPdfPage() {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: isEs ? 'Desbloquear PDF Gratis Online — PDFBlack' : 'Unlock PDF Online Free — PDFBlack',
-    url: `${SITE_URL}/optimizar/desbloquear`,
+    url: isEs ? `${SITE_URL}/optimizar/desbloquear` : `${SITE_URL}/en/unlock-pdf`,
     description: isEs
       ? 'Desbloquea archivos PDF protegidos con contraseña y elimina restricciones de impresión, copia y edición online gratis. Procesamiento 100% local en tu navegador sin subir archivos.'
       : 'Unlock password protected PDF files and remove restrictions on printing, copying, and editing online for free. 100% local client-side processing.',

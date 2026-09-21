@@ -97,7 +97,7 @@ export default function CensurarPdfPage() {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: isEs ? 'Censurar PDF Gratis Online — PDFBlack' : 'Redact PDF Online Free — PDFBlack',
-    url: `${SITE_URL}/optimizar/censurar`,
+    url: isEs ? `${SITE_URL}/optimizar/censurar` : `${SITE_URL}/en/redact-pdf`,
     applicationCategory: 'SecurityApplication, UtilityApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',

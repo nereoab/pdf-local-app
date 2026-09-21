@@ -131,7 +131,7 @@ export default function QuitarMarcaAguaPage() {
     name: isEs
       ? 'Quitar Marca de Agua de PDF Gratis Online — Eliminar Sellos | PDFBlack'
       : 'Remove Watermark from PDF Online Free — Clean Stamps | PDFBlack',
-    url: isEs ? `${SITE_URL}/editar/quitar-marca-agua` : `${SITE_URL}/en/editar/quitar-marca-agua`,
+    url: isEs ? `${SITE_URL}/editar/quitar-marca-agua` : `${SITE_URL}/en/remove-watermark`,
     description: isEs
       ? 'Herramienta profesional para eliminar marcas de agua y sellos de fondo en documentos PDF online sin perder calidad vectorial ni subir archivos a la nube.'
       : 'Professional tool to remove watermarks and background stamps from PDF files online without vector quality loss or cloud uploads.',
@@ -187,15 +187,13 @@ export default function QuitarMarcaAguaPage() {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Quitar Marca de Agua' : 'Remove Watermark',
-        item: isEs
-          ? `${SITE_URL}/editar/quitar-marca-agua`
-          : `${SITE_URL}/en/editar/quitar-marca-agua`,
+        item: isEs ? `${SITE_URL}/editar/quitar-marca-agua` : `${SITE_URL}/en/remove-watermark`,
       },
     ],
   };

@@ -132,7 +132,7 @@ export default function EditarTextoPage() {
     name: isEs
       ? 'Editar PDF Gratis Online — Modificar Texto e Imágenes en PDF | PDFBlack'
       : 'Edit PDF Free Online — Modify Text & Images in PDF | PDFBlack',
-    url: `${SITE_URL}/editar/texto`,
+    url: isEs ? `${SITE_URL}/editar/texto` : `${SITE_URL}/en/edit-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly.',
@@ -186,19 +186,19 @@ export default function EditarTextoPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: `${SITE_URL}/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images',
-        item: `${SITE_URL}/editar/texto`,
+        item: isEs ? `${SITE_URL}/editar/texto` : `${SITE_URL}/en/edit-pdf`,
       },
     ],
   };

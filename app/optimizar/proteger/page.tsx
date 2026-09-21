@@ -99,7 +99,7 @@ export default function ProtegerPdfPage() {
     name: isEs
       ? 'Proteger PDF con Contraseña Gratis Online — PDFBlack'
       : 'Protect PDF with Password Online Free — PDFBlack',
-    url: `${SITE_URL}/optimizar/proteger`,
+    url: isEs ? `${SITE_URL}/optimizar/proteger` : `${SITE_URL}/en/protect-pdf`,
     applicationCategory: 'SecurityApplication, UtilityApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',

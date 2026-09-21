@@ -133,7 +133,7 @@ export default function UnirPdfPage() {
     name: isEs
       ? 'Unir PDF Gratis Online — Combinar Archivos PDF | PDFBlack'
       : 'Merge PDF Online Free — Combine PDF Files | PDFBlack',
-    url: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/organizar/unir`,
+    url: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/merge-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
@@ -193,13 +193,13 @@ export default function UnirPdfPage() {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organizar`,
+        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Unir PDF' : 'Merge PDF',
-        item: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/organizar/unir`,
+        item: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/merge-pdf`,
       },
     ],
   };

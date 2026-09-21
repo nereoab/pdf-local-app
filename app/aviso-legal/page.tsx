@@ -49,7 +49,7 @@ export default function AvisoLegalPage() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Aviso Legal' : 'Legal Notice',
-                    item: `${SITE_URL}${isEs ? '/aviso-legal' : '/en/aviso-legal'}`,
+                    item: `${SITE_URL}${isEs ? '/aviso-legal' : '/en/legal-notice'}`,
                   },
                 ],
               },

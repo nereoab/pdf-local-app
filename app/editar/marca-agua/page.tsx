@@ -132,7 +132,7 @@ export default function MarcaAguaPage() {
     name: isEs
       ? 'Poner Marca de Agua en PDF Gratis Online — Sello de Agua | PDFBlack'
       : 'Add Watermark to PDF Online Free — Stamp & Logo | PDFBlack',
-    url: `${SITE_URL}/editar/marca-agua`,
+    url: isEs ? `${SITE_URL}/editar/marca-agua` : `${SITE_URL}/en/watermark-pdf`,
     description: isEs
       ? 'Herramienta profesional para poner marcas de agua y sellos de texto o imagen en PDF. Modo mosaico anti-fugas, logotipos transparentes, compensación de rotación y privacidad 100% en RAM.'
       : 'Professional web tool to add text or image watermarks to PDF files. Anti-leak repeating mosaic, transparent logos, page rotation compensation, and 100% in-browser RAM privacy.',
@@ -183,19 +183,19 @@ export default function MarcaAguaPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: `${SITE_URL}/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Marca de Agua' : 'Watermark',
-        item: `${SITE_URL}/editar/marca-agua`,
+        item: isEs ? `${SITE_URL}/editar/marca-agua` : `${SITE_URL}/en/watermark-pdf`,
       },
     ],
   };

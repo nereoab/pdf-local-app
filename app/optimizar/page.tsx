@@ -115,8 +115,8 @@ function OptimizarContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/optimizar' : '/en/optimizar'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimizar'}`,
+                '@id': `${SITE_URL}${isEs ? '/optimizar' : '/en/optimize'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimize'}`,
                 name: isEs
                   ? 'Optimizar PDF Gratis Online — Comprimir, Proteger, Reparar | PDFBlack'
                   : 'Optimize PDF Online Free — Compress, Protect, Repair | PDFBlack',
@@ -153,7 +153,7 @@ function OptimizarContent() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Optimizar PDF' : 'Optimize PDF',
-                    item: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimizar'}`,
+                    item: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimize'}`,
                   },
                 ],
               },

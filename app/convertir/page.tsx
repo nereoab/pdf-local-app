@@ -15,6 +15,7 @@ import {
   Sparkles,
   Lock,
   CheckCircle2,
+  Printer,
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
 import {
@@ -81,15 +82,17 @@ function ConvertirContent() {
       path: '/convertir/pdf-jpg',
     },
     {
-      id: 'pdf-html',
-      tagEs: '005 / PDF ↔ HTML',
-      tagEn: '005 / PDF ↔ HTML',
-      titleEs: 'PDF y HTML',
-      titleEn: 'PDF & HTML',
-      descEs: 'Convierte archivos PDF a código HTML estructurado o genera PDF a partir de HTML.',
-      descEn: 'Convert PDF files into structured HTML code or generate PDF from HTML.',
-      icon: HtmlIcon,
-      path: '/convertir/pdf-html',
+      id: 'pdf-blanco-negro',
+      tagEs: '005 / PDF ↔ BLANCO Y NEGRO',
+      tagEn: '005 / PDF ↔ BLACK & WHITE',
+      titleEs: 'PDF a Blanco y Negro / Grayscale',
+      titleEn: 'PDF to Black & White / Grayscale',
+      descEs:
+        'Convierte PDFs a escala de grises o blanco y negro puro para ahorrar tinta de impresora y reducir peso.',
+      descEn:
+        'Convert PDFs to grayscale or pure black & white to save printer ink and reduce file size.',
+      icon: Printer,
+      path: '/convertir/pdf-blanco-negro',
     },
     {
       id: 'pdf-texto',
@@ -115,8 +118,8 @@ function ConvertirContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/convertir' : '/en/convertir'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/convertir' : '/en/convertir'}`,
+                '@id': `${SITE_URL}${isEs ? '/convertir' : '/en/convert'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/convertir' : '/en/convert'}`,
                 name: isEs
                   ? 'Convertir PDF Gratis Online — Word, Excel, PowerPoint, JPG | PDFBlack'
                   : 'Convert PDF Online Free — Word, Excel, PowerPoint, JPG | PDFBlack',
@@ -153,7 +156,7 @@ function ConvertirContent() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Convertir PDF' : 'Convert PDF',
-                    item: `${SITE_URL}${isEs ? '/convertir' : '/en/convertir'}`,
+                    item: `${SITE_URL}${isEs ? '/convertir' : '/en/convert'}`,
                   },
                 ],
               },

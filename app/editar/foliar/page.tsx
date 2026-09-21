@@ -129,7 +129,7 @@ export default function FoliarPage() {
     name: isEs
       ? 'Foliar PDF Gratis Online — Numeración de Páginas PDF | PDFBlack'
       : 'Number PDF Pages Online Free — Bates & Notarial Stamping | PDFBlack',
-    url: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/editar/foliar`,
+    url: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/bates-numbering`,
     description: isEs
       ? 'Herramienta profesional para foliar y numerar páginas de documentos PDF online. Formatos notariales, foliado judicial Bates, páginas enfrentadas para encuadernación y escudo protector. 100% privado en memoria RAM.'
       : 'Professional tool to number and foliate PDF documents online. Notarial formats, legal Bates stamping, facing pages for book binding, and protective shield. 100% in-browser RAM privacy.',
@@ -186,13 +186,13 @@ export default function FoliarPage() {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Foliar Páginas' : 'Number Pages',
-        item: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/editar/foliar`,
+        item: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/bates-numbering`,
       },
     ],
   };

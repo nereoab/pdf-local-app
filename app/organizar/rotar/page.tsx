@@ -124,7 +124,7 @@ export default function RotarPdfPage() {
     name: isEs
       ? 'Rotar PDF Gratis Online — Girar Páginas y Cambiar Orientación PDF | PDFBlack'
       : 'Rotate PDF Online Free — Rotate Pages & Change PDF Orientation | PDFBlack',
-    url: `${SITE_URL}/organizar/rotar`,
+    url: isEs ? `${SITE_URL}/organizar/rotar` : `${SITE_URL}/en/rotate-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
@@ -178,19 +178,19 @@ export default function RotarPdfPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: `${SITE_URL}/organizar`,
+        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Rotar Páginas PDF' : 'Rotate PDF Pages',
-        item: `${SITE_URL}/organizar/rotar`,
+        item: isEs ? `${SITE_URL}/organizar/rotar` : `${SITE_URL}/en/rotate-pdf`,
       },
     ],
   };

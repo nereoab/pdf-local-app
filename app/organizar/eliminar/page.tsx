@@ -123,7 +123,7 @@ export default function EliminarPdfPage() {
     name: isEs
       ? 'Eliminar Páginas PDF Gratis Online — Borrar Hojas PDF | PDFBlack'
       : 'Delete PDF Pages Free Online — Remove PDF Sheets | PDFBlack',
-    url: `${SITE_URL}/organizar/eliminar`,
+    url: isEs ? `${SITE_URL}/organizar/eliminar` : `${SITE_URL}/en/delete-pdf-pages`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
@@ -177,19 +177,19 @@ export default function EliminarPdfPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: `${SITE_URL}/organizar`,
+        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Eliminar Páginas PDF' : 'Delete PDF Pages',
-        item: `${SITE_URL}/organizar/eliminar`,
+        item: isEs ? `${SITE_URL}/organizar/eliminar` : `${SITE_URL}/en/delete-pdf-pages`,
       },
     ],
   };

@@ -70,6 +70,7 @@ module.exports = {
       '/en/html-to-pdf',
       '/en/pdf-to-txt',
       '/en/txt-to-pdf',
+      '/en/convert-pdf-to-black-and-white',
       '/en/privacy',
       '/en/terms',
       '/en/faq',
@@ -180,6 +181,7 @@ module.exports = {
       '/convertir/html-pdf': '/en/html-to-pdf',
       '/convertir/pdf-texto': '/en/pdf-to-txt',
       '/convertir/texto-pdf': '/en/txt-to-pdf',
+      '/convertir/pdf-blanco-negro': '/en/convert-pdf-to-black-and-white',
       '/privacidad': '/en/privacy',
       '/terminos': '/en/terms',
       '/faq': '/en/faq',
@@ -337,7 +339,8 @@ module.exports = {
       path.startsWith('/en/powerpoint-') ||
       path.startsWith('/en/jpg-') ||
       path.startsWith('/en/html-') ||
-      path.startsWith('/en/txt-')
+      path.startsWith('/en/txt-') ||
+      path.startsWith('/en/convert-')
     ) {
       priority = 0.9;
       changefreq = 'weekly';

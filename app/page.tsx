@@ -150,7 +150,11 @@ const categories = [
         path: '/convertir/pdf-powerpoint',
       },
       { nameEs: '4. PDF ↔ JPG', nameEn: '4. PDF ↔ JPG', path: '/convertir/pdf-jpg' },
-      { nameEs: '5. PDF ↔ HTML', nameEn: '5. PDF ↔ HTML', path: '/convertir/pdf-html' },
+      {
+        nameEs: '5. PDF ↔ Blanco y Negro',
+        nameEn: '5. PDF ↔ Black & White',
+        path: '/convertir/pdf-blanco-negro',
+      },
       { nameEs: '6. PDF ↔ Texto', nameEn: '6. PDF ↔ Text', path: '/convertir/pdf-texto' },
     ],
     badgeEs: 'ALTA PRECISIÓN',
@@ -512,23 +516,6 @@ export default function DashboardPage() {
                       'Protect and Unlock PDF (AES-256)',
                       'Convert PDF to Word, Excel and PowerPoint',
                     ],
-              },
-              {
-                '@type': 'BreadcrumbList',
-                itemListElement: [
-                  {
-                    '@type': 'ListItem',
-                    position: 1,
-                    name: isEs ? 'Inicio' : 'Home',
-                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
-                  },
-                  {
-                    '@type': 'ListItem',
-                    position: 2,
-                    name: isEs ? 'Herramientas PDF' : 'PDF Tools',
-                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
-                  },
-                ],
               },
               {
                 '@type': 'FAQPage',

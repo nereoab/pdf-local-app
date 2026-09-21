@@ -124,7 +124,7 @@ export default function ReordenarPdfPage() {
     name: isEs
       ? 'Organizar PDF Gratis Online — Ordenar, Unir, Rotar y Eliminar Páginas | PDFBlack'
       : 'Organize PDF Free Online — Sort, Merge, Rotate & Delete Pages | PDFBlack',
-    url: `${SITE_URL}/organizar/reordenar`,
+    url: isEs ? `${SITE_URL}/organizar/reordenar` : `${SITE_URL}/en/reorder-pdf-pages`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and Web Workers.',
@@ -180,19 +180,19 @@ export default function ReordenarPdfPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: `${SITE_URL}/organizar`,
+        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Organizar Páginas PDF' : 'Organize PDF Pages',
-        item: `${SITE_URL}/organizar/reordenar`,
+        item: isEs ? `${SITE_URL}/organizar/reordenar` : `${SITE_URL}/en/reorder-pdf-pages`,
       },
     ],
   };

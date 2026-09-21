@@ -57,7 +57,7 @@ export default function TerminosPage() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Términos y Condiciones' : 'Terms & Conditions',
-                    item: `${SITE_URL}${isEs ? '/terminos' : '/en/terminos'}`,
+                    item: `${SITE_URL}${isEs ? '/terminos' : '/en/terms'}`,
                   },
                 ],
               },

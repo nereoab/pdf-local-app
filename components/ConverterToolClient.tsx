@@ -35,6 +35,11 @@ const TextPdfConverter = dynamic(() => import('@/components/TextPdfConverter'), 
   loading: () => <LoadingSpinner text="Loading Text ↔ PDF Converter..." />,
 });
 
+const PdfBlackWhiteConverter = dynamic(() => import('@/components/PdfBlackWhiteConverter'), {
+  ssr: false,
+  loading: () => <LoadingSpinner text="Loading Black & White PDF Converter..." />,
+});
+
 function LoadingSpinner({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[500px] gap-4 font-mono">
@@ -73,6 +78,8 @@ export default function ConverterToolClient({ toolKey }: { toolKey: string }) {
         return <TextPdfConverter defaultMode="pdf-to-text" />;
       case 'texto-pdf':
         return <TextPdfConverter defaultMode="text-to-pdf" />;
+      case 'pdf-blanco-negro':
+        return <PdfBlackWhiteConverter />;
       default:
         return <WordPdfConverter defaultMode="pdf-to-word" />;
     }

@@ -768,4 +768,115 @@ export const CONVERTER_SEO_DATA: Record<string, ConverterSeoSectionProps> = {
       },
     ],
   },
+  'pdf-blanco-negro': {
+    toolKey: 'pdf-blanco-negro',
+    sourceFormat: 'PDF Color',
+    targetFormat: 'PDF Blanco y Negro / Grayscale',
+    titleEs: 'Convertir PDF a Blanco y Negro Gratis Online — Grayscale y Ahorro de Tinta',
+    titleEn: 'Convert PDF to Black and White Free Online — Grayscale & Ink Saver',
+    descriptionEs:
+      'Transforma tus documentos PDF a escala de grises suave o blanco y negro puro binarizado. Ideal para imprimir documentos sin gastar cartuchos de tinta a color, mejorar el contraste de documentos escaneados y reducir el tamaño del archivo con procesamiento 100% privado en tu navegador.',
+    descriptionEn:
+      'Convert your PDF documents into smooth grayscale or pure binary black & white. Ideal for printing documents without wasting expensive color ink cartridges, improving scanned document legibility, and drastically reducing file size with 100% client-side zero-knowledge privacy.',
+    stepsEs: [
+      {
+        title: 'Sube tu documento',
+        desc: 'Arrastra o selecciona el archivo PDF desde tu ordenador o teléfono móvil.',
+      },
+      {
+        title: 'Selecciona Modo y Sensibilidad',
+        desc: 'Elige entre Blanco y Negro Puro (binario) o Escala de Grises (fotográfico) y ajusta el umbral.',
+      },
+      {
+        title: 'Descarga tu PDF monocromático',
+        desc: 'Obtén al instante tu PDF optimizado para impresión y con menor peso en megabytes.',
+      },
+    ],
+    stepsEn: [
+      {
+        title: 'Upload your document',
+        desc: 'Drag or select the PDF file from your computer or mobile device.',
+      },
+      {
+        title: 'Select Mode & Sensitivity',
+        desc: 'Choose between Pure Black & White (binary) or Grayscale (photo tones) and adjust contrast.',
+      },
+      {
+        title: 'Download your monochrome PDF',
+        desc: 'Instantly download your ink-saving, lightweight PDF ready for crisp printing.',
+      },
+    ],
+    featuresEs: [
+      {
+        title: 'Ahorro de Tinta del 100%',
+        desc: 'Elimina capas de color para imprimir únicamente con cartucho negro o tóner monocromo.',
+      },
+      {
+        title: 'Filtro Luminancia ITU-R',
+        desc: 'Cálculo fotométrico exacto de luminancia para preservar la nitidez de letras y sellos.',
+      },
+      {
+        title: 'Privacidad Absoluta en RAM',
+        desc: 'Tu documento se procesa con Web Workers dentro de tu equipo sin subirlo a la nube.',
+      },
+    ],
+    featuresEn: [
+      {
+        title: '100% Color Ink Saved',
+        desc: 'Removes color layers so you print exclusively with black ink or monochrome toner.',
+      },
+      {
+        title: 'ITU-R Luminance Filtering',
+        desc: 'Photometric luminance calculation preserving text sharpness, stamps, and signatures.',
+      },
+      {
+        title: 'Zero-Knowledge RAM Privacy',
+        desc: 'Your file is processed client-side via Web Workers without uploading to external servers.',
+      },
+    ],
+    faqsEs: [
+      {
+        q: '¿Cómo convertir un PDF a blanco y negro gratis para imprimir sin gastar tinta a color?',
+        a: '1. Arrastra tu PDF al conversor de PDFBlack. 2. Selecciona el modo «Blanco y Negro Puro» o «Escala de Grises». 3. Ajusta el deslizador de sensibilidad si deseas mayor contraste en textos claros. 4. Pulsa «Convertir a Blanco y Negro» y descarga tu archivo en segundos.',
+      },
+      {
+        q: '¿Cuál es la diferencia entre Escala de Grises (Grayscale) y Blanco y Negro Puro (Monocromo)?',
+        a: 'La Escala de Grises conserva tonalidades intermedias de gris (256 niveles), ideal para documentos con fotos, fondos degradados o gráficos. El Blanco y Negro Puro convierte cada píxel a negro absoluto o blanco absoluto, perfecto para contratos, firmas, facturas y fotocopias con máximo ahorro de tóner.',
+      },
+      {
+        q: '¿Convertir un PDF a blanco y negro reduce el tamaño del archivo en megabytes?',
+        a: 'Sí, significativamente. Al remover los tres canales de color (RGB o CMYK) y optimizar las imágenes en una sola capa monocromática, el documento suele reducir su peso entre un 40% y un 80%, facilitando su envío por correo electrónico o subida a portales oficiales.',
+      },
+      {
+        q: '¿Mis documentos confidenciales se envían a algún servidor externo?',
+        a: 'No. En PDFBlack la conversión se ejecuta completamente en la memoria RAM de tu navegador mediante Web Workers y OffscreenCanvas. Ningún dato ni página se envía a servidores externos, garantizando privacidad total bajo estándares RGPD.',
+      },
+      {
+        q: '¿Puedo elegir páginas específicas para pasar a blanco y negro?',
+        a: 'Sí. En la sección de opciones avanzadas puedes seleccionar procesar todas las páginas, solo las páginas pares, impares o un rango específico (por ejemplo: 1-5, 8).',
+      },
+    ],
+    faqsEn: [
+      {
+        q: 'How to convert a PDF to black and white for free to save color printer ink?',
+        a: '1. Drag your PDF into the PDFBlack dropzone. 2. Select "Pure Black & White" or "Grayscale". 3. Adjust the threshold slider if you need higher contrast on faint text. 4. Click "Convert to Black & White" and download your document in seconds.',
+      },
+      {
+        q: 'What is the difference between Grayscale and Pure Black & White?',
+        a: 'Grayscale retains intermediate shades of gray (256 tone levels), making it perfect for documents containing photos, charts, and shaded backgrounds. Pure Black & White forces every pixel to pure black or pure white, which is ideal for text documents, scanned contracts, and maximum toner savings.',
+      },
+      {
+        q: 'Does converting a PDF to black and white reduce file size?',
+        a: 'Yes, significantly. By dropping color channels (RGB/CMYK) and re-encoding raster graphics into single-channel monochrome streams, documents commonly see size reductions of 40% to 80%, making them much easier to email or upload.',
+      },
+      {
+        q: 'Are my confidential documents uploaded to any remote server?',
+        a: 'No. PDFBlack processes the conversion entirely inside your browser memory using client-side Web Workers and OffscreenCanvas. No files are uploaded to external servers, ensuring complete compliance with GDPR and confidentiality standards.',
+      },
+      {
+        q: 'Can I select specific pages to convert to black and white?',
+        a: 'Yes. In the advanced settings section you can select all pages, even pages, odd pages, or a custom page range (e.g. 1-5, 8).',
+      },
+    ],
+  },
 };

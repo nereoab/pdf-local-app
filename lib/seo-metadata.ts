@@ -206,6 +206,33 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEs: ['convertir texto a pdf', 'txt a pdf gratis', 'crear pdf desde texto'],
       keywordsEn: ['convert text to pdf', 'txt to pdf free', 'create pdf from text'],
     },
+    'pdf-blanco-negro': {
+      titleEs:
+        'Convertir PDF a Blanco y Negro Gratis Online — Grayscale y Ahorro de Tinta | PDFBlack',
+      titleEn: 'Convert PDF to Black and White Free Online — Grayscale & Ink Saver | PDFBlack',
+      descEs:
+        'Convierte tus archivos PDF a blanco y negro puro o escala de grises (grayscale) online y 100% gratis. Ahorra tinta de impresora y reduce el peso del archivo sin salir de tu navegador.',
+      descEn:
+        'Convert PDF files to black and white or grayscale online for free. Save printer ink and drastically reduce file size with client-side zero-knowledge privacy.',
+      keywordsEs: [
+        'pdf black',
+        'pdfblack',
+        'convertir pdf a blanco y negro',
+        'pdf a escala de grises',
+        'pdf grayscale online gratis',
+        'ahorrar tinta imprimir pdf',
+        'pdf monocromatico',
+      ],
+      keywordsEn: [
+        'pdf black',
+        'pdfblack',
+        'convert pdf to black and white',
+        'pdf to grayscale',
+        'black and white pdf converter',
+        'grayscale pdf online free',
+        'ink saver pdf',
+      ],
+    },
   },
   organizar: {
     unir: {
@@ -995,6 +1022,19 @@ export function buildHowToStructuredData(
   const steps =
     customSteps && customSteps.length > 0 ? customSteps : isEs ? defaultStepsEs : defaultStepsEn;
 
+  const matchingTool = TOOLS_ROUTES.find(
+    (t) =>
+      (t.category === category || t.categoryEn === category) &&
+      (t.slugEs === toolSlug || t.slugEn === toolSlug),
+  );
+  const toolUrl = isEs
+    ? matchingTool
+      ? `${SITE_URL}${matchingTool.pathEs}`
+      : `${SITE_URL}/${category}/${toolSlug}`
+    : matchingTool
+      ? `${SITE_URL}${matchingTool.pathEn}`
+      : `${SITE_URL}/en/${category}/${toolSlug}`;
+
   return {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
@@ -1023,7 +1063,7 @@ export function buildHowToStructuredData(
       position: idx + 1,
       name: s.title,
       text: s.desc,
-      url: `${SITE_URL}${isEs ? `/${category}/${toolSlug}` : `/en/${category}/${toolSlug}`}#step-${idx + 1}`,
+      url: `${toolUrl}#step-${idx + 1}`,
     })),
   };
 }

@@ -125,7 +125,7 @@ export default function DividirPdfPage() {
     name: isEs
       ? 'Dividir PDF Gratis Online — Separar y Extraer Páginas PDF | PDFBlack'
       : 'Split PDF Online Free — Separate & Extract PDF Pages | PDFBlack',
-    url: `${SITE_URL}/organizar/dividir`,
+    url: isEs ? `${SITE_URL}/organizar/dividir` : `${SITE_URL}/en/split-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
@@ -179,19 +179,19 @@ export default function DividirPdfPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: `${SITE_URL}/organizar`,
+        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Dividir PDF' : 'Split PDF',
-        item: `${SITE_URL}/organizar/dividir`,
+        item: isEs ? `${SITE_URL}/organizar/dividir` : `${SITE_URL}/en/split-pdf`,
       },
     ],
   };

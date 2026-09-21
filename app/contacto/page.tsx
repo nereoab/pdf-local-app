@@ -87,7 +87,7 @@ export default function ContactoPage() {
                     '@type': 'ListItem',
                     position: 2,
                     name: isEs ? 'Contacto' : 'Contact',
-                    item: `${SITE_URL}${isEs ? '/contacto' : '/en/contacto'}`,
+                    item: `${SITE_URL}${isEs ? '/contacto' : '/en/contact'}`,
                   },
                 ],
               },

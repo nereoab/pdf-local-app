@@ -100,7 +100,7 @@ export default function CompararPdfPage() {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: isEs ? 'Comparar PDF Online Gratis — PDFBlack' : 'Compare PDF Online Free — PDFBlack',
-    url: `${SITE_URL}/optimizar/comparar`,
+    url: isEs ? `${SITE_URL}/optimizar/comparar` : `${SITE_URL}/en/compare-pdf`,
     applicationCategory: 'BusinessApplication, UtilityApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',

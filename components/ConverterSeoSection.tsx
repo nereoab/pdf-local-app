@@ -99,7 +99,7 @@ export default function ConverterSeoSection({
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Convertir PDF' : 'Convert PDF',
-        item: isEs ? `${SITE_URL}/convertir` : `${SITE_URL}/en/convertir`,
+        item: isEs ? `${SITE_URL}/convertir` : `${SITE_URL}/en/convert`,
       },
       {
         '@type': 'ListItem',

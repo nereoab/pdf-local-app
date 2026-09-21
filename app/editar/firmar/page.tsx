@@ -110,8 +110,10 @@ export default function FirmarPdfPage() {
   const webAppSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: 'PDFBlack Firmar PDF — Motor Enterprise de Firma Digital',
-    url: `${SITE_URL}/editar/firmar`,
+    name: isEs
+      ? 'PDFBlack Firmar PDF — Motor Enterprise de Firma Digital'
+      : 'PDFBlack Sign PDF — Enterprise Digital Signature Engine',
+    url: isEs ? `${SITE_URL}/editar/firmar` : `${SITE_URL}/en/sign-pdf`,
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires modern browser with Web Workers & Web Crypto API support',
@@ -141,19 +143,19 @@ export default function FirmarPdfPage() {
         '@type': 'ListItem',
         position: 1,
         name: isEs ? 'Inicio' : 'Home',
-        item: SITE_URL,
+        item: isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: `${SITE_URL}/editar`,
+        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: isEs ? 'Firmar PDF' : 'Sign PDF',
-        item: `${SITE_URL}/editar/firmar`,
+        item: isEs ? `${SITE_URL}/editar/firmar` : `${SITE_URL}/en/sign-pdf`,
       },
     ],
   };

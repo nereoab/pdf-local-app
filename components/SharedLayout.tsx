@@ -185,7 +185,14 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                         : 'PDF ↔ JPG / Image',
                     path: '/convertir/pdf-jpg',
                   },
-                  { label: 'PDF ↔ HTML', path: '/convertir/pdf-html' },
+                  {
+                    label: isZh
+                      ? 'PDF ↔ 黑白 / 灰度'
+                      : isEs
+                        ? 'PDF ↔ Blanco y Negro'
+                        : 'PDF ↔ Black & White',
+                    path: '/convertir/pdf-blanco-negro',
+                  },
                   {
                     label: isZh ? 'PDF ↔ 纯文本' : isEs ? 'PDF ↔ Texto' : 'PDF ↔ Text',
                     path: '/convertir/pdf-texto',
@@ -573,8 +580,11 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   </Link>
                 </li>
                 <li>
-                  <Link href="/convertir/pdf-html" className="hover:text-white transition-colors">
-                    PDF a HTML
+                  <Link
+                    href="/convertir/pdf-blanco-negro"
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'PDF a Blanco y Negro' : 'PDF to Black & White'}
                   </Link>
                 </li>
                 <li>

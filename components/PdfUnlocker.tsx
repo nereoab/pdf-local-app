@@ -22,7 +22,6 @@ import {
   Trash2,
   Plus,
   Maximize2,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';

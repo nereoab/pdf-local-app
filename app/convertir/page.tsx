@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useRef, useEffect } from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { motion, animate } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -11,7 +11,6 @@ import {
   FileText,
   ShieldCheck,
   HardDrive,
-  Clock,
   Sparkles,
   Lock,
   CheckCircle2,
@@ -23,7 +22,6 @@ import {
   ExcelIcon,
   PowerPointIcon,
   JpgIcon,
-  HtmlIcon,
   TextIcon,
 } from '../../components/ProgramIcons';
 

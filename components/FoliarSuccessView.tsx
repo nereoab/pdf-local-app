@@ -334,7 +334,7 @@ export default function FoliarSuccessView({
       }
     }
 
-    handleCopyFileToClipboard();
+    handleCopyShareLink();
   };
 
   // 9. Encadenamiento suave hacia otra herramienta

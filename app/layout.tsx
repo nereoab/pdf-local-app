@@ -214,8 +214,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.syncfusion.com; " +
             "font-src 'self' data: https://fonts.gstatic.com; " +
             "img-src 'self' data: blob: https: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com https://*.clarity.ms; " +
-            "connect-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.clarity.ms https://*.bing.com; " +
-            "frame-src 'self' blob:; " +
+            "connect-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://*.clarity.ms https://*.bing.com; " +
+            "frame-src 'self' blob: https://firebasestorage.googleapis.com; " +
             "worker-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; " +
             "media-src 'self'; " +
             "object-src 'none'; " +

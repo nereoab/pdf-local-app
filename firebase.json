@@ -1,6 +1,7 @@
 {
   "hosting": {
     "source": ".",
+    "cleanUrls": false,
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -12,6 +13,60 @@
       "**/scratch/**",
       "**/*.traineddata",
       "**/*.pdf"
+    ],
+    "headers": [
+      {
+        "source": "**/*.br.wasm",
+        "headers": [
+          { "key": "Content-Type", "value": "application/wasm" },
+          { "key": "Content-Encoding", "value": "br" },
+          { "key": "Vary", "value": "Accept-Encoding" }
+        ]
+      },
+      {
+        "source": "**/*.br.mem",
+        "headers": [
+          { "key": "Content-Type", "value": "application/octet-stream" },
+          { "key": "Content-Encoding", "value": "br" },
+          { "key": "Vary", "value": "Accept-Encoding" }
+        ]
+      },
+      {
+        "source": "**/*.br.js.mem",
+        "headers": [
+          { "key": "Content-Type", "value": "application/javascript" },
+          { "key": "Content-Encoding", "value": "br" },
+          { "key": "Vary", "value": "Accept-Encoding" }
+        ]
+      },
+      {
+        "source": "**/*.gz.wasm",
+        "headers": [
+          { "key": "Content-Type", "value": "application/wasm" },
+          { "key": "Content-Encoding", "value": "gzip" },
+          { "key": "Vary", "value": "Accept-Encoding" }
+        ]
+      },
+      {
+        "source": "**/*.gz.mem",
+        "headers": [
+          { "key": "Content-Type", "value": "application/octet-stream" },
+          { "key": "Content-Encoding", "value": "gzip" },
+          { "key": "Vary", "value": "Accept-Encoding" }
+        ]
+      },
+      {
+        "source": "**/*.gz.js.mem",
+        "headers": [
+          { "key": "Content-Type", "value": "application/javascript" },
+          { "key": "Content-Encoding", "value": "gzip" },
+          { "key": "Vary", "value": "Accept-Encoding" }
+        ]
+      },
+      {
+        "source": "**/*.wasm",
+        "headers": [{ "key": "Content-Type", "value": "application/wasm" }]
+      }
     ],
     "frameworksBackend": {
       "memory": "1GiB",

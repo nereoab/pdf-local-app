@@ -174,7 +174,9 @@ export default function PdfEditor() {
         if (isDisposed || !viewer.current) return;
 
         const WebViewer = webViewerModule.default;
-        const effectiveLicense = process.env.NEXT_PUBLIC_PDFTRON_LICENSE?.trim() || undefined;
+        const effectiveLicense =
+          process.env.NEXT_PUBLIC_PDFTRON_LICENSE?.trim() ||
+          'demo:1785371416175:63a1e8a503000000006760d2ccf8c0f171ee4085a462864d5cc7028d9d';
 
         const webviewerOptions: any = {
           path: '/webviewer',

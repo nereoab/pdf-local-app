@@ -209,18 +209,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           httpEquiv="Content-Security-Policy"
           content={
             "default-src 'self'; " +
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com https://www.clarity.ms https://scripts.clarity.ms; " +
-            "script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com https://www.clarity.ms https://scripts.clarity.ms; " +
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.syncfusion.com; " +
+            "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com https://www.clarity.ms https://scripts.clarity.ms https://accounts.google.com https://apis.google.com https://*.gstatic.com; " +
+            "script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com https://www.clarity.ms https://scripts.clarity.ms https://accounts.google.com https://apis.google.com https://*.gstatic.com; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.syncfusion.com https://accounts.google.com; " +
             "font-src 'self' data: https://fonts.gstatic.com; " +
             "img-src 'self' data: blob: https: https://www.google-analytics.com https://*.google-analytics.com https://*.googletagmanager.com https://*.clarity.ms; " +
-            "connect-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://*.clarity.ms https://*.bing.com; " +
-            "frame-src 'self' blob: https://firebasestorage.googleapis.com; " +
+            "connect-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://raw.githubusercontent.com https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://firebasestorage.googleapis.com https://*.clarity.ms https://*.bing.com https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com; " +
+            "frame-src 'self' blob: https://firebasestorage.googleapis.com https://accounts.google.com https://apis.google.com; " +
             "worker-src 'self' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; " +
             "media-src 'self'; " +
             "object-src 'none'; " +
             "base-uri 'self'; " +
-            "form-action 'self'"
+            "form-action 'self' https://accounts.google.com"
           }
         />
         {/* Google Analytics 4 (GA4 / Firebase Analytics) — Solo en producción */}
@@ -262,6 +262,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
         )}
+        {/* Google Identity Services SDK se carga dinámicamente en lib/google-drive.ts */}
       </head>
       <body
         className="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen"

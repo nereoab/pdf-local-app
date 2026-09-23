@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download,
@@ -12,6 +12,7 @@ import {
   X,
   RotateCcw,
   Sparkles,
+  Loader2,
   ShieldCheck,
   Pencil,
   FileText,
@@ -40,6 +41,11 @@ import { useFileStore } from '@/store/useFileStore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createShareLink } from '@/lib/share-service';
+import {
+  requestDriveAccessToken,
+  uploadFileToDrive,
+  type DriveUploadResult,
+} from '@/lib/google-drive';
 
 export interface FoliarSuccessViewProps {
   completedResult: {
@@ -77,6 +83,14 @@ export default function FoliarSuccessView({
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [isUploadingShare, setIsUploadingShare] = useState<boolean>(false);
+
+  // Google Drive modal states
+  const [showDriveModal, setShowDriveModal] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<'auth' | 'uploading' | 'success' | 'error'>(
+    'auth',
+  );
+  const [driveError, setDriveError] = useState<string | null>(null);
+  const [driveResult, setDriveResult] = useState<DriveUploadResult | null>(null);
 
   const activeFilename = customFilename.trim() || completedResult.filename;
 
@@ -259,17 +273,68 @@ export default function FoliarSuccessView({
     toast.success(isEs ? 'Abriendo Telegram...' : 'Opening Telegram...');
   };
 
-  // 5. Guardar en Google Drive
-  const handleShareGoogleDrive = () => {
-    handleManualDownload();
-    toast.info(
-      isEs
-        ? 'Descarga iniciada. Abriendo Google Drive para que arrastres tu archivo...'
-        : 'Download started. Opening Google Drive to drop your file...',
-      { duration: 5000 },
-    );
-    window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener,noreferrer');
-  };
+  // 5. Guardar en Google Drive (OAuth + Upload directo)
+  const handleShareGoogleDrive = useCallback(async () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+    // Fallback: si no hay Client ID configurado, usa el método manual
+    if (!clientId) {
+      handleManualDownload();
+      toast.info(
+        isEs
+          ? 'Descarga iniciada. Abriendo Google Drive para que arrastres tu archivo...'
+          : 'Download started. Opening Google Drive to drop your file...',
+        { duration: 5000 },
+      );
+      window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (!completedResult.rawBlob) {
+      toast.error(
+        isEs
+          ? 'No se encontró el archivo para subir. Intenta descargar primero.'
+          : 'File not found for upload. Try downloading first.',
+      );
+      return;
+    }
+
+    // Abrir modal y comenzar flujo OAuth
+    setShowDriveModal(true);
+    setDriveStatus('auth');
+    setDriveError(null);
+    setDriveResult(null);
+
+    try {
+      // Paso 1: OAuth popup — el usuario elige su cuenta de Google
+      const accessToken = await requestDriveAccessToken(clientId);
+
+      // Paso 2: Subir archivo
+      setDriveStatus('uploading');
+      const result = await uploadFileToDrive(completedResult.rawBlob, activeFilename, accessToken);
+
+      // Paso 3: ¡Éxito!
+      setDriveResult(result);
+      setDriveStatus('success');
+      toast.success(
+        isEs
+          ? '¡Archivo guardado en Google Drive con éxito!'
+          : 'File saved to Google Drive successfully!',
+      );
+    } catch (err) {
+      console.error('[Google Drive] Upload error:', err);
+      const message = err instanceof Error ? err.message : 'Unknown error';
+
+      // Si el usuario cerró el popup de OAuth, cerrar modal silenciosamente
+      if (message.includes('popup') || message.includes('closed') || message.includes('blocked')) {
+        setShowDriveModal(false);
+        return;
+      }
+
+      setDriveError(message);
+      setDriveStatus('error');
+    }
+  }, [completedResult.rawBlob, activeFilename, isEs]);
 
   // 6. Compartir en Facebook
   const handleShareFacebook = async () => {
@@ -880,7 +945,150 @@ export default function FoliarSuccessView({
         )}
       </AnimatePresence>
 
-      {/* ── MODAL FLOTANTE 3: SELECTOR DE WHATSAPP WEB VS ESCRITORIO ── */}
+      {/* ── MODAL FLOTANTE 3: GUARDAR EN GOOGLE DRIVE ── */}
+      <AnimatePresence>
+        {showDriveModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-md bg-[#121217] border border-[#E8DFCF]/40 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center text-center space-y-5 font-sans"
+            >
+              {/* Botón cerrar */}
+              <button
+                onClick={() => setShowDriveModal(false)}
+                className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Título con ícono de Drive */}
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-zinc-900 border border-amber-500/40 rounded-2xl">
+                  <GoogleDriveIcon className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-extrabold text-white tracking-tight">
+                  {isEs ? 'Guardar en Drive' : 'Save to Drive'}
+                </h3>
+              </div>
+
+              {/* Estados del flujo */}
+              {(driveStatus === 'auth' || driveStatus === 'uploading') && (
+                <div className="flex flex-col items-center gap-4 py-4">
+                  {/* Spinner animado estilo iLovePDF */}
+                  <div className="relative w-20 h-20">
+                    <div className="absolute inset-0 rounded-full border-4 border-zinc-700" />
+                    <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#E8DFCF] border-r-[#FAF6EE] animate-spin" />
+                    <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-amber-500/60 animate-[spin_1.5s_linear_infinite_reverse]" />
+                  </div>
+                  <p className="text-sm text-zinc-300 font-mono">
+                    {driveStatus === 'auth'
+                      ? isEs
+                        ? 'Esperando autorización de Google...'
+                        : 'Waiting for Google authorization...'
+                      : isEs
+                        ? 'Subiendo archivo a Google Drive...'
+                        : 'Uploading file to Google Drive...'}
+                  </p>
+                  <p className="text-xs text-zinc-500 font-mono">
+                    {isEs ? 'Un momento por favor...' : 'Wait a moment, please...'}
+                  </p>
+                </div>
+              )}
+
+              {driveStatus === 'success' && driveResult && (
+                <div className="flex flex-col items-center gap-4 py-4">
+                  {/* Check animado */}
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 250, damping: 15 }}
+                    className="w-20 h-20 rounded-full bg-emerald-500/15 border-2 border-emerald-400 flex items-center justify-center"
+                  >
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 stroke-[2.5]" />
+                  </motion.div>
+                  <div className="space-y-1">
+                    <p className="text-base font-bold text-white">
+                      {isEs ? '¡Guardado con éxito!' : 'Saved successfully!'}
+                    </p>
+                    <p className="text-xs text-zinc-400 font-mono">{driveResult.fileName}</p>
+                  </div>
+                  {/* Abrir en Drive */}
+                  <button
+                    onClick={() =>
+                      window.open(
+                        `https://drive.google.com/file/d/${driveResult.fileId}/view`,
+                        '_blank',
+                        'noopener,noreferrer',
+                      )
+                    }
+                    className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 hover:border-[#E8DFCF]/50 rounded-xl text-xs font-mono transition-all cursor-pointer"
+                  >
+                    <GoogleDriveIcon className="w-4 h-4" />
+                    <span>{isEs ? 'Abrir en Google Drive' : 'Open in Google Drive'}</span>
+                  </button>
+                  {/* Botón Ok principal */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowDriveModal(false)}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black font-extrabold rounded-2xl text-sm uppercase tracking-wide shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                  >
+                    Ok
+                  </motion.button>
+                </div>
+              )}
+
+              {driveStatus === 'error' && (
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="w-20 h-20 rounded-full bg-rose-500/15 border-2 border-rose-400 flex items-center justify-center">
+                    <X className="w-10 h-10 text-rose-400 stroke-[2.5]" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-bold text-white">
+                      {isEs ? 'Error al guardar' : 'Save failed'}
+                    </p>
+                    <p className="text-xs text-rose-400 font-mono max-w-[300px] break-words">
+                      {driveError}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 w-full">
+                    <button
+                      onClick={() => {
+                        setShowDriveModal(false);
+                        setTimeout(() => handleShareGoogleDrive(), 300);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 rounded-xl text-xs font-mono transition-all cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{isEs ? 'Reintentar' : 'Retry'}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowDriveModal(false)}
+                      className="flex-1 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 rounded-xl text-xs font-mono transition-all cursor-pointer"
+                    >
+                      {isEs ? 'Cerrar' : 'Close'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Nota de seguridad */}
+              <div className="text-[10px] text-zinc-500 font-mono flex items-center gap-1.5 pt-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                <span>
+                  {isEs
+                    ? 'Solo se accede a guardar este archivo. No leemos tu Drive.'
+                    : 'Only saves this file. We never read your Drive.'}
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL FLOTANTE 4: SELECTOR DE WHATSAPP WEB VS ESCRITORIO ── */}
       <AnimatePresence>
         {showWhatsAppModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">

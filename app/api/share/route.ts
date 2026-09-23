@@ -66,7 +66,6 @@ export async function POST(req: NextRequest) {
 
     // Subir en Node.js (servidor sin restricciones de CORS)
     await uploadBytes(fileRef, fileBuffer, metadata);
-    const downloadUrl = await getDownloadURL(fileRef);
 
     // Resolver el dominio del sitio de forma inteligente:
     // Si la petición se hace en entorno local (localhost / 127.0.0.1), usamos http://${host}
@@ -78,6 +77,7 @@ export async function POST(req: NextRequest) {
       ? `http://${host}`
       : process.env.NEXT_PUBLIC_SITE_URL || `https://${host}`;
     const shareUrl = `${siteUrl}/share/${shareId}`;
+    const downloadUrl = `${siteUrl}/api/share?id=${shareId}&download=1`;
 
     return NextResponse.json({
       success: true,

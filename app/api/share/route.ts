@@ -68,15 +68,18 @@ export async function POST(req: NextRequest) {
     // Subir en Node.js (servidor sin restricciones de CORS)
     await uploadBytes(fileRef, fileBuffer, metadata);
 
-    // Resolver el dominio del sitio de forma inteligente:
-    // Si la petición se hace en entorno local (localhost / 127.0.0.1), usamos http://${host}
-    // para que el desarrollador pueda probar el enlace inmediatamente sin recibir 404 de producción.
-    // En producción (pdf-black.com), se usa el dominio oficial configurado.
-    const host = req.headers.get('host') || 'localhost:3000';
-    const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+    // Resolver el dominio del sitio:
+    // En local (localhost / 127.0.0.1) se usa http://${host}.
+    // En producción SIEMPRE se usa https://pdf-black.com (evitando la URL interna de Cloud Run *.a.run.app).
+    const forwardedHost = req.headers.get('x-forwarded-host') || '';
+    const rawHost = req.headers.get('host') || '';
+    const isLocal =
+      rawHost.includes('localhost') ||
+      rawHost.includes('127.0.0.1') ||
+      forwardedHost.includes('localhost');
     const siteUrl = isLocal
-      ? `http://${host}`
-      : process.env.NEXT_PUBLIC_SITE_URL || `https://${host}`;
+      ? `http://${rawHost || 'localhost:3000'}`
+      : process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
     const shareUrl = `${siteUrl}/share/${shareId}`;
     const downloadUrl = `${siteUrl}/api/share?id=${shareId}&download=1`;
 

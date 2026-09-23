@@ -45,10 +45,23 @@ export async function createShareLink(
     if (res.ok) {
       const data = await res.json();
       if (data && data.shareId && data.shareUrl) {
+        // Asegurar que el dominio siempre sea el oficial de la web (pdf-black.com)
+        const origin =
+          typeof window !== 'undefined' ? window.location.origin : 'https://pdf-black.com';
+        const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+        const siteUrl = isLocal ? origin : 'https://pdf-black.com';
+        const cleanShareUrl = data.shareUrl.includes('a.run.app')
+          ? `${siteUrl}/share/${data.shareId}`
+          : data.shareUrl;
+        const cleanDownloadUrl =
+          data.downloadUrl && !data.downloadUrl.includes('a.run.app')
+            ? data.downloadUrl
+            : `${siteUrl}/api/share?id=${data.shareId}&download=1`;
+
         return {
           shareId: data.shareId,
-          shareUrl: data.shareUrl,
-          downloadUrl: data.downloadUrl || `${data.shareUrl}?download=1`,
+          shareUrl: cleanShareUrl,
+          downloadUrl: cleanDownloadUrl,
         };
       }
     }

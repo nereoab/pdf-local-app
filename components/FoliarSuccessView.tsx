@@ -54,18 +54,33 @@ export interface FoliarSuccessViewProps {
     fileSize?: string;
     rawBlob?: Blob;
   };
-  totalPages: number;
-  numberedCount: number;
+  totalPages?: number;
+  numberedCount?: number;
   modeText?: string;
   onReset: () => void;
+  // Extensibilidad para otras herramientas (e.g. Editar Texto)
+  toolName?: string;
+  badgeText?: string;
+  successTitle?: string;
+  downloadButtonText?: string;
+  shareSubject?: string;
+  fallbackUrl?: string;
+  metricBadge?: React.ReactNode;
 }
 
 export default function FoliarSuccessView({
   completedResult,
-  totalPages,
+  totalPages = 1,
   numberedCount,
   modeText,
   onReset,
+  toolName,
+  badgeText,
+  successTitle,
+  downloadButtonText,
+  shareSubject,
+  fallbackUrl,
+  metricBadge,
 }: FoliarSuccessViewProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -126,7 +141,7 @@ export default function FoliarSuccessView({
     }
     const blob = completedResult.rawBlob;
     if (!blob) {
-      return 'https://pdf-black.com/editar/foliar';
+      return fallbackUrl || 'https://pdf-black.com/editar/foliar';
     }
 
     setIsUploadingShare(true);
@@ -139,7 +154,8 @@ export default function FoliarSuccessView({
 
     const promise = (async () => {
       try {
-        const res = await createShareLink(blob, activeFilename, 'Foliado de PDF');
+        const resolvedToolName = toolName || (isEs ? 'Foliado de PDF' : 'PDF Numbering');
+        const res = await createShareLink(blob, activeFilename, resolvedToolName);
         setShareUrl(res.shareUrl);
         if (!silent) {
           toast.success(
@@ -299,10 +315,11 @@ export default function FoliarSuccessView({
       );
       return;
     }
+    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
     const text = encodeURIComponent(
       isEs
-        ? `📄 Hola, te comparto el documento foliado: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
-        : `📄 Hi, sharing the numbered document: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
+        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
+        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
     setShowWhatsAppModal(false);
@@ -322,10 +339,11 @@ export default function FoliarSuccessView({
       );
       return;
     }
+    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
     const text = encodeURIComponent(
       isEs
-        ? `📄 Hola, te comparto el documento foliado: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
-        : `📄 Hi, sharing the numbered document: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
+        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
+        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
     );
     window.location.href = `whatsapp://send?text=${text}`;
     setShowWhatsAppModal(false);
@@ -339,6 +357,7 @@ export default function FoliarSuccessView({
 
   const handleDirectMobileShareWhatsApp = async () => {
     const link = await getOrCreateShareLink();
+    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
     if (completedResult.rawBlob && typeof navigator !== 'undefined' && navigator.canShare) {
       const file = new File([completedResult.rawBlob], activeFilename, {
         type: 'application/pdf',
@@ -350,8 +369,8 @@ export default function FoliarSuccessView({
             title: activeFilename,
             url: link,
             text: isEs
-              ? `Te comparto el documento foliado: ${activeFilename} (${link})`
-              : `Sharing numbered document: ${activeFilename} (${link})`,
+              ? `Te comparto el ${subject}: ${activeFilename} (${link})`
+              : `Sharing ${subject}: ${activeFilename} (${link})`,
           });
           setShowWhatsAppModal(false);
           toast.success(isEs ? '¡Archivo enviado a WhatsApp!' : 'File sent to WhatsApp!');
@@ -367,10 +386,11 @@ export default function FoliarSuccessView({
   // 4. Compartir en Telegram
   const handleShareTelegram = async () => {
     const link = await getOrCreateShareLink();
+    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
     const text = encodeURIComponent(
       isEs
-        ? `📄 Documento foliado con PDFBlack: ${activeFilename}`
-        : `📄 Numbered document via PDFBlack: ${activeFilename}`,
+        ? `📄 Te comparto el ${subject} procesado con PDFBlack: ${activeFilename}`
+        : `📄 Sharing ${subject} processed with PDFBlack: ${activeFilename}`,
     );
     const url = encodeURIComponent(link);
     window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank', 'noopener,noreferrer');
@@ -454,15 +474,13 @@ export default function FoliarSuccessView({
   // 7. Enviar por Correo / Gmail
   const handleShareEmail = async () => {
     const link = await getOrCreateShareLink();
-    const subject = encodeURIComponent(
-      isEs
-        ? `Documento Foliado: ${activeFilename} - PDFBlack`
-        : `Numbered Document: ${activeFilename} - PDFBlack`,
-    );
+    const subjectTitle = shareSubject || (isEs ? 'documento procesado' : 'processed document');
+    const capitalizedSubject = subjectTitle.charAt(0).toUpperCase() + subjectTitle.slice(1);
+    const subject = encodeURIComponent(`${capitalizedSubject}: ${activeFilename} - PDFBlack`);
     const body = encodeURIComponent(
       isEs
-        ? `Hola,\n\nTe comparto el documento "${activeFilename}" foliado y procesado de forma segura mediante PDFBlack.\n\nPuedes previsualizarlo o descargarlo directamente aquí:\n${link}\n\nSaludos,\nPDFBlack Suite`
-        : `Hi,\n\nSharing the document "${activeFilename}" numbered securely with PDFBlack.\n\nYou can preview or download it directly here:\n${link}\n\nRegards,\nPDFBlack Suite`,
+        ? `Hola,\n\nTe comparto el ${subjectTitle} "${activeFilename}" procesado de forma segura mediante PDFBlack.\n\nPuedes previsualizarlo o descargarlo directamente aquí:\n${link}\n\nSaludos,\nPDFBlack Suite`
+        : `Hi,\n\nSharing the ${subjectTitle} "${activeFilename}" processed securely via PDFBlack.\n\nYou can preview or download it directly here:\n${link}\n\nRegards,\nPDFBlack Suite`,
     );
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
     window.open(gmailUrl, '_blank', 'noopener,noreferrer');
@@ -471,6 +489,7 @@ export default function FoliarSuccessView({
 
   // 8. Compartir del Sistema / Más Apps (AirDrop, Bluetooth, etc.)
   const handleNativeShare = async () => {
+    const subjectTitle = shareSubject || (isEs ? 'documento procesado' : 'processed document');
     if (completedResult.rawBlob && typeof navigator !== 'undefined' && navigator.canShare) {
       const file = new File([completedResult.rawBlob], activeFilename, {
         type: 'application/pdf',
@@ -480,7 +499,9 @@ export default function FoliarSuccessView({
           await navigator.share({
             files: [file],
             title: activeFilename,
-            text: isEs ? `Documento foliado: ${activeFilename}` : `Numbered PDF: ${activeFilename}`,
+            text: isEs
+              ? `${subjectTitle}: ${activeFilename}`
+              : `${subjectTitle}: ${activeFilename}`,
           });
           toast.success(isEs ? '¡Compartido!' : 'Shared successfully!');
           return;
@@ -494,7 +515,7 @@ export default function FoliarSuccessView({
       try {
         await navigator.share({
           title: activeFilename,
-          text: `Documento foliado: ${activeFilename}`,
+          text: `${subjectTitle}: ${activeFilename}`,
           url: 'https://pdf-black.com',
         });
         return;
@@ -560,7 +581,7 @@ export default function FoliarSuccessView({
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
               <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] font-bold text-[10px] font-mono rounded-full uppercase tracking-wider">
                 <Sparkles className="w-3 h-3 text-[#FAF6EE]" />
-                {isEs ? 'Foliado Completado' : 'Numbering Completed'}
+                {badgeText || (isEs ? 'Foliado Completado' : 'Numbering Completed')}
               </span>
               <span className="flex items-center gap-1 px-2.5 py-0.5 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[10px] font-mono">
                 <ShieldCheck className="w-3 h-3 text-emerald-400" />
@@ -568,7 +589,8 @@ export default function FoliarSuccessView({
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight uppercase">
-              {isEs ? '¡Documento Foliado con Éxito!' : 'Document Numbered Successfully!'}
+              {successTitle ||
+                (isEs ? '¡Documento Foliado con Éxito!' : 'Document Numbered Successfully!')}
             </h2>
           </div>
         </div>
@@ -627,10 +649,24 @@ export default function FoliarSuccessView({
                 PDF
               </span>
               {completedResult.fileSize && <span>• {completedResult.fileSize}</span>}
-              <span className="px-2 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/20 text-[#FAF6EE] rounded font-bold">
-                {numberedCount} {isEs ? 'de' : 'of'} {totalPages}{' '}
-                {isEs ? 'págs foliadas' : 'pages numbered'}
-              </span>
+              {numberedCount !== undefined && totalPages !== undefined ? (
+                <span className="px-2 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/20 text-[#FAF6EE] rounded font-bold">
+                  {numberedCount} {isEs ? 'de' : 'of'} {totalPages}{' '}
+                  {isEs ? 'págs foliadas' : 'pages numbered'}
+                </span>
+              ) : totalPages !== undefined && totalPages > 0 ? (
+                <span className="px-2 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/20 text-[#FAF6EE] rounded font-bold">
+                  {totalPages}{' '}
+                  {isEs
+                    ? totalPages === 1
+                      ? 'página'
+                      : 'páginas'
+                    : totalPages === 1
+                      ? 'page'
+                      : 'pages'}
+                </span>
+              ) : null}
+              {metricBadge}
               <span className="text-zinc-500 hidden sm:inline">
                 • {modeText || (isEs ? 'Motor Notarial' : 'Notarial Engine')}
               </span>
@@ -713,9 +749,8 @@ export default function FoliarSuccessView({
                     ? isEs
                       ? '¡Descargado con éxito! Descargar de nuevo'
                       : 'Downloaded! Download again'
-                    : isEs
-                      ? 'Descargar Documento Foliado'
-                      : 'Download Numbered PDF'}
+                    : downloadButtonText ||
+                      (isEs ? 'Descargar Documento Foliado' : 'Download Numbered PDF')}
                 </span>
               </div>
 

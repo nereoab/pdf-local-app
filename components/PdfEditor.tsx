@@ -24,7 +24,7 @@ import { useFileStore } from '@/store/useFileStore';
 import { useLanguage } from '@/context/LanguageContext';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 import type { EditWorkerMessageIn, EditWorkerMessageOut } from '@/workers/pdf-edit.worker';
 import NativePdfEditor from '@/components/NativePdfEditor';
 
@@ -50,6 +50,7 @@ export default function PdfEditor() {
   const [, setViewerInstance] = useState<any>(null);
   const [editedPdfUrl, setEditedPdfUrl] = useState<string | null>(null);
   const [editedBlob, setEditedBlob] = useState<Blob | null>(null);
+  const [docTotalPages, setDocTotalPages] = useState<number>(1);
 
   // MOTOR ACTIVO: 'native' (Motor In-Situ Nativo) | 'apryse' (Motor WebAssembly)
   const [activeEngine, setActiveEngine] = useState<'native' | 'apryse'>('native');
@@ -79,6 +80,17 @@ export default function PdfEditor() {
         setFile(globalFile);
         setFilePrefix(globalFile.name.replace(/\.[^/.]+$/, '') + '_Editado');
         setStep('edit');
+
+        (async () => {
+          try {
+            const { PDFDocument } = await import('pdf-lib');
+            const arrayBuffer = await globalFile.arrayBuffer();
+            const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+            setDocTotalPages(pdfDoc.getPageCount());
+          } catch {
+            // No bloqueante
+          }
+        })();
       } else {
         setFile(null);
         setStep('upload');
@@ -93,6 +105,17 @@ export default function PdfEditor() {
         setGlobalFile(selected);
         setFilePrefix(selected.name.replace(/\.[^/.]+$/, '') + '_Editado');
         setStep('edit');
+
+        (async () => {
+          try {
+            const { PDFDocument } = await import('pdf-lib');
+            const arrayBuffer = await selected.arrayBuffer();
+            const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+            setDocTotalPages(pdfDoc.getPageCount());
+          } catch {
+            // No bloqueante
+          }
+        })();
       } else {
         toast.error(
           isEs
@@ -418,6 +441,7 @@ export default function PdfEditor() {
         );
 
         worker.terminate();
+        if (result.totalPages) setDocTotalPages(result.totalPages);
         const finalBlob = new Blob([result.buffer], { type: 'application/pdf' });
         if (editedPdfUrl) URL.revokeObjectURL(editedPdfUrl);
         const url = URL.createObjectURL(finalBlob);
@@ -614,6 +638,7 @@ export default function PdfEditor() {
         );
 
         worker.terminate();
+        if (result.totalPages) setDocTotalPages(result.totalPages);
         finalBuffer = result.buffer;
       }
 
@@ -1385,81 +1410,44 @@ export default function PdfEditor() {
         </motion.div>
       )}
 
-      {/* PANTALLA 3: DESCARGA FINAL DEDICADA CON BANNER DE RESULTADOS Y ENCADENAMIENTO */}
-      {step === 'download' && (
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE EDICIÓN (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <Type className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA EDICIÓN DE TEXTO' : 'TEXT EDITING RESULT'}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs ? '¡Documento modificado con éxito!' : 'Document edited successfully!'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
-                    {isEs ? 'Estado del proceso' : 'Process status'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Original' : 'Original Size'}
+      {/* PANTALLA 3: DESCARGA FINAL DEDICADA ULTRA-PREMIUM CON COMPARTIR EN WHATSAPP / TELEGRAM / DRIVE */}
+      {step === 'download' && editedPdfUrl && (
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: editedPdfUrl,
+              filename: `${filePrefix.trim() || 'Documento_Editado'}.pdf`,
+              fileSize: editedBlob ? formatFileSize(editedBlob.size) : undefined,
+              rawBlob: editedBlob || undefined,
+            }}
+            totalPages={docTotalPages}
+            modeText={
+              isEs
+                ? activeEngine === 'native'
+                  ? 'Motor In-Situ Nativo'
+                  : 'Motor Apryse WASM'
+                : activeEngine === 'native'
+                  ? 'Native In-Situ Engine'
+                  : 'Apryse WASM Engine'
+            }
+            toolName={isEs ? 'Edición de Texto PDF' : 'PDF Text Editing'}
+            badgeText={isEs ? 'Edición Completada' : 'Editing Completed'}
+            successTitle={
+              isEs ? '¡Documento Modificado con Éxito!' : 'Document Edited Successfully!'
+            }
+            downloadButtonText={isEs ? 'Descargar PDF Editado' : 'Download Edited PDF'}
+            shareSubject={isEs ? 'documento editado' : 'edited document'}
+            fallbackUrl="https://pdf-black.com/editar/texto"
+            metricBadge={
+              file && editedBlob ? (
+                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded font-bold font-mono">
+                  {formatFileSize(file.size)} → {formatFileSize(editedBlob.size)}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {file ? formatFileSize(file.size) : '—'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Editado' : 'Edited Size'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  {editedBlob ? formatFileSize(editedBlob.size) : '—'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {isEs ? 'Vectorial Nativo' : 'Native Vector'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
-          <DownloadSuccessCard
-            downloadUrl={editedPdfUrl}
-            filename={`${filePrefix.trim() || 'Documento_Editado'}.pdf`}
-            fileSize={editedBlob ? formatFileSize(editedBlob.size) : undefined}
-            outputFormat="pdf"
-            rawBlob={editedBlob || undefined}
+              ) : null
+            }
             onReset={handleStartOver}
           />
-        </motion.div>
+        </div>
       )}
 
       {/* MODAL DE COMPARATIVA DE MOTORES */}

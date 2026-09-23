@@ -11,36 +11,100 @@ export interface ShareMetadata {
   tool?: string;
 }
 
+function generateShortId(): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
+
 /**
  * Sube un archivo a través de la API segura de PDFBlack (/api/share)
- * y retorna el enlace oficial con el dominio de la web.
+ * con fallback directo a Firebase Storage si la API experimenta latencia o error.
+ * Garantiza que SIEMPRE se retorne un enlace real /share/[id].
  */
 export async function createShareLink(
   fileOrBlob: Blob | File,
   filename: string,
   toolTitle: string = 'PDFBlack',
 ): Promise<{ shareId: string; shareUrl: string; downloadUrl: string }> {
-  const formData = new FormData();
-  formData.append('file', fileOrBlob, filename);
-  formData.append('filename', filename);
-  formData.append('tool', toolTitle);
+  // 1. Intento primario: Endpoint /api/share
+  try {
+    const formData = new FormData();
+    formData.append('file', fileOrBlob, filename);
+    formData.append('filename', filename);
+    formData.append('tool', toolTitle);
 
-  const res = await fetch('/api/share', {
-    method: 'POST',
-    body: formData,
-  });
+    const res = await fetch('/api/share', {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Error al generar enlace de compartición');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.shareId && data.shareUrl) {
+        return {
+          shareId: data.shareId,
+          shareUrl: data.shareUrl,
+          downloadUrl: data.downloadUrl || `${data.shareUrl}?download=1`,
+        };
+      }
+    }
+  } catch (apiErr) {
+    console.warn('[ShareService] POST /api/share falló o timeout, activando fallback:', apiErr);
   }
 
-  const data = await res.json();
-  return {
-    shareId: data.shareId,
-    shareUrl: data.shareUrl,
-    downloadUrl: data.downloadUrl,
-  };
+  // 2. Fallback de alta resiliencia: Subida directa cliente-a-Firebase Storage
+  // storage.rules permite escribir en /temp-shares/{shareId} hasta 50MB
+  try {
+    const { initializeApp, getApps, getApp } = await import('firebase/app');
+    const { getStorage, ref, uploadBytes } = await import('firebase/storage');
+
+    const clientConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyD1iKq-cZz1zJT9HoCWCKjO-mEUczzMa6k',
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'pdfblack-proy.firebaseapp.com',
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'pdfblack-proy',
+      storageBucket:
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'pdfblack-proy.firebasestorage.app',
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '878586961850',
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:878586961850:web:3469a31c2fb80fbd000783',
+    };
+
+    const app = getApps().length > 0 ? getApp() : initializeApp(clientConfig);
+    const storage = getStorage(app);
+    const shareId = generateShortId();
+    const fileRef = ref(storage, `temp-shares/${shareId}`);
+
+    const now = new Date();
+    const expires = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    const arrayBuffer = await fileOrBlob.arrayBuffer();
+    await uploadBytes(fileRef, new Uint8Array(arrayBuffer), {
+      contentType: 'application/pdf',
+      customMetadata: {
+        originalName: filename,
+        fileSize: String(fileOrBlob.size),
+        uploadedAt: now.toISOString(),
+        expiresAt: expires.toISOString(),
+        toolTitle,
+      },
+    });
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pdf-black.com';
+    const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+    const siteUrl = isLocal ? origin : 'https://pdf-black.com';
+
+    return {
+      shareId,
+      shareUrl: `${siteUrl}/share/${shareId}`,
+      downloadUrl: `${siteUrl}/api/share?id=${shareId}&download=1`,
+    };
+  } catch (storageErr) {
+    console.error('[ShareService] Fallback de subida directa a Storage también falló:', storageErr);
+    throw storageErr;
+  }
 }
 
 /**

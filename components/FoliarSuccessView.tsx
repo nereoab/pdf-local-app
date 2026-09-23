@@ -153,7 +153,8 @@ export default function FoliarSuccessView({
       } catch (err) {
         console.warn('Share link generation error', err);
         toast.dismiss('share-link-gen');
-        return 'https://pdf-black.com/editar/foliar';
+        sharePromiseRef.current = null;
+        return '';
       } finally {
         setIsUploadingShare(false);
       }
@@ -292,6 +293,12 @@ export default function FoliarSuccessView({
 
   const handleLaunchWhatsAppWeb = async () => {
     const link = await getOrCreateShareLink();
+    if (!link) {
+      toast.error(
+        isEs ? 'No se pudo generar el enlace para WhatsApp' : 'Could not generate WhatsApp link',
+      );
+      return;
+    }
     const text = encodeURIComponent(
       isEs
         ? `📄 Hola, te comparto el documento foliado: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
@@ -309,6 +316,12 @@ export default function FoliarSuccessView({
 
   const handleLaunchWhatsAppDesktop = async () => {
     const link = await getOrCreateShareLink();
+    if (!link) {
+      toast.error(
+        isEs ? 'No se pudo generar el enlace para WhatsApp' : 'Could not generate WhatsApp link',
+      );
+      return;
+    }
     const text = encodeURIComponent(
       isEs
         ? `📄 Hola, te comparto el documento foliado: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`

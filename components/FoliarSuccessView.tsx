@@ -399,22 +399,22 @@ export default function FoliarSuccessView({
 
   // 5. Guardar en Google Drive (OAuth + Upload directo)
   const handleShareGoogleDrive = useCallback(async () => {
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    const clientId =
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+      '878586961850-po91701o6f8610hbdl3t3cc668nf95vb.apps.googleusercontent.com';
 
-    // Fallback: si no hay Client ID configurado, usa el método manual
-    if (!clientId) {
-      handleManualDownload();
-      toast.info(
-        isEs
-          ? 'Descarga iniciada. Abriendo Google Drive para que arrastres tu archivo...'
-          : 'Download started. Opening Google Drive to drop your file...',
-        { duration: 5000 },
-      );
-      window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener,noreferrer');
-      return;
+    // Recuperar blob directo o mediante URL de descarga si no está en memoria
+    let blob = completedResult.rawBlob;
+    if (!blob && completedResult.downloadUrl) {
+      try {
+        const res = await fetch(completedResult.downloadUrl);
+        blob = await res.blob();
+      } catch (fetchErr) {
+        console.warn('[Google Drive] No se pudo recuperar blob desde downloadUrl:', fetchErr);
+      }
     }
 
-    if (!completedResult.rawBlob) {
+    if (!blob) {
       toast.error(
         isEs
           ? 'No se encontró el archivo para subir. Intenta descargar primero.'
@@ -435,7 +435,7 @@ export default function FoliarSuccessView({
 
       // Paso 2: Subir archivo
       setDriveStatus('uploading');
-      const result = await uploadFileToDrive(completedResult.rawBlob, activeFilename, accessToken);
+      const result = await uploadFileToDrive(blob, activeFilename, accessToken);
 
       // Paso 3: ¡Éxito!
       setDriveResult(result);
@@ -449,16 +449,21 @@ export default function FoliarSuccessView({
       console.error('[Google Drive] Upload error:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
 
-      // Si el usuario cerró el popup de OAuth, cerrar modal silenciosamente
+      // Si el usuario cerró el popup de OAuth o fue bloqueado
       if (message.includes('popup') || message.includes('closed') || message.includes('blocked')) {
         setShowDriveModal(false);
+        toast.info(
+          isEs
+            ? 'Ventana de Google cerrada o bloqueada por el navegador.'
+            : 'Google popup closed or blocked by browser.',
+        );
         return;
       }
 
       setDriveError(message);
       setDriveStatus('error');
     }
-  }, [completedResult.rawBlob, activeFilename, isEs]);
+  }, [completedResult.rawBlob, completedResult.downloadUrl, activeFilename, isEs]);
 
   // 6. Compartir en Facebook
   const handleShareFacebook = async () => {
@@ -1177,7 +1182,8 @@ export default function FoliarSuccessView({
                   <button
                     onClick={() =>
                       window.open(
-                        `https://drive.google.com/file/d/${driveResult.fileId}/view`,
+                        driveResult.webViewLink ||
+                          `https://drive.google.com/file/d/${driveResult.fileId}/view`,
                         '_blank',
                         'noopener,noreferrer',
                       )
@@ -1212,22 +1218,43 @@ export default function FoliarSuccessView({
                       {driveError}
                     </p>
                   </div>
-                  <div className="flex gap-2 w-full">
+                  <div className="flex flex-col gap-2 w-full">
+                    <div className="flex gap-2 w-full">
+                      <button
+                        onClick={() => {
+                          setShowDriveModal(false);
+                          setTimeout(() => handleShareGoogleDrive(), 300);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 rounded-xl text-xs font-mono transition-all cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>{isEs ? 'Reintentar' : 'Retry'}</span>
+                      </button>
+                      <button
+                        onClick={() => setShowDriveModal(false)}
+                        className="flex-1 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 rounded-xl text-xs font-mono transition-all cursor-pointer"
+                      >
+                        {isEs ? 'Cerrar' : 'Close'}
+                      </button>
+                    </div>
                     <button
                       onClick={() => {
                         setShowDriveModal(false);
-                        setTimeout(() => handleShareGoogleDrive(), 300);
+                        handleManualDownload();
+                        window.open(
+                          'https://drive.google.com/drive/my-drive',
+                          '_blank',
+                          'noopener,noreferrer',
+                        );
                       }}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 rounded-xl text-xs font-mono transition-all cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 rounded-xl text-[11px] font-mono transition-all cursor-pointer"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>{isEs ? 'Reintentar' : 'Retry'}</span>
-                    </button>
-                    <button
-                      onClick={() => setShowDriveModal(false)}
-                      className="flex-1 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 rounded-xl text-xs font-mono transition-all cursor-pointer"
-                    >
-                      {isEs ? 'Cerrar' : 'Close'}
+                      <Download className="w-3.5 h-3.5" />
+                      <span>
+                        {isEs
+                          ? 'Descargar y subir a Drive manualmente'
+                          : 'Download & upload to Drive manually'}
+                      </span>
                     </button>
                   </div>
                 </div>

@@ -53,7 +53,7 @@ jobs:
   deploy-firebase:
     name: Deploy to Firebase Hosting (pdf-black.com)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4

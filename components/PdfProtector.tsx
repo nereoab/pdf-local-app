@@ -21,13 +21,14 @@ import {
   Trash2,
   Plus,
   Maximize2,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import DownloadSuccessCard from './DownloadSuccessCard';
+import FoliarSuccessView from './FoliarSuccessView';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
 import type { ProtectProgress, ProtectResult, ProtectError } from '../workers/pdf-protect.worker';
@@ -583,7 +584,27 @@ export default function PdfProtector() {
           </div>
         </div>
 
-        {files.length > 0 && (
+        {completedResult && (
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <Lock className="w-4 h-4 text-zinc-300" />
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">
+              {completedResult.filename}
+            </span>
+            <button
+              onClick={() => {
+                setCompletedResult(null);
+                setResults([]);
+                handleRemoveAllFiles();
+              }}
+              className="p-1 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded transition-all cursor-pointer"
+              title={isEs ? 'Quitar archivo' : 'Remove file'}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {files.length > 0 && !completedResult && (
           <div className="flex items-center gap-2">
             <div className="bg-zinc-900 border border-zinc-700 px-3 py-2 rounded-xl text-xs text-white font-mono">
               <Package className="w-3.5 h-3.5 inline mr-1.5 text-zinc-300" />
@@ -676,94 +697,51 @@ export default function PdfProtector() {
           </div>
         </motion.div>
       ) : completedResult ? (
-        /* PANTALLA DE ÉXITO Y DESCARGA */
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <Lock className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA PROTECCIÓN' : 'PROTECTION RESULT'}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
-                    {isEs ? '¡PDF Protegido con Éxito!' : 'PDF Protected Successfully!'}
-                  </h2>
-                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                    {isEs
-                      ? `Cifrado AES-256 · ${completedResult.restrictions.length} restricciones activas`
-                      : `AES-256 Encryption · ${completedResult.restrictions.length} active restrictions`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-[#E8DFCF]/30 rounded-2xl text-xs text-[#E8DFCF] shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-[#FAF6EE]" />
-                <span>{isEs ? 'Cifrado AES-256 Activo' : 'AES-256 Encrypted'}</span>
-              </div>
-            </div>
-
-            {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Original' : 'Original Size'}
+        /* PANTALLA DEDICADA DE ÉXITO ULTRA-PREMIUM CON COMPARTIR EN WHATSAPP / TELEGRAM / DRIVE */
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.pageCount || 1}
+            modeText={
+              isEs
+                ? 'Motor Criptográfico AES-256 de Protección'
+                : 'AES-256 Cryptographic Protection Engine'
+            }
+            toolName={isEs ? 'Proteger PDF' : 'Protect PDF'}
+            badgeText={isEs ? 'Cifrado AES-256 Activo' : 'AES-256 Encrypted'}
+            successTitle={
+              isEs ? '¡Documento Protegido con Éxito!' : 'Document Protected Successfully!'
+            }
+            downloadButtonText={isEs ? 'Descargar PDF Protegido' : 'Download Protected PDF'}
+            shareSubject={isEs ? 'documento protegido' : 'protected document'}
+            fallbackUrl="https://pdf-black.com/optimizar/proteger"
+            metricBadge={
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-md font-bold font-mono text-xs">
+                  {isEs
+                    ? `Cifrado AES-256 • ${completedResult.restrictions.length} restricciones`
+                    : `AES-256 • ${completedResult.restrictions.length} restrictions`}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.originalSize)}
+                <span className="px-2.5 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded-md font-bold font-mono text-xs">
+                  {completedResult.pageCount} {isEs ? 'páginas' : 'pages'}
                 </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Protegido' : 'Protected Size'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
+                <span className="px-2.5 py-0.5 bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-md font-mono text-xs">
                   {formatFileSize(completedResult.protectedSize)}
                 </span>
               </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas' : 'Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-base font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.pageCount} />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Restricciones' : 'Restrictions'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-base font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.restrictions.length} />
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat="pdf"
-            rawBlob={completedResult.rawBlob}
-            currentToolId="proteger"
+            }
             onReset={() => {
               setCompletedResult(null);
               setResults([]);
               handleRemoveAllFiles();
             }}
           />
-        </motion.div>
+        </div>
       ) : (
         <div className="w-full flex flex-col gap-6 font-sans mb-6">
           {/* SECCIÓN 1: VISTA PREVIA (50%) Y PANEL DE 3 CAJAS (50%) */}

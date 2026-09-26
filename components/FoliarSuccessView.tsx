@@ -66,6 +66,7 @@ export interface FoliarSuccessViewProps {
   shareSubject?: string;
   fallbackUrl?: string;
   metricBadge?: React.ReactNode;
+  extraActions?: React.ReactNode;
 }
 
 export default function FoliarSuccessView({
@@ -81,6 +82,7 @@ export default function FoliarSuccessView({
   shareSubject,
   fallbackUrl,
   metricBadge,
+  extraActions,
 }: FoliarSuccessViewProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -651,7 +653,19 @@ export default function FoliarSuccessView({
 
             <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono mt-1 flex-wrap">
               <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-200 font-bold uppercase">
-                PDF
+                {(() => {
+                  const lower = activeFilename.toLowerCase();
+                  if (lower.endsWith('.zip')) return 'ZIP';
+                  if (lower.endsWith('.docx') || lower.endsWith('.doc')) return 'DOCX';
+                  if (lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.csv'))
+                    return 'XLSX';
+                  if (lower.endsWith('.pptx') || lower.endsWith('.ppt')) return 'PPTX';
+                  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'JPG';
+                  if (lower.endsWith('.png')) return 'PNG';
+                  if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'HTML';
+                  if (lower.endsWith('.txt')) return 'TXT';
+                  return 'PDF';
+                })()}
               </span>
               {completedResult.fileSize && <span>• {completedResult.fileSize}</span>}
               {numberedCount !== undefined && totalPages !== undefined ? (
@@ -681,13 +695,28 @@ export default function FoliarSuccessView({
 
         {/* Botones de acción rápida secundaria */}
         <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-shrink-0">
-          <button
-            onClick={() => setShowPreviewModal(true)}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm"
-          >
-            <Eye className="w-4 h-4 text-[#FAF6EE]" />
-            <span>{isEs ? 'Vista Previa' : 'Preview'}</span>
-          </button>
+          {(() => {
+            const lower = activeFilename.toLowerCase();
+            const isNonViewableOfficeOrArchive =
+              lower.endsWith('.zip') ||
+              lower.endsWith('.docx') ||
+              lower.endsWith('.doc') ||
+              lower.endsWith('.xlsx') ||
+              lower.endsWith('.xls') ||
+              lower.endsWith('.csv') ||
+              lower.endsWith('.pptx') ||
+              lower.endsWith('.ppt');
+            if (isNonViewableOfficeOrArchive) return null;
+            return (
+              <button
+                onClick={() => setShowPreviewModal(true)}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm"
+              >
+                <Eye className="w-4 h-4 text-[#FAF6EE]" />
+                <span>{isEs ? 'Vista Previa' : 'Preview'}</span>
+              </button>
+            );
+          })()}
           <button
             onClick={handleCopyShareLink}
             disabled={isCopying}
@@ -766,6 +795,9 @@ export default function FoliarSuccessView({
               )}
             </motion.button>
           </div>
+
+          {/* ── ACCIONES ADICIONALES (OPCIONAL: WORD / COPIAR TEXTO) ── */}
+          {extraActions && <div className="pt-2 border-t border-zinc-800/80">{extraActions}</div>}
 
           {/* ── B) BOTONES PARA COMPARTIR EL ARCHIVO (MISMO PROTAGONISMO) ── */}
           <div className="space-y-3 pt-2 border-t border-zinc-800/80">

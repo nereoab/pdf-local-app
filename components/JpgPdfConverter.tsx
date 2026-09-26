@@ -31,8 +31,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
 import { convertWithApi } from '@/lib/adobe-api-client';
 
@@ -148,6 +147,8 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const cancelRenderRef = useRef<boolean>(false);
   const { globalFile, setGlobalFile } = useFileStore();
 
@@ -210,6 +211,22 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const loadedSlots = useMemo(() => slots.filter((s) => s.file !== null), [slots]);
 
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
+
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      const timer = setTimeout(() => {
+        if (topHeaderRef.current) {
+          topHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
@@ -1127,191 +1144,152 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
         }}
       />
 
+      {/* HEADER SUPERIOR UNIFICADO */}
+      <div
+        ref={topHeaderRef}
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden"
+      >
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-4">
+          <Link
+            href="/convertir"
+            onClick={() => setHeaderHidden(false)}
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
+          </Link>
+          <div className="hidden sm:block h-5 w-px bg-zinc-700" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
+              {mode === 'pdf-to-jpg'
+                ? isEs
+                  ? '001 / EXTRACCIÓN Y RASTERIZADO (CONVERSOR DUAL 2 EN 1)'
+                  : '001 / EXTRACTION & RASTER (2-IN-1 DUAL CONVERTER)'
+                : isEs
+                  ? '001 / EMPAQUETADO VECTORIAL (CONVERSOR DUAL 2 EN 1)'
+                  : '001 / VECTOR PACKAGING (2-IN-1 DUAL CONVERTER)'}
+            </span>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+              {mode === 'pdf-to-jpg' ? (
+                <JpgIcon className="w-6 h-6 rounded-sm flex-shrink-0" />
+              ) : (
+                <ImageIcon className="w-6 h-6 text-white rounded-sm flex-shrink-0" />
+              )}
+              {mode === 'pdf-to-jpg'
+                ? isEs
+                  ? 'CONVERTIR PDF A IMAGEN (CONVERSOR DUAL 2 EN 1)'
+                  : 'CONVERT PDF TO IMAGE (2-IN-1 DUAL CONVERTER)'
+                : isEs
+                  ? 'CONVERTIR IMAGEN A PDF (CONVERSOR DUAL 2 EN 1)'
+                  : 'CONVERT IMAGE TO PDF (2-IN-1 DUAL CONVERTER)'}
+            </h1>
+          </div>
+        </div>
+
+        {(loadedSlots.length > 0 || completedResult) && (
+          <div className="flex items-center gap-3">
+            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
+              <FileText className="w-4 h-4 text-zinc-300" />
+              <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
+                {completedResult
+                  ? completedResult.filename
+                  : file?.name ||
+                    (isEs
+                      ? `${loadedSlots.length} archivos cargados`
+                      : `${loadedSlots.length} files loaded`)}
+              </span>
+            </div>
+            <button
+              onClick={handleClearAllSlots}
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
+              title={isEs ? 'Limpiar archivos' : 'Clear files'}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
       {completedResult ? (
-        /* ── PANTALLA DE ÉXITO DEDICADA ── */
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* SECCIÓN SUPERIOR CON BOTÓN VOLVER Y NOMBRE DE LA HERRAMIENTA (COMO EN LA SEGUNDA IMAGEN) */}
-          <div className="w-full bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-700 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-wrap items-center justify-between gap-4 font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-            <div className="flex items-center gap-4">
-              <Link
-                href="/convertir"
-                className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
-              </Link>
-              <div className="hidden sm:block h-5 w-px bg-zinc-700" />
-              <div className="flex flex-col">
-                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-                  {mode === 'pdf-to-jpg'
-                    ? isEs
-                      ? '001 / EXTRACCIÓN Y RASTERIZADO'
-                      : '001 / EXTRACTION & RASTER'
-                    : isEs
-                      ? '001 / EMPAQUETADO VECTORIAL'
-                      : '001 / VECTOR PACKAGING'}
-                </span>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
-                  <Sparkles className="w-6 h-6 text-white flex-shrink-0" />
-                  {mode === 'pdf-to-jpg'
-                    ? isEs
-                      ? 'CONVERTIR PDF A IMAGEN'
-                      : 'CONVERT PDF TO IMAGE'
-                    : isEs
-                      ? 'CONVERTIR IMAGEN A PDF'
-                      : 'CONVERT IMAGE TO PDF'}
-                </h1>
-              </div>
-            </div>
-          </div>
-
-          {/* BANNER DE RESULTADO Y MÉTRICAS */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <ImageIcon className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA CONVERSIÓN' : 'CONVERSION RESULT'}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs
-                      ? '¡Conversión completada con éxito!'
-                      : 'Conversion completed successfully!'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
-                    {isEs ? 'Estado del proceso' : 'Process status'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* MÉTRICAS DE LA CONVERSIÓN */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs border-t border-zinc-800 mt-5">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Formato' : 'Format'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5 uppercase">
-                  {completedResult.outputFormat}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Resultante' : 'Result Size'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {completedResult.fileSize}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Archivos Procesados' : 'Processed Files'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.itemCount || 1} />{' '}
-                  {isEs ? 'elemento(s)' : 'file(s)'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Procesamiento' : 'Processing'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {isEs ? '100% Local (RAM)' : '100% Local (RAM)'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA ÉXITO */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat={completedResult.outputFormat}
-            rawBlob={completedResult.rawBlob}
-            currentToolId="jpg-pdf"
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.itemCount || totalPages || 1}
+            modeText={
+              mode === 'pdf-to-jpg'
+                ? isEs
+                  ? 'Motor de Extracción y Rasterizado JPG / PNG'
+                  : 'JPG / PNG Raster & Extraction Engine'
+                : isEs
+                  ? 'Motor de Empaquetado Vectorial a PDF'
+                  : 'Vector Packaging to PDF Engine'
+            }
+            toolName={
+              mode === 'pdf-to-jpg'
+                ? isEs
+                  ? 'PDF a JPG'
+                  : 'PDF to JPG'
+                : isEs
+                  ? 'JPG a PDF'
+                  : 'JPG to PDF'
+            }
+            badgeText={
+              mode === 'pdf-to-jpg'
+                ? isEs
+                  ? 'Conversión a Imagen Completada'
+                  : 'Image Conversion Completed'
+                : isEs
+                  ? 'Conversión a PDF Completada'
+                  : 'PDF Conversion Completed'
+            }
+            successTitle={
+              mode === 'pdf-to-jpg'
+                ? isEs
+                  ? '¡PDF Convertido a Imágenes con Éxito!'
+                  : 'PDF Converted to Images Successfully!'
+                : isEs
+                  ? '¡Imágenes Convertidas a PDF con Éxito!'
+                  : 'Images Converted to PDF Successfully!'
+            }
+            downloadButtonText={
+              mode === 'pdf-to-jpg'
+                ? isEs
+                  ? 'Descargar Archivo (.zip / .jpg)'
+                  : 'Download File (.zip / .jpg)'
+                : isEs
+                  ? 'Descargar Documento PDF (.pdf)'
+                  : 'Download PDF Document (.pdf)'
+            }
+            shareSubject={
+              mode === 'pdf-to-jpg'
+                ? isEs
+                  ? 'imágenes extraídas'
+                  : 'extracted images'
+                : isEs
+                  ? 'documento PDF'
+                  : 'PDF document'
+            }
+            fallbackUrl={
+              mode === 'pdf-to-jpg'
+                ? 'https://pdf-black.com/convertir/pdf-jpg'
+                : 'https://pdf-black.com/convertir/jpg-pdf'
+            }
+            metricBadge={
+              <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded font-bold font-mono">
+                {completedResult.itemCount || totalPages || 1}{' '}
+                {isEs ? 'pág(s) / imagen(es)' : 'page(s) / image(s)'}
+              </span>
+            }
             onReset={handleClearAllSlots}
           />
-        </motion.div>
+        </div>
       ) : (
         <>
-          {/* HEADER SUPERIOR UNIFICADO (COMO EN PDF-TEXTO) */}
-          <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
-            <div className="flex items-center gap-4">
-              <Link
-                href="/convertir"
-                onClick={() => setHeaderHidden(false)}
-                className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
-              </Link>
-              <div className="hidden sm:block h-5 w-px bg-zinc-700" />
-              <div className="flex flex-col">
-                <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
-                  {mode === 'pdf-to-jpg'
-                    ? isEs
-                      ? '001 / EXTRACCIÓN Y RASTERIZADO (CONVERSOR DUAL 2 EN 1)'
-                      : '001 / EXTRACTION & RASTER (2-IN-1 DUAL CONVERTER)'
-                    : isEs
-                      ? '001 / EMPAQUETADO VECTORIAL (CONVERSOR DUAL 2 EN 1)'
-                      : '001 / VECTOR PACKAGING (2-IN-1 DUAL CONVERTER)'}
-                </span>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
-                  {mode === 'pdf-to-jpg' ? (
-                    <JpgIcon className="w-6 h-6 rounded-sm flex-shrink-0" />
-                  ) : (
-                    <ImageIcon className="w-6 h-6 text-white rounded-sm flex-shrink-0" />
-                  )}
-                  {mode === 'pdf-to-jpg'
-                    ? isEs
-                      ? 'CONVERTIR PDF A IMAGEN (CONVERSOR DUAL 2 EN 1)'
-                      : 'CONVERT PDF TO IMAGE (2-IN-1 DUAL CONVERTER)'
-                    : isEs
-                      ? 'CONVERTIR IMAGEN A PDF (CONVERSOR DUAL 2 EN 1)'
-                      : 'CONVERT IMAGE TO PDF (2-IN-1 DUAL CONVERTER)'}
-                </h1>
-              </div>
-            </div>
-
-            {loadedSlots.length > 0 && (
-              <div className="flex items-center gap-3">
-                <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
-                  <FileText className="w-4 h-4 text-zinc-300" />
-                  <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
-                    {file?.name ||
-                      (isEs
-                        ? `${loadedSlots.length} archivos cargados`
-                        : `${loadedSlots.length} files loaded`)}
-                  </span>
-                </div>
-                <button
-                  onClick={handleClearAllSlots}
-                  className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
-                  title={isEs ? 'Limpiar archivos' : 'Clear files'}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
           {/* SELECTOR DE MODO EN CÁPSULAS */}
           <div className="flex items-center justify-center mb-6 font-mono text-center">
             <div className="bg-[#09090b] border border-zinc-700 p-1.5 rounded-full flex items-center gap-2 shadow-2xl">

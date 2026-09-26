@@ -29,12 +29,14 @@ import {
   FileDown,
   Keyboard,
   FileCode,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
+import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import DownloadSuccessCard from './DownloadSuccessCard';
+import FoliarSuccessView from './FoliarSuccessView';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type { CompareResult, CompareOptions, DiffWord } from '../workers/pdf-compare.worker';
 
@@ -134,6 +136,28 @@ export default function PdfComparator() {
     doc1: new Set(),
     doc2: new Set(),
   });
+
+  // Control de cabecera fija
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
+  useEffect(() => {
+    if (completedResult && showSuccessView) {
+      setHeaderHidden(true);
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const timer = setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, showSuccessView, setHeaderHidden]);
+
+  useEffect(() => {
+    return () => setHeaderHidden(false);
+  }, [setHeaderHidden]);
 
   // Limpieza de worker al desmontar
   useEffect(() => {
@@ -933,7 +957,21 @@ export default function PdfComparator() {
           </div>
         </div>
 
-        {(fileA || fileB) && (
+        {completedResult && showSuccessView ? (
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <GitCompare className="w-4 h-4 text-zinc-300" />
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">
+              {completedResult.filename}
+            </span>
+            <button
+              onClick={resetAll}
+              className="p-1 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded transition-all cursor-pointer"
+              title={isEs ? 'Reiniciar' : 'Reset'}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : fileA || fileB ? (
           <div className="flex items-center gap-2 font-mono">
             <div className="bg-zinc-900 border border-zinc-700 px-3 py-2 rounded-xl text-xs text-white">
               <FileText className="w-3.5 h-3.5 inline mr-1.5 text-zinc-300" />
@@ -957,7 +995,7 @@ export default function PdfComparator() {
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* CASO 1: NINGÚN ARCHIVO CARGADO (DROPZONE INICIAL DUAL) */}
@@ -1074,102 +1112,69 @@ export default function PdfComparator() {
           </div>
         </motion.div>
       ) : completedResult && showSuccessView ? (
-        /* CASO 2: PANTALLA DE ÉXITO CON DESCARGA DE REPORTE */
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* BOTÓN SUPERIOR PARA VOLVER AL VISUALIZADOR DE DIFERENCIAS */}
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setShowSuccessView(false)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 font-mono text-xs transition cursor-pointer shadow-sm group"
-            >
-              <ArrowLeft className="w-4 h-4 text-[#FAF6EE] group-hover:-translate-x-0.5 transition-transform" />
-              <span className="font-bold">
-                {isEs
-                  ? '← Volver al Visualizador de Diferencias (Doc A vs Doc B)'
-                  : '← Back to Difference Viewer (Doc A vs Doc B)'}
-              </span>
-            </button>
-          </div>
-
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <CheckCircle2 className="w-7 h-7 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+        /* PANTALLA DEDICADA DE ÉXITO ULTRA-PREMIUM CON COMPARTIR EN WHATSAPP / TELEGRAM / DRIVE */
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.modifiedPages || 1}
+            modeText={
+              isEs
+                ? 'Motor Forense Myers Diff de Comparación'
+                : 'Myers Diff Forensic Comparison Engine'
+            }
+            toolName={isEs ? 'Comparar PDF' : 'Compare PDF'}
+            badgeText={isEs ? 'Comparación Completada' : 'Comparison Completed'}
+            successTitle={
+              isEs
+                ? '¡Reporte de Comparación Generado con Éxito!'
+                : 'Comparison Report Successfully Generated!'
+            }
+            downloadButtonText={
+              isEs ? 'Descargar Reporte PDF Ejecutivo' : 'Download Executive PDF Report'
+            }
+            shareSubject={isEs ? 'reporte de comparación' : 'comparison report'}
+            fallbackUrl="https://pdf-black.com/optimizar/comparar"
+            metricBadge={
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-md font-bold font-mono text-xs">
+                  {completedResult.globalSimilarityPercent}% {isEs ? 'similitud' : 'similarity'}
+                </span>
+                <span className="px-2.5 py-0.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-md font-bold font-mono text-xs">
+                  -{completedResult.totalRemovals}
+                </span>
+                <span className="px-2.5 py-0.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-md font-bold font-mono text-xs">
+                  +{completedResult.totalAdditions}
+                </span>
+                <span className="px-2.5 py-0.5 bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-md font-mono text-xs">
+                  {completedResult.totalUnchanged} {isEs ? 'sin cambios' : 'unchanged'}
+                </span>
+              </div>
+            }
+            extraActions={
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#121217] border border-zinc-800 rounded-xl p-3.5">
+                <div className="text-xs text-zinc-300 font-mono">
+                  {isEs
+                    ? '¿Deseas volver a examinar la cortina interactiva o la vista paralela?'
+                    : 'Want to re-examine the interactive curtain slider or side-by-side view?'}
                 </div>
-                <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE COMPARACIÓN FORENSE' : 'FORENSIC COMPARISON RESULT'}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
-                    {isEs ? '¡Reporte de Comparación Generado!' : 'Comparison Report Generated!'}
-                  </h2>
-                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                    {completedResult.summary}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSuccessView(false)}
+                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-mono font-bold flex items-center gap-2 transition cursor-pointer flex-shrink-0"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>{isEs ? 'Volver al Visualizador' : 'Back to Viewer'}</span>
+                </button>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-2xl text-xs text-zinc-300 shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-zinc-400" />
-                <span>{isEs ? 'Auditoría Certificada' : 'Certified Audit'}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Similitud Global' : 'Global Similarity'}
-                </span>
-                <span className="text-white font-bold text-xl font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.globalSimilarityPercent} suffix="%" />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Palabras Eliminadas' : 'Words Removed'}
-                </span>
-                <span className="text-red-400 font-bold text-xl font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.totalRemovals} prefix="-" />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Palabras Añadidas' : 'Words Added'}
-                </span>
-                <span className="text-emerald-400 font-bold text-xl font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.totalAdditions} prefix="+" />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Sin Cambios' : 'Unchanged'}
-                </span>
-                <span className="text-zinc-300 font-bold text-xl font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.totalUnchanged} />
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            rawBlob={completedResult.rawBlob}
-            outputFormat="pdf"
+            }
             onReset={resetAll}
-            title={isEs ? '¡Reporte PDF de Comparación Listo!' : 'PDF Comparison Report Ready!'}
-            currentToolId="comparar"
           />
-        </motion.div>
+        </div>
       ) : (
         /* CASO 3: PANEL OPERATIVO CON 2 DOCUMENTOS (DOC A vs DOC B) */
         <div className="space-y-6">

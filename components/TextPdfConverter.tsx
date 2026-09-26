@@ -24,8 +24,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
 
 type ConversionDirection = 'pdf-to-text' | 'text-to-pdf';
@@ -93,11 +92,28 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const cancelRenderRef = useRef<boolean>(false);
   const { globalFile, setGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
+
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      const timer = setTimeout(() => {
+        if (topHeaderRef.current) {
+          topHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
   // ── ESTADO DE 3 SLOTS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ──
   const [slots, setSlots] = useState<SlotItem[]>([
     { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
@@ -244,6 +260,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
   }, [file]);
 
   const handleClearAllSlots = () => {
+    cancelRenderRef.current = true;
     setSlots([
       { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
       { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
@@ -251,7 +268,12 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     ]);
     setActiveSlotIndex(0);
     setFile(null);
+    setGlobalFile(null);
+    setManualText('');
+    setDownloadUrl(null);
     setCompletedResult(null);
+    setHeaderHidden(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSwitchMode = (newMode: ConversionDirection) => {
@@ -489,14 +511,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
   }, [globalFile, defaultMode, loadFilesIntoSlots]);
 
   const handleRemoveFile = () => {
-    cancelRenderRef.current = true;
-    setFile(null);
-    setGlobalFile(null);
-    setManualText('');
-    setDownloadUrl(null);
-    setCompletedResult(null);
-    setHeaderHidden(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    handleClearAllSlots();
   };
 
   // Sincronizar slot activo con estado de archivo y previsualización
@@ -967,92 +982,82 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
       </div>
 
       {completedResult ? (
-        /* ── PANTALLA DE ÉXITO DEDICADA ── */
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <TextIcon className="w-7 h-7 text-[#FAF6EE] rounded-sm drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA CONVERSIÓN' : 'CONVERSION RESULT'}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs
-                      ? '¡Extracción de texto completada con éxito!'
-                      : 'Text extraction completed successfully!'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
-                    {isEs ? 'Estado del proceso' : 'Process status'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* MÉTRICAS DE LA CONVERSIÓN */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 font-mono text-xs border-t border-zinc-800 mt-5">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Formato de Salida' : 'Output Format'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5 uppercase">
-                  {completedResult.outputFormat}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Resultante' : 'Result Size'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {completedResult.fileSize}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.itemCount || 1} />{' '}
-                  {isEs ? 'págs' : 'pages'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Procesamiento' : 'Processing'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {isEs ? '100% Local (RAM)' : '100% Local (RAM)'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat={completedResult.outputFormat}
-            rawBlob={completedResult.rawBlob}
-            currentToolId="text-pdf"
-            onReset={handleRemoveFile}
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.itemCount || totalPages || 1}
+            modeText={
+              mode === 'pdf-to-text'
+                ? isEs
+                  ? 'Motor de Extracción de Texto Plano UTF-8'
+                  : 'UTF-8 Plain Text Extraction Engine'
+                : isEs
+                  ? 'Motor de Paginación y Renderizado a PDF'
+                  : 'Pagination & Rendering to PDF Engine'
+            }
+            toolName={
+              mode === 'pdf-to-text'
+                ? isEs
+                  ? 'PDF a Texto'
+                  : 'PDF to Text'
+                : isEs
+                  ? 'Texto a PDF'
+                  : 'Text to PDF'
+            }
+            badgeText={
+              mode === 'pdf-to-text'
+                ? isEs
+                  ? 'Conversión a Texto Completada'
+                  : 'Text Conversion Completed'
+                : isEs
+                  ? 'Conversión a PDF Completada'
+                  : 'PDF Conversion Completed'
+            }
+            successTitle={
+              mode === 'pdf-to-text'
+                ? isEs
+                  ? '¡PDF Convertido a Texto con Éxito!'
+                  : 'PDF Converted to Text Successfully!'
+                : isEs
+                  ? '¡Texto Convertido a PDF con Éxito!'
+                  : 'Text Converted to PDF Successfully!'
+            }
+            downloadButtonText={
+              mode === 'pdf-to-text'
+                ? isEs
+                  ? 'Descargar Archivo de Texto (.txt)'
+                  : 'Download Text File (.txt)'
+                : isEs
+                  ? 'Descargar Documento PDF (.pdf)'
+                  : 'Download PDF Document (.pdf)'
+            }
+            shareSubject={
+              mode === 'pdf-to-text'
+                ? isEs
+                  ? 'archivo de texto plano'
+                  : 'plain text file'
+                : isEs
+                  ? 'documento PDF'
+                  : 'PDF document'
+            }
+            fallbackUrl={
+              mode === 'pdf-to-text'
+                ? 'https://pdf-black.com/convertir/pdf-texto'
+                : 'https://pdf-black.com/convertir/texto-pdf'
+            }
+            metricBadge={
+              <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded font-bold font-mono">
+                {completedResult.itemCount || totalPages || 1} {isEs ? 'página(s)' : 'page(s)'}
+              </span>
+            }
+            onReset={handleClearAllSlots}
           />
-        </motion.div>
+        </div>
       ) : (
         <>
           {/* SELECTOR DUAL DE MODO 2 EN 1 */}

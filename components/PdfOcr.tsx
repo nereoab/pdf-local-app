@@ -47,8 +47,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { OcrWorkerOptions, OcrWorkerResult } from '@/workers/pdf-ocr.worker';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { createDocxFromOcrText } from '@/utils/ocr-docx-exporter';
 
 // ── Language map ──
@@ -403,6 +402,14 @@ export default function PdfOcr() {
     setCompletedResult(null);
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const handleCopyText = () => {
     if (extractedText) {
       navigator.clipboard.writeText(extractedText);
@@ -563,14 +570,14 @@ export default function PdfOcr() {
           }
 
           const url = URL.createObjectURL(blob);
-          const sizeMb = (blob.size / (1024 * 1024)).toFixed(2) + ' MB';
+          const sizeFormatted = formatFileSize(blob.size);
           const processedCount = selectedPagesSet.size;
           const langName = LANG_LABELS[ocrLang]?.[isEs ? 'es' : 'en'] || ocrLang;
 
           setCompletedResult({
             downloadUrl: url,
             filename: downloadFilename,
-            fileSize: sizeMb,
+            fileSize: sizeFormatted,
             outputFormat: msg.outputFormat as any,
             rawBlob: blob,
             processedPagesCount: processedCount,
@@ -871,143 +878,99 @@ export default function PdfOcr() {
           </div>
         </motion.div>
       ) : completedResult ? (
-        /* PANTALLA DEDICADA DE ÉXITO Y DESCARGA CON MÉTRICAS DE OCR */
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* BANNER DE MÉTRICAS DE OCR */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <ScanText className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DEL RECONOCIMIENTO ÓPTICO (OCR)' : 'OCR RECOGNITION RESULT'}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
+        /* PANTALLA DEDICADA DE ÉXITO ULTRA-PREMIUM CON COMPARTIR EN WHATSAPP / TELEGRAM / DRIVE */
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize:
+                completedResult.fileSize ||
+                (completedResult.rawBlob
+                  ? formatFileSize(completedResult.rawBlob.size)
+                  : undefined),
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.processedPagesCount || totalPages}
+            modeText={
+              completedResult.stats?.ocrEngine ||
+              (ocrEngine === 'paddleocr' ? 'PaddleOCR AI Neural Engine' : 'Tesseract OCR v5 Engine')
+            }
+            toolName={isEs ? 'Reconocimiento OCR PDF' : 'PDF OCR Recognition'}
+            badgeText={isEs ? 'OCR Completado' : 'OCR Completed'}
+            successTitle={
+              isEs ? '¡Documento Reconocido con Éxito!' : 'Document Recognized Successfully!'
+            }
+            downloadButtonText={
+              completedResult.outputFormat === 'docx'
+                ? isEs
+                  ? 'Descargar Documento Word (.DOCX)'
+                  : 'Download Word Document (.DOCX)'
+                : isEs
+                  ? 'Descargar PDF con OCR'
+                  : 'Download Searchable PDF'
+            }
+            shareSubject={isEs ? 'documento con capa OCR' : 'OCR searchable document'}
+            fallbackUrl="https://pdf-black.com/editar/ocr"
+            metricBadge={
+              file && completedResult?.rawBlob ? (
+                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded font-bold font-mono">
+                  {formatFileSize(file.size)} → {formatFileSize(completedResult.rawBlob.size)}
+                </span>
+              ) : null
+            }
+            extraActions={
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-mono text-xs">
+                <div className="flex items-center gap-2 text-zinc-300">
+                  <Sparkles className="w-4 h-4 text-[#FAF6EE]" />
+                  <span className="font-bold text-white">
                     {isEs
-                      ? '¡Documento procesado e indexado con éxito!'
-                      : 'Document processed & indexed successfully!'}
-                  </h3>
+                      ? 'Formatos Adicionales de Reconocimiento:'
+                      : 'Additional Recognition Formats:'}
+                  </span>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
-                    {isEs ? 'Capa de Texto' : 'Text Layer'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm flex items-center justify-end gap-1.5 font-sans">
-                    <CheckCircle2 className="w-4 h-4 text-[#FAF6EE]" />
-                    <span>{isEs ? '100% Seleccionable' : '100% Searchable'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {completedResult.outputFormat !== 'docx' && (
+                    <button
+                      type="button"
+                      onClick={handleDownloadWord}
+                      disabled={isGeneratingDocx}
+                      className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border border-blue-500/40 hover:border-blue-400 rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                      title={
+                        isEs
+                          ? 'Generar y descargar documento Word editable (.docx)'
+                          : 'Generate and download editable Word document (.docx)'
+                      }
+                    >
+                      {isGeneratingDocx ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                      ) : (
+                        <FileDown className="w-3.5 h-3.5 text-blue-400" />
+                      )}
+                      <span>{isEs ? 'Descargar en Word (.DOCX)' : 'Download in Word (.DOCX)'}</span>
+                    </button>
+                  )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.processedPagesCount || totalPages} />{' '}
-                  {isEs ? 'Págs' : 'Pgs'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Palabras Extraídas' : 'Extracted Words'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.stats?.totalWords || 0} />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Confianza Promedio' : 'Avg. Confidence'}
-                </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
-                  {completedResult.stats?.avgConfidence
-                    ? `${completedResult.stats.avgConfidence.toFixed(1)}%`
-                    : '95%+'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Motor OCR Utilizado' : 'OCR Engine Used'}
-                </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
-                  {completedResult.stats?.ocrEngine ||
-                    (ocrEngine === 'paddleocr' ? 'PaddleOCR AI' : 'Tesseract v5')}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat={completedResult.outputFormat}
-            rawBlob={completedResult.rawBlob}
-            currentToolId="ocr"
-            onReset={() => setCompletedResult(null)}
-          >
-            {/* PANEL MULTI-FORMATO: DESCARGAR EN WORD / PDF / TXT */}
-            <div className="mt-4 pt-4 border-t border-zinc-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-mono text-xs">
-              <div className="flex items-center gap-2 text-zinc-300">
-                <Sparkles className="w-4 h-4 text-emerald-400" />
-                <span className="font-bold text-white">
-                  {isEs ? 'Formatos Adicionales de Descarga:' : 'Additional Download Formats:'}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {completedResult.outputFormat !== 'docx' && (
                   <button
                     type="button"
-                    onClick={handleDownloadWord}
-                    disabled={isGeneratingDocx}
-                    className="px-4 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border border-blue-500/40 hover:border-blue-400 rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
-                    title={
-                      isEs
-                        ? 'Generar y descargar documento Word editable (.docx)'
-                        : 'Generate and download editable Word document (.docx)'
-                    }
+                    onClick={handleCopyText}
+                    className="px-3.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                   >
-                    {isGeneratingDocx ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                    {copied ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
                     ) : (
-                      <FileDown className="w-3.5 h-3.5 text-blue-400" />
+                      <Copy className="w-3.5 h-3.5 text-[#FAF6EE]" />
                     )}
-                    <span>{isEs ? 'Descargar en Word (.DOCX)' : 'Download in Word (.DOCX)'}</span>
+                    <span>
+                      {copied ? (isEs ? 'Copiado' : 'Copied') : isEs ? 'Copiar Texto' : 'Copy Text'}
+                    </span>
                   </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleCopyText}
-                  className="px-3.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                  {copied ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                  <span>
-                    {copied ? (isEs ? 'Copiado' : 'Copied') : isEs ? 'Copiar Texto' : 'Copy Text'}
-                  </span>
-                </button>
+                </div>
               </div>
-            </div>
-          </DownloadSuccessCard>
-        </motion.div>
+            }
+            onReset={handleRemoveFile}
+          />
+        </div>
       ) : (
         /* ══════════════════════════════════════════════════════════════════════════
            LAYOUT APILADO ENTERPRISE: VISOR ARRIBA Y PANEL DE CONTROL DEBAJO

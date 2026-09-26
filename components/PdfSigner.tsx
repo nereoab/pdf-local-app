@@ -44,8 +44,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignWorkerMessageIn, SignWorkerMessageOut, Position9 } from '@/workers/pdf-sign.worker';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 
 type CreationTab = 'type' | 'draw' | 'image' | 'audit_box';
 type FontStyleOption = 'cursive' | 'calligraphy' | 'formal' | 'modern' | 'serif';
@@ -580,10 +579,19 @@ export default function PdfSigner() {
     }
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const handleRemoveFile = () => {
     cancelThumbRenderRef.current = true;
     setFile(null);
     setGlobalFile(null);
+    setCompletedResult(null);
     setPageThumbnails([]);
     setTotalPages(0);
     setTargetPage(1);
@@ -795,12 +803,12 @@ export default function PdfSigner() {
       const blob = new Blob([result.buffer], { type: 'application/pdf' });
       const localUrl = URL.createObjectURL(blob);
       const outName = `${filePrefix.trim() || 'Documento_Firmado'}.pdf`;
-      const sizeMb = (blob.size / (1024 * 1024)).toFixed(2) + ' MB';
+      const sizeFormatted = formatFileSize(blob.size);
 
       setCompletedResult({
         downloadUrl: localUrl,
         filename: outName,
-        fileSize: sizeMb,
+        fileSize: sizeFormatted,
         outputFormat: 'pdf',
         rawBlob: blob,
       });
@@ -864,7 +872,7 @@ export default function PdfSigner() {
           </div>
         </div>
 
-        {file && !completedResult && (
+        {file && (
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-300" />
@@ -884,91 +892,45 @@ export default function PdfSigner() {
       </div>
 
       {completedResult ? (
-        /* ── PANTALLA DE ÉXITO DEDICADA ── */
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <PenTool className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA FIRMA DIGITAL' : 'DIGITAL SIGNATURE RESULT'}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs ? '¡Documento firmado con éxito!' : 'Document signed successfully!'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
-                    {isEs ? 'Seguridad y Validación' : 'Security & Validation'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local & Privado (Zero-Knowledge)' : '100% Local & Private'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Firmante' : 'Signer'}
+        /* ── PANTALLA DE ÉXITO DEDICADA ULTRA-PREMIUM CON COMPARTIR EN WHATSAPP / TELEGRAM / DRIVE ── */
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize:
+                completedResult.fileSize ||
+                (completedResult.rawBlob
+                  ? formatFileSize(completedResult.rawBlob.size)
+                  : undefined),
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={totalPages}
+            modeText={
+              isEs
+                ? includeHash
+                  ? 'Firma Forense SHA-256'
+                  : 'Firma Vectorial Notarial'
+                : includeHash
+                  ? 'Forensic SHA-256 Signature'
+                  : 'Notarial Vector Signature'
+            }
+            toolName={isEs ? 'Firma Digital PDF' : 'Digital PDF Signature'}
+            badgeText={isEs ? 'Firma Completada' : 'Signature Completed'}
+            successTitle={isEs ? '¡Documento Firmado con Éxito!' : 'Document Signed Successfully!'}
+            downloadButtonText={isEs ? 'Descargar PDF Firmado' : 'Download Signed PDF'}
+            shareSubject={isEs ? 'documento firmado' : 'signed document'}
+            fallbackUrl="https://pdf-black.com/editar/firmar"
+            metricBadge={
+              file && completedResult?.rawBlob ? (
+                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded font-bold font-mono">
+                  {formatFileSize(file.size)} → {formatFileSize(completedResult.rawBlob.size)}
                 </span>
-                <span
-                  className="text-white font-bold text-sm font-mono mt-0.5 truncate"
-                  title={fullName}
-                >
-                  {fullName || 'Firma Autorizada'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Alcance de Firma' : 'Signature Scope'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  {pageScope === 'all'
-                    ? isEs
-                      ? `${totalPages} Páginas (Todas)`
-                      : `${totalPages} Pages (All)`
-                    : pageScope === 'current'
-                      ? `Página ${targetPage}`
-                      : pageScope === 'vobo'
-                        ? isEs
-                          ? `Pág. ${targetPage} + VoBo en demás`
-                          : `Page ${targetPage} + VoBo on rest`
-                        : `Rango: ${customPageRange}`}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Integridad Forense' : 'Forensic Integrity'}
-                </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono mt-0.5">
-                  ✓ {includeHash ? 'SHA-256 Validado' : 'Estándar Vectorial'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat="pdf"
-            rawBlob={completedResult.rawBlob}
+              ) : null
+            }
             onReset={handleStartOver}
           />
-        </motion.div>
+        </div>
       ) : !file ? (
         /* ── DROPZONE DE CARGA DARK ENTERPRISE ── */
         <motion.div

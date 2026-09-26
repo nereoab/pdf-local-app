@@ -22,13 +22,15 @@ import {
   Trash2,
   Plus,
   Maximize2,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
 import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import DownloadSuccessCard, { BatchDownloadItem } from './DownloadSuccessCard';
+import FoliarSuccessView from './FoliarSuccessView';
+import type { BatchDownloadItem } from './DownloadSuccessCard';
 import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
 import type {
@@ -698,7 +700,27 @@ export default function PdfUnlocker() {
           </div>
         </div>
 
-        {files.length > 0 && (
+        {completedResult && (
+          <div className="flex items-center gap-2.5 bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl text-xs font-mono text-white">
+            <Unlock className="w-4 h-4 text-zinc-300" />
+            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">
+              {completedResult.filename}
+            </span>
+            <button
+              onClick={() => {
+                setCompletedResult(null);
+                setResults([]);
+                handleRemoveAllFiles();
+              }}
+              className="p-1 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded transition-all cursor-pointer"
+              title={isEs ? 'Quitar archivo' : 'Remove file'}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {files.length > 0 && !completedResult && (
           <div className="flex items-center gap-2">
             <div className="bg-zinc-900 border border-zinc-700 px-3 py-2 rounded-xl text-xs text-white font-mono flex items-center gap-2">
               <Package className="w-3.5 h-3.5 text-zinc-300" />
@@ -791,100 +813,113 @@ export default function PdfUnlocker() {
           </div>
         </motion.div>
       ) : completedResult ? (
-        /* PANTALLA DE ÉXITO Y DESCARGA */
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* BANNER DE MÉTRICAS */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-zinc-800 pb-5">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-800 border border-zinc-600 rounded-2xl text-white shadow-md">
-                  <CheckCircle2 className="w-7 h-7 text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DEL DESBLOQUEO' : 'UNLOCK RESULT'}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-sans uppercase">
-                    {isEs
-                      ? '¡Documento Desbloqueado con Éxito!'
-                      : 'Document Unlocked Successfully!'}
-                  </h2>
-                  <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                    {completedResult.encryptionType} •{' '}
-                    {isEs ? 'Texto 100% Seleccionable' : '100% Selectable Text'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300 shadow-sm">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>
-                  {isEs ? 'Todas las restricciones eliminadas' : 'All restrictions removed'}
+        /* PANTALLA DEDICADA DE ÉXITO ULTRA-PREMIUM CON COMPARTIR EN WHATSAPP / TELEGRAM / DRIVE */
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.pageCount || 1}
+            modeText={
+              isEs
+                ? 'Motor Criptográfico Vectorial de Desbloqueo'
+                : 'Vector Cryptographic Unlocking Engine'
+            }
+            toolName={isEs ? 'Desbloquear PDF' : 'Unlock PDF'}
+            badgeText={isEs ? 'Desbloqueo Completado' : 'Unlock Completed'}
+            successTitle={
+              completedResult.batchItems && completedResult.batchItems.length > 1
+                ? isEs
+                  ? `¡${completedResult.batchItems.length} Documentos Desbloqueados con Éxito!`
+                  : `¡${completedResult.batchItems.length} Documents Unlocked Successfully!`
+                : isEs
+                  ? '¡Documento Desbloqueado con Éxito!'
+                  : 'Document Unlocked Successfully!'
+            }
+            downloadButtonText={
+              completedResult.batchItems && completedResult.batchItems.length > 1
+                ? isEs
+                  ? `Descargar Primer Archivo (${completedResult.filename})`
+                  : `Download First File (${completedResult.filename})`
+                : isEs
+                  ? 'Descargar PDF Desbloqueado'
+                  : 'Download Unlocked PDF'
+            }
+            shareSubject={isEs ? 'documento desbloqueado' : 'unlocked document'}
+            fallbackUrl="https://pdf-black.com/optimizar/desbloquear"
+            metricBadge={
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-md font-bold font-mono text-xs">
+                  {completedResult.encryptionType ||
+                    (isEs ? 'Sin Restricciones' : 'No Restrictions')}
                 </span>
-              </div>
-            </div>
-
-            {/* MÉTRICAS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Original' : 'Original Size'}
+                <span className="px-2.5 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded-md font-bold font-mono text-xs">
+                  {completedResult.pageCount} {isEs ? 'páginas' : 'pages'}
                 </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {formatFileSize(completedResult.originalSize)}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Tamaño Final' : 'Final Size'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
+                <span className="px-2.5 py-0.5 bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-md font-mono text-xs">
                   {formatFileSize(completedResult.unlockedSize)}
                 </span>
               </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas' : 'Pages'}
-                </span>
-                <span className="text-white font-bold text-base font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.pageCount} />
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">SHA-256</span>
-                <span className="text-zinc-300 font-bold text-[10px] font-mono mt-0.5 truncate">
-                  {completedResult.checksumSha256?.substring(0, 16)}...
-                </span>
-              </div>
-            </div>
-          </div>
+            }
+            extraActions={
+              completedResult.batchItems && completedResult.batchItems.length > 1 ? (
+                <div className="space-y-3">
+                  {batchZipBlob && (
+                    <motion.button
+                      whileHover={{ scale: 1.015 }}
+                      whileTap={{ scale: 0.985 }}
+                      onClick={() => {
+                        const url = URL.createObjectURL(batchZipBlob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `PDFs_Desbloqueados_${Date.now()}.zip`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="w-full relative overflow-hidden flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-sans font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg transition-all cursor-pointer border border-emerald-400/40"
+                    >
+                      <Download className="w-4 h-4 text-white" />
+                      <span>
+                        {isEs
+                          ? `Descargar los ${completedResult.batchItems.length} archivos desbloqueados (.ZIP)`
+                          : `Download all ${completedResult.batchItems.length} unlocked files (.ZIP)`}
+                      </span>
+                    </motion.button>
+                  )}
 
-          {/* TARJETA DE DESCARGA */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat="pdf"
-            rawBlob={completedResult.rawBlob}
-            currentToolId="desbloquear"
-            batchItems={completedResult.batchItems}
-            onDownloadAllZip={
-              batchZipBlob
-                ? () => {
-                    const url = URL.createObjectURL(batchZipBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `PDFs_Desbloqueados_${Date.now()}.zip`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }
-                : undefined
+                  <div className="bg-[#121217] border border-zinc-800 rounded-xl p-3 space-y-2">
+                    <div className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider font-bold px-1">
+                      {isEs ? 'Archivos individuales disponibles:' : 'Individual files available:'}
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                      {completedResult.batchItems.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-3 bg-zinc-900/80 border border-zinc-800/80 rounded-lg p-2 text-xs font-mono"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                            <span className="truncate text-zinc-200 font-medium">
+                              {item.fileName}
+                            </span>
+                          </div>
+                          <a
+                            href={item.downloadUrl}
+                            download={item.fileName}
+                            className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white rounded border border-zinc-700 text-[11px] font-bold transition-colors flex items-center gap-1.5 flex-shrink-0"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>{isEs ? 'Descargar' : 'Download'}</span>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : undefined
             }
             onReset={() => {
               setCompletedResult(null);
@@ -892,7 +927,7 @@ export default function PdfUnlocker() {
               handleRemoveAllFiles();
             }}
           />
-        </motion.div>
+        </div>
       ) : (
         /* ÁREA DE TRABAJO PRINCIPAL: VISOR + SLOTS + PANEL DE CONTROL */
         <div className="flex flex-col gap-6 mb-6 font-sans">

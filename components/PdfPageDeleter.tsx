@@ -26,8 +26,7 @@ import {
   DeletePagesWorkerMessageIn,
   DeletePagesWorkerMessageOut,
 } from '@/workers/pdf-delete-pages.worker';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
 
 type PageThumb = {
@@ -545,11 +544,20 @@ export default function PdfPageDeleter() {
         </div>
 
         {completedResult ? (
-          <div className="flex items-center gap-2.5 bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl text-xs font-mono text-white">
-            <FileText className="w-4 h-4 text-zinc-300" />
-            <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">
-              {completedResult.filename}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
+              <FileText className="w-4 h-4 text-zinc-300" />
+              <span className="font-bold truncate max-w-[180px] sm:max-w-[280px]">
+                {completedResult.filename}
+              </span>
+            </div>
+            <button
+              onClick={removeFile}
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
+              title={isEs ? 'Eliminar páginas de otro PDF' : 'Delete pages from another PDF'}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
         ) : file ? (
           <div className="flex items-center gap-3">
@@ -571,82 +579,31 @@ export default function PdfPageDeleter() {
       </div>
 
       {completedResult ? (
-        /* ── PANTALLA DE ÉXITO DEDICADA ── */
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans space-y-6"
-        >
-          {/* BANNER DE RESULTADO Y MÉTRICAS DE ELIMINACIÓN */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-3xl p-6 sm:p-8 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-4 bg-zinc-900 border border-[#E8DFCF]/40 rounded-2xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <Trash2 className="w-7 h-7 text-[#FAF6EE] drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA ELIMINACIÓN DE PÁGINAS' : 'PAGE DELETION RESULT'}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs ? '¡Páginas eliminadas con éxito!' : 'Pages deleted successfully!'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 bg-zinc-900 border border-[#E8DFCF]/30 px-4 py-2.5 rounded-2xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold">
-                    {isEs ? 'Estado del proceso' : 'Process status'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-sm sm:text-base flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-5 border-t border-zinc-800 text-xs">
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Eliminadas' : 'Deleted Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.deletedCount} />{' '}
-                  {isEs ? 'Páginas' : 'Pages'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Páginas Restantes' : 'Remaining Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.remainingPages} />{' '}
-                  {isEs ? 'Páginas' : 'Pages'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[10px] uppercase font-bold">
-                  {isEs ? 'Modo de Procesamiento' : 'Processing Mode'}
-                </span>
-                <span className="text-white font-bold text-sm font-mono mt-0.5">
-                  {isEs ? 'Vectorial Nativo' : 'Native Vector'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat="pdf"
-            rawBlob={completedResult.rawBlob}
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.remainingPages}
+            modeText={isEs ? 'Depuración Vectorial Nativa' : 'Native Vector Purging'}
+            toolName={isEs ? 'Eliminar Páginas PDF' : 'Delete PDF Pages'}
+            badgeText={isEs ? 'Páginas Eliminadas' : 'Pages Deleted'}
+            successTitle={isEs ? '¡Páginas Eliminadas con Éxito!' : 'Pages Deleted Successfully!'}
+            downloadButtonText={isEs ? 'Descargar PDF Depurado' : 'Download Purged PDF'}
+            shareSubject={isEs ? 'documento depurado' : 'purged document'}
+            fallbackUrl="https://pdf-black.com/organizar/eliminar"
+            metricBadge={
+              <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded font-bold font-mono">
+                -{completedResult.deletedCount} {isEs ? 'eliminadas' : 'deleted'} →{' '}
+                {completedResult.remainingPages} {isEs ? 'págs restantes' : 'remaining pages'}
+              </span>
+            }
             onReset={removeFile}
           />
-        </motion.div>
+        </div>
       ) : !file ? (
         /* VISTA DROPZONE VACÍA PREMIUM */
         <motion.div

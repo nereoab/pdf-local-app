@@ -30,8 +30,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
 import { convertPdfToUltraDocx } from '@/lib/high-fidelity-docx-engine';
 import { convertPdfToWordWithApi } from '@/lib/pdf2docx-api-client';
@@ -109,6 +108,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
   const cancelRenderRef = useRef<boolean>(false);
   const { globalFile, setGlobalFile } = useFileStore();
 
@@ -121,6 +121,28 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   }, [defaultMode]);
 
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
+
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      const timer = setTimeout(() => {
+        if (topHeaderRef.current) {
+          topHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
+
+  useEffect(() => {
+    return () => {
+      setHeaderHidden(false);
+    };
+  }, [setHeaderHidden]);
   // ── ESTADO DE 3 SLOTS INDEPENDIENTES (AISLAMIENTO ESTRICTO) ──
   const [slots, setSlots] = useState<SlotItem[]>([
     { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
@@ -1053,7 +1075,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               </span>
             </div>
             <button
-              onClick={handleClearAllSlots}
+              onClick={completedResult ? handleRemoveFile : handleClearAllSlots}
               className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Limpiar archivos' : 'Clear files'}
             >
@@ -1064,90 +1086,83 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
       </div>
 
       {completedResult ? (
-        /* ── PANTALLA DE ÉXITO DEDICADA ── */
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-3 sm:my-4 font-sans space-y-3.5"
-        >
-          {/* BANNER DE RESULTADO Y MÉTRICAS (ESTILO PÁGINA DE INICIO) */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-2xl p-4 sm:p-5 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 sm:p-3 bg-zinc-900 border border-[#E8DFCF]/40 rounded-xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <WordIcon className="w-5 h-5 sm:w-6 sm:h-6 rounded-sm drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[9px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA CONVERSIÓN' : 'CONVERSION RESULT'}
-                  </span>
-                  <h3 className="text-base sm:text-lg font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs ? 'CONVERSIÓN COMPLETADA' : 'CONVERSION COMPLETED'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 bg-zinc-900 border border-[#E8DFCF]/30 px-3 py-1.5 rounded-xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[9px] text-zinc-400 font-bold">
-                    {isEs ? 'Estado del proceso' : 'Process status'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-xs sm:text-sm flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local & Privado' : '100% Local & Private'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* MÉTRICAS DE LA CONVERSIÓN */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 pt-3.5 font-mono text-xs border-t border-zinc-800/80 mt-3.5">
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Formato de Salida' : 'Output Format'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5 uppercase">
-                  {completedResult.outputFormat}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Tamaño Resultante' : 'Result Size'}
-                </span>
-                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  {completedResult.fileSize}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.itemCount || 1} />{' '}
-                  {isEs ? 'págs' : 'pages'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Procesamiento' : 'Processing'}
-                </span>
-                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  {isEs ? '100% Local (RAM)' : '100% Local (RAM)'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat={completedResult.outputFormat}
-            rawBlob={completedResult.rawBlob}
-            currentToolId="word-pdf"
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
+            }}
+            totalPages={completedResult.itemCount || totalPages || 1}
+            modeText={
+              mode === 'pdf-to-word'
+                ? isEs
+                  ? 'Motor de Reconstrucción OpenXML Word'
+                  : 'OpenXML Word Reconstruction Engine'
+                : isEs
+                  ? 'Motor Vectorial Word a PDF'
+                  : 'Vector Word to PDF Engine'
+            }
+            toolName={
+              mode === 'pdf-to-word'
+                ? isEs
+                  ? 'PDF a Word'
+                  : 'PDF to Word'
+                : isEs
+                  ? 'Word a PDF'
+                  : 'Word to PDF'
+            }
+            badgeText={
+              mode === 'pdf-to-word'
+                ? isEs
+                  ? 'Conversión a Word Completada'
+                  : 'Word Conversion Completed'
+                : isEs
+                  ? 'Conversión a PDF Completada'
+                  : 'PDF Conversion Completed'
+            }
+            successTitle={
+              mode === 'pdf-to-word'
+                ? isEs
+                  ? '¡PDF Convertido a Word con Éxito!'
+                  : 'PDF Converted to Word Successfully!'
+                : isEs
+                  ? '¡Word Convertido a PDF con Éxito!'
+                  : 'Word Converted to PDF Successfully!'
+            }
+            downloadButtonText={
+              mode === 'pdf-to-word'
+                ? isEs
+                  ? 'Descargar Documento Word (.docx)'
+                  : 'Download Word Document (.docx)'
+                : isEs
+                  ? 'Descargar Documento PDF (.pdf)'
+                  : 'Download PDF Document (.pdf)'
+            }
+            shareSubject={
+              mode === 'pdf-to-word'
+                ? isEs
+                  ? 'documento Word'
+                  : 'Word document'
+                : isEs
+                  ? 'documento PDF'
+                  : 'PDF document'
+            }
+            fallbackUrl={
+              mode === 'pdf-to-word'
+                ? 'https://pdf-black.com/convertir/pdf-word'
+                : 'https://pdf-black.com/convertir/word-pdf'
+            }
+            metricBadge={
+              <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded font-bold font-mono">
+                {completedResult.itemCount || totalPages || 1}{' '}
+                {isEs ? 'págs procesadas' : 'pages processed'}
+              </span>
+            }
             onReset={handleRemoveFile}
           />
-        </motion.div>
+        </div>
       ) : (
         <>
           {/* SELECTOR DUAL DE MODO 2 EN 1 */}

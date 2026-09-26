@@ -34,7 +34,7 @@ import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
 
 import type {
@@ -729,6 +729,13 @@ export default function PdfMerger() {
             <span className="font-bold truncate max-w-[200px] sm:max-w-[300px]">
               {completedResult.filename}
             </span>
+            <button
+              onClick={handleReset}
+              className="p-1 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded transition-all cursor-pointer"
+              title={isEs ? 'Quitar archivo' : 'Remove file'}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
 
@@ -759,39 +766,34 @@ export default function PdfMerger() {
       </div>
 
       {completedResult ? (
-        /* ── PANTALLA DEDICADA DE ÉXITO Y DESCARGA UNIFICADA ── */
-        <motion.div
-          ref={successContainerRef}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-6 font-sans"
-        >
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSize}
-            outputFormat="pdf"
-            rawBlob={completedResult.rawBlob}
-            currentToolId="unir"
-            title={isEs ? '¡Documentos combinados con éxito!' : 'Documents merged successfully!'}
-            metrics={{
-              categoryTitle: isEs ? 'RESUMEN DE LA FUSIÓN' : 'MERGE SUMMARY',
-              categorySubtitle: isEs
-                ? `${completedResult.filesCount} archivos combinados en ${completedResult.totalPages} páginas`
-                : `${completedResult.filesCount} files merged into ${completedResult.totalPages} pages`,
-              badgeLabel: isEs ? 'Modo:' : 'Mode:',
-              badgeValue: isEs ? 'Vectorial Nativo' : 'Native Vector',
-              originalSize: `${completedResult.filesCount} ${isEs ? 'archivos' : 'files'}`,
-              compressedSize: `${completedResult.totalPages} ${isEs ? 'páginas' : 'pages'}`,
-              labelOriginal: isEs ? 'Documentos' : 'Documents',
-              labelCompressed: isEs ? 'Total Páginas' : 'Total Pages',
-              labelSaved: isEs ? 'Peso Final' : 'Final Size',
-              savedSpace: completedResult.fileSize,
-              reductionPercent: 100,
+        /* ── PANTALLA DEDICADA DE ÉXITO ULTRA-PREMIUM CON COMPARTIR EN WHATSAPP / TELEGRAM / DRIVE ── */
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSize,
+              rawBlob: completedResult.rawBlob,
             }}
+            totalPages={completedResult.totalPages}
+            modeText={isEs ? 'Motor Vectorial de Fusión' : 'Vector Merge Engine'}
+            toolName={isEs ? 'Unir PDF' : 'Merge PDF'}
+            badgeText={isEs ? 'Fusión Completada' : 'Merge Completed'}
+            successTitle={
+              isEs ? '¡Documentos Combinados con Éxito!' : 'Documents Merged Successfully!'
+            }
+            downloadButtonText={isEs ? 'Descargar PDF Combinado' : 'Download Merged PDF'}
+            shareSubject={isEs ? 'documento combinado' : 'merged document'}
+            fallbackUrl="https://pdf-black.com/organizar/unir"
+            metricBadge={
+              <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded font-bold font-mono">
+                {completedResult.filesCount} {isEs ? 'archivos' : 'files'} →{' '}
+                {completedResult.totalPages} {isEs ? 'págs' : 'pages'}
+              </span>
+            }
             onReset={handleReset}
           />
-        </motion.div>
+        </div>
       ) : files.length === 0 ? (
         /* DROPZONE SIN ARCHIVOS (MODELO REFERENCIA COMPRIMIR / ORGANIZAR) */
         <motion.div

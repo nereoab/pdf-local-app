@@ -24,8 +24,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
-import DownloadSuccessCard from '@/components/DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
+import FoliarSuccessView from '@/components/FoliarSuccessView';
+import { useUIStore } from '@/store/useUIStore';
 import Link from 'next/link';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -62,9 +62,12 @@ interface CompletedResult {
 export default function PdfBlackWhiteConverter() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
 
   const { globalFile, setGlobalFile } = useFileStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
+  const successContainerRef = useRef<HTMLDivElement>(null);
 
   // Inputs ocultos para cada slot
   const slotInputRef0 = useRef<HTMLInputElement>(null);
@@ -122,6 +125,22 @@ export default function PdfBlackWhiteConverter() {
   const [progressPercent, setProgressPercent] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [completedResult, setCompletedResult] = useState<CompletedResult | null>(null);
+
+  useEffect(() => {
+    if (completedResult) {
+      setHeaderHidden(true);
+      const timer = setTimeout(() => {
+        if (topHeaderRef.current) {
+          topHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    } else {
+      setHeaderHidden(false);
+    }
+  }, [completedResult, setHeaderHidden]);
 
   const workerRef = useRef<Worker | null>(null);
 
@@ -363,6 +382,7 @@ export default function PdfBlackWhiteConverter() {
     setGlobalFile(null);
     setProgressPercent(0);
     setProgressMsg('');
+    setHeaderHidden(false);
   };
 
   // Cambiar página activa en la vista previa
@@ -481,6 +501,7 @@ export default function PdfBlackWhiteConverter() {
     setCompletedResult(null);
     setProgressPercent(0);
     setProgressMsg('');
+    setHeaderHidden(false);
   };
 
   return (
@@ -532,11 +553,17 @@ export default function PdfBlackWhiteConverter() {
       {/* ═══════════════════════════════════════════════════════════════════════════
           HEADER DE HERRAMIENTA ELEGANTE (MATCH 1:1 CON EL ESTÁNDAR)
          ═══════════════════════════════════════════════════════════════════════════ */}
-      <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-zinc-800">
-        <div className="flex items-center gap-3">
+      {/* HEADER SUPERIOR UNIFICADO */}
+      <div
+        ref={topHeaderRef}
+        className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#0d0d12] border border-zinc-700 px-6 py-4 rounded-2xl mb-6 shadow-2xl font-mono relative overflow-hidden"
+      >
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-4">
           <Link
-            href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-mono transition-all shadow-sm cursor-pointer"
+            href="/convertir"
+            onClick={() => setHeaderHidden(false)}
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
           </Link>
@@ -544,11 +571,11 @@ export default function PdfBlackWhiteConverter() {
           <div className="flex flex-col">
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
               {isEs
-                ? '005 / CONVERSIÓN DE DOCUMENTOS A BLANCO Y NEGRO'
-                : '005 / BLACK & WHITE DOCUMENT CONVERSION'}
+                ? '006 / CONVERSIÓN DE DOCUMENTOS A BLANCO Y NEGRO'
+                : '006 / BLACK & WHITE DOCUMENT CONVERSION'}
             </span>
-            <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-white tracking-tight flex items-center gap-2 font-sans uppercase">
-              <Printer className="w-5 h-5 text-white flex-shrink-0" />
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+              <Printer className="w-6 h-6 text-white flex-shrink-0" />
               {mode === 'grayscale'
                 ? isEs
                   ? 'CONVERTIR PDF A ESCALA DE GRISES'
@@ -560,21 +587,23 @@ export default function PdfBlackWhiteConverter() {
           </div>
         </div>
 
-        {loadedSlots.length > 0 && !completedResult && (
+        {(loadedSlots.length > 0 || completedResult) && (
           <div className="flex items-center gap-3">
-            <div className="bg-zinc-900 border border-zinc-700 px-3.5 py-1.5 rounded-xl flex items-center gap-2 shadow-sm text-xs font-mono text-white">
+            <div className="bg-zinc-900 border border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-sm text-xs font-mono text-white">
               <FileText className="w-4 h-4 text-zinc-300" />
               <span className="truncate max-w-[180px] sm:max-w-[280px] font-semibold">
-                {activeFile?.name ||
-                  (isEs
-                    ? `${loadedSlots.length} archivos cargados`
-                    : `${loadedSlots.length} files loaded`)}
+                {completedResult
+                  ? completedResult.filename
+                  : activeFile?.name ||
+                    (isEs
+                      ? `${loadedSlots.length} archivos cargados`
+                      : `${loadedSlots.length} files loaded`)}
               </span>
             </div>
             <button
               type="button"
               onClick={handleClearAllSlots}
-              className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
+              className="p-2 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Limpiar archivos' : 'Clear files'}
             >
               <Trash2 className="w-4 h-4" />
@@ -584,120 +613,67 @@ export default function PdfBlackWhiteConverter() {
       </div>
 
       {completedResult ? (
-        /* ── PANTALLA DE ÉXITO DEDICADA ── */
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-4xl mx-auto my-3 sm:my-4 font-sans space-y-3.5"
-        >
-          {/* BANNER DE RESULTADO Y MÉTRICAS */}
-          <div className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] border border-zinc-600 rounded-2xl p-4 sm:p-5 shadow-2xl font-mono relative overflow-hidden">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 sm:p-3 bg-zinc-900 border border-[#E8DFCF]/40 rounded-xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-                  <Printer className="w-5 h-5 sm:w-6 sm:h-6 text-white drop-shadow-[0_0_10px_rgba(250,246,238,0.4)]" />
-                </div>
-                <div>
-                  <span className="text-[9px] text-[#E8DFCF]/90 uppercase tracking-wider block font-bold">
-                    {isEs ? 'RESULTADO DE LA TRANSFORMACIÓN' : 'TRANSFORMATION RESULT'}
-                  </span>
-                  <h3 className="text-base sm:text-lg font-extrabold text-white font-sans uppercase tracking-tight">
-                    {isEs ? 'DOCUMENTO MONOCROMÁTICO LISTO' : 'MONOCHROME DOCUMENT READY'}
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 bg-zinc-900 border border-[#E8DFCF]/30 px-3 py-1.5 rounded-xl shadow-sm">
-                <div className="text-right">
-                  <div className="text-[9px] text-zinc-400 font-bold">
-                    {isEs ? 'Estado del proceso' : 'Process status'}
-                  </div>
-                  <div className="text-[#FAF6EE] font-extrabold text-xs sm:text-sm flex items-center gap-1.5 font-sans">
-                    ✓ {isEs ? '100% Local en RAM' : '100% Local in RAM'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* MÉTRICAS DE LA CONVERSIÓN */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 pt-3.5 font-mono text-xs border-t border-zinc-800/80 mt-3.5">
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Formato de Salida' : 'Output Format'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5 uppercase">
-                  PDF Monocromo
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Tamaño Resultante' : 'Result Size'}
-                </span>
-                <span className="text-white font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  {completedResult.fileSizeFormatted}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Páginas Procesadas' : 'Processed Pages'}
-                </span>
-                <span className="text-[#FAF6EE] font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  <AnimatedNumber value={completedResult.pagesConverted || 1} />{' '}
-                  {isEs ? 'págs' : 'pages'}
-                </span>
-              </div>
-              <div className="bg-[#121217] p-2.5 sm:p-3 rounded-xl border border-zinc-700/80 flex flex-col shadow-inner">
-                <span className="text-zinc-400 text-[9px] uppercase font-bold">
-                  {isEs ? 'Ahorro de Tinta' : 'Ink Saved'}
-                </span>
-                <span className="text-emerald-400 font-bold text-xs sm:text-sm font-mono mt-0.5">
-                  100% Color
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* TARJETA DE DESCARGA ÉXITO CON ENCADENAMIENTO DE HERRAMIENTAS */}
-          <DownloadSuccessCard
-            downloadUrl={completedResult.downloadUrl}
-            filename={completedResult.filename}
-            fileSize={completedResult.fileSizeFormatted}
-            outputFormat="pdf"
-            rawBlob={completedResult.rawBlob}
-            currentToolId="pdf-blanco-negro"
-            onReset={handleReset}
-            metrics={{
-              originalSize: formatFileSize(completedResult.originalSize),
-              compressedSize: formatFileSize(completedResult.convertedSize),
-              savedSpace: formatFileSize(
-                Math.max(0, completedResult.originalSize - completedResult.convertedSize),
-              ),
-              reductionPercent:
-                completedResult.originalSize > 0
-                  ? Math.max(
-                      0,
-                      Math.round(
-                        ((completedResult.originalSize - completedResult.convertedSize) /
-                          completedResult.originalSize) *
-                          100,
-                      ),
-                    )
-                  : 0,
-              badgeLabel: isEs ? 'MODO' : 'MODE',
-              badgeValue:
-                mode === 'blackwhite'
-                  ? isEs
-                    ? 'B&W Puro'
-                    : 'Pure B&W'
-                  : isEs
-                    ? 'Grayscale'
-                    : 'Grayscale',
-              labelOriginal: isEs ? 'Tamaño Original' : 'Original Size',
-              labelCompressed: isEs ? 'Tamaño Monocromo' : 'Monochrome Size',
-              labelSaved: isEs ? 'Espacio Ahorrado' : 'Saved Space',
+        <div ref={successContainerRef} className="w-full">
+          <FoliarSuccessView
+            completedResult={{
+              downloadUrl: completedResult.downloadUrl,
+              filename: completedResult.filename,
+              fileSize: completedResult.fileSizeFormatted,
+              rawBlob: completedResult.rawBlob,
             }}
+            totalPages={completedResult.totalPages || activeSlot?.totalPages || 1}
+            modeText={
+              mode === 'grayscale'
+                ? isEs
+                  ? 'Motor Monocromático a Escala de Grises'
+                  : 'Grayscale Monochrome Engine'
+                : isEs
+                  ? 'Motor de Umbralización B&W Puro'
+                  : 'Pure B&W Threshold Engine'
+            }
+            toolName={
+              mode === 'grayscale'
+                ? isEs
+                  ? 'PDF a Escala de Grises'
+                  : 'PDF to Grayscale'
+                : isEs
+                  ? 'PDF a Blanco y Negro'
+                  : 'PDF to Black & White'
+            }
+            badgeText={
+              mode === 'grayscale'
+                ? isEs
+                  ? 'Conversión a Grises Completada'
+                  : 'Grayscale Conversion Completed'
+                : isEs
+                  ? 'Conversión Monocromática Completada'
+                  : 'Monochrome Conversion Completed'
+            }
+            successTitle={
+              mode === 'grayscale'
+                ? isEs
+                  ? '¡PDF en Escala de Grises Listo!'
+                  : 'Grayscale PDF Ready!'
+                : isEs
+                  ? '¡PDF en Blanco y Negro Listo!'
+                  : 'Black & White PDF Ready!'
+            }
+            downloadButtonText={
+              isEs
+                ? 'Descargar Documento Monocromático (.pdf)'
+                : 'Download Monochrome Document (.pdf)'
+            }
+            shareSubject={isEs ? 'documento PDF monocromático' : 'monochrome PDF document'}
+            fallbackUrl="https://pdf-black.com/convertir/pdf-blanco-negro"
+            metricBadge={
+              <span className="px-2 py-0.5 bg-zinc-500/20 border border-zinc-500/40 text-zinc-300 rounded font-bold font-mono">
+                {completedResult.pagesConverted || completedResult.totalPages || 1}{' '}
+                {isEs ? 'pág(s) procesadas' : 'processed page(s)'}
+              </span>
+            }
+            onReset={handleClearAllSlots}
           />
-        </motion.div>
+        </div>
       ) : (
         <>
           {/* ═══════════════════════════════════════════════════════════════════════════

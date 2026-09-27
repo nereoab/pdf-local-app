@@ -30,6 +30,7 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
   const [loading, setLoading] = useState(true);
   const [docData, setDocData] = useState<ShareMetadata | null>(null);
   const [downloaded, setDownloaded] = useState(false);
+  const [syncStatusText, setSyncStatusText] = useState('Cargando documento seguro de PDFBlack...');
 
   // Estados para el visor de PDF
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -40,14 +41,37 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
 
   useEffect(() => {
     let isMounted = true;
-    (async () => {
-      setLoading(true);
-      const data = await getShareDetails(shareId);
-      if (isMounted) {
-        setDocData(data);
+    let attempts = 0;
+    const maxAttempts = 15; // 15 intentos * 1.5s = ~22s de tolerancia de subida background
+
+    const checkDocument = async () => {
+      try {
+        const data = await getShareDetails(shareId);
+        if (data && isMounted) {
+          setDocData(data);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Silencioso para reintentar
+      }
+
+      attempts++;
+      if (attempts < maxAttempts && isMounted) {
+        if (attempts > 1) {
+          setSyncStatusText(
+            'Sincronizando archivo en la nube segura de PDFBlack... Estará listo en un momento.',
+          );
+        }
+        setTimeout(checkDocument, 1500);
+      } else if (isMounted) {
+        setDocData(null);
         setLoading(false);
       }
-    })();
+    };
+
+    checkDocument();
+
     return () => {
       isMounted = false;
     };
@@ -139,13 +163,11 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#08080A] text-zinc-200 flex flex-col items-center justify-center p-4 font-sans">
+      <div className="min-h-screen bg-[#08080A] text-zinc-200 flex flex-col items-center justify-center p-4 font-sans text-center">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FAF6EE]/20 to-[#E8DFCF]/5 border border-[#E8DFCF]/30 flex items-center justify-center animate-spin">
           <Sparkles className="w-6 h-6 text-[#FAF6EE]" />
         </div>
-        <p className="mt-4 text-xs font-mono text-zinc-400">
-          Cargando documento seguro de PDFBlack...
-        </p>
+        <p className="mt-4 text-xs font-mono text-zinc-400 max-w-sm">{syncStatusText}</p>
       </div>
     );
   }

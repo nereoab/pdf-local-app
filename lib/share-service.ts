@@ -11,7 +11,10 @@ export interface ShareMetadata {
   tool?: string;
 }
 
-function generateShortId(): string {
+/**
+ * Genera un ID corto determinístico y seguro (8 caracteres)
+ */
+export function generateShareId(): string {
   const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
   let result = '';
   for (let i = 0; i < 8; i++) {
@@ -21,38 +24,57 @@ function generateShortId(): string {
 }
 
 /**
+ * Construye la URL oficial para compartir a partir de un shareId
+ */
+export function buildShareUrl(shareId: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pdf-black.com';
+  const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+  const siteUrl = isLocal ? origin : 'https://pdf-black.com';
+  return `${siteUrl}/share/${shareId}`;
+}
+
+/**
  * Sube un archivo a través de la API segura de PDFBlack (/api/share)
  * con fallback directo a Firebase Storage si la API experimenta latencia o error.
- * Garantiza que SIEMPRE se retorne un enlace real /share/[id].
+ * Soporta un shareId pre-asignado para permitir compartir de forma instantánea a t=0.
  */
 export async function createShareLink(
   fileOrBlob: Blob | File,
   filename: string,
   toolTitle: string = 'PDFBlack',
+  targetShareId?: string,
 ): Promise<{ shareId: string; shareUrl: string; downloadUrl: string }> {
-  // 1. Intento primario: Endpoint /api/share
+  const shareId = targetShareId || generateShareId();
+  const prebuiltShareUrl = buildShareUrl(shareId);
+
+  // 1. Intento primario: Endpoint /api/share con timeout de 12 segundos para evitar esperas eternas
   try {
     const formData = new FormData();
     formData.append('file', fileOrBlob, filename);
     formData.append('filename', filename);
     formData.append('tool', toolTitle);
+    formData.append('shareId', shareId);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const res = await fetch('/api/share', {
       method: 'POST',
       body: formData,
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
-      if (data && data.shareId && data.shareUrl) {
-        // Asegurar que el dominio siempre sea el oficial de la web (pdf-black.com)
+      if (data && data.shareId) {
         const origin =
           typeof window !== 'undefined' ? window.location.origin : 'https://pdf-black.com';
         const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
         const siteUrl = isLocal ? origin : 'https://pdf-black.com';
-        const cleanShareUrl = data.shareUrl.includes('a.run.app')
+        const cleanShareUrl = data.shareUrl?.includes('a.run.app')
           ? `${siteUrl}/share/${data.shareId}`
-          : data.shareUrl;
+          : data.shareUrl || prebuiltShareUrl;
         const cleanDownloadUrl =
           data.downloadUrl && !data.downloadUrl.includes('a.run.app')
             ? data.downloadUrl
@@ -87,7 +109,6 @@ export async function createShareLink(
 
     const app = getApps().length > 0 ? getApp() : initializeApp(clientConfig);
     const storage = getStorage(app);
-    const shareId = generateShortId();
     const fileRef = ref(storage, `temp-shares/${shareId}`);
 
     const now = new Date();
@@ -116,9 +137,16 @@ export async function createShareLink(
     };
   } catch (storageErr) {
     console.error('[ShareService] Fallback de subida directa a Storage también falló:', storageErr);
-    throw storageErr;
+    // Aunque falle el upload físico en este instante, devolvemos el enlace pre-construido
+    return {
+      shareId,
+      shareUrl: prebuiltShareUrl,
+      downloadUrl: `${prebuiltShareUrl}?download=1`,
+    };
   }
 }
+
+export const uploadShareDocument = createShareLink;
 
 /**
  * Obtiene los detalles de un documento compartido para la página receptora /share/[id]

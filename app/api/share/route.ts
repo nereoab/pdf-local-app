@@ -47,7 +47,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No se envió ningún archivo' }, { status: 400 });
     }
 
-    const shareId = generateShortId();
+    const rawShareId = (formData.get('shareId') as string)?.trim().toLowerCase();
+    const shareId =
+      rawShareId && /^[a-z0-9]{6,16}$/.test(rawShareId) ? rawShareId : generateShortId();
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const fileRef = ref(storage, `temp-shares/${shareId}`);
 

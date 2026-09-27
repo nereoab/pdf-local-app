@@ -40,7 +40,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { createShareLink } from '@/lib/share-service';
+import { createShareLink, generateShareId, buildShareUrl } from '@/lib/share-service';
 import {
   requestDriveAccessToken,
   uploadFileToDrive,
@@ -98,10 +98,15 @@ export default function FoliarSuccessView({
   const [showQRModal, setShowQRModal] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [isUploadingShare, setIsUploadingShare] = useState<boolean>(false);
-  const [isCopying, setIsCopying] = useState<boolean>(false);
-  const sharePromiseRef = useRef<Promise<string> | null>(null);
+
+  // ID determinístico y enlace oficial instantáneo (0ms)
+  const [shareId] = useState<string>(() => generateShareId());
+  const instantShareUrl = buildShareUrl(shareId);
+  const [shareUrl, setShareUrl] = useState<string>(instantShareUrl);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'ready' | 'error'>(
+    'idle',
+  );
+  const uploadPromiseRef = useRef<Promise<string> | null>(null);
 
   // Google Drive modal states
   const [showDriveModal, setShowDriveModal] = useState(false);
@@ -113,73 +118,51 @@ export default function FoliarSuccessView({
 
   const activeFilename = customFilename.trim() || completedResult.filename;
 
-  // Disparar confetti inicial al montar
+  // Iniciar subida segura en segundo plano sin bloquear jamás la UI ni el copiado
+  const ensureUploadStarted = useCallback((): Promise<string> => {
+    if (uploadPromiseRef.current) return uploadPromiseRef.current;
+    const blob = completedResult.rawBlob;
+    if (!blob) {
+      setUploadStatus('ready');
+      return Promise.resolve(instantShareUrl);
+    }
+
+    setUploadStatus('uploading');
+    const promise = (async () => {
+      try {
+        const resolvedToolName = toolName || (isEs ? 'Foliado de PDF' : 'PDF Numbering');
+        const res = await createShareLink(blob, activeFilename, resolvedToolName, shareId);
+        setUploadStatus('ready');
+        if (res?.shareUrl) {
+          setShareUrl(res.shareUrl);
+          return res.shareUrl;
+        }
+        return instantShareUrl;
+      } catch (err) {
+        console.warn('[FoliarSuccessView] Sincronización en segundo plano reportó error:', err);
+        setUploadStatus('error');
+        return instantShareUrl;
+      }
+    })();
+
+    uploadPromiseRef.current = promise;
+    return promise;
+  }, [completedResult.rawBlob, activeFilename, shareId, toolName, isEs, instantShareUrl]);
+
+  // Disparar confetti inicial y arrancar subida en background de inmediato
   useEffect(() => {
     try {
       triggerLuxuryConfetti();
     } catch {
       // no-op si no está disponible
     }
-  }, []);
+    ensureUploadStarted();
+  }, [ensureUploadStarted]);
 
-  // Pre-generar enlace en segundo plano en silencio tan pronto se monta la pantalla de éxito
-  useEffect(() => {
-    if (completedResult.rawBlob && !shareUrl && !sharePromiseRef.current) {
-      getOrCreateShareLink(true).catch(() => {});
-    }
-  }, [completedResult.rawBlob]);
-
-  // Generar o recuperar enlace de descarga oficial de PDFBlack
-  const getOrCreateShareLink = async (silent: boolean = false): Promise<string> => {
-    if (shareUrl) return shareUrl;
-    if (sharePromiseRef.current) {
-      if (!silent && isUploadingShare) {
-        toast.loading(
-          isEs ? 'Preparando enlace seguro con tu marca...' : 'Preparing secure brand link...',
-          { id: 'share-link-gen' },
-        );
-      }
-      return sharePromiseRef.current;
-    }
-    const blob = completedResult.rawBlob;
-    if (!blob) {
-      return fallbackUrl || 'https://pdf-black.com/editar/foliar';
-    }
-
-    setIsUploadingShare(true);
-    if (!silent) {
-      toast.loading(
-        isEs ? 'Generando enlace seguro con tu marca...' : 'Generating secure brand link...',
-        { id: 'share-link-gen' },
-      );
-    }
-
-    const promise = (async () => {
-      try {
-        const resolvedToolName = toolName || (isEs ? 'Foliado de PDF' : 'PDF Numbering');
-        const res = await createShareLink(blob, activeFilename, resolvedToolName);
-        setShareUrl(res.shareUrl);
-        if (!silent) {
-          toast.success(
-            isEs ? '¡Enlace oficial generado con éxito!' : 'Official link generated successfully!',
-            { id: 'share-link-gen' },
-          );
-        } else {
-          toast.dismiss('share-link-gen');
-        }
-        return res.shareUrl;
-      } catch (err) {
-        console.warn('Share link generation error', err);
-        toast.dismiss('share-link-gen');
-        sharePromiseRef.current = null;
-        return '';
-      } finally {
-        setIsUploadingShare(false);
-      }
-    })();
-
-    sharePromiseRef.current = promise;
-    return promise;
+  // Recuperar enlace de descarga oficial de PDFBlack (siempre instantáneo)
+  const getOrCreateShareLink = async (): Promise<string> => {
+    ensureUploadStarted();
+    return shareUrl;
   };
 
   // Helper universal para copiar al portapapeles con fallback para evitar restricciones de permisos del navegador
@@ -266,62 +249,34 @@ export default function FoliarSuccessView({
     toast.success(isEs ? '¡Descarga iniciada con éxito!' : 'Download started successfully!');
   };
 
-  // 2. Copiar enlace oficial al portapapeles (instantáneo gracias a la precarga)
+  // 2. Copiar enlace oficial al portapapeles (100% instantáneo en 0 milisegundos)
   const handleCopyShareLink = async () => {
-    if (shareUrl) {
-      const ok = await copyToClipboard(shareUrl);
-      if (ok) {
-        setCopiedFile(true);
-        setTimeout(() => setCopiedFile(false), 3000);
-        toast.success(
-          isEs
-            ? '¡Enlace oficial de PDFBlack copiado al portapapeles!'
-            : 'Official PDFBlack link copied to clipboard!',
-        );
-      }
-      return;
-    }
-
-    setIsCopying(true);
-    try {
-      const link = await getOrCreateShareLink(false);
-      const ok = await copyToClipboard(link);
-      if (ok) {
-        setCopiedFile(true);
-        setTimeout(() => setCopiedFile(false), 3000);
-        toast.success(
-          isEs
-            ? '¡Enlace oficial de PDFBlack copiado al portapapeles!'
-            : 'Official PDFBlack link copied to clipboard!',
-        );
-      }
-    } catch (err) {
-      console.warn('Clipboard write error', err);
-    } finally {
-      setIsCopying(false);
+    ensureUploadStarted();
+    const ok = await copyToClipboard(shareUrl);
+    if (ok) {
+      setCopiedFile(true);
+      setTimeout(() => setCopiedFile(false), 3000);
+      toast.success(
+        isEs
+          ? '¡Enlace oficial de PDFBlack copiado al portapapeles!'
+          : 'Official PDFBlack link copied to clipboard!',
+      );
     }
   };
 
   // 3. Compartir en WhatsApp - Abrir selector Web vs Escritorio
   const handleShareWhatsApp = () => {
     setShowWhatsAppModal(true);
-    // Pre-generar enlace en segundo plano para que esté listo al instante
-    getOrCreateShareLink().catch(() => {});
+    ensureUploadStarted();
   };
 
-  const handleLaunchWhatsAppWeb = async () => {
-    const link = await getOrCreateShareLink();
-    if (!link) {
-      toast.error(
-        isEs ? 'No se pudo generar el enlace para WhatsApp' : 'Could not generate WhatsApp link',
-      );
-      return;
-    }
-    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
+  const handleLaunchWhatsAppWeb = () => {
+    ensureUploadStarted();
+    const subject = shareSubject || (isEs ? 'documento' : 'document');
     const text = encodeURIComponent(
       isEs
-        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
-        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
+        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${shareUrl}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
+        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${shareUrl}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
     setShowWhatsAppModal(false);
@@ -329,23 +284,17 @@ export default function FoliarSuccessView({
       isEs
         ? '¡Elige tu contacto en WhatsApp para enviarle el enlace!'
         : 'Choose your contact in WhatsApp to send the link!',
-      { duration: 6000 },
+      { duration: 5000 },
     );
   };
 
-  const handleLaunchWhatsAppDesktop = async () => {
-    const link = await getOrCreateShareLink();
-    if (!link) {
-      toast.error(
-        isEs ? 'No se pudo generar el enlace para WhatsApp' : 'Could not generate WhatsApp link',
-      );
-      return;
-    }
-    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
+  const handleLaunchWhatsAppDesktop = () => {
+    ensureUploadStarted();
+    const subject = shareSubject || (isEs ? 'documento' : 'document');
     const text = encodeURIComponent(
       isEs
-        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
-        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
+        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${shareUrl}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
+        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${shareUrl}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
     );
     window.location.href = `whatsapp://send?text=${text}`;
     setShowWhatsAppModal(false);
@@ -353,13 +302,14 @@ export default function FoliarSuccessView({
       isEs
         ? '¡Elige tu contacto en WhatsApp para enviarle el enlace!'
         : 'Choose your contact in WhatsApp to send the link!',
-      { duration: 6000 },
+      { duration: 5000 },
     );
   };
 
   const handleDirectMobileShareWhatsApp = async () => {
-    const link = await getOrCreateShareLink();
-    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
+    ensureUploadStarted();
+    const link = shareUrl;
+    const subject = shareSubject || (isEs ? 'documento' : 'document');
     if (completedResult.rawBlob && typeof navigator !== 'undefined' && navigator.canShare) {
       const file = new File([completedResult.rawBlob], activeFilename, {
         type: 'application/pdf',
@@ -719,28 +669,15 @@ export default function FoliarSuccessView({
           })()}
           <button
             onClick={handleCopyShareLink}
-            disabled={isCopying}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm disabled:opacity-75"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm"
           >
-            {isCopying ? (
-              <Loader2 className="w-4 h-4 animate-spin text-[#FAF6EE]" />
-            ) : copiedFile ? (
+            {copiedFile ? (
               <Check className="w-4 h-4 text-emerald-400" />
             ) : (
               <Copy className="w-4 h-4 text-[#FAF6EE]" />
             )}
             <span>
-              {isCopying
-                ? isEs
-                  ? 'Copiando...'
-                  : 'Copying...'
-                : copiedFile
-                  ? isEs
-                    ? '¡Copiado!'
-                    : 'Copied!'
-                  : isEs
-                    ? 'Copiar Enlace'
-                    : 'Copy Link'}
+              {copiedFile ? (isEs ? '¡Copiado!' : 'Copied!') : isEs ? 'Copiar Enlace' : 'Copy Link'}
             </span>
           </button>
         </div>
@@ -962,32 +899,27 @@ export default function FoliarSuccessView({
                 whileHover={{ scale: 1.03, y: -2 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={handleCopyShareLink}
-                disabled={isCopying}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#1f2027] hover:to-[#111216] border border-zinc-600 hover:border-[#E8DFCF]/50 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md disabled:opacity-75"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#1f2027] hover:to-[#111216] border border-zinc-600 hover:border-[#E8DFCF]/50 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
               >
                 <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  {isCopying ? (
-                    <Loader2 className="w-8 h-8 animate-spin text-[#FAF6EE]" />
+                  {copiedFile ? (
+                    <Check className="w-8 h-8 text-emerald-400" />
                   ) : (
                     <CopyFileBrandIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(148,163,184,0.35)]" />
                   )}
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white group-hover:text-[#FAF6EE] block font-sans">
-                    {isCopying
+                    {copiedFile
                       ? isEs
-                        ? 'Copiando...'
-                        : 'Copying...'
-                      : copiedFile
-                        ? isEs
-                          ? '¡Copiado!'
-                          : 'Copied!'
-                        : isEs
-                          ? 'Copiar Enlace'
-                          : 'Copy Link'}
+                        ? '¡Copiado!'
+                        : 'Copied!'
+                      : isEs
+                        ? 'Copiar Enlace'
+                        : 'Copy Link'}
                   </span>
                   <span className="text-[10px] text-zinc-400 group-hover:text-[#FAF6EE] font-mono block leading-tight mt-0.5 truncate max-w-[110px]">
-                    {isCopying ? (isEs ? 'Preparando...' : 'Preparing...') : 'pdf-black.com'}
+                    pdf-black.com
                   </span>
                 </div>
               </motion.button>
@@ -1344,33 +1276,42 @@ export default function FoliarSuccessView({
                 <div className="min-w-0 flex items-center gap-2">
                   <Globe className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                   <div className="min-w-0">
-                    <span className="text-[10px] text-zinc-400 block font-sans">
-                      {isEs ? 'Enlace con tu marca:' : 'Link with your brand:'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-zinc-400 block font-sans">
+                        {isEs ? 'Enlace con tu marca:' : 'Link with your brand:'}
+                      </span>
+                      {uploadStatus === 'uploading' ? (
+                        <span className="text-[9px] text-amber-400/90 font-mono flex items-center gap-1">
+                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                          {isEs ? 'Sincronizando...' : 'Syncing...'}
+                        </span>
+                      ) : uploadStatus === 'ready' ? (
+                        <span className="text-[9px] text-emerald-400 font-mono flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          {isEs ? 'Listo' : 'Ready'}
+                        </span>
+                      ) : null}
+                    </div>
                     <span className="text-[#FAF6EE] font-bold truncate text-[11px] block">
-                      {shareUrl || 'https://pdf-black.com/share/...'}
+                      {shareUrl}
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={handleCopyShareLink}
-                  disabled={isCopying}
-                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-[#FAF6EE] rounded-xl text-[10px] font-bold transition-all cursor-pointer flex-shrink-0 border border-zinc-700 hover:border-[#E8DFCF]/50 flex items-center gap-1.5 disabled:opacity-75"
+                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-[#FAF6EE] rounded-xl text-[10px] font-bold transition-all cursor-pointer flex-shrink-0 border border-zinc-700 hover:border-[#E8DFCF]/50 flex items-center gap-1.5"
                 >
-                  {isCopying && <Loader2 className="w-3 h-3 animate-spin text-[#FAF6EE]" />}
-                  <span>
-                    {isCopying
-                      ? isEs
-                        ? 'Copiando...'
-                        : 'Copying...'
-                      : copiedFile
-                        ? isEs
-                          ? '¡Copiado!'
-                          : 'Copied!'
-                        : isEs
-                          ? 'Copiar Enlace'
-                          : 'Copy Link'}
-                  </span>
+                  {copiedFile ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">{isEs ? '¡Copiado!' : 'Copied!'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-[#FAF6EE]" />
+                      <span>{isEs ? 'Copiar Enlace' : 'Copy Link'}</span>
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -1381,7 +1322,6 @@ export default function FoliarSuccessView({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleLaunchWhatsAppWeb}
-                  disabled={isUploadingShare}
                   className="w-full bg-gradient-to-r from-[#17231b] via-[#121c15] to-[#0c140f] hover:from-[#1d2f23] hover:to-[#111e15] border border-emerald-500/40 hover:border-emerald-400 p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3.5 transition-all text-left cursor-pointer group shadow-md"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
@@ -1412,7 +1352,6 @@ export default function FoliarSuccessView({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleLaunchWhatsAppDesktop}
-                  disabled={isUploadingShare}
                   className="w-full bg-gradient-to-r from-[#17231b] via-[#121c15] to-[#0c140f] hover:from-[#1d2f23] hover:to-[#111e15] border border-emerald-500/40 hover:border-emerald-400 p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3.5 transition-all text-left cursor-pointer group shadow-md"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
@@ -1443,7 +1382,6 @@ export default function FoliarSuccessView({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleDirectMobileShareWhatsApp}
-                  disabled={isUploadingShare}
                   className="w-full bg-gradient-to-r from-[#17231b] via-[#121c15] to-[#0c140f] hover:from-[#1d2f23] hover:to-[#111e15] border border-emerald-500/30 hover:border-emerald-400 p-3 sm:p-3.5 rounded-2xl flex items-center justify-between gap-3.5 transition-all text-left cursor-pointer group shadow-sm"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Loader2,
   ShieldCheck,
@@ -17,6 +18,7 @@ import {
   Stethoscope,
   Briefcase,
   GraduationCap,
+  Link2,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -258,6 +260,40 @@ export default function DividirPdfPage() {
       <div className="w-full max-w-7xl">
         {/* COMPONENTE PRINCIPAL DE DIVISIÓN */}
         <PdfSplitter />
+
+        {/* ── CALLOUT FLUJO DE TRABAJO: DIVIDIR + UNIR (INYECCIÓN DE AUTORIDAD SEO) ── */}
+        <section
+          aria-label={
+            isEs
+              ? 'Flujo de trabajo recomendado: unir páginas extraídas'
+              : 'Recommended workflow: merge extracted pages'
+          }
+          className="w-full mt-10 bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+              <Link2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white font-sans">
+                {isEs
+                  ? '¿Quieres reorganizar o juntar de nuevo tus páginas extraídas?'
+                  : 'Need to combine or reorder your extracted pages?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                {isEs
+                  ? 'Utiliza nuestra herramienta de Unir PDF para fusionar múltiples archivos, añadir un Índice Corporativo automático y ordenar páginas sin límites.'
+                  : 'Use our Merge PDF tool to consolidate multiple files, generate an automatic Table of Contents, and reorder pages with no limits.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href={isEs ? '/organizar/unir' : '/en/merge-pdf'}
+            className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+          >
+            {isEs ? 'Unir Archivos PDF →' : 'Merge PDF Files →'}
+          </Link>
+        </section>
 
         {/* ── SECCIÓN DE PILARES DE INGENIERÍA DE DIVISIÓN ── */}
         <section className="w-full mt-16 pt-12 border-t border-zinc-800">

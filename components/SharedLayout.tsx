@@ -341,7 +341,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   aria-label={isEs ? 'Abrir formulario de registro' : 'Open sign up form'}
                 >
                   <User className="w-3.5 h-3.5 text-black" aria-hidden="true" />
-                  {isEs ? 'REGISTRARSE' : 'SIGN UP'}
+                  {isEs ? 'REGISTRO' : 'SIGN UP'}
                 </motion.button>
               )}
             </div>

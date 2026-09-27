@@ -316,7 +316,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
-              aria-label={isEs ? 'Iniciar sesión o registrarse' : 'Log in or sign up'}
+              aria-label={isEs ? 'Iniciar sesión o registro' : 'Log in or sign up'}
             >
               {/* Header */}
               <div className="bg-zinc-900/80 border-b border-white/10 p-6 flex justify-between items-center">
@@ -435,7 +435,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       aria-selected={activeTab === 'register'}
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      {isEs ? 'REGISTRARSE' : 'SIGN UP'}
+                      {isEs ? 'REGISTRO' : 'SIGN UP'}
                     </button>
                     <button
                       onClick={() => {

@@ -177,6 +177,95 @@ export const ORGANIZAR_SOLUTIONS_ES: Record<string, LongTailSolution> = {
     enEquivalentSlug: 'combine-thesis-chapters-pdf',
   },
 
+  'unir-pdf-pesados-sin-limite': {
+    slug: 'unir-pdf-pesados-sin-limite',
+    category: 'organizar',
+    toolKey: 'unir',
+    badge: 'Sin Límites de Tamaño ni Archivos',
+    h1: 'Unir PDFs Pesados y Grandes sin Límite de Tamaño — 100% Gratis y Local',
+    subtitle:
+      'Combina archivos PDF de 100MB, 200MB o más de 500MB en un solo documento continuo. Sin esperas de subida, sin colas de procesamiento y sin registros de pago.',
+    metaTitle: 'Unir PDFs Pesados y Grandes sin Límite Online Gratis | PDFBlack',
+    metaDescription:
+      'Une múltiples archivos PDF pesados y grandes sin límite de tamaño ni de archivos. 100% local en tu navegador con tecnología Zero-Copy, sin subir a la nube.',
+    keywords: [
+      'unir pdf online gratis sin limite',
+      'unir pdfs pesados',
+      'unir pdf grandes gratis',
+      'combinar archivos pdf pesados sin limite',
+      'juntar pdf de mas de 100mb',
+      'unir pdf sin limite de tamano',
+    ],
+    parentPath: '/organizar/unir',
+    parentName: 'Unir PDF',
+    specifications: [
+      {
+        feature: 'Límite de tamaño por archivo',
+        value: 'Ilimitado (Sujeto solo a tu RAM)',
+        note: 'Sin topes artificiales de 15MB o 50MB',
+      },
+      {
+        feature: 'Cantidad máxima de archivos',
+        value: 'Sin límite',
+        note: 'Soporta decenas de PDFs simultáneos',
+      },
+      {
+        feature: 'Velocidad de procesamiento',
+        value: 'Instantánea local (Zero-Copy)',
+        note: 'No esperas tiempos de subida a servidores',
+      },
+      {
+        feature: 'Privacidad y Seguridad',
+        value: '100% Memoria RAM local',
+        note: 'Cumple con RGPD e HIPAA estricto',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Carga tus archivos pesados',
+        desc: 'Arrastra tus documentos PDF sin importar cuántos megabytes pesen.',
+      },
+      {
+        step: 2,
+        title: 'Ordena las miniaturas',
+        desc: 'Reordena la secuencia de lectura arrastrando las tarjetas con el ratón.',
+      },
+      {
+        step: 3,
+        title: 'Fusión instantánea y descarga',
+        desc: 'Pulsa Unir Archivos PDF para compilar y guardar el documento en tu disco al instante.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Sin Bloqueos ni Pasarelas de Pago',
+        desc: 'Ninguna ventana emergente te pedirá tarjeta ni suscripción para descargar archivos grandes.',
+      },
+      {
+        title: 'Ahorro de Ancho de Banda',
+        desc: 'Al procesarse dentro de tu navegador, no gastas datos de subida ni esperas servidores lentos.',
+      },
+    ],
+    faqs: [
+      {
+        q: '¿Por qué otras plataformas ponen límites de 15MB o 50MB para unir PDFs?',
+        a: 'Los servicios convencionales procesan en servidores centrales caros que colapsan con archivos pesados. PDFBlack utiliza Web Workers en tu navegador, eliminando la necesidad de servidores y permitiendo unir documentos enormes gratis.',
+      },
+      {
+        q: '¿Qué pasa si mi archivo combinado es demasiado grande para enviarlo por correo?',
+        a: 'Una vez unido tu documento en PDFBlack, puedes reducir su peso en un 70% a 90% con nuestra herramienta hermana Comprimir PDF.',
+      },
+    ],
+    relatedSolutions: [
+      'unir-pdf-para-licitaciones-y-tramites',
+      'unir-capitulos-tesis-pdf',
+      'comprimir-pdf-a-1mb',
+    ],
+    esEquivalentSlug: 'unir-pdf-pesados-sin-limite',
+    enEquivalentSlug: 'merge-large-pdf-files-without-limits',
+  },
+
   'extraer-paginas-pdf-separadas': {
     slug: 'extraer-paginas-pdf-separadas',
     category: 'organizar',
@@ -883,6 +972,95 @@ export const ORGANIZAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     enEquivalentSlug: 'combine-thesis-chapters-pdf',
   },
 
+  'merge-large-pdf-files-without-limits': {
+    slug: 'merge-large-pdf-files-without-limits',
+    category: 'organizar',
+    toolKey: 'unir',
+    badge: 'No File Size Limits',
+    h1: 'Merge Large PDF Files Without Size Limits — Free & 100% In-Browser',
+    subtitle:
+      'Combine 100MB, 200MB, or 500MB+ documents into one orderly PDF. No upload wait times, zero queue delays, and no paid subscriptions.',
+    metaTitle: 'Merge Large PDF Files Without Limits Online Free | PDFBlack',
+    metaDescription:
+      'Combine massive and multi-gigabyte PDF files with no size limits or account requirements. 100% private in-browser local zero-copy engine.',
+    keywords: [
+      'merge large pdf files without limits',
+      'merge heavy pdf files online',
+      'combine large pdf files free',
+      'join large pdf without signup',
+      'merge pdf over 100mb',
+      'unlimited pdf merger online',
+    ],
+    parentPath: '/en/merge-pdf',
+    parentName: 'Merge PDF',
+    specifications: [
+      {
+        feature: 'Per-File Size Limit',
+        value: 'Unlimited (Constrained only by device RAM)',
+        note: 'No artificial 15MB or 50MB caps',
+      },
+      {
+        feature: 'Maximum File Count',
+        value: 'Unlimited',
+        note: 'Easily batches dozens of separate files',
+      },
+      {
+        feature: 'Processing Speed',
+        value: 'Instant Local (Zero-Copy)',
+        note: 'Zero network upload or download latency',
+      },
+      {
+        feature: 'Privacy & Security',
+        value: '100% Client-Side RAM',
+        note: 'Strict GDPR & HIPAA compliance',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Add your large PDF files',
+        desc: 'Drag and drop your multi-megabyte documents into the workspace.',
+      },
+      {
+        step: 2,
+        title: 'Organize page sequence',
+        desc: 'Reorder documents visually by dragging file cards into reading order.',
+      },
+      {
+        step: 3,
+        title: 'Instant fusion & save',
+        desc: 'Click Merge PDF Files to compile and save your unified document locally in seconds.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'No Paywalls or Credit Cards',
+        desc: 'Never get interrupted by subscription prompts when handling heavy documents.',
+      },
+      {
+        title: 'Bandwidth Conservation',
+        desc: 'Because execution occurs within your browser, you save gigabytes of mobile data.',
+      },
+    ],
+    faqs: [
+      {
+        q: 'Why do other online platforms cap PDF merging at 15MB to 50MB?',
+        a: 'Traditional services rely on costly cloud servers that crash with heavy files. PDFBlack processes files directly in your browser memory via Web Workers, eliminating server bottlenecks.',
+      },
+      {
+        q: 'What if my merged PDF is too large to email?',
+        a: 'After merging, you can instantly reduce file size by 70% to 90% using our companion Compress PDF tool.',
+      },
+    ],
+    relatedSolutions: [
+      'merge-pdf-for-court-filings-and-bids',
+      'combine-thesis-chapters-pdf',
+      'compress-pdf-to-1mb',
+    ],
+    esEquivalentSlug: 'unir-pdf-pesados-sin-limite',
+    enEquivalentSlug: 'merge-large-pdf-files-without-limits',
+  },
+
   'extract-specific-pages-from-pdf': {
     slug: 'extract-specific-pages-from-pdf',
     category: 'organizar',
@@ -1415,6 +1593,7 @@ export const ORGANIZAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
 export const ORGANIZAR_PAIRS: Record<string, string> = {
   'unir-pdf-para-licitaciones-y-tramites': 'merge-pdf-for-court-filings-and-bids',
   'unir-capitulos-tesis-pdf': 'combine-thesis-chapters-pdf',
+  'unir-pdf-pesados-sin-limite': 'merge-large-pdf-files-without-limits',
   'extraer-paginas-pdf-separadas': 'extract-specific-pages-from-pdf',
   'dividir-pdf-por-capitulos-rangos': 'split-pdf-by-sections-or-chapters',
   'quitar-hojas-en-blanco-pdf': 'remove-blank-pages-from-pdf',

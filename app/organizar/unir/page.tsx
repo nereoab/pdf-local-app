@@ -131,15 +131,15 @@ export default function UnirPdfPage() {
     '@context': 'https://schema.org',
     '@type': ['WebApplication', 'SoftwareApplication'],
     name: isEs
-      ? 'Unir PDF Gratis Online — Combinar Archivos PDF | PDFBlack'
-      : 'Merge PDF Online Free — Combine PDF Files | PDFBlack',
+      ? 'Unir PDF Gratis Online — Sin Límites de Tamaño ni Registro | PDFBlack'
+      : 'Free PDF Merger Online — Combine PDFs with No Limits or Sign-Up | PDFBlack',
     url: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/merge-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
     description: isEs
-      ? 'Combina y une múltiples archivos PDF en un único documento de forma rápida, gratuita y 100% local. Sin límites, con índice corporativo, foliado Bates, modo dúplex y privacidad total.'
-      : 'Merge and combine multiple PDF files into a single unified document fast, free, and 100% locally. No limits, with automatic TOC, Bates stamping, duplex mode, and zero server upload.',
+      ? 'Combina y une múltiples archivos PDF en un solo documento sin límites de peso ni de archivos. 100% local en tu navegador, sin subir a servidores, gratis y sin registro.'
+      : 'Merge multiple PDF files into one document with no file size limits and no account required. 100% private in-browser local processing, automatic Table of Contents, and zero server uploads.',
     softwareVersion: '5.0',
     screenshot: `${SITE_URL}/og-unir-pdf.png`,
     aggregateRating: {
@@ -264,6 +264,123 @@ export default function UnirPdfPage() {
       <div className="w-full max-w-7xl">
         {/* COMPONENTE PRINCIPAL DE UNIÓN */}
         <PdfMerger />
+
+        {/* ── GUÍA RÁPIDA PASO A PASO (OPTIMIZADA PARA POSICIÓN CERO Y RICH SNIPPETS DE GOOGLE) ── */}
+        <section
+          aria-label={
+            isEs
+              ? 'Guía paso a paso para unir archivos PDF gratis'
+              : 'Step-by-step guide to merge PDF files free'
+          }
+          className="w-full mt-12 bg-gradient-to-b from-[#121217] to-[#0d0d12] border border-zinc-800/90 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl relative overflow-hidden"
+        >
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-zinc-800/80">
+            <div>
+              <span className="text-[11px] font-mono uppercase tracking-widest text-[#E8DFCF] font-bold block mb-1">
+                {isEs ? 'GUÍA RÁPIDA • SIN LÍMITES' : 'QUICK GUIDE • NO LIMITS'}
+              </span>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-white font-sans tracking-tight">
+                {isEs
+                  ? '¿Cómo unir varios archivos PDF en uno solo gratis sin límites ni registro?'
+                  : 'How to merge multiple PDF files into one for free with no size limits or sign-up?'}
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-300">
+              <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                {isEs ? '100% Gratis' : '100% Free'}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300">
+                {isEs ? 'Sin Registro' : 'No Sign-Up'}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300">
+                {isEs ? 'Privacidad en RAM' : 'In-RAM Privacy'}
+              </span>
+            </div>
+          </div>
+
+          <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8 list-none p-0">
+            {/* Paso 1 */}
+            <li className="flex flex-col justify-between bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 relative">
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-white text-black font-mono font-black text-sm flex items-center justify-center shadow-md">
+                  1
+                </div>
+                <h3 className="text-sm font-bold text-white font-sans">
+                  {isEs ? 'Arrastra o selecciona tus PDFs' : 'Drag or select your PDFs'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Añade 2 o más archivos PDF en el recuadro superior. No hay límites en el número de páginas ni en el tamaño en MB.'
+                    : 'Add 2 or more PDF documents in the box above. No limits on file size, page count, or number of files.'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-400 mt-4 block">
+                {isEs ? 'Archivos nunca suben a internet' : 'Zero cloud uploads'}
+              </span>
+            </li>
+
+            {/* Paso 2 */}
+            <li className="flex flex-col justify-between bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 relative">
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-white text-black font-mono font-black text-sm flex items-center justify-center shadow-md">
+                  2
+                </div>
+                <h3 className="text-sm font-bold text-white font-sans">
+                  {isEs ? 'Organiza el orden de lectura' : 'Arrange document sequence'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Arrastra visualmente las tarjetas para definir la secuencia exacta de unión de tus documentos o extrae páginas específicas.'
+                    : 'Visually drag and drop file cards to establish the exact sequence for your final consolidated PDF.'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-400 mt-4 block">
+                {isEs ? 'Control visual interactivo' : 'Interactive visual control'}
+              </span>
+            </li>
+
+            {/* Paso 3 */}
+            <li className="flex flex-col justify-between bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 relative">
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-white text-black font-mono font-black text-sm flex items-center justify-center shadow-md">
+                  3
+                </div>
+                <h3 className="text-sm font-bold text-white font-sans">
+                  {isEs ? 'Opciones avanzadas (Opcional)' : 'Advanced options (Optional)'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Activa el Índice Corporativo automático con números de página, foliado continuo Bates o Modo Dúplex para encuadernación.'
+                    : 'Enable automatic Table of Contents with page references, continuous Bates stamping, or Duplex Mode.'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-400 mt-4 block">
+                {isEs ? 'Funciones notariales y pro' : 'Notarial and pro features'}
+              </span>
+            </li>
+
+            {/* Paso 4 */}
+            <li className="flex flex-col justify-between bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 relative">
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-400 text-black font-mono font-black text-sm flex items-center justify-center shadow-md">
+                  4
+                </div>
+                <h3 className="text-sm font-bold text-white font-sans">
+                  {isEs ? 'Descarga tu PDF unificado' : 'Download unified PDF'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Pulsa «Unir Archivos PDF». El motor compilará el documento en la memoria RAM en segundos sin marcas de agua ni esperas.'
+                    : 'Click «Merge PDF Files». The engine compiles your document in local RAM in seconds with no watermarks.'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-400 mt-4 block font-semibold">
+                {isEs ? 'Descarga inmediata al 100%' : 'Instant 100% download'}
+              </span>
+            </li>
+          </ol>
+        </section>
 
         {/* ── SECCIÓN DE PILARES DE INGENIERÍA EMPRESARIAL ── */}
         <section className="w-full mt-16 pt-12 border-t border-zinc-800">

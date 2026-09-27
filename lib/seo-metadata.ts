@@ -236,19 +236,33 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
   organizar: {
     unir: {
-      titleEs: 'Unir PDF Gratis Online — Combinar Varios Archivos PDF en Uno | PDFBlack',
-      titleEn: 'Merge PDF Free Online — Combine Multiple PDF Files into One | PDFBlack',
+      titleEs:
+        'Unir PDF Gratis Online — Sin Límites de Tamaño ni Registro (100% Privado) | PDFBlack',
+      titleEn: 'Free PDF Merger Online — Combine PDFs with No Limits or Sign-Up | PDFBlack',
       descEs:
-        'Une y combina múltiples archivos PDF en un solo documento en el orden exacto que desees. 100% local, rápido, sin límites de tamaño y sin registro.',
+        'Combina y une múltiples archivos PDF en un solo documento sin límites de peso ni de archivos. 100% local en tu navegador, sin subir a servidores, gratis y sin registro.',
       descEn:
-        'Merge and combine multiple PDF files into a single document in your desired order. 100% private, local browser processing, no size limits.',
+        'Merge multiple PDF files into one document with no file size limits and no account required. 100% private in-browser local processing, automatic Table of Contents, and zero server uploads.',
       keywordsEs: [
         'unir pdf gratis',
+        'unir pdf online gratis sin limite',
         'combinar pdf online',
         'juntar archivos pdf',
+        'unir pdfs pesados',
+        'unir varios pdf en uno',
         'fusionar pdf sin limite',
+        'unir pdf sin registro',
+        'pdf joiner online',
       ],
-      keywordsEn: ['merge pdf free', 'combine pdf online', 'join pdf files', 'merge pdf unlimited'],
+      keywordsEn: [
+        'merge pdf free',
+        'combine pdf online',
+        'merge pdf without limits',
+        'join pdf files free',
+        'pdf joiner no sign up',
+        'merge large pdf files online',
+        'private pdf merger',
+      ],
     },
     dividir: {
       titleEs: 'Dividir PDF Gratis Online — Separar y Extraer Páginas de PDF | PDFBlack',
@@ -302,13 +316,23 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     },
     recortar: {
       titleEs: 'Recortar PDF Gratis Online — Ajustar Márgenes y Dimensiones | PDFBlack',
-      titleEn: 'Crop PDF Free Online — Adjust Page Margins and Dimensions | PDFBlack',
+      titleEn: 'Free PDF Cropper Online — Crop & Trim PDF Margins (No Sign-Up) | PDFBlack',
       descEs:
         'Recorta márgenes blancos innecesarios o ajusta el encuadre de las páginas de tu PDF de forma visual y precisa.',
       descEn:
-        'Crop away white margins and adjust PDF page frames visually with pixel-perfect bounding box controls.',
+        'Crop PDF pages online for free. Interactive visual tool to trim white margins, adjust page sizes, or crop specific pages. 100% private client-side processing, no uploads.',
       keywordsEs: ['recortar pdf gratis', 'ajustar margenes pdf', 'crop pdf online'],
-      keywordsEn: ['crop pdf free', 'adjust pdf margins', 'crop pdf pages online'],
+      keywordsEn: [
+        'crop pdf',
+        'pdf cropper',
+        'crop pdf online free',
+        'trim pdf',
+        'crop pdf file',
+        'crop pdf online',
+        'crop pdf free',
+        'crop pdf pages online',
+        'adjust pdf margins',
+      ],
     },
   },
   optimizar: {

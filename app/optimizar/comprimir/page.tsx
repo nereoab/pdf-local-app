@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Loader2,
   ShieldCheck,
@@ -16,6 +17,7 @@ import {
   Layers,
   Sparkles,
   FileCheck2,
+  Link2,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -128,6 +130,40 @@ export default function ComprimirPdfPage() {
       <div className="w-full max-w-7xl space-y-12">
         {/* COMPONENTE PRINCIPAL */}
         <PdfCompressor />
+
+        {/* ── CALLOUT FLUJO DE TRABAJO: UNIR + COMPRIMIR (INYECCIÓN DE AUTORIDAD SEO) ── */}
+        <section
+          aria-label={
+            isEs
+              ? 'Flujo de trabajo recomendado: unir varios archivos PDF antes de comprimir'
+              : 'Recommended workflow: merge multiple PDF files before compressing'
+          }
+          className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+              <Link2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white font-sans">
+                {isEs
+                  ? '¿Necesitas juntar varios archivos PDF antes de reducirlos?'
+                  : 'Need to combine multiple PDF files before compressing?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                {isEs
+                  ? 'Combina todos tus documentos en un único archivo continuo sin límites de tamaño ni registro, y luego optimiza su peso aquí.'
+                  : 'Combine all your documents into a single continuous file with zero size limits, then optimize its weight here.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href={isEs ? '/organizar/unir' : '/en/merge-pdf'}
+            className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+          >
+            {isEs ? 'Unir Archivos PDF →' : 'Merge PDF Files →'}
+          </Link>
+        </section>
 
         {/* SECCIÓN INFORMATIVA CORPORATIVA: CARACTERÍSTICAS TÉCNICAS */}
         <section className="w-full border-t border-zinc-800 pt-12">

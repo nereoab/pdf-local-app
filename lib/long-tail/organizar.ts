@@ -793,6 +793,182 @@ export const ORGANIZAR_SOLUTIONS_ES: Record<string, LongTailSolution> = {
     esEquivalentSlug: 'recortar-margenes-blancos-pdf',
     enEquivalentSlug: 'crop-white-margins-pdf-for-printing',
   },
+
+  'recortar-todas-las-paginas-pdf': {
+    slug: 'recortar-todas-las-paginas-pdf',
+    category: 'organizar',
+    toolKey: 'recortar',
+    badge: 'Recorte Masivo en Lote',
+    h1: 'Recortar Todas las Páginas de un PDF a la Vez — Rápido y Sin Límites',
+    subtitle:
+      'Aplica márgenes uniformes o dimensiones CropBox idénticas a cada hoja de tu documento simultáneamente en un solo clic, sin procesar página por página.',
+    metaTitle: 'Recortar Todas las Páginas de un PDF Online Gratis | PDFBlack',
+    metaDescription:
+      'Ajusta y recorta todas las páginas de tu archivo PDF a la vez con medidas milimétricas exactas. 100% privado en tu navegador, gratis y sin límites.',
+    keywords: [
+      'recortar todas las paginas de un pdf',
+      'recortar pdf por lote',
+      'crop all pages in pdf',
+      'ajustar margenes todas las hojas pdf',
+      'recortar paginas pdf a la vez',
+    ],
+    parentPath: '/organizar/recortar',
+    parentName: 'Recortar PDF',
+    specifications: [
+      {
+        feature: 'Alcance',
+        value: 'Global (Todas las hojas)',
+        note: 'Sincronización instantánea de coordenadas',
+      },
+      {
+        feature: 'Motor',
+        value: 'Ajuste paramétrico CropBox ISO',
+        note: 'Sin rasterizar fuentes ni vectores',
+      },
+      {
+        feature: 'Privacidad',
+        value: 'Procesamiento local en RAM',
+        note: 'Cumplimiento estricto RGPD e HIPAA',
+      },
+      {
+        feature: 'Límites',
+        value: 'Sin límite de páginas ni peso',
+        note: 'Ideal para manuales y libros de 500+ páginas',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Carga tu documento completo',
+        desc: 'Arrastra el archivo PDF con múltiples hojas a la mesa de trabajo.',
+      },
+      {
+        step: 2,
+        title: 'Define los márgenes deseados',
+        desc: 'Ajusta el marco en la página de muestra o introduce los milímetros exactos.',
+      },
+      {
+        step: 3,
+        title: 'Selecciona «Todas las Páginas» y descarga',
+        desc: 'El Web Worker aplicará los mismos márgenes a todas las hojas en segundos.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Ahorro Máximo de Tiempo',
+        desc: 'Evita tener que recortar decenas o cientos de páginas individualmente.',
+      },
+      {
+        title: 'Uniformidad Geométrica Total',
+        desc: 'Garantiza que todas las hojas tengan exactamente la misma proporción y tamaño visible.',
+      },
+    ],
+    faqs: [
+      {
+        q: '¿Cómo recortar todas las páginas de un PDF al mismo tiempo gratis?',
+        a: 'Sube tu archivo a PDFBlack, ajusta los márgenes deseados en la vista previa y asegúrate de mantener el selector de alcance en «Todas». Pulsa Recortar y se procesará el documento completo en tu navegador.',
+      },
+      {
+        q: '¿Se desalinean las páginas si tienen diferente tamaño o rotación?',
+        a: 'No. El algoritmo calcula los porcentajes relativos o los milímetros exactos respetando la caja de delimitación MediaBox de cada hoja particular.',
+      },
+    ],
+    relatedSolutions: [
+      'recortar-margenes-blancos-pdf',
+      'recortar-pdf-para-kindle-y-tablet',
+      'quitar-hojas-en-blanco-pdf',
+    ],
+    esEquivalentSlug: 'recortar-todas-las-paginas-pdf',
+    enEquivalentSlug: 'crop-all-pages-in-pdf-online',
+  },
+
+  'recortar-pdf-para-kindle-y-tablet': {
+    slug: 'recortar-pdf-para-kindle-y-tablet',
+    category: 'organizar',
+    toolKey: 'recortar',
+    badge: 'Lectura en Tablets & E-Readers',
+    h1: 'Recortar Márgenes de PDF para Kindle, iPad y Tablets — Lectura Cómoda',
+    subtitle:
+      'Elimina los márgenes blancos sobrantes para agrandar la tipografía y aprovechar al 100% la pantalla de tu lector de tinta electrónica o tableta.',
+    metaTitle: 'Recortar PDF para Kindle y Tablet Online Gratis | PDFBlack',
+    metaDescription:
+      'Quita los bordes blancos de tus libros y papers PDF para leer cómodamente en Kindle, iPad o pantallas pequeñas. Sin registro y 100% privado.',
+    keywords: [
+      'recortar pdf kindle',
+      'recortar pdf para tablet',
+      'quitar margenes pdf para leer mejor',
+      'crop pdf for ipad ereader',
+      'agrandar texto pdf quitando margenes',
+    ],
+    parentPath: '/organizar/recortar',
+    parentName: 'Recortar PDF',
+    specifications: [
+      {
+        feature: 'Optimización',
+        value: 'Aprovechamiento de pantalla',
+        note: 'Incremento del 30% al 50% en tamaño relativo de texto',
+      },
+      {
+        feature: 'Compatibilidad',
+        value: 'Kindle, Kobo, iPad, Android',
+        note: 'Apto para visores de tinta electrónica y pantallas retina',
+      },
+      {
+        feature: 'Integridad',
+        value: 'Hipervínculos e índices conservados',
+        note: 'La navegación interna por capítulos permanece intacta',
+      },
+      {
+        feature: 'Velocidad',
+        value: 'Sin recompresión de imágenes',
+        note: 'La batería del e-reader no se resiente al pasar página',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Sube tu libro, paper o documento',
+        desc: 'Abre tu archivo PDF en PDFBlack directamente desde tu dispositivo.',
+      },
+      {
+        step: 2,
+        title: 'Corta los bordes periféricos vacíos',
+        desc: 'Ajusta los manejadores lo más cerca posible del bloque de texto útil.',
+      },
+      {
+        step: 3,
+        title: 'Guarda y transfiere a tu e-reader',
+        desc: 'Descarga tu documento recortado listo para disfrutar sin necesidad de hacer zoom.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Fin a los Textos Diminutos',
+        desc: 'Al eliminar el espacio en blanco perimetral, el lector ajusta automáticamente el texto llenando la pantalla.',
+      },
+      {
+        title: 'Lectura Fluida sin Zoom Manual',
+        desc: 'Despídete de tener que pellizcar y desplazar la pantalla en cada página de tus artículos científicos.',
+      },
+    ],
+    faqs: [
+      {
+        q: '¿Por qué conviene recortar un PDF antes de pasarlo a un Kindle o iPad?',
+        a: 'Los libros y papers suelen maquetarse para papel A4 con márgenes de 3 a 5 cm. En pantallas de 6 o 10 pulgadas, ese margen hace que el texto se vea minúsculo. Al recortar los bordes, el texto se expande hasta un 40% en pantalla.',
+      },
+      {
+        q: '¿Se pierden las notas al pie o números de página?',
+        a: 'Tú decides el límite exacto del encuadre. Puedes incluir notas al pie y encabezados simplemente ajustando los controles superior e inferior.',
+      },
+    ],
+    relatedSolutions: [
+      'recortar-margenes-blancos-pdf',
+      'recortar-todas-las-paginas-pdf',
+      'quitar-hojas-en-blanco-pdf',
+    ],
+    esEquivalentSlug: 'recortar-pdf-para-kindle-y-tablet',
+    enEquivalentSlug: 'crop-pdf-for-kindle-and-tablet',
+  },
 };
 
 export const ORGANIZAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
@@ -1588,6 +1764,182 @@ export const ORGANIZAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     esEquivalentSlug: 'recortar-margenes-blancos-pdf',
     enEquivalentSlug: 'crop-white-margins-pdf-for-printing',
   },
+
+  'crop-all-pages-in-pdf-online': {
+    slug: 'crop-all-pages-in-pdf-online',
+    category: 'organizar',
+    toolKey: 'recortar',
+    badge: 'Batch Multi-Page Cropping',
+    h1: 'Crop All Pages in a PDF at Once Online — Free & Fast',
+    subtitle:
+      'Apply identical CropBox margins to every page of your document simultaneously in a single click without tedious page-by-page editing.',
+    metaTitle: 'Crop All Pages in PDF Online Free | PDFBlack',
+    metaDescription:
+      'Trim and crop all pages in your PDF file simultaneously with millimeter precision. 100% private in your browser, free with zero size limits.',
+    keywords: [
+      'crop all pages in pdf',
+      'batch crop pdf online',
+      'crop all pdf pages at once',
+      'trim margins all pdf pages',
+      'crop multipage pdf free',
+    ],
+    parentPath: '/en/crop-pdf',
+    parentName: 'Crop PDF',
+    specifications: [
+      {
+        feature: 'Scope',
+        value: 'Global (All Pages)',
+        note: 'Instant coordinate synchronization across all sheets',
+      },
+      {
+        feature: 'Engine',
+        value: 'ISO CropBox parametric offsets',
+        note: 'Zero font rasterization or image quality loss',
+      },
+      {
+        feature: 'Privacy',
+        value: 'In-browser RAM execution',
+        note: 'Strict GDPR & HIPAA zero-server compliance',
+      },
+      {
+        feature: 'Limits',
+        value: 'No file size or page caps',
+        note: 'Perfect for large 500+ page manuals and catalogues',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Upload your multi-page PDF',
+        desc: 'Drag your PDF file into the secure client-side work zone.',
+      },
+      {
+        step: 2,
+        title: 'Frame your desired margins',
+        desc: 'Adjust boundary handles on sample page or enter precise mm offsets.',
+      },
+      {
+        step: 3,
+        title: 'Select "All Pages" & download',
+        desc: 'The Web Worker applies uniform margins across the entire document in seconds.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Massive Time Savings',
+        desc: 'Eliminates the need to crop dozens or hundreds of sheets manually.',
+      },
+      {
+        title: 'Flawless Geometric Consistency',
+        desc: 'Ensures every page displays uniform visual margins across desktop and mobile readers.',
+      },
+    ],
+    faqs: [
+      {
+        q: 'How can I crop all pages in a PDF at the same time for free?',
+        a: 'Upload your document to PDFBlack, adjust your preferred margins on the canvas preview, keep the scope selector set to "All", and click Crop. The Web Worker processes the entire file locally in your RAM.',
+      },
+      {
+        q: 'Will pages get misaligned if they have different orientations?',
+        a: 'No. The algorithm calculates proportional boundary coordinates relative to each individual page MediaBox dictionary.',
+      },
+    ],
+    relatedSolutions: [
+      'crop-white-margins-pdf-for-printing',
+      'crop-pdf-for-kindle-and-tablet',
+      'remove-blank-pages-from-pdf',
+    ],
+    esEquivalentSlug: 'recortar-todas-las-paginas-pdf',
+    enEquivalentSlug: 'crop-all-pages-in-pdf-online',
+  },
+
+  'crop-pdf-for-kindle-and-tablet': {
+    slug: 'crop-pdf-for-kindle-and-tablet',
+    category: 'organizar',
+    toolKey: 'recortar',
+    badge: 'Tablets & E-Readers Optimization',
+    h1: 'Crop PDF Margins for Kindle, iPad & Tablets — Comfortable Reading',
+    subtitle:
+      'Trim wide perimeter margins to expand font size and maximize the usable screen area of your E-Ink reader or tablet device.',
+    metaTitle: 'Crop PDF for Kindle and Tablet Free Online | PDFBlack',
+    metaDescription:
+      'Remove white margins from PDF books and papers to read comfortably on Kindle, iPad, or small tablets. Zero sign-up, 100% private in browser.',
+    keywords: [
+      'crop pdf for kindle',
+      'crop pdf margins for ipad',
+      'read pdf on ereader without margins',
+      'trim white margins pdf tablet',
+      'expand pdf text for kindle reading',
+    ],
+    parentPath: '/en/crop-pdf',
+    parentName: 'Crop PDF',
+    specifications: [
+      {
+        feature: 'Screen Gain',
+        value: 'Maximized viewing viewport',
+        note: '30% to 50% increase in relative font size',
+      },
+      {
+        feature: 'Compatibility',
+        value: 'Kindle, Kobo, iPad, Android',
+        note: 'Optimized for E-Ink refresh and high-DPI displays',
+      },
+      {
+        feature: 'Integrity',
+        value: 'Hyperlinks & bookmarks preserved',
+        note: 'Internal document navigation remains completely functional',
+      },
+      {
+        feature: 'Smoothness',
+        value: 'No heavy bitmap recompression',
+        note: 'E-reader battery and page-turn speeds remain snappy',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Drop your book or research paper',
+        desc: 'Open your PDF document directly inside your local browser memory.',
+      },
+      {
+        step: 2,
+        title: 'Clip empty peripheral margins',
+        desc: 'Bring the boundary handles inward close to the useful text body.',
+      },
+      {
+        step: 3,
+        title: 'Download and send to your device',
+        desc: 'Enjoy comfortable, zoom-free reading on any handheld screen.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'No More Tiny Unreadable Fonts',
+        desc: 'Removing unused white padding forces your e-reader to scale the core text to the full display width.',
+      },
+      {
+        title: 'Effortless Reading Without Pinch-Zoom',
+        desc: 'Eliminates repetitive panning and horizontal scrolling on multi-column academic papers.',
+      },
+    ],
+    faqs: [
+      {
+        q: 'Why should I crop PDF margins before reading on a Kindle or iPad?',
+        a: 'Standard PDFs are laid out for physical A4 printing with wide 3-5 cm margins. On a 6-inch or 10-inch screen, those margins shrink the text drastically. Cropping borders expands text size by up to 40%.',
+      },
+      {
+        q: 'Does it erase footnotes or page numbers?',
+        a: 'You retain full control over the crop frame. You can easily keep page headers and footnotes by adjusting the top and bottom offsets.',
+      },
+    ],
+    relatedSolutions: [
+      'crop-white-margins-pdf-for-printing',
+      'crop-all-pages-in-pdf-online',
+      'remove-blank-pages-from-pdf',
+    ],
+    esEquivalentSlug: 'recortar-pdf-para-kindle-y-tablet',
+    enEquivalentSlug: 'crop-pdf-for-kindle-and-tablet',
+  },
 };
 
 export const ORGANIZAR_PAIRS: Record<string, string> = {
@@ -1600,4 +1952,6 @@ export const ORGANIZAR_PAIRS: Record<string, string> = {
   'invertir-orden-paginas-pdf': 'reverse-pdf-page-order',
   'rotar-planos-horizontales-pdf': 'rotate-landscape-blueprints-pdf',
   'recortar-margenes-blancos-pdf': 'crop-white-margins-pdf-for-printing',
+  'recortar-todas-las-paginas-pdf': 'crop-all-pages-in-pdf-online',
+  'recortar-pdf-para-kindle-y-tablet': 'crop-pdf-for-kindle-and-tablet',
 };

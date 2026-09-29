@@ -409,6 +409,8 @@ const LanguageContext = createContext<LanguageContextType>(defaultContextValue);
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [lang, setLangState] = useState<Language>(() => {
+    if (pathname?.startsWith('/en')) return 'en';
+    if (pathname?.startsWith('/zh')) return 'zh';
     if (typeof window !== 'undefined') {
       const p = window.location.pathname;
       if (p.startsWith('/en')) return 'en';

@@ -28,7 +28,9 @@ import {
   Fingerprint,
   Calendar,
   CheckCircle2,
+  Crop,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -241,6 +243,40 @@ export default function FirmarPdfPage() {
         <div className="w-full max-w-7xl">
           <PdfSigner />
         </div>
+
+        {/* ── CALLOUT FLUJO DE TRABAJO: AJUSTAR ENCUADRE ANTES DE FIRMAR (LINK EQUITY HACIA RECORTAR) ── */}
+        <section
+          aria-label={
+            isEs
+              ? 'Flujo de trabajo recomendado: recortar márgenes antes de firmar'
+              : 'Recommended workflow: trim margins before signing'
+          }
+          className="w-full max-w-5xl mt-10 bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+              <Crop className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white font-sans">
+                {isEs
+                  ? '¿Necesitas recortar o ajustar el encuadre de la hoja antes de firmar?'
+                  : 'Need to crop margins or adjust page alignment before signing?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                {isEs
+                  ? 'Elimina bordes excesivos y encuadra contratos o actas con precisión milimétrica sin perder validez vectorial.'
+                  : 'Remove excess white borders and frame legal agreements with millimeter precision with zero vector quality loss.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href={isEs ? '/organizar/recortar' : '/en/crop-pdf'}
+            className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+          >
+            {isEs ? 'Recortar PDF →' : 'Crop PDF →'}
+          </Link>
+        </section>
 
         {/* ── LANDING EDUCATIVA Y CORPORATIVA SEO ENRIQUECIDA ── */}
         <div className="w-full max-w-5xl mt-16 sm:mt-20 space-y-16 sm:space-y-24 font-sans border-t border-zinc-800/80 pt-16">

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Loader2,
   ShieldCheck,
@@ -17,9 +18,12 @@ import {
   GraduationCap,
   Sliders,
   Maximize2,
+  Sparkles,
+  Link2,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfCropper = dynamic(() => import('@/components/PdfCropper'), {
   ssr: false,
@@ -79,6 +83,14 @@ export default function RecortarPdfPage() {
           q: '¿El recorte se respeta al imprimir en papel o abrirlo en Adobe Acrobat y navegadores?',
           a: 'Sí. Tanto los visores de escritorio (Adobe Acrobat, Foxit, Nitro) como los motores de visualización de navegadores (Chrome, Edge, Safari) y los controladores de impresión respetan de forma estricta las directivas del CropBox grabado.',
         },
+        {
+          q: '¿Cómo recortar todas las páginas de un PDF a la vez gratis?',
+          a: 'Para recortar todas las hojas a la vez: 1. Carga tu PDF en PDFBlack. 2. Ajusta los márgenes deseados con los manejadores interactivos o en milímetros. 3. En el selector de alcance, mantén seleccionada la opción «Todas» y pulsa «Recortar Márgenes del PDF». El recorte se aplicará uniformemente a todo el documento en memoria RAM en segundos.',
+        },
+        {
+          q: '¿Se puede recortar un PDF online sin pagar Adobe Acrobat?',
+          a: 'Sí. PDFBlack permite recortar documentos PDF de forma 100% gratuita y sin suscripciones. Modifica el diccionario geométrico CropBox oficial de cada página en tu navegador con fidelidad vectorial nativa sin requerir licencias de Adobe.',
+        },
       ]
     : [
         {
@@ -116,6 +128,14 @@ export default function RecortarPdfPage() {
         {
           q: 'Will the crop be respected when printed or opened in Adobe Acrobat and browsers?',
           a: 'Yes. Desktop readers (Adobe Acrobat, Foxit), web browsers (Chrome, Edge, Safari), and physical printer drivers strictly follow the ISO CropBox specifications.',
+        },
+        {
+          q: 'Can I crop all pages in a PDF at once for free?',
+          a: 'Yes. To crop all pages simultaneously: 1. Upload your PDF into PDFBlack. 2. Adjust margins with the 8 interactive handles or millimeter inputs. 3. Keep the scope selector set to "All" and click "Crop PDF Margins". The engine synchronizes identical CropBox coordinates across every sheet in seconds.',
+        },
+        {
+          q: 'Can you crop a PDF without Adobe Acrobat?',
+          a: 'Yes. PDFBlack offers professional, millimeter-accurate PDF margin trimming completely free without Adobe subscriptions. It modifies standard ISO CropBox page bounding boxes directly in your browser memory with zero quality loss.',
         },
       ];
 
@@ -205,17 +225,17 @@ export default function RecortarPdfPage() {
       {
         '@type': 'HowToStep',
         position: 1,
-        name: isEs ? 'Cargar el archivo PDF' : 'Upload PDF file',
+        name: isEs ? 'Cargar el archivo PDF en el navegador' : 'Upload PDF document for free',
         text: isEs
-          ? 'Arrastra o selecciona el documento PDF que deseas recortar en la mesa de trabajo.'
-          : 'Drag and drop or select the PDF document you wish to crop into the workspace.',
+          ? 'Arrastra o selecciona el documento PDF que deseas recortar en la mesa de trabajo segura.'
+          : 'Drag and drop or select the PDF document you wish to crop into the secure workspace.',
       },
       {
         '@type': 'HowToStep',
         position: 2,
         name: isEs
-          ? 'Ajustar márgenes visual o numéricamente'
-          : 'Adjust margins visually or numerically',
+          ? 'Ajustar márgenes CropBox visual o milimétricamente'
+          : 'Adjust CropBox handles or type margins in mm',
         text: isEs
           ? 'Arrastra los 8 manejadores sobre el lienzo o introduce las medidas en milímetros (Top, Bottom, Left, Right).'
           : 'Drag the 8 canvas handles or enter exact margin offsets in millimeters (Top, Bottom, Left, Right).',
@@ -223,7 +243,9 @@ export default function RecortarPdfPage() {
       {
         '@type': 'HowToStep',
         position: 3,
-        name: isEs ? 'Aplicar alcance y descargar' : 'Apply scope and download',
+        name: isEs
+          ? 'Elegir alcance (todas las páginas o rango) y descargar'
+          : 'Select page scope (all pages or custom) and download',
         text: isEs
           ? 'Elige aplicar a todas las páginas, pares, impares o un rango específico, y descarga tu PDF recortado al instante.'
           : 'Select whether to apply to all pages, odds, evens, or custom ranges, and download your cropped PDF instantly.',
@@ -252,9 +274,65 @@ export default function RecortarPdfPage() {
 
       <main className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-12 flex flex-col items-center justify-start min-h-[calc(100vh-100px)] bg-[#09090b] text-white">
         <div className="w-full max-w-7xl space-y-12">
+          {/* ENCABEZADO PRINCIPAL H1 (SEO ON-PAGE & AUTORIDAD DE BÚSQUEDA) */}
+          <div className="w-full text-center space-y-2.5 pt-2 pb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-xs text-zinc-300 font-sans tracking-wide">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>
+                {isEs
+                  ? '100% Local • Zero-Knowledge • Sin Subir Archivos'
+                  : '100% Local • Zero-Knowledge • No File Uploads'}
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
+              {isEs
+                ? 'Recortar PDF Gratis Online — Ajustar Márgenes y Dimensiones Sin Registro'
+                : 'Crop PDF Online Free — Trim PDF Margins & Pages Privately (No Sign-Up)'}
+            </h1>
+            <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto font-sans leading-relaxed">
+              {isEs
+                ? 'Ajusta el encuadre y recorta márgenes blancos de tus hojas PDF de forma visual o milimétrica. Procesamiento 100% seguro en tu navegador, sin límites de tamaño y sin subir archivos a la nube.'
+                : 'Interactively trim white margins, adjust page sizes, or crop specific PDF pages. 100% private in-browser RAM processing, no file size limits, and zero cloud uploads.'}
+            </p>
+          </div>
+
           {/* HERRAMIENTA INTERACTIVA PRINCIPAL */}
           <section aria-label={isEs ? 'Herramienta para recortar PDF' : 'Crop PDF Tool'}>
             <PdfCropper />
+          </section>
+
+          {/* ── CALLOUT FLUJO DE TRABAJO: RECORTAR + COMPRIMIR (ENLAZADO INTERNO SEO) ── */}
+          <section
+            aria-label={
+              isEs
+                ? 'Flujo de trabajo recomendado: comprimir el archivo PDF después de recortar'
+                : 'Recommended workflow: compress PDF file after cropping'
+            }
+            className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+                <Link2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white font-sans">
+                  {isEs
+                    ? '¿Necesitas reducir el peso de tu PDF después de recortarlo?'
+                    : 'Need to reduce your PDF file size after cropping?'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Optimiza los megabytes de tu documento recortado con compresión Deflate Nivel 9 sin perder nitidez vectorial ni calidad de texto.'
+                    : 'Shrink megabytes from your cropped document using Level 9 Deflate compression without sacrificing vector sharpness.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              href={isEs ? '/optimizar/comprimir' : '/en/compress-pdf'}
+              className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+            >
+              {isEs ? 'Comprimir PDF →' : 'Compress PDF →'}
+            </Link>
           </section>
 
           {/* PILARES DE ARQUITECTURA E INGENIERÍA TÉCNICA */}
@@ -652,6 +730,9 @@ export default function RecortarPdfPage() {
               })}
             </div>
           </section>
+
+          {/* Soluciones Long-Tail Relacionadas */}
+          <RelatedLongTailSolutions toolKey="recortar" lang={isEs ? 'es' : 'en'} />
         </div>
       </main>
     </>

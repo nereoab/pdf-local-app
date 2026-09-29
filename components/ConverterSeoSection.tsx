@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
+import { TOOLS_ROUTES } from '@/lib/routes-config';
 
 export interface ConverterSeoSectionProps {
   toolKey: string;
@@ -58,7 +59,14 @@ export default function ConverterSeoSection({
   const faqs = isEs ? faqsEs : faqsEn;
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
-  const toolUrl = isEs ? `${SITE_URL}/convertir/${toolKey}` : `${SITE_URL}/en/convertir/${toolKey}`;
+  const matchingTool = TOOLS_ROUTES.find(
+    (t) => t.toolKey === toolKey || t.slugEs === toolKey || t.id === toolKey,
+  );
+  const esUrl = matchingTool
+    ? `${SITE_URL}${matchingTool.pathEs}`
+    : `${SITE_URL}/convertir/${toolKey}`;
+  const enUrl = matchingTool ? `${SITE_URL}${matchingTool.pathEn}` : `${SITE_URL}/en/convert`;
+  const toolUrl = isEs ? esUrl : enUrl;
 
   // Schema.org Structured Data
   const webAppSchema = {
@@ -172,9 +180,9 @@ export default function ConverterSeoSection({
             <Sparkles className="w-3.5 h-3.5 text-blue-400" />
             <span>PDFBlack Suite • Enterprise Edition</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-white">
             {title}
-          </h2>
+          </h1>
           <p className="text-sm sm:text-base text-zinc-400 max-w-3xl mx-auto font-sans leading-relaxed">
             {description}
           </p>

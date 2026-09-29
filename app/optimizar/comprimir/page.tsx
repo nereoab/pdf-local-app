@@ -18,6 +18,7 @@ import {
   Sparkles,
   FileCheck2,
   Link2,
+  Crop,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -127,7 +128,25 @@ export default function ComprimirPdfPage() {
         />
       )}
 
-      <div className="w-full max-w-7xl space-y-12">
+      <div className="w-full max-w-7xl space-y-10">
+        {/* ENCABEZADO PRINCIPAL H1 (SEO ON-PAGE & AUTORIDAD DE BÚSQUEDA) */}
+        <div className="w-full text-center space-y-2.5 pt-2 pb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-xs text-zinc-300 font-sans tracking-wide">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <span>100% Local • Zero-Knowledge • Sin Subir Archivos</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
+            {isEs
+              ? 'Comprimir PDF Online Gratis — Bajar Peso y Reducir Tamaño de Archivos PDF'
+              : 'Compress PDF Online Free — Reduce PDF File Size with Zero Quality Loss'}
+          </h1>
+          <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto font-sans leading-relaxed">
+            {isEs
+              ? 'Bájale el peso a tus documentos PDF en segundos directamente en tu navegador. 100% privado en memoria RAM, sin límites de tamaño y sin subir archivos a la nube.'
+              : 'Shrink large PDF documents in seconds directly in your browser. 100% private in client-side RAM, with zero limits and zero server uploads.'}
+          </p>
+        </div>
+
         {/* COMPONENTE PRINCIPAL */}
         <PdfCompressor />
 
@@ -162,6 +181,40 @@ export default function ComprimirPdfPage() {
             className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
           >
             {isEs ? 'Unir Archivos PDF →' : 'Merge PDF Files →'}
+          </Link>
+        </section>
+
+        {/* ── CALLOUT FLUJO DE TRABAJO: RECORTAR ANTES DE COMPRIMIR (LINK EQUITY HACIA RECORTAR) ── */}
+        <section
+          aria-label={
+            isEs
+              ? 'Flujo de trabajo recomendado: recortar márgenes antes de comprimir'
+              : 'Recommended workflow: crop margins before compressing'
+          }
+          className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+              <Crop className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white font-sans">
+                {isEs
+                  ? '¿Tienes márgenes blancos sobrantes o páginas desproporcionadas?'
+                  : 'Do you have excess white margins or unevenly framed pages?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                {isEs
+                  ? 'Recorta bordes innecesarios con ajuste milimétrico para maximizar el área útil antes de reducir el peso del documento.'
+                  : 'Trim unnecessary borders with millimeter precision to maximize useful viewing area before shrinking document size.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href={isEs ? '/organizar/recortar' : '/en/crop-pdf'}
+            className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+          >
+            {isEs ? 'Recortar PDF →' : 'Crop PDF →'}
           </Link>
         </section>
 

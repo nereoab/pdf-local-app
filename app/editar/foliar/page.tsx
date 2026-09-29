@@ -23,6 +23,7 @@ import {
   Maximize2,
   Lock,
   Link2,
+  Crop,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -256,7 +257,25 @@ export default function FoliarPage() {
       />
 
       <main className="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-12 flex flex-col items-center justify-start min-h-[calc(100vh-100px)] bg-[#09090b] text-white">
-        <div className="w-full max-w-7xl space-y-12">
+        <div className="w-full max-w-7xl space-y-10">
+          {/* ENCABEZADO PRINCIPAL H1 (SEO ON-PAGE & BRANDING LEGAL) */}
+          <div className="w-full text-center space-y-2.5 pt-2 pb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-xs text-zinc-300 font-sans tracking-wide">
+              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+              <span>Estándar Notarial, Judicial y Licitaciones • 100% Local</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
+              {isEs
+                ? 'Foliar PDF Gratis Online — Numerar Páginas de Expedientes Judiciales'
+                : 'Number PDF Pages Online Free — Bates Stamping & Legal Foliating'}
+            </h1>
+            <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto font-sans leading-relaxed">
+              {isEs
+                ? 'Inserta números de página correlativos, estampados Bates y folios notariales a tus archivos PDF en segundos con procesamiento 100% privado en memoria local.'
+                : 'Add consecutive page numbering, bates stamps, and legal folios to your PDF dossiers in seconds with 100% private in-browser memory processing.'}
+            </p>
+          </div>
+
           {/* HERRAMIENTA INTERACTIVA PRINCIPAL (VISTA PREVIA ARRIBA + PANEL DE CONTROL ABAJO) */}
           <section
             aria-label={
@@ -297,6 +316,40 @@ export default function FoliarPage() {
               className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
             >
               {isEs ? 'Unir Archivos PDF →' : 'Merge PDF Files →'}
+            </Link>
+          </section>
+
+          {/* ── CALLOUT FLUJO DE TRABAJO: AJUSTAR MÁRGENES ANTES DE FOLIAR (LINK EQUITY HACIA RECORTAR) ── */}
+          <section
+            aria-label={
+              isEs
+                ? 'Flujo de trabajo recomendado: recortar márgenes antes de foliar'
+                : 'Recommended workflow: trim margins before page numbering'
+            }
+            className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+                <Crop className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white font-sans">
+                  {isEs
+                    ? '¿Tus documentos escaneados tienen sombras o márgenes desalineados?'
+                    : 'Do your scanned documents have black edges or uneven margins?'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Limpia bordes negros y estandariza los márgenes perimetrales de tus expedientes antes de aplicar el foliado oficial o sello Bates.'
+                    : 'Trim scan artifacts and standardize perimeter margins across court exhibits before applying official Bates numbering.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              href={isEs ? '/organizar/recortar' : '/en/crop-pdf'}
+              className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+            >
+              {isEs ? 'Recortar Márgenes →' : 'Crop Margins →'}
             </Link>
           </section>
 

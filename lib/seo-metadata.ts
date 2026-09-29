@@ -208,12 +208,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     },
     'pdf-blanco-negro': {
       titleEs:
-        'Convertir PDF a Blanco y Negro Gratis Online — Grayscale y Ahorro de Tinta | PDFBlack',
-      titleEn: 'Convert PDF to Black and White Free Online — Grayscale & Ink Saver | PDFBlack',
+        'Convertir PDF a Blanco y Negro Gratis Online — Escala de Grises y Ahorro de Tinta | PDFBlack',
+      titleEn: 'Convert PDF to Black and White Online Free — Monochrome & Grayscale | PDFBlack',
       descEs:
-        'Convierte tus archivos PDF a blanco y negro puro o escala de grises (grayscale) online y 100% gratis. Ahorra tinta de impresora y reduce el peso del archivo sin salir de tu navegador.',
+        'Convierte archivos PDF a blanco y negro puro o escala de grises (grayscale) online gratis. Ahorra tinta de impresora y reduce el peso del archivo 100% en tu navegador sin subir datos a servidores.',
       descEn:
-        'Convert PDF files to black and white or grayscale online for free. Save printer ink and drastically reduce file size with client-side zero-knowledge privacy.',
+        'Convert color PDF files to black and white or grayscale online for free. Save printer ink and drastically reduce file size with 100% private client-side browser processing.',
       keywordsEs: [
         'pdf black',
         'pdfblack',
@@ -224,9 +224,10 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
         'pdf monocromatico',
       ],
       keywordsEn: [
+        'convert pdf to black and white',
+        'convert color pdf to black and white online',
         'pdf black',
         'pdfblack',
-        'convert pdf to black and white',
         'pdf to grayscale',
         'black and white pdf converter',
         'grayscale pdf online free',
@@ -315,45 +316,60 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['rotate pdf free', 'turn pdf pages', 'rotate pdf 90 degrees online'],
     },
     recortar: {
-      titleEs: 'Recortar PDF Gratis Online — Ajustar Márgenes y Dimensiones | PDFBlack',
-      titleEn: 'Free PDF Cropper Online — Crop & Trim PDF Margins (No Sign-Up) | PDFBlack',
+      titleEs: 'Recortar PDF Gratis Online — Ajustar Márgenes y Páginas | PDFBlack',
+      titleEn: 'Crop PDF Online Free — Trim PDF Margins & Pages Privately | PDFBlack',
       descEs:
-        'Recorta márgenes blancos innecesarios o ajusta el encuadre de las páginas de tu PDF de forma visual y precisa.',
+        'Recorta un PDF gratis online. Ajusta márgenes blancos y encuadre de páginas con precisión milimétrica 100% privado en tu navegador. Sin límites ni registro.',
       descEn:
-        'Crop PDF pages online for free. Interactive visual tool to trim white margins, adjust page sizes, or crop specific pages. 100% private client-side processing, no uploads.',
-      keywordsEs: ['recortar pdf gratis', 'ajustar margenes pdf', 'crop pdf online'],
+        'Crop a PDF online for free. Interactively trim white margins, adjust page sizes, and crop pages 100% privately in your browser. Zero uploads, no limits.',
+      keywordsEs: [
+        'recortar pdf gratis',
+        'recortar un pdf',
+        'ajustar margenes pdf',
+        'crop pdf online',
+        'cortar pdf online gratis',
+        'recortar hojas pdf',
+      ],
       keywordsEn: [
         'crop pdf',
+        'crop a pdf',
         'pdf cropper',
         'crop pdf online free',
-        'trim pdf',
-        'crop pdf file',
-        'crop pdf online',
-        'crop pdf free',
         'crop pdf pages online',
+        'can i crop a pdf',
+        'crop all pages in pdf',
+        'crop pdf file',
+        'trim pdf',
+        'crop and rotate pdf',
         'adjust pdf margins',
       ],
     },
   },
   optimizar: {
     comprimir: {
-      titleEs: 'Comprimir PDF Gratis Online — Reducir Tamaño sin Perder Calidad | PDFBlack',
-      titleEn: 'Compress PDF Free Online — Reduce File Size without Quality Loss | PDFBlack',
+      titleEs: 'Comprimir PDF Gratis Online — Bajar Peso a PDF Sin Límites | PDFBlack',
+      titleEn: 'Compress PDF Free Online — Reduce File Size Without Uploading | PDFBlack',
       descEs:
-        'Reduce drásticamente los megabytes de tus archivos PDF para enviar por correo o subir a plataformas con límite de peso. 3 niveles de compresión inteligente.',
+        '¿Cómo bajarle el peso a un PDF? Reduce megabytes al instante gratis y sin perder calidad. 100% privado en tu navegador, sin límites y sin subir archivos.',
       descEn:
-        'Dramatically reduce PDF file size for email attachments and web upload limits. 3 smart compression levels with 100% crisp vector text.',
+        'Dramatically reduce PDF file size in your browser with zero server uploads. Shrink megabytes instantly, keep crisp vector text, 100% private and free.',
       keywordsEs: [
         'comprimir pdf gratis',
-        'reducir tamano pdf',
+        'como bajarle el peso a un pdf',
+        'como bajarle los mb a un pdf',
+        'bajar peso a un pdf',
         'bajar peso pdf online',
-        'comprimir pdf para correo',
+        'reducir tamano pdf',
+        'bajar megas a un pdf',
+        'comprimir pdf sin subir archivos',
       ],
       keywordsEn: [
         'compress pdf free',
         'reduce pdf file size',
-        'compress pdf for email',
-        'shrink pdf size online',
+        'compress pdf without uploading',
+        'shrink pdf online',
+        'lower pdf file size',
+        'reduce pdf mb',
       ],
     },
     reparar: {
@@ -439,23 +455,27 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['edit pdf text free', 'online pdf editor no signup', 'modify text in pdf'],
     },
     foliar: {
-      titleEs: 'Foliar PDF Gratis Online — Añadir Números de Página a PDF | PDFBlack',
-      titleEn: 'Number PDF Pages Free Online — Add Page Numbers to PDF | PDFBlack',
+      titleEs: 'Foliar PDF Gratis Online — Numerar Páginas de Expedientes Judiciales | PDFBlack',
+      titleEn: 'Number PDF Pages Free Online — Bates Stamping & Legal Foliating | PDFBlack',
       descEs:
-        'Inserta números de página o folios personalizados a tus expedientes PDF. Personaliza fuente, posición, formato de numeración y prefijos.',
+        'Folia expedientes judiciales, notariales y licitaciones públicas online gratis. Añade numeración correlativa continua, foliado Bates, prefijos y sellos en memoria local 100% privada.',
       descEn:
-        'Add customized page numbering and bates stamps to your PDF documents. Select custom placement, font size, and prefix formats.',
+        'Add customized page numbering, bates stamps, and legal folios to your PDF documents. Select custom placement, font size, and prefix formats with client-side privacy.',
       keywordsEs: [
+        'foliado pdf',
         'foliar pdf gratis',
         'numerar paginas pdf online',
         'poner folios a pdf',
+        'foliar expediente judicial pdf',
         'numerar hojas pdf',
+        'bates numbering online',
       ],
       keywordsEn: [
         'number pdf pages free',
         'add page numbers to pdf',
         'bates numbering pdf online',
         'paginate pdf',
+        'legal folio pdf',
       ],
     },
     'marca-agua': {

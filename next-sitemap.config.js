@@ -99,6 +99,8 @@ module.exports = {
       '/en/solutions/reverse-pdf-page-order',
       '/en/solutions/rotate-landscape-blueprints-pdf',
       '/en/solutions/crop-white-margins-pdf-for-printing',
+      '/en/solutions/crop-all-pages-in-pdf-online',
+      '/en/solutions/crop-pdf-for-kindle-and-tablet',
       // Optimizar Long-tail (EN)
       '/en/solutions/compress-pdf-for-email-attachment',
       '/en/solutions/encrypt-confidential-pdf-aes256-offline',
@@ -214,6 +216,9 @@ module.exports = {
       '/soluciones/rotar-planos-horizontales-pdf': '/en/solutions/rotate-landscape-blueprints-pdf',
       '/soluciones/recortar-margenes-blancos-pdf':
         '/en/solutions/crop-white-margins-pdf-for-printing',
+      '/soluciones/recortar-todas-las-paginas-pdf': '/en/solutions/crop-all-pages-in-pdf-online',
+      '/soluciones/recortar-pdf-para-kindle-y-tablet':
+        '/en/solutions/crop-pdf-for-kindle-and-tablet',
       // Optimizar Soluciones
       '/soluciones/comprimir-pdf-para-correo-gmail':
         '/en/solutions/compress-pdf-for-email-attachment',

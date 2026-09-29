@@ -895,7 +895,7 @@ export default function PdfCompressor() {
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Link
-            href="/optimizar"
+            href={isEs ? '/optimizar' : '/en/optimize'}
             className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white" />
@@ -908,14 +908,14 @@ export default function PdfCompressor() {
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
               004 / COMPRESIÓN Y OPTIMIZACIÓN DE ARCHIVOS PDF
             </span>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Sliders className="w-6 h-6 text-white flex-shrink-0" />
               <span>
                 {isEs
                   ? 'COMPRIMIR ARCHIVOS PDF (OPTIMIZAR TAMAÑO Y ESPACIO)'
                   : 'COMPRESS PDF FILES (OPTIMIZE SIZE AND SPACE)'}
               </span>
-            </h1>
+            </h2>
           </div>
         </div>
 

@@ -67,10 +67,12 @@ const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
     h1: 'Comprimir PDF a 200 KB o menos — Gratis y 100% Privado',
     subtitle:
       'Reduce el tamaño de tu archivo PDF a menos de 200 KB para cumplir con los requisitos de mesas de partes, juzgados, convocatorias públicas (CAS) y trámites gubernamentales sin perder nitidez de texto ni firmas.',
-    metaTitle: 'Comprimir PDF a 200 KB o menos Online Gratis | PDFBlack',
+    metaTitle: 'Comprimir PDF a 200 KB — Bajarle el Peso al Máximo Gratis Online | PDFBlack',
     metaDescription:
-      'Reduce tu PDF a 200 KB o menos para juzgados, SUNAT, visas y convocatorias del Estado. 100% gratis, sin registro y procesado en tu navegador.',
+      'Bájale el peso a tu PDF a 200 KB o menos para juzgados, SUNAT, visas y convocatorias públicas. 100% privado en memoria de tu navegador, sin límites ni registro.',
     keywords: [
+      'como bajarle el peso a un pdf',
+      'bajar peso pdf a 200kb',
       'comprimir pdf a 200 kb',
       'comprimir pdf a 200kb',
       'reducir pdf a menos de 200 kb',
@@ -159,16 +161,19 @@ const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
     category: 'optimizar',
     toolKey: 'comprimir',
     badge: 'Estándar Universitario y Laboral',
-    h1: 'Comprimir PDF a 1 MB o menos — Mantener Alta Calidad',
+    h1: 'Cómo Bajarle el Peso a un PDF a 1 MB o Menos — Mantener Calidad',
     subtitle:
       'Reduce archivos PDF voluminosos (tesis, portafolios, contratos extensos) a menos de 1 MB para enviarlos por correo electrónico, plataformas universitarias y portales de empleo sin degradar la nitidez.',
-    metaTitle: 'Comprimir PDF a 1 MB Online Gratis sin Perder Calidad | PDFBlack',
+    metaTitle: 'Comprimir PDF a 1 MB — Bajarle el Peso a un PDF Gratis Online | PDFBlack',
     metaDescription:
-      'Comprime PDFs grandes a 1 MB o menos manteniendo imágenes y textos nítidos. Ideal para tesis, currículums y correos. 100% privado en tu navegador.',
+      'Aprende cómo bajarle el peso a un PDF a 1 MB o menos online gratis sin perder calidad. Reduce megabytes 100% privado en tu navegador, sin subir archivos a la nube.',
     keywords: [
+      'como bajarle el peso a un pdf',
+      'bajar peso a un pdf',
       'comprimir pdf a 1 mb',
       'comprimir pdf a 1mb',
       'reducir pdf a 1 mega',
+      'bajar megas a un pdf',
       'comprimir tesis a 1mb',
       'comprimir pdf para enviar por correo',
     ],

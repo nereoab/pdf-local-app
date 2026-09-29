@@ -14,8 +14,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "analyze": "cross-env ANALYZE=true npm run build",
-    "sitemap": "next-sitemap --config next-sitemap.config.js",
-    "postbuild": "next-sitemap --config next-sitemap.config.js",
+    "sitemap": "npx next-sitemap --config next-sitemap.config.js",
+    "postbuild": "npx next-sitemap --config next-sitemap.config.js",
     "deploy": "firebase deploy --only hosting",
     "prepare": "husky || true"
   },

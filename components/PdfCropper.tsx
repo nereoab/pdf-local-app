@@ -627,7 +627,7 @@ export default function PdfCropper() {
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex items-center gap-4">
           <Link
-            href="/organizar"
+            href={isEs ? '/organizar' : '/en/organize'}
             className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
@@ -637,10 +637,10 @@ export default function PdfCropper() {
             <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider">
               {isEs ? '006 / RECORTAR MÁRGENES DE DOCUMENTOS PDF' : '006 / CROP PDF MARGINS'}
             </span>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <Crop className="w-6 h-6 text-white flex-shrink-0" />
               {isEs ? 'RECORTAR MÁRGENES DE DOCUMENTOS PDF' : 'CROP PDF MARGINS'}
-            </h1>
+            </h2>
           </div>
         </div>
 
@@ -697,7 +697,11 @@ export default function PdfCropper() {
             }
             downloadButtonText={isEs ? 'Descargar PDF Recortado' : 'Download Cropped PDF'}
             shareSubject={isEs ? 'documento recortado' : 'cropped document'}
-            fallbackUrl="https://pdf-black.com/organizar/recortar"
+            fallbackUrl={
+              isEs
+                ? 'https://pdf-black.com/organizar/recortar'
+                : 'https://pdf-black.com/en/crop-pdf'
+            }
             metricBadge={
               <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded font-bold font-mono">
                 {completedResult.totalPages} {isEs ? 'págs procesadas' : 'pages processed'}
@@ -751,7 +755,7 @@ export default function PdfCropper() {
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
-            {isEs ? 'RECORTAR MÁRGENES DE DOCUMENTOS PDF' : 'CROP PDF MARGINS'}
+            {isEs ? 'RECORTAR MÁRGENES DE DOCUMENTOS PDF' : 'CROP PDF PAGES & TRIM WHITE MARGINS'}
           </h2>
           <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs

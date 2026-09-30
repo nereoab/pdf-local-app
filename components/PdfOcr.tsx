@@ -276,6 +276,7 @@ export default function PdfOcr() {
 
   // Visor HD de la página activa con caché instantánea y cMaps
   useEffect(() => {
+    if (isProcessing) return;
     if (!file || totalPages === 0 || currentViewPage < 1 || needsPassword) {
       setViewerHiResImage(null);
       return;
@@ -343,7 +344,7 @@ export default function PdfOcr() {
     return () => {
       isMounted = false;
     };
-  }, [file, currentViewPage, totalPages, needsPassword, pdfPassword]);
+  }, [file, currentViewPage, totalPages, needsPassword, pdfPassword, isProcessing]);
 
   const handleDropzoneDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -519,7 +520,6 @@ export default function PdfOcr() {
           setProgressMsg(msg.message);
           if (msg.currentPage) {
             setActivePageInOcr(msg.currentPage);
-            setCurrentViewPage(msg.currentPage);
             setProcessedPages((prev) => {
               const next = new Set(prev);
               for (let p = 1; p < msg.currentPage!; p++) next.add(p);

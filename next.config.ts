@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.syncfusion.com https://accounts.google.com",
               "font-src 'self' data: https://fonts.gstatic.com",
               "img-src 'self' data: blob: https: https://www.google-analytics.com https://*.google-analytics.com https://*.clarity.ms",
-              "connect-src 'self' https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://www.google-analytics.com https://*.google-analytics.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.clarity.ms https://*.bing.com https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com",
+              "connect-src 'self' https://cdnjs.cloudflare.com https://cdn.syncfusion.com https://cdn.jsdelivr.net https://www.google-analytics.com https://*.google-analytics.com https://stats.g.doubleclick.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.clarity.ms https://*.bing.com https://www.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com",
               "frame-src 'self' blob: https://accounts.google.com https://apis.google.com",
               "worker-src 'self' blob:",
               "media-src 'self'",

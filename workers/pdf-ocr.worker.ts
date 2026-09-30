@@ -600,13 +600,10 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
         applyOtsuAdaptiveBinarization(cCtx, canvas.width, canvas.height);
       }
 
-      // 3. Generar imagen JPEG con calidad 0.89 (alta nitidez tipográfica)
+      // 3. Generar imagen JPEG con calidad 0.89 (alta nitidez tipográfica 100% preservada)
       const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.89 });
       const arrayBuf = await blob.arrayBuffer();
       const uint8 = new Uint8Array(arrayBuf);
-      let binary = '';
-      for (let b = 0; b < uint8.byteLength; b++) binary += String.fromCharCode(uint8[b]);
-      const imageDataUrl = 'data:image/jpeg;base64,' + btoa(binary);
 
       interface OcrItem {
         text: string;
@@ -681,12 +678,8 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
           currentPage: pageNum,
         });
 
-        // Reconocimiento Tesseract con coordenadas HOCR y TSV
-        const ret = await tessWorker.recognize(
-          imageDataUrl,
-          {},
-          { text: true, blocks: true, hocr: true, tsv: true },
-        );
+        // Reconocimiento Tesseract con coordenadas HOCR y TSV pasando directamente el Blob nativo
+        const ret = await tessWorker.recognize(blob, {}, { text: true, hocr: true, tsv: true });
 
         pageText = ret.data.text || '';
         pageConfidence = ret.data.confidence || 95;
@@ -777,7 +770,7 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
         canvasH: canvas.height,
         pdfW,
         pdfH,
-        imageDataUrl,
+        imageDataUrl: '',
         jpegBytes: uint8,
         deskewAngle,
       });
@@ -794,7 +787,11 @@ self.onmessage = async (e: MessageEvent<OcrWorkerOptions>) => {
       });
     }
 
-    await tessWorker.terminate();
+    if (tessWorker) {
+      try {
+        await tessWorker.terminate();
+      } catch {}
+    }
 
     // ── ENSAMBLAJE DE SALIDA ENTERPRISE ──
     post({

@@ -3,7 +3,10 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'PDFBlack — Free Online PDF Tools | Edit, Convert, Compress, Merge & Sign PDF',
+  title: {
+    default: 'PDFBlack — Free Online PDF Tools | Edit, Convert, Compress, Merge & Sign PDF',
+    template: '%s | PDFBlack',
+  },
   description:
     '100% free and private client-side PDF tool suite. Edit text, compress, merge, split, sign, OCR, and convert PDF to Word, Excel, and PowerPoint directly in your browser without uploading files.',
   keywords: [

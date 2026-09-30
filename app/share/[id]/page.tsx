@@ -10,9 +10,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const shareId = resolvedParams.id;
 
   return {
-    title: 'Documento Compartido | PDFBlack',
+    title: {
+      absolute: 'Documento Compartido | PDFBlack',
+    },
     description:
       'Descarga y visualiza este documento de forma rápida, segura y privada a través de PDFBlack.',
+    robots: {
+      index: false,
+      follow: true,
+    },
     openGraph: {
       title: 'Documento PDF Seguro | PDFBlack',
       description:

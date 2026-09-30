@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Data Processing Agreement (DPA) | PDFBlack',
+  title: {
+    absolute: 'Data Processing Agreement (DPA) | PDFBlack',
+  },
   description:
     'PDFBlack Data Processing Agreement (DPA). Compliance with GDPR Article 28 and international data non-retention standards.',
   keywords: ['dpa pdfblack', 'data processing agreement pdf', 'gdpr data protection'],

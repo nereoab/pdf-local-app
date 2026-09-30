@@ -154,6 +154,8 @@ const nextConfig: NextConfig = {
       { source: '/en/optimizar/reparar', destination: '/en/repair-pdf', permanent: true },
       { source: '/en/optimizar/proteger', destination: '/en/protect-pdf', permanent: true },
       { source: '/en/optimizar/desbloquear', destination: '/en/unlock-pdf', permanent: true },
+      { source: '/en/desbloquear', destination: '/en/unlock-pdf', permanent: true },
+      { source: '/en/desbloquear-pdf', destination: '/en/unlock-pdf', permanent: true },
       { source: '/en/optimizar/censurar', destination: '/en/redact-pdf', permanent: true },
       { source: '/en/optimizar/comparar', destination: '/en/compare-pdf', permanent: true },
 
@@ -167,6 +169,7 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       { source: '/en/editar/firmar', destination: '/en/sign-pdf', permanent: true },
+      { source: '/en/editar/firma', destination: '/en/sign-pdf', permanent: true },
       { source: '/en/editar/ocr', destination: '/en/ocr-pdf', permanent: true },
 
       // Convertir
@@ -186,6 +189,16 @@ const nextConfig: NextConfig = {
       },
       { source: '/en/convertir/pdf-jpg', destination: '/en/pdf-to-jpg', permanent: true },
       { source: '/en/convertir/jpg-pdf', destination: '/en/jpg-to-pdf', permanent: true },
+      {
+        source: '/en/convertir/pdf-blanco-negro',
+        destination: '/en/convert-pdf-to-black-and-white',
+        permanent: true,
+      },
+      {
+        source: '/en/convertir/blanco-negro',
+        destination: '/en/convert-pdf-to-black-and-white',
+        permanent: true,
+      },
       { source: '/en/convertir/pdf-html', destination: '/en/pdf-to-html', permanent: true },
       { source: '/en/convertir/html-pdf', destination: '/en/html-to-pdf', permanent: true },
       { source: '/en/convertir/pdf-texto', destination: '/en/pdf-to-txt', permanent: true },
@@ -196,6 +209,10 @@ const nextConfig: NextConfig = {
       { source: '/en/terminos', destination: '/en/terms', permanent: true },
       { source: '/en/contacto', destination: '/en/contact', permanent: true },
       { source: '/en/aviso-legal', destination: '/en/legal-notice', permanent: true },
+
+      // Soluciones Hubs fallback
+      { source: '/soluciones', destination: '/', permanent: true },
+      { source: '/en/solutions', destination: '/en', permanent: true },
     ];
   },
 };

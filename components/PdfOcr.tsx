@@ -651,7 +651,7 @@ export default function PdfOcr() {
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
         <div className="flex items-center gap-4">
           <Link
-            href="/editar"
+            href={isEs ? '/editar' : '/en/edit'}
             className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono transition-all border border-zinc-700"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-white" /> {isEs ? 'Volver' : 'Back'}
@@ -666,8 +666,8 @@ export default function PdfOcr() {
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
               <ScanText className="w-6 h-6 text-white flex-shrink-0" />
               {isEs
-                ? 'RECONOCIMIENTO DE TEXTO OCR EN DOCUMENTOS PDF'
-                : 'MAKE PDF SEARCHABLE WITH OCR'}
+                ? 'OCR PDF Gratis Online — Reconocer Texto en PDF'
+                : 'OCR PDF Free Online — Make PDF Searchable'}
             </h1>
           </div>
         </div>
@@ -827,13 +827,13 @@ export default function PdfOcr() {
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3 font-sans max-w-3xl leading-tight uppercase">
             {isEs
-              ? 'RECONOCIMIENTO DE TEXTO OCR EN DOCUMENTOS PDF'
-              : 'MAKE PDF SEARCHABLE WITH OCR'}
+              ? 'Convierte PDF Escaneado en Texto Buscable con OCR'
+              : 'Make Scanned PDFs Searchable with Free Online OCR'}
           </h2>
           <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Transforma documentos PDF escaneados en archivos con texto 100% seleccionable e indexable, sin subir datos a servidores ni perder nitidez visual.'
-              : 'Transform scanned PDF documents into 100% searchable and selectable files, without uploading data to servers or losing visual sharpness.'}
+              ? 'Reconocimiento óptico de caracteres (OCR) 100% privado en tu navegador. Extrae texto, busca con Ctrl+F y genera PDFs Sandwich sin subir archivos.'
+              : '100% private in-browser optical character recognition (OCR). Extract text, search with Ctrl+F, and create Searchable PDF Sandwich files with zero cloud uploads.'}
           </p>
 
           <button

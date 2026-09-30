@@ -4,6 +4,7 @@ import type { GlossaryTerm } from './glossary/types';
 import type { IndustryPageData } from './industries/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+const SITE_NAME = 'PDFBlack';
 
 export interface ToolSeoInfo {
   titleEs: string;
@@ -17,25 +18,31 @@ export interface ToolSeoInfo {
 export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>> = {
   convertir: {
     'pdf-word': {
-      titleEs: 'Convertir PDF a Word Gratis Online — DOCX 100% Editable | PDFBlack',
-      titleEn: 'Convert PDF to Word Free Online — 100% Editable DOCX | PDFBlack',
+      titleEs:
+        'Convertir PDF a Word Gratis Online — DOCX 100% Editable sin Desconfigurar Formato | PDFBlack',
+      titleEn:
+        'Convert PDF to Word Free Online — 100% Editable DOCX (No Formatting Loss) | PDFBlack',
       descEs:
-        'Convierte tus documentos PDF a Microsoft Word (.docx) editables al 100% online gratis. Conserva tablas, columnas y fuentes originales con procesamiento 100% privado en tu navegador.',
+        'Convierte PDF a Word DOCX 100% editable gratis online. Conserva tablas, columnas y fuentes tipográficas con fidelidad absoluta. Sin registros, sin límites y 100% privado en tu navegador.',
       descEn:
-        'Convert PDF documents to 100% editable Microsoft Word (.docx) files online for free. Preserves layout, tables, fonts and vectors with 100% client-side privacy.',
+        'Convert PDF to editable Word (DOCX) free online. Preserves tables, columns, and embedded fonts losslessly. No email, no registration, no file size limit, 100% private in-browser.',
       keywordsEs: [
         'convertir pdf a word',
         'pdf a word gratis',
         'pdf a docx editable',
-        'pasar pdf a word',
-        'transformar pdf a word',
+        'pasar pdf a word sin desconfigurar',
+        'convertir pdf a word sin registro',
+        'pdf a word sin limite de tamano',
+        'transformar pdf a word editable',
       ],
       keywordsEn: [
         'convert pdf to word',
         'pdf to word free',
         'pdf to docx editable',
         'pdf to word converter online',
-        'free pdf to word',
+        'convert pdf to editable word without formatting loss',
+        'pdf to word no email',
+        'free pdf to word converter no sign up',
       ],
     },
     'word-pdf': {
@@ -209,11 +216,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     'pdf-blanco-negro': {
       titleEs:
         'Convertir PDF a Blanco y Negro Gratis Online — Escala de Grises y Ahorro de Tinta | PDFBlack',
-      titleEn: 'Convert PDF to Black and White Online Free — Monochrome & Grayscale | PDFBlack',
+      titleEn:
+        'Convert PDF to Black and White Online Free — Save Printer Ink & Grayscale | PDFBlack',
       descEs:
         'Convierte archivos PDF a blanco y negro puro o escala de grises (grayscale) online gratis. Ahorra tinta de impresora y reduce el peso del archivo 100% en tu navegador sin subir datos a servidores.',
       descEn:
-        'Convert color PDF files to black and white or grayscale online for free. Save printer ink and drastically reduce file size with 100% private client-side browser processing.',
+        'Save expensive printer ink! Convert color PDF to clean black and white (monochrome grayscale) online for free in 1-click. 100% private in-browser conversion ready for office printing.',
       keywordsEs: [
         'pdf black',
         'pdfblack',
@@ -226,12 +234,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: [
         'convert pdf to black and white',
         'convert color pdf to black and white online',
-        'pdf black',
-        'pdfblack',
-        'pdf to grayscale',
-        'black and white pdf converter',
-        'grayscale pdf online free',
-        'ink saver pdf',
+        'save printer ink pdf',
+        'pdf grayscale converter online',
+        'black and white pdf for printing',
+        'turn color pdf to monochrome',
+        'ink saver pdf printer',
+        'convert pdf to bw free',
       ],
     },
   },
@@ -266,23 +274,31 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     dividir: {
-      titleEs: 'Dividir PDF Gratis Online — Separar y Extraer Páginas de PDF | PDFBlack',
-      titleEn: 'Split PDF Free Online — Separate and Extract Pages from PDF | PDFBlack',
+      titleEs:
+        'Dividir PDF Gratis Online — Separar Páginas y Extraer en ZIP sin Límites | PDFBlack',
+      titleEn:
+        'Split PDF Free Online — Extract Pages & Split into ZIP Chunks (No Limits) | PDFBlack',
       descEs:
-        'Divide un archivo PDF en documentos individuales o extrae rangos específicos de páginas al instante con previsualización interactiva.',
+        'Separa y divide páginas de documentos PDF gratis online. Extrae hojas pares o impares, rangos personalizados o bloques iguales descargables en un archivo ZIP al instante sin subir tus archivos.',
       descEn:
-        'Split a large PDF file into individual documents or extract specific page ranges with interactive thumbnail preview.',
+        'Split and extract PDF pages free online. Partition by custom ranges, separate even/odd pages, or split into equal chunks with 1-click ZIP download. 100% private, zero file limits.',
       keywordsEs: [
         'dividir pdf gratis',
         'separar paginas pdf',
         'extraer paginas de pdf',
         'cortar pdf online',
+        'dividir pdf en bloques zip',
+        'separar hojas pares e impares pdf',
+        'partir pdf sin limite',
       ],
       keywordsEn: [
         'split pdf free',
         'separate pdf pages',
         'extract pages from pdf',
-        'cut pdf online',
+        'split pdf into chunks zip',
+        'split even and odd pages pdf',
+        'cut pdf pages online free',
+        'split pdf without limits',
       ],
     },
     eliminar: {
@@ -347,19 +363,22 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
   optimizar: {
     comprimir: {
-      titleEs: 'Comprimir PDF Gratis Online — Bajar Peso a PDF Sin Límites | PDFBlack',
-      titleEn: 'Compress PDF Free Online — Reduce File Size Without Uploading | PDFBlack',
+      titleEs:
+        'Comprimir PDF Gratis Online — Bajar Peso a PDF sin Perder Calidad (a 200 KB o 1 MB) | PDFBlack',
+      titleEn:
+        'Compress PDF Free Online — Reduce File Size Without Quality Loss (Under 200KB or 1MB) | PDFBlack',
       descEs:
-        '¿Cómo bajarle el peso a un PDF? Reduce megabytes al instante gratis y sin perder calidad. 100% privado en tu navegador, sin límites y sin subir archivos.',
+        '¿Cómo bajarle el peso a un PDF? Reduce megabytes al instante gratis y sin perder calidad en textos ni firmas. Optimiza documentos a menos de 200 KB o 1 MB para enviar por correo o portales oficiales. 100% privado.',
       descEn:
-        'Dramatically reduce PDF file size in your browser with zero server uploads. Shrink megabytes instantly, keep crisp vector text, 100% private and free.',
+        'Reduce PDF file size online for free without losing sharpness on text or signatures. Compress PDFs under 200KB or 1MB for email attachments and official portal uploads. 100% private in-browser, zero uploads.',
       keywordsEs: [
         'comprimir pdf gratis',
         'como bajarle el peso a un pdf',
         'como bajarle los mb a un pdf',
         'bajar peso a un pdf',
-        'bajar peso pdf online',
-        'reducir tamano pdf',
+        'comprimir pdf a 200 kb',
+        'comprimir pdf a 1 mb',
+        'reducir tamano pdf sin perder calidad',
         'bajar megas a un pdf',
         'comprimir pdf sin subir archivos',
       ],
@@ -367,8 +386,10 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
         'compress pdf free',
         'reduce pdf file size',
         'compress pdf without uploading',
-        'shrink pdf online',
-        'lower pdf file size',
+        'compress pdf to 200kb',
+        'compress pdf to 100kb free',
+        'shrink pdf for email attachment',
+        'lower pdf file size without losing quality',
         'reduce pdf mb',
       ],
     },
@@ -441,26 +462,41 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
   editar: {
     texto: {
-      titleEs: 'Editar Texto de PDF Gratis Online — Editor Nativo en Navegador | PDFBlack',
-      titleEn: 'Edit PDF Text Free Online — Native In-Browser PDF Editor | PDFBlack',
+      titleEs:
+        'Editar Texto de PDF Gratis Online — Modificar Texto e Imágenes sin Mover Formato | PDFBlack',
+      titleEn:
+        'Edit PDF Text Free Online — Modify Text & Images Without Formatting Loss | PDFBlack',
       descEs:
-        'Edita textos existentes, añade nuevos párrafos, formas y anotaciones en tus archivos PDF con fuentes incrustadas sin salir del navegador.',
+        'Edita texto existente en tu PDF online gratis: cambia fechas, corrige nombres, inserta párrafos y añade firmas respetando tipografías y alineación original. 100% privado en memoria RAM sin marcas de agua.',
       descEn:
-        'Edit existing text, insert new paragraphs, shapes, and annotations in your PDF files directly in your browser without software installs.',
+        'Free online PDF editor: modify existing text, fix typos, insert new paragraphs, images, and signatures directly in your browser without losing original formatting. 100% private, no signup, no watermark.',
       keywordsEs: [
         'editar texto pdf gratis',
-        'editor de pdf online sin registro',
         'modificar texto en pdf',
+        'editar pdf online sin mover formato',
+        'cambiar fecha en pdf',
+        'corregir texto en pdf gratis',
+        'editor de pdf sin pagar acrobat',
+        'editar texto existente pdf',
       ],
-      keywordsEn: ['edit pdf text free', 'online pdf editor no signup', 'modify text in pdf'],
+      keywordsEn: [
+        'edit pdf text free',
+        'modify text in pdf online',
+        'edit pdf text without acrobat',
+        'change text in pdf free',
+        'edit pdf online no signup',
+        'fix typos in pdf online',
+        'in-browser pdf editor private',
+        'edit pdf text on mobile',
+      ],
     },
     foliar: {
       titleEs: 'Foliar PDF Gratis Online — Numerar Páginas de Expedientes Judiciales | PDFBlack',
-      titleEn: 'Number PDF Pages Free Online — Bates Stamping & Legal Foliating | PDFBlack',
+      titleEn: 'Add Page Numbers to PDF Free Online — Bates Stamping & Page Numbering | PDFBlack',
       descEs:
         'Folia expedientes judiciales, notariales y licitaciones públicas online gratis. Añade numeración correlativa continua, foliado Bates, prefijos y sellos en memoria local 100% privada.',
       descEn:
-        'Add customized page numbering, bates stamps, and legal folios to your PDF documents. Select custom placement, font size, and prefix formats with client-side privacy.',
+        'Add page numbers and Bates stamps to PDF documents online for free. Custom positions (top, bottom, corners), prefix formats (Page 1 of N), and legal stamping 100% privately in your browser.',
       keywordsEs: [
         'foliado pdf',
         'foliar pdf gratis',
@@ -471,11 +507,15 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
         'bates numbering online',
       ],
       keywordsEn: [
-        'number pdf pages free',
         'add page numbers to pdf',
+        'number pdf pages free',
         'bates numbering pdf online',
-        'paginate pdf',
-        'legal folio pdf',
+        'pdf page numbering tool',
+        'paginate pdf online free',
+        'insert page numbers in pdf',
+        'bates stamping software free',
+        'legal folio pdf stamping',
+        'number pdf pages without acrobat',
       ],
     },
     'marca-agua': {
@@ -529,23 +569,34 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     ocr: {
-      titleEs: 'OCR PDF Gratis Online — Reconocer Texto en PDF Escaneado | PDFBlack',
-      titleEn: 'OCR PDF Free Online — Optical Character Recognition for Scanned PDF | PDFBlack',
+      titleEs: 'OCR PDF Online Gratis — Reconocer Texto y PDF Buscable | PDFBlack',
+      titleEn: 'OCR PDF Free Online — Make Scanned PDF Searchable & Selectable Text | PDFBlack',
       descEs:
-        'Convierte documentos escaneados e imágenes de PDF en texto 100% seleccionable, copiable y con capacidad de búsqueda con motor OCR multilingüe.',
+        'Aplica OCR a PDFs escaneados e imágenes gratis online. Extrae texto copiable y haz tu PDF buscable (Ctrl+F) sin subir archivos. 100% privado en tu navegador.',
       descEn:
-        'Transform scanned PDF documents and images into searchable, selectable text with our high-accuracy multilingual OCR engine.',
+        'Free online OCR PDF: convert scanned paper documents and photo PDFs into searchable, selectable text (Ctrl+F). 100% private in-browser Tesseract OCR recognition with zero server uploads.',
       keywordsEs: [
-        'ocr pdf gratis',
-        'reconocimiento de texto pdf',
-        'hacer pdf buscable online',
-        'extraer texto de escaneo',
+        'ocr pdf',
+        'ocr pdf online gratis',
+        'reconocer texto en pdf',
+        'hacer pdf buscable',
+        'convertir pdf escaneado a texto',
+        'extraer texto de pdf escaneado',
+        'pdf sandwich buscable',
+        'reconocimiento optico de caracteres',
+        'ocr tesseract local',
+        'hacer pdf seleccionable',
       ],
       keywordsEn: [
         'ocr pdf free',
+        'ocr pdf online',
+        'make scanned pdf searchable',
+        'pdf text recognition online',
+        'searchable pdf sandwich',
+        'convert scanned pdf to text',
         'optical character recognition pdf',
-        'make pdf searchable online',
-        'scanned pdf to text',
+        'extract selectable text from pdf',
+        'free online ocr tesseract in browser',
       ],
     },
   },
@@ -562,11 +613,14 @@ export function buildToolMetadata(
   const info = TOOLS_METADATA_REGISTRY[category]?.[toolSlug];
   const isEs = lang === 'es';
 
-  const title = info
+  const rawTitle = info
     ? isEs
       ? info.titleEs
       : info.titleEn
     : `${toolSlug.toUpperCase()} — PDFBlack`;
+  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+
   const description = info
     ? isEs
       ? info.descEs
@@ -589,13 +643,15 @@ export function buildToolMetadata(
   const canonicalUrl = isEs ? esUrl : enUrl;
 
   const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
-    title.split('—')[0].trim(),
+    cleanTitle.split('—')[0].trim(),
   )}&badge=${encodeURIComponent(category.toUpperCase())}&category=${encodeURIComponent(
     category,
   )}&lang=${lang}`;
 
   return {
-    title,
+    title: {
+      absolute: absoluteTitle,
+    },
     description,
     keywords,
     authors: [{ name: 'PDFBlack Team' }],
@@ -609,7 +665,7 @@ export function buildToolMetadata(
       },
     },
     openGraph: {
-      title,
+      title: absoluteTitle,
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
@@ -620,13 +676,13 @@ export function buildToolMetadata(
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: absoluteTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: absoluteTitle,
       description,
       images: [ogImageUrl],
     },
@@ -817,11 +873,14 @@ export function buildCategoryHubMetadata(
   const info = CATEGORY_HUBS_METADATA[normalizedCat];
   const isEs = lang === 'es';
 
-  const title = info
+  const rawTitle = info
     ? isEs
       ? info.titleEs
       : info.titleEn
     : `${normalizedCat.toUpperCase()} — PDFBlack`;
+  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+
   const description = info
     ? isEs
       ? info.descEs
@@ -834,13 +893,15 @@ export function buildCategoryHubMetadata(
   const canonicalUrl = isEs ? esUrl : enUrl;
 
   const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
-    title.split('—')[0].trim(),
+    cleanTitle.split('—')[0].trim(),
   )}&badge=${encodeURIComponent(info?.badge || normalizedCat.toUpperCase())}&category=${encodeURIComponent(
     normalizedCat,
   )}&lang=${lang}`;
 
   return {
-    title,
+    title: {
+      absolute: absoluteTitle,
+    },
     description,
     keywords,
     authors: [{ name: 'PDFBlack Team' }],
@@ -854,7 +915,7 @@ export function buildCategoryHubMetadata(
       },
     },
     openGraph: {
-      title,
+      title: absoluteTitle,
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
@@ -865,13 +926,13 @@ export function buildCategoryHubMetadata(
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: absoluteTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: absoluteTitle,
       description,
       images: [ogImageUrl],
     },
@@ -1144,9 +1205,12 @@ export function buildDefinedTermSchema({
  */
 export function buildGlossaryIndexMetadata(lang: 'es' | 'en' = 'es'): Metadata {
   const isEs = lang === 'es';
-  const title = isEs
+  const rawTitle = isEs
     ? 'Glosario Técnico de PDF — Conceptos, Estándares ISO y Seguridad | PDFBlack'
     : 'Technical PDF Glossary — Specifications, ISO Standards & Security | PDFBlack';
+  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+
   const description = isEs
     ? 'Centro de recursos técnicos sobre PDF: conoce qué es la numeración Bates, diferencias entre PDF/A y PDF estándar, cifrado militar AES-256, censura binaria y arquitectura Zero-Knowledge.'
     : 'Comprehensive technical PDF knowledge hub: discover Bates numbering, PDF/A versus standard PDF, AES-256 military encryption, forensic redaction, and client-side zero-knowledge architecture.';
@@ -1158,7 +1222,9 @@ export function buildGlossaryIndexMetadata(lang: 'es' | 'en' = 'es'): Metadata {
   )}&badge=${encodeURIComponent('CENTRO DE RECURSOS')}&category=tecnologia&lang=${lang}`;
 
   return {
-    title,
+    title: {
+      absolute: absoluteTitle,
+    },
     description,
     keywords: isEs
       ? [
@@ -1185,7 +1251,7 @@ export function buildGlossaryIndexMetadata(lang: 'es' | 'en' = 'es'): Metadata {
       },
     },
     openGraph: {
-      title,
+      title: absoluteTitle,
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
@@ -1196,13 +1262,13 @@ export function buildGlossaryIndexMetadata(lang: 'es' | 'en' = 'es'): Metadata {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: absoluteTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: absoluteTitle,
       description,
       images: [ogImageUrl],
     },
@@ -1331,7 +1397,10 @@ export function buildGlossaryBreadcrumbSchema(term: GlossaryTerm, lang: 'es' | '
  */
 export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' = 'es'): Metadata {
   const isEs = lang === 'es';
-  const title = term.metaTitle;
+  const rawTitle = term.metaTitle;
+  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+
   const description = term.metaDescription;
   const canonicalUrl = isEs
     ? `${SITE_URL}/glosario/${term.slug}`
@@ -1343,7 +1412,9 @@ export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' 
   )}&badge=${encodeURIComponent(term.badge)}&category=${term.category}&lang=${lang}`;
 
   return {
-    title,
+    title: {
+      absolute: absoluteTitle,
+    },
     description,
     keywords: term.keywords,
     metadataBase: new URL(SITE_URL),
@@ -1356,7 +1427,7 @@ export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' 
       },
     },
     openGraph: {
-      title,
+      title: absoluteTitle,
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
@@ -1367,13 +1438,13 @@ export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' 
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: absoluteTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: absoluteTitle,
       description,
       images: [ogImageUrl],
     },
@@ -1396,9 +1467,12 @@ export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' 
  */
 export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
   const isEs = lang === 'es';
-  const title = isEs
+  const rawTitle = isEs
     ? 'Soluciones PDF por Industria: Cumplimiento Legal, Salud y Finanzas | PDFBlack'
     : 'Industry PDF Solutions: Legal, Healthcare & Finance Compliance | PDFBlack';
+  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+
   const description = isEs
     ? 'Descubre cómo despachos de abogados, hospitales, firmas de auditoría y administraciones públicas procesan documentos PDF con 100% privacidad local sin subir archivos a la nube.'
     : 'Discover how law firms, hospitals, accounting firms, and government agencies process sensitive PDF documents with 100% client-side zero-knowledge privacy.';
@@ -1410,7 +1484,9 @@ export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
   )}&badge=${encodeURIComponent('ENTERPRISE & B2B')}&category=organizar&lang=${lang}`;
 
   return {
-    title,
+    title: {
+      absolute: absoluteTitle,
+    },
     description,
     keywords: isEs
       ? [
@@ -1439,7 +1515,7 @@ export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
       },
     },
     openGraph: {
-      title,
+      title: absoluteTitle,
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
@@ -1450,13 +1526,13 @@ export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: absoluteTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: absoluteTitle,
       description,
       images: [ogImageUrl],
     },
@@ -1482,7 +1558,10 @@ export function buildIndustryMetadata(
   lang: 'es' | 'en' = 'es',
 ): Metadata {
   const isEs = lang === 'es';
-  const title = isEs ? industry.metaTitle : industry.metaTitleEn;
+  const rawTitle = isEs ? industry.metaTitle : industry.metaTitleEn;
+  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+
   const description = isEs ? industry.metaDescription : industry.metaDescriptionEn;
   const canonicalUrl = isEs
     ? `${SITE_URL}/industrias/${industry.slug}`
@@ -1494,7 +1573,9 @@ export function buildIndustryMetadata(
   )}&badge=${encodeURIComponent(industry.heroBadge)}&category=organizar&lang=${lang}`;
 
   return {
-    title,
+    title: {
+      absolute: absoluteTitle,
+    },
     description,
     keywords: isEs ? industry.keywords : industry.keywordsEn,
     metadataBase: new URL(SITE_URL),
@@ -1507,7 +1588,7 @@ export function buildIndustryMetadata(
       },
     },
     openGraph: {
-      title,
+      title: absoluteTitle,
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
@@ -1518,13 +1599,13 @@ export function buildIndustryMetadata(
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: absoluteTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: absoluteTitle,
       description,
       images: [ogImageUrl],
     },

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfSplitter = dynamic(() => import('@/components/PdfSplitter'), {
   ssr: false,
@@ -826,6 +827,9 @@ export default function DividirPdfPage() {
             })}
           </div>
         </section>
+
+        {/* ── SOLUCIONES LONG-TAIL Y CASOS DE USO VINCULADOS ── */}
+        <RelatedLongTailSolutions toolKey="dividir" />
       </div>
     </main>
   );

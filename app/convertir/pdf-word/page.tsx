@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 import ConverterSeoSection from '@/components/ConverterSeoSection';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 import { CONVERTER_SEO_DATA } from '@/lib/converter-seo-data';
 
 const WordPdfConverter = dynamic(() => import('@/components/WordPdfConverter'), {
@@ -23,6 +24,7 @@ export default function PdfWordPage() {
       <div className="w-full max-w-7xl flex flex-col items-center">
         <WordPdfConverter defaultMode="pdf-to-word" />
         {seoData && <ConverterSeoSection {...seoData} />}
+        <RelatedLongTailSolutions toolKey="pdf-word" />
       </div>
     </main>
   );

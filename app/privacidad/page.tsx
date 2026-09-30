@@ -32,8 +32,8 @@ export default function PrivacidadPage() {
             '@graph': [
               {
                 '@type': 'WebPage',
-                '@id': `${SITE_URL}${isEs ? '/privacidad' : '/en/privacidad'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/privacidad' : '/en/privacidad'}`,
+                '@id': `${SITE_URL}${isEs ? '/privacidad' : '/en/privacy'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/privacidad' : '/en/privacy'}`,
                 name: isEs
                   ? 'Política de Privacidad — Cumplimiento GDPR | PDFBlack'
                   : 'Privacy Policy — GDPR Compliance | PDFBlack',

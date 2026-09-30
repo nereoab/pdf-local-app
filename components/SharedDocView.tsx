@@ -21,6 +21,7 @@ import { getShareDetails, ShareMetadata } from '@/lib/share-service';
 import { triggerLuxuryConfetti } from '@/components/ui/AnimatedSuccessCheck';
 import { toast } from 'sonner';
 import PdfPageViewer from '@/components/PdfPageViewer';
+import { trackToolEvent } from '@/lib/analytics';
 
 interface SharedDocViewProps {
   shareId: string;
@@ -136,6 +137,7 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
     document.body.removeChild(link);
 
     setDownloaded(true);
+    trackToolEvent('share_viewer', 'file_downloaded', { shareId: docData.shareId });
     try {
       triggerLuxuryConfetti();
     } catch {
@@ -145,20 +147,32 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
   };
 
   const showcaseTools = [
-    { name: 'Foliar PDF', path: '/editar/foliar', icon: Layers, desc: 'Numeración notarial' },
+    { name: 'Editar PDF', path: '/editar/texto', icon: PenTool, desc: 'Modifica texto e imágenes' },
     {
       name: 'Comprimir PDF',
-      path: '/optimizar/comprimir-pdf',
+      path: '/optimizar/comprimir',
       icon: Zap,
       desc: 'Reduce tamaño sin perder calidad',
+    },
+    { name: 'Foliar PDF', path: '/editar/foliar', icon: Layers, desc: 'Numeración notarial' },
+    {
+      name: 'OCR PDF',
+      path: '/editar/ocr',
+      icon: Sparkles,
+      desc: 'Reconoce texto en scans',
+    },
+    {
+      name: 'PDF a Word',
+      path: '/convertir/pdf-word',
+      icon: FileText,
+      desc: 'DOCX 100% editable',
     },
     {
       name: 'Firmar PDF',
       path: '/editar/firmar',
-      icon: PenTool,
+      icon: ShieldCheck,
       desc: 'Firma digital en segundos',
     },
-    { name: 'Proteger PDF', path: '/optimizar/proteger', icon: Lock, desc: 'Cifra con contraseña' },
   ];
 
   if (loading) {
@@ -353,7 +367,7 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
             {showcaseTools.map((tool) => {
               const Icon = tool.icon;
               return (

@@ -31,8 +31,8 @@ export default function TerminosPage() {
             '@graph': [
               {
                 '@type': 'WebPage',
-                '@id': `${SITE_URL}${isEs ? '/terminos' : '/en/terminos'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/terminos' : '/en/terminos'}`,
+                '@id': `${SITE_URL}${isEs ? '/terminos' : '/en/terms'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/terminos' : '/en/terms'}`,
                 name: isEs
                   ? 'Términos y Condiciones de Uso | PDFBlack'
                   : 'Terms and Conditions of Use | PDFBlack',

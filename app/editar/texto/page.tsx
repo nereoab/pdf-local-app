@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfEditor = dynamic(() => import('@/components/PdfEditor'), {
   ssr: false,
@@ -590,6 +591,9 @@ export default function EditarTextoPage() {
               </div>
             </div>
           </section>
+
+          {/* SOLUCIONES LONG-TAIL RELACIONADAS (CLUSTER TEMÁTICO) */}
+          <RelatedLongTailSolutions toolKey="texto" />
 
           {/* ACORDEÓN INTERACTIVO DE PREGUNTAS FRECUENTES (FAQ) */}
           <section className="space-y-6">

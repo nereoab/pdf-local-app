@@ -33,8 +33,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     data.h1.split(':')[0].trim(),
   )}&badge=${encodeURIComponent(data.badge)}&category=optimizar&lang=es`;
 
+  const cleanTitle = data.metaTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  const absoluteTitle = `${cleanTitle} | PDFBlack`;
+
   return {
-    title: data.metaTitle,
+    title: {
+      absolute: absoluteTitle,
+    },
     description: data.metaDescription,
     keywords: data.keywords,
     metadataBase: new URL(SITE_URL),
@@ -47,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
     },
     openGraph: {
-      title: data.metaTitle,
+      title: absoluteTitle,
       description: data.metaDescription,
       url: canonicalUrl,
       siteName: 'PDFBlack',

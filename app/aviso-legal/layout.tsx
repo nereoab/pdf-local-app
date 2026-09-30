@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Aviso Legal e Información Corporativa | PDFBlack',
+  title: {
+    absolute: 'Aviso Legal e Información Corporativa | PDFBlack',
+  },
   description:
     'Aviso legal, titularidad del dominio, propiedad intelectual y condiciones generales de la plataforma PDFBlack.',
   keywords: ['aviso legal pdfblack', 'informacion legal pdf online'],

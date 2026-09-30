@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Frequently Asked Questions (FAQ) — Security, Privacy & Usage | PDFBlack',
+  title: {
+    absolute: 'Frequently Asked Questions (FAQ) — Security, Privacy & Usage | PDFBlack',
+  },
   description:
     'Find answers about PDFBlack: how client-side in-memory processing works, why it is 100% free, GDPR compliance, and zero server storage architecture.',
   keywords: [

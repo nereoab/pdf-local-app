@@ -27,6 +27,7 @@ import {
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfOcr = dynamic(() => import('@/components/PdfOcr'), {
   ssr: false,
@@ -50,6 +51,14 @@ export default function OcrPage() {
 
   const faqs = isEs
     ? [
+        {
+          q: '¿Cómo convertir un PDF escaneado a texto buscable y copiable gratis?',
+          a: 'Sube tu archivo PDF escaneado a PDFBlack, selecciona el idioma del documento (por ejemplo, Español) y pulsa "Reconocer Texto (OCR)". Nuestro motor Tesseract v5 en WebAssembly procesa cada página localmente en tu navegador sin subir datos a servidores, incrustando una capa vectorial de texto invisible ("PDF Sandwich"). Esto te permite buscar cualquier palabra con Ctrl+F, seleccionar párrafos y copiar texto manteniendo intacta la apariencia visual del documento.',
+        },
+        {
+          q: '¿Puedo extraer el texto de un PDF escaneado directamente a Word (.docx) o TXT?',
+          a: 'Sí. Además de generar un PDF con texto seleccionable, PDFBlack te permite exportar el texto reconocido a Microsoft Word editable (.docx), texto plano (.txt) o formato estructurado (.json) con coordenadas milimétricas de cada palabra, ideal para reutilizar contratos, expedientes notariales o facturas sin transcribir a mano.',
+        },
         {
           q: '¿Cómo funciona la tecnología OCR y qué es un "PDF Sandwich"?',
           a: 'El reconocimiento óptico de caracteres (OCR) analiza las matrices de píxeles en imágenes o documentos escaneados para identificar caracteres y palabras. Un "PDF Sandwich" conserva la imagen escaneada original intacta en primer plano con todos sus sellos, firmas y texturas, mientras incrusta por debajo una capa de texto invisible en sus coordenadas vectoriales exactas. Esto permite seleccionar, copiar y buscar texto (Ctrl + F) sin alterar la fidelidad visual del documento.',
@@ -88,6 +97,14 @@ export default function OcrPage() {
         },
       ]
     : [
+        {
+          q: 'How do I make a scanned PDF searchable and selectable online for free?',
+          a: 'Select or drag your scanned PDF into PDFBlack, choose your document language, and click "Recognize Text (OCR)". Our in-browser WebAssembly engine processes the document locally, embedding an invisible OCR text layer directly aligned with the original scan. You can immediately search with Ctrl+F, highlight, and copy text without uploading files to any cloud server.',
+        },
+        {
+          q: 'Can I extract text from a scanned PDF directly to editable Word (.docx) or TXT?',
+          a: 'Yes. Along with producing an ISO-compliant Searchable PDF Sandwich, PDFBlack allows you to export recognized text directly into editable Microsoft Word (.docx), plain text (.txt), or structured JSON with word coordinates and confidence scores.',
+        },
         {
           q: 'How does OCR technology work and what is a "Searchable PDF Sandwich"?',
           a: 'Optical Character Recognition (OCR) analyzes pixel patterns in images or scanned documents to recognize letters and words. A "Searchable PDF Sandwich" keeps the original scanned image completely intact in the foreground with all its stamps, signatures, and textures, while embedding an invisible text layer directly beneath each word at exact coordinates. This enables selecting, copying, and searching text (Ctrl + F) without altering visual authenticity.',
@@ -130,15 +147,15 @@ export default function OcrPage() {
     '@context': 'https://schema.org',
     '@type': ['WebApplication', 'SoftwareApplication'],
     name: isEs
-      ? 'Reconocimiento OCR en PDF Gratis Online — Hacer PDF Buscable | PDFBlack'
-      : 'OCR PDF Online Free — Make PDF Searchable & Selectable | PDFBlack',
+      ? 'OCR PDF Online Gratis — Reconocer Texto y PDF Buscable | PDFBlack'
+      : 'OCR PDF Free Online — Make Scanned PDF Searchable | PDFBlack',
     url: isEs ? `${SITE_URL}/editar/ocr` : `${SITE_URL}/en/ocr-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
     description: isEs
-      ? 'Convierte PDFs escaneados y fotos de documentos en archivos PDF buscables con texto seleccionable. Reconocimiento OCR 100% local en tu navegador sin subir datos al servidor.'
-      : 'Convert scanned PDFs and document images into searchable PDFs with selectable text. 100% local browser OCR processing with zero server uploads.',
+      ? 'Aplica OCR a PDFs escaneados e imágenes gratis online. Extrae texto copiable y haz tu PDF buscable (Ctrl+F) sin subir archivos. 100% privado en tu navegador.'
+      : 'Free OCR PDF online: turn scanned documents & images into searchable, selectable text (Ctrl+F). 100% private in-browser recognition, zero server uploads.',
     softwareVersion: '5.0',
     screenshot: `${SITE_URL}/og-ocr-pdf.png`,
     aggregateRating: {
@@ -665,6 +682,9 @@ export default function OcrPage() {
             })}
           </div>
         </section>
+
+        {/* CASOS DE USO Y SOLUCIONES RELACIONADAS LONG-TAIL */}
+        <RelatedLongTailSolutions toolKey="ocr" />
       </div>
     </main>
   );

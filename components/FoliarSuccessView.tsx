@@ -40,6 +40,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { trackToolEvent } from '@/lib/analytics';
 import { createShareLink, generateShareId, buildShareUrl } from '@/lib/share-service';
 import {
   requestDriveAccessToken,
@@ -153,11 +154,12 @@ export default function FoliarSuccessView({
   useEffect(() => {
     try {
       triggerLuxuryConfetti();
+      trackToolEvent(toolName || 'pdf_tool', 'tool_completed', { filename: activeFilename });
     } catch {
       // no-op si no está disponible
     }
     ensureUploadStarted();
-  }, [ensureUploadStarted]);
+  }, [ensureUploadStarted, toolName, activeFilename]);
 
   // Recuperar enlace de descarga oficial de PDFBlack (siempre instantáneo)
   const getOrCreateShareLink = async (): Promise<string> => {
@@ -244,6 +246,7 @@ export default function FoliarSuccessView({
     link.click();
     document.body.removeChild(link);
 
+    trackToolEvent(toolName || 'pdf_tool', 'file_downloaded', { filename: activeFilename });
     setDownloaded(true);
     triggerLuxuryConfetti();
     toast.success(isEs ? '¡Descarga iniciada con éxito!' : 'Download started successfully!');
@@ -254,6 +257,7 @@ export default function FoliarSuccessView({
     ensureUploadStarted();
     const ok = await copyToClipboard(shareUrl);
     if (ok) {
+      trackToolEvent(toolName || 'pdf_tool', 'file_shared', { method: 'copy_link' });
       setCopiedFile(true);
       setTimeout(() => setCopiedFile(false), 3000);
       toast.success(

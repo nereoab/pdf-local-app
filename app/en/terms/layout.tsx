@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | PDFBlack',
+  title: {
+    absolute: 'Terms of Service | PDFBlack',
+  },
   description:
     'Terms of service, user rights, client-side responsibilities, and conditions of use for the PDFBlack online tool suite.',
   alternates: {

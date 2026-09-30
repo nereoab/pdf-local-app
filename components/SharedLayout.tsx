@@ -23,6 +23,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   const isEs = !isEnRoute && lang === 'es';
   const isZh = lang === 'zh';
   const isHome = pathname === '/' || pathname === '/en';
+  const getNavUrl = (path: string) => (isEnRoute ? getEnglishUrlForSpanish(path) : path);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { currentUser, logout, hydrate: hydrateAuth, isHydrated } = useAuthStore();
   const isHeaderHidden = useUIStore((s) => s.isHeaderHidden);
@@ -50,7 +51,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
       return;
     }
-    if (pathname === '/') {
+    if (pathname === '/' || pathname === '/en') {
       e.preventDefault();
       window.location.reload();
     }
@@ -69,7 +70,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
             {/* LOGO TECHNICAL - AS DE ESPADAS */}
             <Link
-              href="/"
+              href={isEnRoute ? '/en' : '/'}
               onClick={handleLogoClick}
               className="flex-shrink-0"
               aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
@@ -213,7 +214,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   },
                   {
                     label: isZh ? '解密 PDF' : isEs ? 'Desbloquear PDF' : 'Unlock PDF',
-                    path: '/desbloquear',
+                    path: '/optimizar/desbloquear',
                   },
                   {
                     label: isZh ? '加密 PDF' : isEs ? 'Proteger PDF' : 'Protect PDF',
@@ -239,7 +240,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             >
               <AnimatePresence mode="wait">
                 {!isHome && (
-                  <Link key="home-nav-link" href="/">
+                  <Link key="home-nav-link" href={isEnRoute ? '/en' : '/'}>
                     <motion.button
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -388,35 +389,50 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
-                  <Link href="/editar/texto" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/editar/texto')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/editar/foliar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/editar/foliar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Foliar PDF (Páginas)' : 'Add Page Numbers'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/editar/marca-agua" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/editar/marca-agua')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Poner Marca de Agua' : 'Add Watermark'}
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/editar/quitar-marca-agua"
+                    href={getNavUrl('/editar/quitar-marca-agua')}
                     className="hover:text-white transition-colors"
                   >
                     {isEs ? 'Quitar Marca de Agua' : 'Remove Watermark'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/editar/firmar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/editar/firmar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Firmar PDF' : 'Sign PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/editar/ocr" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/editar/ocr')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'OCR (Reconocer Texto)' : 'OCR Searchable PDF'}
                   </Link>
                 </li>
@@ -431,32 +447,50 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
-                  <Link href="/organizar/unir" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/organizar/unir')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Unir PDF' : 'Merge PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/organizar/dividir" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/organizar/dividir')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Dividir PDF' : 'Split PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/organizar/eliminar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/organizar/eliminar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Eliminar Páginas' : 'Delete Pages'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/organizar/reordenar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/organizar/reordenar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Ordenar Páginas' : 'Reorder Pages'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/organizar/rotar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/organizar/rotar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Rotar PDF' : 'Rotate PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/organizar/recortar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/organizar/recortar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Recortar PDF' : 'Crop PDF'}
                   </Link>
                 </li>
@@ -471,35 +505,50 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
-                  <Link href="/optimizar/comprimir" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/optimizar/comprimir')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Comprimir PDF' : 'Compress PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/optimizar/reparar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/optimizar/reparar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Reparar PDF' : 'Repair PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/optimizar/proteger" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/optimizar/proteger')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Proteger PDF' : 'Protect PDF'}
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/optimizar/desbloquear"
+                    href={getNavUrl('/optimizar/desbloquear')}
                     className="hover:text-white transition-colors"
                   >
                     {isEs ? 'Desbloquear PDF' : 'Unlock PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/optimizar/censurar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/optimizar/censurar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Censurar PDF' : 'Redact PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/optimizar/comparar" className="hover:text-white transition-colors">
+                  <Link
+                    href={getNavUrl('/optimizar/comparar')}
+                    className="hover:text-white transition-colors"
+                  >
                     {isEs ? 'Comparar PDFs' : 'Compare PDFs'}
                   </Link>
                 </li>
@@ -514,36 +563,51 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
-                  <Link href="/convertir/word-pdf" className="hover:text-white transition-colors">
-                    Word a PDF
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/convertir/excel-pdf" className="hover:text-white transition-colors">
-                    Excel a PDF
+                  <Link
+                    href={getNavUrl('/convertir/word-pdf')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'Word a PDF' : 'Word to PDF'}
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/convertir/powerpoint-pdf"
+                    href={getNavUrl('/convertir/excel-pdf')}
                     className="hover:text-white transition-colors"
                   >
-                    PowerPoint a PDF
+                    {isEs ? 'Excel a PDF' : 'Excel to PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/convertir/jpg-pdf" className="hover:text-white transition-colors">
-                    JPG / Imagen a PDF
+                  <Link
+                    href={getNavUrl('/convertir/powerpoint-pdf')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'PowerPoint a PDF' : 'PowerPoint to PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/convertir/html-pdf" className="hover:text-white transition-colors">
-                    HTML a PDF
+                  <Link
+                    href={getNavUrl('/convertir/jpg-pdf')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'JPG / Imagen a PDF' : 'JPG to PDF'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/convertir/texto-pdf" className="hover:text-white transition-colors">
-                    Texto TXT a PDF
+                  <Link
+                    href={getNavUrl('/convertir/html-pdf')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'HTML a PDF' : 'HTML to PDF'}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={getNavUrl('/convertir/texto-pdf')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'Texto TXT a PDF' : 'Text to PDF'}
                   </Link>
                 </li>
               </ul>
@@ -557,39 +621,51 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
-                  <Link href="/convertir/pdf-word" className="hover:text-white transition-colors">
-                    PDF a Word (DOCX)
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/convertir/pdf-excel" className="hover:text-white transition-colors">
-                    PDF a Excel (XLSX)
-                  </Link>
-                </li>
-                <li>
                   <Link
-                    href="/convertir/pdf-powerpoint"
+                    href={getNavUrl('/convertir/pdf-word')}
                     className="hover:text-white transition-colors"
                   >
-                    PDF a PowerPoint
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/convertir/pdf-jpg" className="hover:text-white transition-colors">
-                    PDF a JPG / PNG
+                    {isEs ? 'PDF a Word (DOCX)' : 'PDF to Word'}
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/convertir/pdf-blanco-negro"
+                    href={getNavUrl('/convertir/pdf-excel')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'PDF a Excel (XLSX)' : 'PDF to Excel'}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={getNavUrl('/convertir/pdf-powerpoint')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'PDF a PowerPoint' : 'PDF to PowerPoint'}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={getNavUrl('/convertir/pdf-jpg')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'PDF a JPG / PNG' : 'PDF to JPG'}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href={getNavUrl('/convertir/pdf-blanco-negro')}
                     className="hover:text-white transition-colors"
                   >
                     {isEs ? 'PDF a Blanco y Negro' : 'PDF to Black & White'}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/convertir/pdf-texto" className="hover:text-white transition-colors">
-                    PDF a Texto Plano
+                  <Link
+                    href={getNavUrl('/convertir/pdf-texto')}
+                    className="hover:text-white transition-colors"
+                  >
+                    {isEs ? 'PDF a Texto Plano' : 'PDF to Text'}
                   </Link>
                 </li>
               </ul>
@@ -599,7 +675,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           {/* BARRA INFERIOR DE LEGALIDAD & COPYRIGHT */}
           <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs">
             <Link
-              href="/"
+              href={isEnRoute ? '/en' : '/'}
               onClick={handleLogoClick}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
               aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
@@ -715,8 +791,7 @@ function DropdownMenu({
 }) {
   const pathname = usePathname();
   const isEn = pathname?.startsWith('/en');
-  const langPrefix = isEn ? '/en' : '';
-  const resolvedBasePath = `${langPrefix}${basePath}`;
+  const resolvedBasePath = isEn ? getEnglishUrlForSpanish(basePath) : basePath;
   const isActive = pathname.startsWith(resolvedBasePath) || pathname.startsWith(basePath);
 
   return (
@@ -748,7 +823,7 @@ function DropdownMenu({
       >
         <div className="bg-[#0d0d12] border border-zinc-700 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl backdrop-blur-xl">
           {items.map((item, idx) => {
-            const resolvedPath = `${langPrefix}${item.path}`;
+            const resolvedPath = isEn ? getEnglishUrlForSpanish(item.path) : item.path;
             const isItemActive = pathname === resolvedPath;
             return (
               <Link

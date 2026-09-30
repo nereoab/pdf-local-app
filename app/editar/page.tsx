@@ -23,6 +23,7 @@ import {
   Stamp,
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
+import { getEnglishUrlForSpanish } from '@/lib/routes-config';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
@@ -139,7 +140,7 @@ function EditarContent() {
                     position: idx + 1,
                     name: isEs ? t.titleEs : t.titleEn,
                     description: isEs ? t.descEs : t.descEn,
-                    url: `${SITE_URL}${isEs ? t.path : `/en${t.path}`}`,
+                    url: `${SITE_URL}${isEs ? t.path : getEnglishUrlForSpanish(t.path)}`,
                   })),
                 },
               },
@@ -208,7 +209,7 @@ function EditarContent() {
               return (
                 <Link
                   key={tool.id}
-                  href={tool.path}
+                  href={isEs ? tool.path : getEnglishUrlForSpanish(tool.path)}
                   className="outline-none group/card block h-full"
                 >
                   <SpotlightCard

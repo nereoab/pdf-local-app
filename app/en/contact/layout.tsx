@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Contact Support & Feedback | PDFBlack',
+  title: {
+    absolute: 'Contact Support & Feedback | PDFBlack',
+  },
   description:
     'Get in touch with the PDFBlack team. Inquiries, feature requests, bug reports, and partnership opportunities.',
   alternates: {

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfFoliador = dynamic(() => import('@/components/PdfFoliador'), {
   ssr: false,
@@ -852,6 +853,9 @@ export default function FoliarPage() {
               })}
             </div>
           </section>
+
+          {/* SOLUCIONES LONG-TAIL RELACIONADAS (FOLIADO NOTARIAL, JUDICIAL Y ACADÉMICO) */}
+          <RelatedLongTailSolutions toolKey="foliar" />
         </div>
       </main>
     </>

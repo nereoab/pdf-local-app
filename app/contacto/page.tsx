@@ -63,8 +63,8 @@ export default function ContactoPage() {
             '@graph': [
               {
                 '@type': 'ContactPage',
-                '@id': `${SITE_URL}${isEs ? '/contacto' : '/en/contacto'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/contacto' : '/en/contacto'}`,
+                '@id': `${SITE_URL}${isEs ? '/contacto' : '/en/contact'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/contacto' : '/en/contact'}`,
                 name: isEs ? 'Contacto y Soporte — PDFBlack' : 'Contact & Support — PDFBlack',
                 description: isEs
                   ? 'Ponte en contacto con el equipo de PDFBlack para dudas, sugerencias o asistencia técnica.'

@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — 100% Client-Side Private Processing | PDFBlack',
+  title: {
+    absolute: 'Privacy Policy — 100% Client-Side Private Processing | PDFBlack',
+  },
   description:
     'Learn about our zero-knowledge, zero-upload privacy architecture. PDFBlack processes all documents locally in your browser memory without cloud servers.',
   alternates: {

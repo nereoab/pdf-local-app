@@ -23,8 +23,8 @@ export default function AvisoLegalPage() {
             '@graph': [
               {
                 '@type': 'WebPage',
-                '@id': `${SITE_URL}${isEs ? '/aviso-legal' : '/en/aviso-legal'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/aviso-legal' : '/en/aviso-legal'}`,
+                '@id': `${SITE_URL}${isEs ? '/aviso-legal' : '/en/legal-notice'}#webpage`,
+                url: `${SITE_URL}${isEs ? '/aviso-legal' : '/en/legal-notice'}`,
                 name: isEs
                   ? 'Aviso Legal y Datos Identificativos | PDFBlack'
                   : 'Legal Notice & Identifying Information | PDFBlack',

@@ -35,6 +35,7 @@ import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 import SpotlightCard from '@/components/SpotlightCard';
 import DocumentUploadProgress from '@/components/DocumentUploadProgress';
 import CategoryQuickTools from '@/components/CategoryQuickTools';
+import { getEnglishUrlForSpanish } from '@/lib/routes-config';
 
 // ─── JSON-LD Structured Data (Rich Snippets) ───
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
@@ -260,7 +261,10 @@ function CategoryCard({
           )}
         </div>
 
-        <Link href={cat.path} className="group/title block">
+        <Link
+          href={isEs ? cat.path : getEnglishUrlForSpanish(cat.path)}
+          className="group/title block"
+        >
           <h3 className="text-2xl font-black text-white tracking-tight mb-2 group-hover/title:text-zinc-200 transition-colors flex items-center gap-2">
             <span>{isEs ? cat.titleEs : cat.titleEn}</span>
           </h3>
@@ -279,7 +283,7 @@ function CategoryCard({
           {cat.tools.map((tool, tIdx) => (
             <Link
               key={tIdx}
-              href={tool.path}
+              href={isEs ? tool.path : getEnglishUrlForSpanish(tool.path)}
               className="bg-[#181822] hover:bg-white hover:text-black border border-zinc-600 hover:border-white rounded-xl px-3.5 py-2.5 text-xs text-zinc-100 hover:text-black font-semibold transition-all duration-200 truncate flex items-center justify-between group/tool shadow-md active:scale-[0.98]"
               role="listitem"
               title={isEs ? `Ir a ${tool.nameEs}` : `Go to ${tool.nameEn}`}
@@ -296,7 +300,7 @@ function CategoryCard({
 
       <div className="mt-5 pt-4 border-t border-zinc-700 font-mono relative z-10">
         <Link
-          href={cat.path}
+          href={isEs ? cat.path : getEnglishUrlForSpanish(cat.path)}
           className="text-xs font-bold text-white hover:text-zinc-200 flex items-center justify-between transition-colors group/link py-1"
         >
           <span>
@@ -1033,7 +1037,7 @@ export default function DashboardPage() {
                     </div>
 
                     <Link
-                      href="/editar"
+                      href={isEs ? '/editar' : '/en/edit'}
                       className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                       aria-label={
                         isEs
@@ -1156,7 +1160,7 @@ export default function DashboardPage() {
                     </div>
 
                     <Link
-                      href="/organizar"
+                      href={isEs ? '/organizar' : '/en/organize'}
                       className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                       aria-label={
                         isEs
@@ -1281,7 +1285,7 @@ export default function DashboardPage() {
                     </div>
 
                     <Link
-                      href="/convertir"
+                      href={isEs ? '/convertir' : '/en/convert'}
                       className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                       aria-label={
                         isEs
@@ -1406,7 +1410,7 @@ export default function DashboardPage() {
                     </div>
 
                     <Link
-                      href="/optimizar"
+                      href={isEs ? '/optimizar' : '/en/optimize'}
                       className="inline-flex items-center justify-between bg-zinc-800 hover:bg-white hover:text-black border border-zinc-600 hover:border-white text-white font-mono text-xs px-4 py-2.5 rounded-xl transition-all group font-bold shadow-md"
                       aria-label={
                         isEs

@@ -101,6 +101,7 @@ const nextConfig: NextConfig = {
   },
 
   // ── Redirecciones 301 Canónicas Anti-Canibalización SEO ──
+  // Nota: La raíz '/' se gestiona dinámicamente en middleware.ts para detección inteligente de idioma
   async redirects() {
     return [
       {

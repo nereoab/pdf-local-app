@@ -52,6 +52,26 @@ export default function RecortarPdfPage() {
           a: 'Carga tu archivo PDF en la zona de trabajo; verás la vista previa de alta definición de la página con un recuadro de recorte delimitador. Puedes arrastrar los 8 manejadores en vivo para encuadrar la zona deseada o introducir márgenes exactos en milímetros (Superior, Inferior, Izquierdo, Derecho). Una vez configurado, selecciona si deseas aplicarlo a todas las hojas o a páginas específicas y pulsa «Recortar Márgenes del PDF».',
         },
         {
+          q: '¿Cómo recortar un PDF a un tamaño de página específico (A4, Carta o dimensiones personalizadas)?',
+          a: 'En PDFBlack puedes ingresar las medidas exactas en milímetros en los campos de margen para encuadrar tu documento a formatos estándar internacionales como ISO A4 (210 × 297 mm), Carta US (215.9 × 279.4 mm), Oficio o proporciones a medida. El lienzo calcula en tiempo real las dimensiones resultantes y ajusta el CropBox paramétrico sin alterar la escala vectorial interna.',
+        },
+        {
+          q: '¿Se pueden recortar automáticamente los márgenes blancos sobrantes de un PDF (Auto Crop)?',
+          a: 'Sí. Utiliza los preajustes rápidos de 5 mm y 10 mm en el panel de control o ajusta los 8 manejadores interactivos pegados a los límites del texto y tablas. Esto elimina bordes blancos excesivos, marcas de corte de imprenta y sombras de escáner en todo el documento a la vez, aprovechando el 100% de la pantalla en tablets y e-readers Kindle.',
+        },
+        {
+          q: '¿Por qué elegir PDFBlack frente a Sejda, iLovePDF o Adobe Acrobat para recortar PDFs?',
+          a: 'A diferencia de Sejda (que restringe a 3 tareas gratis por hora y 50 MB) e iLovePDF (que sube tus documentos confidenciales a servidores en la nube), PDFBlack es 100% ilimitado, gratuito para siempre y procesa tus archivos exclusivamente en la memoria RAM de tu navegador mediante Web Workers. Ningún dato se transfiere a internet, garantizando total cumplimiento de privacidad (RGPD e HIPAA) sin costosas licencias de Adobe.',
+        },
+        {
+          q: '¿Esta herramienta para recortar PDF es totalmente gratuita y sin marcas de agua?',
+          a: 'Totalmente gratuita. No estampamos marcas de agua publicitarias, no solicitamos correos electrónicos ni tarjetas de crédito, y no hay límite en el tamaño de archivo ni en el número de páginas que puedes recortar. El rendimiento depende únicamente de la potencia de tu equipo local.',
+        },
+        {
+          q: '¿Puedo recortar un PDF desde el móvil o tablet (Android, iPhone, iPad)?',
+          a: 'Sí. La mesa de trabajo está diseñada para responder al tacto en pantallas de smartphones y tablets. Puedes arrastrar los manejadores con los dedos o ingresar márgenes numéricos en Safari, Chrome o Firefox móvil sin instalar aplicaciones externas.',
+        },
+        {
           q: '¿Qué diferencia existe entre modificar el CropBox y recortar imágenes rasterizadas?',
           a: 'En el estándar internacional PDF ISO 32000-1, cada página cuenta con cajas de delimitación geométricas (MediaBox, CropBox, TrimBox). Modificar el CropBox ajusta las coordenadas del área visible e imprimible del documento sin recomprimir ni rasterizar textos ni vectores. Esto garantiza que la nitidez de tipografías, planos y tablas permanezca al 100% idéntica al archivo original.',
         },
@@ -96,6 +116,26 @@ export default function RecortarPdfPage() {
         {
           q: 'How do I crop PDF margins interactively?',
           a: 'Upload your PDF into the work area; an HD preview with an active crop bounding box will appear immediately. You can drag the 8 live handles to frame the desired area or enter exact margins in millimeters (Top, Bottom, Left, Right). Choose whether to apply it to all pages or specific sheets, then click "Crop PDF Margins".',
+        },
+        {
+          q: 'How do I crop a PDF to a specific page size (A4, Letter, Custom Dimensions)?',
+          a: 'In PDFBlack, you can adjust visual crop handles or type millimeter margins into the Top, Bottom, Left, and Right fields to frame pages into standard international formats like ISO A4 (210 × 297 mm), US Letter (8.5 × 11 in), Legal, or custom dimensions. The live viewport updates the CropBox coordinates in real time without rasterizing text or vectors.',
+        },
+        {
+          q: 'Can I automatically crop white margins from a PDF document (Auto Crop)?',
+          a: 'Yes. PDFBlack allows you to auto-crop unwanted white borders, margins, and scanner edges using our instant margin presets (5mm, 10mm) or by snapping the 8 boundary handles tightly around the text and image content. This maximizes readability on iPads, tablets, and Kindle e-readers by utilizing 100% of the display area.',
+        },
+        {
+          q: 'Why choose PDFBlack over Sejda, iLovePDF, or Adobe Acrobat to crop PDFs?',
+          a: 'Unlike Sejda (which caps free users to 3 tasks per hour and 50MB files) and iLovePDF (which uploads your private documents to third-party cloud servers), PDFBlack is 100% unlimited, free forever, and processes everything client-side in your browser RAM via Web Workers. Your sensitive files never leave your device, ensuring full GDPR and HIPAA compliance without paying for Adobe Acrobat Pro.',
+        },
+        {
+          q: 'Is this PDF crop tool truly free with no watermarks, paywalls, or file limits?',
+          a: 'Yes, 100% free with no watermarks, no registration, and no hidden subscriptions. Because all processing executes locally on your device hardware using WebAssembly and Web Workers, you can crop multi-gigabyte or hundreds-of-pages PDF files without restrictions.',
+        },
+        {
+          q: 'Can you crop a PDF on mobile or tablet (Android, iPhone, iPad)?',
+          a: 'Yes. The interactive canvas is fully touch-optimized. You can drag boundary handles with your fingertips or type millimeter offsets directly on any modern mobile browser (Safari, Chrome) without installing third-party apps.',
         },
         {
           q: 'What is the difference between adjusting CropBox and rasterizing images?',
@@ -144,11 +184,11 @@ export default function RecortarPdfPage() {
     '@type': 'WebApplication',
     name: isEs
       ? 'Recortar PDF Gratis Online — PDFBlack'
-      : 'Free PDF Cropper Online — Crop & Trim PDF Margins (No Sign-Up) | PDFBlack',
+      : 'Crop PDF Online Free — Trim Margins & Page Size | PDFBlack',
     url: isEs ? `${SITE_URL}/organizar/recortar` : `${SITE_URL}/en/crop-pdf`,
     description: isEs
-      ? 'Herramienta profesional para recortar márgenes de documentos PDF de forma visual o milimétrica con conservación vectorial y privacidad total en memoria local.'
-      : 'Crop PDF pages online for free. Interactive visual tool to trim white margins, adjust page sizes, or crop specific pages. 100% private client-side processing, no uploads.',
+      ? 'Herramienta profesional para recortar márgenes de documentos PDF de forma visual o milimétrica con conservación vectorial, ajuste de tamaño de página y privacidad total en memoria local.'
+      : 'Crop PDF online free. Interactive visual tool to trim white margins, auto-crop, adjust page sizes (A4, Letter), or crop specific pages. 100% private client-side processing, no uploads.',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',
@@ -160,6 +200,8 @@ export default function RecortarPdfPage() {
     featureList: [
       'Recorte interactivo visual con 8 manejadores CropBox en tiempo real',
       'Ajuste milimétrico numérico para márgenes Superior, Inferior, Izquierdo y Derecho',
+      'Ajuste a tamaños estándar de hoja (A4, Carta US, dimensiones personalizadas)',
+      'Recorte automático de márgenes blancos (Auto-crop) y sombras de escáner',
       'Alcance flexible: Todas las páginas, solo pares, impares o rangos personalizados',
       'Preservación 100% vectorial sin recompresión ni rasterizado (ISO 32000-1)',
       'Preajustes rápidos para limpieza de escaneos y encuadernación',
@@ -286,13 +328,13 @@ export default function RecortarPdfPage() {
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
               {isEs
-                ? 'Recortar PDF Gratis Online — Ajustar Márgenes y Dimensiones Sin Registro'
-                : 'Crop PDF Online Free — Trim PDF Margins & Pages Privately (No Sign-Up)'}
+                ? 'Recortar PDF Gratis Online — Ajustar Márgenes y Tamaño de Página'
+                : 'Crop PDF Online Free — Trim Margins & Page Size (No Sign-Up)'}
             </h1>
             <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto font-sans leading-relaxed">
               {isEs
-                ? 'Ajusta el encuadre y recorta márgenes blancos de tus hojas PDF de forma visual o milimétrica. Procesamiento 100% seguro en tu navegador, sin límites de tamaño y sin subir archivos a la nube.'
-                : 'Interactively trim white margins, adjust page sizes, or crop specific PDF pages. 100% private in-browser RAM processing, no file size limits, and zero cloud uploads.'}
+                ? 'Ajusta el encuadre, auto-recorta márgenes blancos y adapta tus hojas PDF a A4, Carta o medidas personalizadas. Procesamiento 100% privado en tu navegador, sin límites de tamaño y sin subir archivos a la nube.'
+                : 'Interactively trim white margins, auto-crop borders, and adjust page sizes to A4, Letter, or custom dimensions. 100% private in-browser RAM processing, no file limits, and zero cloud uploads.'}
             </p>
           </div>
 
@@ -464,7 +506,7 @@ export default function RecortarPdfPage() {
             </div>
           </section>
 
-          {/* TABLA COMPARATIVA: PDFBLACK VS HERRAMIENTAS EN LA NUBE */}
+          {/* TABLA COMPARATIVA: PDFBLACK VS SEJDA VS ILOVEPDF VS ADOBE ACROBAT */}
           <section className="pt-10 border-t border-zinc-800/80 space-y-6">
             <div className="text-center max-w-2xl mx-auto space-y-2">
               <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-bold">
@@ -472,106 +514,224 @@ export default function RecortarPdfPage() {
               </span>
               <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
                 {isEs
-                  ? 'PDFBlack vs Herramientas Tradicionales en la Nube'
-                  : 'PDFBlack vs Traditional Cloud Crop Tools'}
+                  ? 'PDFBlack vs Sejda, iLovePDF y Adobe Acrobat'
+                  : 'PDFBlack vs Sejda, iLovePDF & Adobe Acrobat'}
               </h2>
+              <p className="text-xs sm:text-sm text-zinc-400 font-mono">
+                {isEs
+                  ? 'Compara por qué procesar localmente en el navegador supera a las alternativas en la nube y al software de suscripción.'
+                  : 'Compare why private in-browser RAM execution outperforms cloud converters and expensive desktop subscriptions.'}
+              </p>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left font-mono text-xs border border-zinc-800 rounded-2xl overflow-hidden">
                 <thead className="bg-[#121217] text-zinc-300 border-b border-zinc-800 uppercase">
                   <tr>
-                    <th className="p-4">{isEs ? 'Característica Técnica' : 'Technical Feature'}</th>
-                    <th className="p-4 text-cyan-400 font-bold">PDFBlack (100% Local)</th>
-                    <th className="p-4 text-zinc-400">
-                      {isEs ? 'Servicios Cloud Típicos' : 'Typical Cloud Tools'}
+                    <th className="p-4">
+                      {isEs ? 'Criterio / Característica' : 'Feature / Benchmark'}
                     </th>
+                    <th className="p-4 text-cyan-400 font-bold">PDFBlack (100% Local)</th>
+                    <th className="p-4 text-zinc-400">Sejda / iLovePDF</th>
+                    <th className="p-4 text-zinc-400">Adobe Acrobat Pro</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60 bg-[#0c0c10]">
                   <tr>
                     <td className="p-4 font-bold text-white">
-                      {isEs ? 'Privacidad y Fuga de Datos' : 'Privacy & Data Leakage'}
+                      {isEs ? 'Privacidad y Protección de Datos' : 'Privacy & Data Protection'}
                     </td>
                     <td className="p-4 text-emerald-400 flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>{isEs ? 'Zero-Knowledge (En RAM)' : 'Zero-Knowledge (RAM only)'}</span>
-                    </td>
-                    <td className="p-4 text-zinc-400 flex items-center gap-1.5">
-                      <XIcon className="w-4 h-4 text-red-400" />
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>
-                        {isEs ? 'Subida a servidores remotos' : 'Uploaded to remote servers'}
+                        {isEs ? 'Zero-Knowledge (En RAM local)' : 'Zero-Knowledge (RAM only)'}
                       </span>
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-red-400">✗</span>{' '}
+                      {isEs ? 'Subida a servidores remotos' : 'Uploaded to third-party cloud'}
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-amber-400">~</span>{' '}
+                      {isEs ? 'Sincronización forzada en nube' : 'Cloud sync & telemetry required'}
                     </td>
                   </tr>
                   <tr>
                     <td className="p-4 font-bold text-white">
-                      {isEs ? 'Calidad Vectorial e Integridad' : 'Vector Quality & Integrity'}
+                      {isEs ? 'Límites de Uso Gratuito' : 'Free Usage Limits & Caps'}
                     </td>
                     <td className="p-4 text-emerald-400 flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-emerald-400" />
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        {isEs ? '100% Ilimitado (Sin cuotas)' : '100% Unlimited (No caps)'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-red-400">✗</span>{' '}
+                      {isEs ? '3 tareas/hora o 50 MB máx' : '3 tasks/hour or 50MB cap'}
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-red-400">✗</span>{' '}
+                      {isEs
+                        ? 'Solo prueba de 7 días con tarjeta'
+                        : '7-day trial requires credit card'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-4 font-bold text-white">
+                      {isEs ? 'Fidelidad Vectorial e Integridad' : 'Vector Fidelity & Integrity'}
+                    </td>
+                    <td className="p-4 text-emerald-400 flex items-center gap-1.5">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>
                         {isEs ? '100% Nativo (CropBox ISO)' : '100% Native (CropBox ISO)'}
                       </span>
                     </td>
-                    <td className="p-4 text-zinc-400 flex items-center gap-1.5">
-                      <XIcon className="w-4 h-4 text-amber-400" />
-                      <span>{isEs ? 'A menudo rasterizan a JPG' : 'Often rasterize to JPG'}</span>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-amber-400">~</span>{' '}
+                      {isEs ? 'Frecuente rasterizado a JPG' : 'Often rasterizes pages to JPEG'}
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-emerald-400">✓</span>{' '}
+                      {isEs ? 'Nativo vectorial' : 'Native vector preservation'}
                     </td>
                   </tr>
                   <tr>
                     <td className="p-4 font-bold text-white">
-                      {isEs ? 'Ajuste Milimétrico Numérico' : 'Millimeter Numeric Control'}
+                      {isEs
+                        ? 'Ajuste de Tamaño (A4, Carta, mm)'
+                        : 'Page Size Control (A4, Letter, mm)'}
                     </td>
                     <td className="p-4 text-emerald-400 flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-emerald-400" />
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>
-                        {isEs ? 'Sí (Top, Bot, Left, Right mm)' : 'Yes (Top, Bot, Left, Right mm)'}
+                        {isEs ? 'Milimétrico + 8 manejadores' : 'Exact mm + 8 live handles'}
                       </span>
                     </td>
-                    <td className="p-4 text-zinc-400 flex items-center gap-1.5">
-                      <XIcon className="w-4 h-4 text-red-400" />
-                      <span>
-                        {isEs ? 'Solo arrastre visual impreciso' : 'Imprecise visual drag only'}
-                      </span>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-amber-400">~</span>{' '}
+                      {isEs ? 'Solo arrastre visual aproximado' : 'Imprecise visual drag only'}
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-emerald-400">✓</span>{' '}
+                      {isEs ? 'Cuadro de diálogo avanzado' : 'Advanced dialog box'}
                     </td>
                   </tr>
                   <tr>
                     <td className="p-4 font-bold text-white">
-                      {isEs ? 'Límites de Tamaño o Páginas' : 'Size or Page Limits'}
+                      {isEs ? 'Marcas de Agua o Registro' : 'Watermarks & Registration'}
                     </td>
                     <td className="p-4 text-emerald-400 flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-emerald-400" />
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>
-                        {isEs ? 'Ilimitado (Potencia de tu PC)' : 'Unlimited (Local PC power)'}
+                        {isEs ? 'Cero marcas • Sin registro' : 'No watermarks • No signup'}
                       </span>
                     </td>
-                    <td className="p-4 text-zinc-400 flex items-center gap-1.5">
-                      <XIcon className="w-4 h-4 text-red-400" />
-                      <span>
-                        {isEs ? 'Restringido a 50 MB / 20 págs' : 'Capped at 50 MB / 20 pages'}
-                      </span>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-red-400">✗</span>{' '}
+                      {isEs ? 'Pide email tras varios usos' : 'Prompts for email/upgrade'}
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-red-400">✗</span>{' '}
+                      {isEs ? 'Requiere cuenta Adobe ID' : 'Requires Adobe ID login'}
                     </td>
                   </tr>
                   <tr>
                     <td className="p-4 font-bold text-white">
-                      {isEs ? 'Marcas de Agua o Registro' : 'Watermarks or Sign-up'}
+                      {isEs ? 'Coste de Licencia' : 'Cost & Licensing'}
                     </td>
                     <td className="p-4 text-emerald-400 flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      <span>
-                        {isEs ? 'Sin marcas • Sin registro' : 'No watermarks • No signup'}
-                      </span>
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>{isEs ? 'Gratis para siempre ($0)' : 'Free forever ($0)'}</span>
                     </td>
-                    <td className="p-4 text-zinc-400 flex items-center gap-1.5">
-                      <XIcon className="w-4 h-4 text-red-400" />
-                      <span>
-                        {isEs ? 'Requiere correo o suscripción' : 'Requires email or subscription'}
-                      </span>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-amber-400">~</span>{' '}
+                      {isEs ? '$5 a $7 / mes (Plan Pro)' : '$5 to $7 / month for Pro'}
+                    </td>
+                    <td className="p-4 text-zinc-400">
+                      <span className="text-red-400">✗</span>{' '}
+                      {isEs ? '$19.99 / mes ($239/año)' : '$19.99 / month ($239/year)'}
                     </td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </section>
+
+          {/* GUÍA DE TAMAÑOS DE PÁGINA Y PREAJUSTES DE RECORTE (SEO: PDF CROP SIZE & AUTO CROP) */}
+          <section className="pt-10 border-t border-zinc-800/80 space-y-6">
+            <div className="text-center max-w-2xl mx-auto space-y-2">
+              <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 font-bold">
+                {isEs ? 'DIMENSIONES Y ENCUADRE' : 'DIMENSIONS & PAGE SIZING'}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">
+                {isEs
+                  ? 'Formatos de Página y Modos de Recorte Soportados'
+                  : 'Supported PDF Page Dimensions & Crop Modes'}
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-400 font-mono">
+                {isEs
+                  ? 'Configura dimensiones estándar o personalizadas con milímetros exactos sin alterar la escala vectorial interna.'
+                  : 'Set standard or custom page sizes with millimeter precision without degrading internal vector resolution.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#121217] border border-zinc-800 p-5 rounded-2xl space-y-2.5">
+                <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-cyan-400 font-bold font-mono text-xs">
+                  A4
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-tight">
+                  {isEs ? 'Formatos Estándar (A4, Carta)' : 'Standard Sizes (A4, Letter)'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-mono leading-relaxed">
+                  {isEs
+                    ? 'Ajusta documentos a ISO A4 (210×297 mm), Carta US (215.9×279.4 mm) o Legal para impresión perfecta sin desbordes.'
+                    : 'Crop pages to ISO A4 (210×297 mm), US Letter (8.5×11 in), or Legal for printer-ready distribution.'}
+                </p>
+              </div>
+
+              <div className="bg-[#121217] border border-zinc-800 p-5 rounded-2xl space-y-2.5">
+                <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-cyan-400 font-bold font-mono text-xs">
+                  AUTO
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-tight">
+                  {isEs ? 'Auto Recorte de Márgenes' : 'Auto White-Margin Crop'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-mono leading-relaxed">
+                  {isEs
+                    ? 'Elimina automáticamente bordes blancos sobrantes, marcas de registro de imprenta y sombras oscuras de escaneos.'
+                    : 'Trim away excess white margins, printer bleed marks, and dark flatbed scanner edges in one click.'}
+                </p>
+              </div>
+
+              <div className="bg-[#121217] border border-zinc-800 p-5 rounded-2xl space-y-2.5">
+                <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-cyan-400 font-bold font-mono text-xs">
+                  4:3
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-tight">
+                  {isEs ? 'E-Readers & Tablets (Kindle)' : 'E-Readers & Tablets (Kindle)'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-mono leading-relaxed">
+                  {isEs
+                    ? 'Aumenta el tamaño aparente de la tipografía eliminando bordes para lectura cómoda en iPad, Kindle y pantallas de 6 a 11 pulgadas.'
+                    : 'Expand text size up to 50% by trimming margins to fit Kindle, iPad, and 6-to-11 inch handheld screens.'}
+                </p>
+              </div>
+
+              <div className="bg-[#121217] border border-zinc-800 p-5 rounded-2xl space-y-2.5">
+                <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-cyan-400 font-bold font-mono text-xs">
+                  CAD
+                </div>
+                <h3 className="text-sm font-bold uppercase tracking-tight">
+                  {isEs ? 'Planos Técnicos (A0, A1, A2)' : 'CAD Plots & Blueprints (A0, A1)'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-mono leading-relaxed">
+                  {isEs
+                    ? 'Recorta cajas de rotulación y márgenes de trazador en planos de gran formato sin alterar la escala métrica 1:100 o 1:50.'
+                    : 'Trim title blocks and plotter borders on large architectural sheets without distorting 1:100 metric scale.'}
+                </p>
+              </div>
             </div>
           </section>
 

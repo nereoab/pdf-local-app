@@ -440,6 +440,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLang = useCallback((newLang: Language) => {
     setLangState(newLang);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('pdfblack-lang', newLang);
+        document.cookie = `pdfblack-lang=${newLang}; path=/; max-age=31536000; SameSite=Lax`;
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const toggleLanguage = useCallback(() => {

@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Loader2,
   ShieldCheck,
@@ -17,6 +18,7 @@ import {
   Building2,
   Check,
   X as XIcon,
+  Crop,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
@@ -264,6 +266,40 @@ export default function UnirPdfPage() {
       <div className="w-full max-w-7xl">
         {/* COMPONENTE PRINCIPAL DE UNIÓN */}
         <PdfMerger />
+
+        {/* ── CALLOUT FLUJO DE TRABAJO: RECORTAR MÁRGENES ANTES DE UNIR (ENLAZADO INTERNO SEO) ── */}
+        <section
+          aria-label={
+            isEs
+              ? 'Flujo recomendado: recortar y nivelar márgenes antes de unir PDFs'
+              : 'Recommended workflow: crop and normalize margins before merging PDFs'
+          }
+          className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans mt-8"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+              <Crop className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-white font-sans">
+                {isEs
+                  ? '¿Tus documentos tienen márgenes desalineados o bordes blancos desiguales?'
+                  : 'Do your documents have uneven margins or excess white borders?'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                {isEs
+                  ? 'Estandariza las dimensiones de página y recorta márgenes sobrantes con precisión milimétrica antes de fusionarlos en un archivo único.'
+                  : 'Normalize page sizes and trim white margins with millimeter precision before combining them into a single unified file.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href={isEs ? '/organizar/recortar' : '/en/crop-pdf'}
+            className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+          >
+            {isEs ? 'Recortar PDF →' : 'Crop PDF →'}
+          </Link>
+        </section>
 
         {/* ── GUÍA RÁPIDA PASO A PASO (OPTIMIZADA PARA POSICIÓN CERO Y RICH SNIPPETS DE GOOGLE) ── */}
         <section

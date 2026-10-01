@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Loader2,
   ShieldCheck,
@@ -16,6 +17,7 @@ import {
   Sparkles,
   Image as ImageIcon,
   Sliders,
+  Crop,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -272,6 +274,40 @@ export default function EditarTextoPage() {
         {/* COMPONENTE INTERACTIVO PRINCIPAL */}
         <div className="w-full max-w-7xl">
           <PdfEditor />
+
+          {/* ── CALLOUT FLUJO DE TRABAJO: RECORTAR MÁRGENES ANTES DE EDITAR (ENLAZADO INTERNO SEO) ── */}
+          <section
+            aria-label={
+              isEs
+                ? 'Flujo recomendado: recortar márgenes antes de editar PDF'
+                : 'Recommended workflow: crop margins before editing PDF'
+            }
+            className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans mt-8"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+                <Crop className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white font-sans">
+                  {isEs
+                    ? '¿Necesitas recortar márgenes o reencuadrar páginas antes de editarlas?'
+                    : 'Need to crop margins or adjust page dimensions before editing?'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Ajusta los bordes blancos sobrantes o estandariza a tamaño A4 con precisión milimétrica de forma 100% privada.'
+                    : 'Trim unnecessary white margins or adjust to A4 dimensions with millimeter precision 100% privately.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              href={isEs ? '/organizar/recortar' : '/en/crop-pdf'}
+              className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+            >
+              {isEs ? 'Recortar PDF →' : 'Crop PDF →'}
+            </Link>
+          </section>
         </div>
 
         {/* SECCIÓN SEMÁNTICA SEO DE ALTO RENDIMIENTO */}

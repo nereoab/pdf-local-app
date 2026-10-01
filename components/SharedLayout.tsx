@@ -22,7 +22,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   const langPrefix = isEnRoute ? '/en' : '';
   const isEs = !isEnRoute && lang === 'es';
   const isZh = lang === 'zh';
-  const isHome = pathname === '/' || pathname === '/en';
+  const isHome = pathname === '/' || pathname === '/en' || pathname === '/es';
   const getNavUrl = (path: string) => (isEnRoute ? getEnglishUrlForSpanish(path) : path);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { currentUser, logout, hydrate: hydrateAuth, isHydrated } = useAuthStore();
@@ -51,7 +51,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
       return;
     }
-    if (pathname === '/' || pathname === '/en') {
+    if (pathname === '/' || pathname === '/en' || pathname === '/es') {
       e.preventDefault();
       window.location.reload();
     }
@@ -70,7 +70,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
             {/* LOGO TECHNICAL - AS DE ESPADAS */}
             <Link
-              href={isEnRoute ? '/en' : '/'}
+              href={isEnRoute ? '/en' : '/es'}
               onClick={handleLogoClick}
               className="flex-shrink-0"
               aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
@@ -283,7 +283,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   onClick={() => {
                     setLang('en');
                     if (!pathname?.startsWith('/en')) {
-                      const target = getEnglishUrlForSpanish(pathname || '/');
+                      const target = getEnglishUrlForSpanish(pathname || '/es');
                       router.push(target);
                     }
                   }}

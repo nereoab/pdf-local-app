@@ -369,6 +369,7 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
 // ── HUBS Y PÁGINAS ESTÁTICAS ─────────────────────────────────
 export const STATIC_ROUTES_MAP: Record<string, string> = {
   '/': '/en',
+  '/es': '/en',
   '/organizar': '/en/organize',
   '/optimizar': '/en/optimize',
   '/editar': '/en/edit',
@@ -405,6 +406,9 @@ export const ALL_ENGLISH_TOOL_SLUGS = TOOLS_ROUTES.map((t) => t.slugEn);
  */
 export function getEnglishUrlForSpanish(esPath: string): string {
   const normalized = esPath.replace(/\/$/, '') || '/';
+  if (normalized === '/' || normalized === '/es') {
+    return '/en';
+  }
   return ES_TO_EN_MAP.get(normalized) || (normalized === '/' ? '/en' : `/en${normalized}`);
 }
 
@@ -413,11 +417,14 @@ export function getEnglishUrlForSpanish(esPath: string): string {
  */
 export function getSpanishUrlForEnglish(enPath: string): string {
   const normalized = enPath.replace(/\/$/, '') || '/';
+  if (normalized === '/en') {
+    return '/es';
+  }
   if (EN_TO_ES_MAP.has(normalized)) {
     return EN_TO_ES_MAP.get(normalized)!;
   }
   // Si comienza con /en, remover el prefijo
-  return normalized.replace(/^\/en/, '') || '/';
+  return normalized.replace(/^\/en/, '') || '/es';
 }
 
 /**

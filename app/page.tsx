@@ -332,6 +332,31 @@ export default function DashboardPage() {
   );
   const isEs = lang === 'es';
 
+  // ── Redirección inteligente de portada raíz (fallback cliente): respeta cookie o idioma del navegador ──
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname === '/') {
+      try {
+        const stored = localStorage.getItem('pdfblack-lang');
+        if (stored === 'es' || stored === 'en' || stored === 'zh') {
+          window.location.replace(`/${stored}`);
+          return;
+        }
+        const browserLang = navigator.language?.split('-')[0]?.toLowerCase();
+        if (browserLang === 'es') {
+          window.location.replace('/es');
+          return;
+        }
+        if (browserLang === 'zh') {
+          window.location.replace('/zh');
+          return;
+        }
+      } catch {
+        // fallback
+      }
+      window.location.replace('/en');
+    }
+  }, []);
+
   const setGlobalFile = useFileStore((state) => state.setGlobalFile);
   const { filesProcessed, bytesSaved, timeSavedMinutes, recentFiles } = useActivityStore();
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);

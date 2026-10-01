@@ -60,11 +60,11 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: SITE_URL,
+    canonical: `${SITE_URL}/en`,
     languages: {
-      es: SITE_URL,
+      es: `${SITE_URL}/es`,
       en: `${SITE_URL}/en`,
-      'x-default': SITE_URL,
+      'x-default': `${SITE_URL}/en`,
     },
   },
 

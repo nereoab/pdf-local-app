@@ -18,6 +18,7 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp,
+  PenTool,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFileStore } from '@/store/useFileStore';
@@ -27,6 +28,7 @@ import { motion } from 'framer-motion';
 import FoliarSuccessView from '@/components/FoliarSuccessView';
 import type { EditWorkerMessageIn, EditWorkerMessageOut } from '@/workers/pdf-edit.worker';
 import NativePdfEditor from '@/components/NativePdfEditor';
+import FabricPdfEditor from '@/components/FabricPdfEditor';
 
 type Step = 'upload' | 'edit' | 'download';
 
@@ -52,8 +54,8 @@ export default function PdfEditor() {
   const [editedBlob, setEditedBlob] = useState<Blob | null>(null);
   const [docTotalPages, setDocTotalPages] = useState<number>(1);
 
-  // MOTOR ACTIVO: 'native' (Motor In-Situ Nativo) | 'apryse' (Motor WebAssembly)
-  const [activeEngine, setActiveEngine] = useState<'native' | 'apryse'>('native');
+  // MOTOR ACTIVO: 'native' (In-Situ) | 'fabric' (Vectorial Canva) | 'apryse' (WebAssembly)
+  const [activeEngine, setActiveEngine] = useState<'native' | 'fabric' | 'apryse'>('fabric');
   const [showComparisonModal, setShowComparisonModal] = useState<boolean>(false);
   const [isCompactMode, setIsCompactMode] = useState<boolean>(false);
 
@@ -799,8 +801,8 @@ export default function PdfEditor() {
           </h2>
           <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
             {isEs
-              ? 'Modifica texto existente, añade párrafos, inserta imágenes o incorpora firmas al instante, con la opción de elegir entre 2 motores de procesamiento.'
-              : 'Modify existing text, insert paragraphs, add images or signatures instantly, with the flexibility to choose between 2 processing engines.'}
+              ? 'Modifica texto existente, añade párrafos, inserta imágenes o incorpora firmas al instante, con la opción de elegir entre 3 motores de procesamiento.'
+              : 'Modify existing text, insert paragraphs, add images or signatures instantly, with the flexibility to choose between 3 processing engines.'}
           </p>
 
           <button
@@ -811,7 +813,7 @@ export default function PdfEditor() {
             <span>{isEs ? 'Seleccionar Archivo PDF' : 'Select PDF File'}</span>
           </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-2xl font-mono text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 w-full max-w-3xl font-mono text-left">
             <div className="bg-[#121217] p-3.5 rounded-xl border border-blue-900/40 hover:border-blue-700 transition-all">
               <span className="text-blue-400 font-bold text-xs flex items-center gap-1.5 mb-1">
                 <Zap className="w-3.5 h-3.5" />
@@ -819,8 +821,19 @@ export default function PdfEditor() {
               </span>
               <span className="text-zinc-400 text-[11px] leading-tight block">
                 {isEs
-                  ? 'Instantáneo y 100% en tu memoria RAM. Edita texto existente con doble clic e inserta imágenes sin esperas.'
-                  : 'Instant and 100% in local RAM. Edit existing text by double-clicking and add images with zero wait.'}
+                  ? 'Instantáneo y en memoria RAM. Corrige cifras, fechas o datos directamente con doble clic sin esperas.'
+                  : 'Instant and in local RAM. Edit figures, dates or text by double-clicking with zero wait.'}
+              </span>
+            </div>
+            <div className="bg-[#121217] p-3.5 rounded-xl border border-emerald-900/40 hover:border-emerald-700 transition-all">
+              <span className="text-emerald-400 font-bold text-xs flex items-center gap-1.5 mb-1">
+                <PenTool className="w-3.5 h-3.5" />
+                {isEs ? 'Motor Vectorial (Canva)' : 'Vector Engine (Canva)'}
+              </span>
+              <span className="text-zinc-400 text-[11px] leading-tight block">
+                {isEs
+                  ? '100% Libre y visual. Arrastra texto libremente, rótalo, redimensiónalo con las 4 esquinas y dibuja firmas.'
+                  : '100% Free and visual. Drag text freely, rotate, resize with 4 corners, and draw signatures.'}
               </span>
             </div>
             <div className="bg-[#121217] p-3.5 rounded-xl border border-purple-900/40 hover:border-purple-700 transition-all">
@@ -832,17 +845,6 @@ export default function PdfEditor() {
                 {isEs
                   ? 'Suite profesional WebAssembly para documentos complejos, reflujo tipográfico y anotaciones avanzadas.'
                   : 'Professional WebAssembly suite for complex documents, typography reflow, and advanced annotations.'}
-              </span>
-            </div>
-            <div className="bg-[#121217] p-3.5 rounded-xl border border-emerald-900/40 hover:border-emerald-700 transition-all">
-              <span className="text-emerald-400 font-bold text-xs flex items-center gap-1.5 mb-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                {isEs ? 'Privacidad Estricta' : 'Strict Privacy'}
-              </span>
-              <span className="text-zinc-400 text-[11px] leading-tight block">
-                {isEs
-                  ? 'Ambos motores operan de forma local en tu navegador sin transmitir datos confidenciales a servidores externos.'
-                  : 'Both engines operate locally in your browser without transmitting sensitive data to external servers.'}
               </span>
             </div>
           </div>
@@ -869,10 +871,12 @@ export default function PdfEditor() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-white uppercase tracking-tight font-sans">
-                      {isEs ? 'Arquitectura Dual de Edición PDF' : 'Dual PDF Editing Architecture'}
+                      {isEs
+                        ? 'Arquitectura Triple de Edición PDF'
+                        : 'Triple PDF Editing Architecture'}
                     </span>
                     <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-semibold uppercase">
-                      {isEs ? '2 Motores Disponibles' : '2 Engines Available'}
+                      {isEs ? '3 Motores Disponibles' : '3 Engines Available'}
                     </span>
                   </div>
                   <p className="text-xs text-zinc-400 font-mono mt-0.5">
@@ -923,9 +927,9 @@ export default function PdfEditor() {
               </div>
             </div>
 
-            {/* MODO DETALLADO: 2 TARJETAS GRANDES INTERACTIVAS */}
+            {/* MODO DETALLADO: 3 TARJETAS GRANDES INTERACTIVAS */}
             {!isCompactMode ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* TARJETA MOTOR 1: IN-SITU NATIVO */}
                 <div
                   onClick={() => setActiveEngine('native')}
@@ -961,11 +965,11 @@ export default function PdfEditor() {
                       {activeEngine === 'native' ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-                          {isEs ? 'MOTOR ACTIVO' : 'ACTIVE ENGINE'}
+                          {isEs ? 'ACTIVO' : 'ACTIVE'}
                         </span>
                       ) : (
                         <span className="text-[11px] text-zinc-500 group-hover:text-blue-400 transition-colors font-mono">
-                          {isEs ? 'Clic para activar →' : 'Click to activate →'}
+                          {isEs ? 'Activar →' : 'Activate →'}
                         </span>
                       )}
                     </div>
@@ -979,30 +983,19 @@ export default function PdfEditor() {
                             {isEs ? 'Instantáneo:' : 'Instant:'}
                           </strong>{' '}
                           {isEs
-                            ? 'Abre en 0 segundos sin descargar módulos pesados.'
-                            : 'Loads in 0s without heavy WASM bundles.'}
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-emerald-400 font-bold">🔒</span>
-                        <span>
-                          <strong className="text-white">
-                            {isEs ? 'Privacidad Total:' : 'Total Privacy:'}
-                          </strong>{' '}
-                          {isEs
-                            ? 'Todo se procesa en la RAM local de tu navegador.'
-                            : 'Processed 100% in local browser RAM.'}
+                            ? 'Abre en 0 segundos en memoria local.'
+                            : 'Opens in 0 seconds in local memory.'}
                         </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-cyan-400 font-bold">✍️</span>
                         <span>
                           <strong className="text-white">
-                            {isEs ? 'Edición Rápida:' : 'Quick Edit:'}
+                            {isEs ? 'Doble Clic:' : 'Double Click:'}
                           </strong>{' '}
                           {isEs
-                            ? 'Haz doble clic sobre texto, edita datos e inserta imágenes.'
-                            : 'Double-click to edit text, dates & add images.'}
+                            ? 'Modifica textos existentes sobre la misma línea.'
+                            : 'Edit existing text in-place on the same line.'}
                         </span>
                       </li>
                     </ul>
@@ -1019,11 +1012,11 @@ export default function PdfEditor() {
                     <span className="text-[11px]">
                       {activeEngine === 'native'
                         ? isEs
-                          ? '✓ En uso actualmente (Máxima velocidad)'
-                          : '✓ Currently in use (Maximum speed)'
+                          ? '✓ En uso actualmente'
+                          : '✓ Currently in use'
                         : isEs
-                          ? 'Activar Motor In-Situ Nativo'
-                          : 'Activate Native In-Situ Engine'}
+                          ? 'Activar In-Situ'
+                          : 'Activate In-Situ'}
                     </span>
                     <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
                       {isEs ? '100% Libre' : '100% Free'}
@@ -1031,7 +1024,101 @@ export default function PdfEditor() {
                   </div>
                 </div>
 
-                {/* TARJETA MOTOR 2: APRYSE WEBASSEMBLY */}
+                {/* TARJETA MOTOR 2: VECTORIAL FABRIC (ESTILO CANVA) */}
+                <div
+                  onClick={() => setActiveEngine('fabric')}
+                  className={`group relative rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                    activeEngine === 'fabric'
+                      ? 'bg-gradient-to-br from-emerald-950/40 via-[#0a1a14] to-[#06110d] border-2 border-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.25)]'
+                      : 'bg-[#101015] border border-zinc-800 hover:border-emerald-800/50 hover:bg-emerald-950/10'
+                  }`}
+                >
+                  <div>
+                    {/* Badge superior */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`p-2.5 rounded-xl border ${
+                            activeEngine === 'fabric'
+                              ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-400'
+                              : 'bg-zinc-800 border-zinc-700 text-zinc-400 group-hover:text-emerald-300'
+                          }`}
+                        >
+                          <PenTool className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white font-sans">
+                            {isEs ? 'Motor Vectorial (Canva)' : 'Vector Engine (Canva)'}
+                          </h3>
+                          <span className="text-[10px] text-zinc-400 font-mono">
+                            Fabric.js • Arrastre Libre & Formas
+                          </span>
+                        </div>
+                      </div>
+
+                      {activeEngine === 'fabric' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          {isEs ? 'ACTIVO' : 'ACTIVE'}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-zinc-500 group-hover:text-emerald-400 transition-colors font-mono">
+                          {isEs ? 'Activar →' : 'Activate →'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Características */}
+                    <ul className="space-y-2 text-xs text-zinc-300 font-mono mb-4">
+                      <li className="flex items-start gap-2">
+                        <span className="text-emerald-400 font-bold">🎯</span>
+                        <span>
+                          <strong className="text-white">
+                            {isEs ? 'Control Total:' : 'Full Control:'}
+                          </strong>{' '}
+                          {isEs
+                            ? 'Rotación, redimensión con 4 esquinas y arrastre libre.'
+                            : 'Rotation, 4-corner scaling, and free drag & drop.'}
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-yellow-400 font-bold">🖍️</span>
+                        <span>
+                          <strong className="text-white">
+                            {isEs ? 'Firmas y Formas:' : 'Signatures & Shapes:'}
+                          </strong>{' '}
+                          {isEs
+                            ? 'Dibujo a mano alzada, borrador, resaltador y rectángulos.'
+                            : 'Freehand signatures, whiteout, highlighter & shapes.'}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Pie de tarjeta */}
+                  <div
+                    className={`mt-2 pt-3 border-t text-xs font-mono font-bold flex items-center justify-between ${
+                      activeEngine === 'fabric'
+                        ? 'border-emerald-500/20 text-emerald-300'
+                        : 'border-zinc-800/80 text-zinc-400 group-hover:text-emerald-300'
+                    }`}
+                  >
+                    <span className="text-[11px]">
+                      {activeEngine === 'fabric'
+                        ? isEs
+                          ? '✓ En uso actualmente'
+                          : '✓ Currently in use'
+                        : isEs
+                          ? 'Activar Motor Vectorial'
+                          : 'Activate Vector Engine'}
+                    </span>
+                    <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                      {isEs ? '100% Libre' : '100% Free'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* TARJETA MOTOR 3: APRYSE WEBASSEMBLY */}
                 <div
                   onClick={() => setActiveEngine('apryse')}
                   className={`group relative rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
@@ -1066,11 +1153,11 @@ export default function PdfEditor() {
                       {activeEngine === 'apryse' ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
-                          {isEs ? 'MOTOR ACTIVO' : 'ACTIVE ENGINE'}
+                          {isEs ? 'ACTIVO' : 'ACTIVE'}
                         </span>
                       ) : (
                         <span className="text-[11px] text-zinc-500 group-hover:text-purple-400 transition-colors font-mono">
-                          {isEs ? 'Clic para activar →' : 'Click to activate →'}
+                          {isEs ? 'Activar →' : 'Activate →'}
                         </span>
                       )}
                     </div>
@@ -1084,19 +1171,8 @@ export default function PdfEditor() {
                             {isEs ? 'Suite Profesional:' : 'Pro Suite:'}
                           </strong>{' '}
                           {isEs
-                            ? 'Motor WebAssembly con renderizado tipográfico complejo.'
-                            : 'WebAssembly engine with advanced typography rendering.'}
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-indigo-400 font-bold">📑</span>
-                        <span>
-                          <strong className="text-white">
-                            {isEs ? 'Párrafos y Flujos:' : 'Paragraphs & Flow:'}
-                          </strong>{' '}
-                          {isEs
-                            ? 'Reflujo de párrafos enteros y fuentes incrustadas de Adobe.'
-                            : 'Reflow whole paragraphs & embedded Adobe fonts.'}
+                            ? 'Motor WebAssembly con reflujo de párrafos complejos.'
+                            : 'WebAssembly engine with complex paragraph reflow.'}
                         </span>
                       </li>
                       <li className="flex items-start gap-2">
@@ -1106,8 +1182,8 @@ export default function PdfEditor() {
                             {isEs ? 'Anotaciones Pro:' : 'Pro Annotations:'}
                           </strong>{' '}
                           {isEs
-                            ? 'Dibujo vectorial, resaltador, sellos y gestión de capas.'
-                            : 'Vector drawing, highlighter, stamps and layer management.'}
+                            ? 'Sellos empresariales, formularios y gestión de capas.'
+                            : 'Corporate stamps, forms, and layer management.'}
                         </span>
                       </li>
                     </ul>
@@ -1124,11 +1200,11 @@ export default function PdfEditor() {
                     <span className="text-[11px]">
                       {activeEngine === 'apryse'
                         ? isEs
-                          ? '✓ En uso actualmente (Edición avanzada)'
-                          : '✓ Currently in use (Advanced editing)'
+                          ? '✓ En uso actualmente'
+                          : '✓ Currently in use'
                         : isEs
-                          ? 'Activar Motor Avanzado Apryse'
-                          : 'Activate Apryse Advanced Engine'}
+                          ? 'Activar Apryse'
+                          : 'Activate Apryse'}
                     </span>
                     <span className="text-[10px] uppercase px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
                       WASM PRO
@@ -1137,37 +1213,53 @@ export default function PdfEditor() {
                 </div>
               </div>
             ) : (
-              /* MODO COMPACTO: TOGGLE HORIZONTAL */
+              /* MODO COMPACTO: TOGGLE HORIZONTAL DE 3 MOTORES */
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-black/60 p-2 rounded-2xl border border-zinc-800">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
                   <button
                     type="button"
                     onClick={() => setActiveEngine('native')}
-                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                       activeEngine === 'native'
                         ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'
                         : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                     }`}
                   >
-                    <Zap className="w-4 h-4 text-blue-300" />
-                    <span>{isEs ? 'Motor In-Situ Nativo' : 'Native In-Situ'}</span>
-                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full uppercase">
+                    <Zap className="w-3.5 h-3.5 text-blue-300" />
+                    <span>{isEs ? 'In-Situ' : 'In-Situ'}</span>
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded-full uppercase">
                       {isEs ? 'Rápido' : 'Fast'}
                     </span>
                   </button>
 
                   <button
                     type="button"
+                    onClick={() => setActiveEngine('fabric')}
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                      activeEngine === 'fabric'
+                        ? 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+                    }`}
+                  >
+                    <PenTool className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>{isEs ? 'Vectorial (Canva)' : 'Vector (Canva)'}</span>
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1 py-0.5 rounded-full uppercase">
+                      Libre
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => setActiveEngine('apryse')}
-                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                       activeEngine === 'apryse'
                         ? 'bg-purple-600 text-white shadow-[0_0_15px_rgba(147,51,234,0.4)]'
                         : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                     }`}
                   >
-                    <Sparkles className="w-4 h-4 text-purple-300" />
-                    <span>{isEs ? 'Motor Avanzado Apryse' : 'Apryse WASM'}</span>
-                    <span className="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-full uppercase">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                    <span>{isEs ? 'Apryse' : 'Apryse'}</span>
+                    <span className="text-[9px] bg-purple-500/20 text-purple-300 px-1 py-0.5 rounded-full uppercase">
                       Pro
                     </span>
                   </button>
@@ -1178,24 +1270,36 @@ export default function PdfEditor() {
                   <span>
                     {activeEngine === 'native'
                       ? isEs
-                        ? 'Modo activo: Edición In-Situ ligera'
-                        : 'Active: Lightweight In-Situ'
-                      : isEs
-                        ? 'Modo activo: Suite WebAssembly completa'
-                        : 'Active: Full WebAssembly Suite'}
+                        ? 'Modo: Edición In-Situ ligera'
+                        : 'Mode: Lightweight In-Situ'
+                      : activeEngine === 'fabric'
+                        ? isEs
+                          ? 'Modo: Edición Vectorial libre estilo Canva'
+                          : 'Mode: Freeform Canva-style Vector Editor'
+                        : isEs
+                          ? 'Modo: Suite WebAssembly completa'
+                          : 'Mode: Full WebAssembly Suite'}
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* RENDERIZADO CONDICIONAL DEL MOTOR ACTIVO */}
+          {/* RENDERIZADO CONDICIONAL DEL MOTOR ACTIVO (3 MOTORES) */}
           {activeEngine === 'native' ? (
             <NativePdfEditor
               file={file}
               filePrefix={filePrefix}
               onFinish={handleNativeFinish}
               onSwitchToApryse={() => setActiveEngine('apryse')}
+            />
+          ) : activeEngine === 'fabric' ? (
+            <FabricPdfEditor
+              file={file}
+              filePrefix={filePrefix}
+              onFinish={handleNativeFinish}
+              onSwitchToApryse={() => setActiveEngine('apryse')}
+              onSwitchToNative={() => setActiveEngine('native')}
             />
           ) : (
             <>
@@ -1427,10 +1531,14 @@ export default function PdfEditor() {
               isEs
                 ? activeEngine === 'native'
                   ? 'Motor In-Situ Nativo'
-                  : 'Motor Apryse WASM'
+                  : activeEngine === 'fabric'
+                    ? 'Motor Vectorial (Canva)'
+                    : 'Motor Apryse WASM'
                 : activeEngine === 'native'
                   ? 'Native In-Situ Engine'
-                  : 'Apryse WASM Engine'
+                  : activeEngine === 'fabric'
+                    ? 'Vector Engine (Canva)'
+                    : 'Apryse WASM Engine'
             }
             toolName={isEs ? 'Edición de Texto PDF' : 'PDF Text Editing'}
             badgeText={isEs ? 'Edición Completada' : 'Editing Completed'}
@@ -1452,10 +1560,10 @@ export default function PdfEditor() {
         </div>
       )}
 
-      {/* MODAL DE COMPARATIVA DE MOTORES */}
+      {/* MODAL DE COMPARATIVA DE 3 MOTORES */}
       {showComparisonModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#121218] border border-zinc-700 rounded-3xl max-w-2xl w-full p-6 shadow-2xl font-mono text-xs relative animate-in fade-in zoom-in-95">
+          <div className="bg-[#121218] border border-zinc-700 rounded-3xl max-w-4xl w-full p-6 shadow-2xl font-mono text-xs relative animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowComparisonModal(false)}
               className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white bg-zinc-800/60 hover:bg-zinc-700 rounded-xl transition-all cursor-pointer"
@@ -1475,26 +1583,26 @@ export default function PdfEditor() {
                 </h3>
                 <p className="text-zinc-400 text-xs mt-0.5">
                   {isEs
-                    ? 'Puedes alternar entre ambos en cualquier momento sin perder tu documento.'
-                    : 'You can switch between them at any time without losing your document.'}
+                    ? 'Puedes alternar entre los 3 motores en cualquier momento sin perder tu documento.'
+                    : 'You can switch between all 3 engines at any time without losing your document.'}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-5">
-              {/* Columna Nativo */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 my-5">
+              {/* Columna 1: Nativo */}
               <div className="p-4 bg-blue-950/20 border border-blue-800/40 rounded-2xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Zap className="w-4 h-4 text-blue-400" />
                     <span className="font-bold text-white text-sm">
-                      {isEs ? 'Motor In-Situ Nativo' : 'Native In-Situ Engine'}
+                      {isEs ? 'Motor In-Situ' : 'In-Situ Engine'}
                     </span>
                   </div>
                   <p className="text-zinc-300 text-[11px] mb-3">
                     {isEs
-                      ? 'Recomendado para el 90% de los casos: corrección rápida de datos, nombres, importes y añadido de fotos o firmas.'
-                      : 'Recommended for 90% of cases: quick edits, dates, names, adding photos or signatures.'}
+                      ? 'Recomendado para corrección rápida de datos, nombres e importes sin alterar la estructura.'
+                      : 'Recommended for quick edits of numbers, dates and names on the original line.'}
                   </p>
                   <ul className="space-y-2 text-[11px] text-zinc-400 border-t border-blue-900/40 pt-3">
                     <li>
@@ -1502,16 +1610,12 @@ export default function PdfEditor() {
                       Instantánea (0s)
                     </li>
                     <li>
-                      <strong className="text-zinc-200">{isEs ? 'Memoria:' : 'Memory:'}</strong>{' '}
-                      Mínima (~15 MB)
-                    </li>
-                    <li>
                       <strong className="text-zinc-200">{isEs ? 'Uso:' : 'Usage:'}</strong> Doble
-                      clic directo en el texto
+                      clic en el texto
                     </li>
                     <li>
-                      <strong className="text-zinc-200">{isEs ? 'Privacidad:' : 'Privacy:'}</strong>{' '}
-                      100% RAM local
+                      <strong className="text-zinc-200">{isEs ? 'Licencia:' : 'License:'}</strong>{' '}
+                      100% Libre
                     </li>
                   </ul>
                 </div>
@@ -1532,41 +1636,88 @@ export default function PdfEditor() {
                       ? '✓ Motor Actual'
                       : '✓ Current Engine'
                     : isEs
-                      ? 'Seleccionar este Motor'
+                      ? 'Activar este Motor'
                       : 'Select this Engine'}
                 </button>
               </div>
 
-              {/* Columna Apryse */}
+              {/* Columna 2: Fabric Vectorial */}
+              <div className="p-4 bg-emerald-950/20 border border-emerald-800/40 rounded-2xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <PenTool className="w-4 h-4 text-emerald-400" />
+                    <span className="font-bold text-white text-sm">
+                      {isEs ? 'Motor Vectorial' : 'Vector Engine'}
+                    </span>
+                  </div>
+                  <p className="text-zinc-300 text-[11px] mb-3">
+                    {isEs
+                      ? 'Estilo Canva: mueve texto a cualquier posición, rótalo, redimensiónalo con las esquinas y firma libremente.'
+                      : 'Canva style: drag text anywhere, rotate, resize with 4 corners, and sign freely.'}
+                  </p>
+                  <ul className="space-y-2 text-[11px] text-zinc-400 border-t border-emerald-900/40 pt-3">
+                    <li>
+                      <strong className="text-zinc-200">{isEs ? 'Velocidad:' : 'Speed:'}</strong>{' '}
+                      Instantánea (0s)
+                    </li>
+                    <li>
+                      <strong className="text-zinc-200">{isEs ? 'Uso:' : 'Usage:'}</strong> Arrastre
+                      libre y formas
+                    </li>
+                    <li>
+                      <strong className="text-zinc-200">{isEs ? 'Licencia:' : 'License:'}</strong>{' '}
+                      100% Libre (MIT)
+                    </li>
+                  </ul>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveEngine('fabric');
+                    setShowComparisonModal(false);
+                  }}
+                  className={`mt-4 w-full py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                    activeEngine === 'fabric'
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
+                  }`}
+                >
+                  {activeEngine === 'fabric'
+                    ? isEs
+                      ? '✓ Motor Actual'
+                      : '✓ Current Engine'
+                    : isEs
+                      ? 'Activar este Motor'
+                      : 'Select this Engine'}
+                </button>
+              </div>
+
+              {/* Columna 3: Apryse */}
               <div className="p-4 bg-purple-950/20 border border-purple-800/40 rounded-2xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4 text-purple-400" />
                     <span className="font-bold text-white text-sm">
-                      {isEs ? 'Motor Avanzado Apryse' : 'Apryse Advanced Engine'}
+                      {isEs ? 'Motor Apryse' : 'Apryse Engine'}
                     </span>
                   </div>
                   <p className="text-zinc-300 text-[11px] mb-3">
                     {isEs
-                      ? 'Recomendado para documentos maquetados complejos, reorganización de párrafos completos y dibujo vectorial.'
-                      : 'Recommended for complex documents, full paragraph reflow and vector drawing tools.'}
+                      ? 'Recomendado para documentos maquetados complejos, reflujo de párrafos enteros y suite de escritorio.'
+                      : 'Recommended for complex documents, full paragraph reflow, and desktop-class suite.'}
                   </p>
                   <ul className="space-y-2 text-[11px] text-zinc-400 border-t border-purple-900/40 pt-3">
                     <li>
                       <strong className="text-zinc-200">{isEs ? 'Velocidad:' : 'Speed:'}</strong>{' '}
-                      ~2s carga inicial WASM
+                      ~2s carga inicial
                     </li>
                     <li>
-                      <strong className="text-zinc-200">{isEs ? 'Memoria:' : 'Memory:'}</strong>{' '}
-                      Estándar (~120 MB)
+                      <strong className="text-zinc-200">{isEs ? 'Uso:' : 'Usage:'}</strong> Suite
+                      WebAssembly
                     </li>
                     <li>
-                      <strong className="text-zinc-200">{isEs ? 'Uso:' : 'Usage:'}</strong> Suite de
-                      escritorio completa
-                    </li>
-                    <li>
-                      <strong className="text-zinc-200">{isEs ? 'Privacidad:' : 'Privacy:'}</strong>{' '}
-                      100% RAM local
+                      <strong className="text-zinc-200">{isEs ? 'Licencia:' : 'License:'}</strong>{' '}
+                      Comercial / Trial
                     </li>
                   </ul>
                 </div>
@@ -1587,7 +1738,7 @@ export default function PdfEditor() {
                       ? '✓ Motor Actual'
                       : '✓ Current Engine'
                     : isEs
-                      ? 'Seleccionar este Motor'
+                      ? 'Activar este Motor'
                       : 'Select this Engine'}
                 </button>
               </div>

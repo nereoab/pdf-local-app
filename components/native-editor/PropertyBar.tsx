@@ -21,6 +21,8 @@ interface PropertyBarProps {
   // Propiedades de texto
   fontFamily?: FontFamily;
   onChangeFontFamily?: (font: FontFamily) => void;
+  realFontName?: string;
+  onChangeRealFontName?: (fontName: string) => void;
   fontSize?: number;
   onChangeFontSize?: (size: number) => void;
   textColor?: string;
@@ -63,6 +65,8 @@ export default function PropertyBar({
   selectedType,
   fontFamily = 'Helvetica',
   onChangeFontFamily,
+  realFontName = 'Arial',
+  onChangeRealFontName,
   fontSize = 12,
   onChangeFontSize,
   textColor = '#000000',
@@ -103,17 +107,56 @@ export default function PropertyBar({
             </div>
 
             {/* Tipografía */}
-            {onChangeFontFamily && (
-              <select
-                value={fontFamily}
-                onChange={(e) => onChangeFontFamily(e.target.value as FontFamily)}
-                className="bg-black/60 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white cursor-pointer hover:border-zinc-500"
-              >
-                <option value="Helvetica">Helvetica / Arial</option>
-                <option value="Times">Times New Roman</option>
-                <option value="Courier">Courier / Monospace</option>
-              </select>
-            )}
+            <select
+              value={
+                realFontName ||
+                (fontFamily === 'Times'
+                  ? 'Times New Roman'
+                  : fontFamily === 'Courier'
+                    ? 'Courier New'
+                    : 'Calibri')
+              }
+              onChange={(e) => {
+                const selected = e.target.value;
+                let fam: FontFamily = 'Helvetica';
+                if (['Times New Roman', 'Georgia', 'Times'].includes(selected)) {
+                  fam = 'Times';
+                } else if (['Courier New', 'Courier', 'Consolas'].includes(selected)) {
+                  fam = 'Courier';
+                }
+                onChangeRealFontName?.(selected);
+                onChangeFontFamily?.(fam);
+              }}
+              className="bg-black/60 border border-zinc-700 rounded-lg px-2.5 py-1 text-xs text-white cursor-pointer hover:border-zinc-500 font-sans"
+            >
+              {realFontName &&
+                ![
+                  'Calibri',
+                  'Arial',
+                  'Helvetica',
+                  'Times New Roman',
+                  'Georgia',
+                  'Courier New',
+                  'Verdana',
+                  'Segoe UI',
+                  'Trebuchet MS',
+                  'Roboto',
+                ].includes(realFontName) && (
+                  <option value={realFontName}>
+                    {realFontName} ({isEs ? 'Detectada' : 'Detected'})
+                  </option>
+                )}
+              <option value="Calibri">Calibri</option>
+              <option value="Arial">Arial</option>
+              <option value="Helvetica">Helvetica</option>
+              <option value="Segoe UI">Segoe UI</option>
+              <option value="Trebuchet MS">Trebuchet MS</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Courier New">Courier New</option>
+            </select>
 
             {/* Tamaño con botones +/- */}
             {onChangeFontSize && (

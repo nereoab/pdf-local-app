@@ -71,6 +71,266 @@ export interface NativePdfEditorProps {
   onSwitchToApryse?: () => void;
 }
 
+interface DetectedFontInfo {
+  fontFamily: FontFamily;
+  realFontName: string;
+  isBold: boolean;
+  isItalic: boolean;
+}
+
+function detectFontProperties(page: any, textContent: any, fontName: string): DetectedFontInfo {
+  let rawName = '';
+  let isBold = false;
+  let isItalic = false;
+  let fallbackName = 'sans-serif';
+
+  // 1. Inspect page.commonObjs
+  try {
+    if (page?.commonObjs?.has?.(fontName)) {
+      const fontObj = page.commonObjs.get(fontName);
+      if (fontObj) {
+        rawName = fontObj.name || fontObj.fallbackName || '';
+        if (fontObj.bold || fontObj.black) isBold = true;
+        if (fontObj.italic) isItalic = true;
+        if (fontObj.fallbackName) fallbackName = fontObj.fallbackName;
+      }
+    }
+  } catch (e) {}
+
+  // 2. Inspect page.objs
+  if (!rawName) {
+    try {
+      if (page?.objs?.has?.(fontName)) {
+        const fontObj = page.objs.get(fontName);
+        if (fontObj) {
+          rawName = fontObj.name || fontObj.fallbackName || '';
+          if (fontObj.bold || fontObj.black) isBold = true;
+          if (fontObj.italic) isItalic = true;
+          if (fontObj.fallbackName) fallbackName = fontObj.fallbackName;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3. Inspect textContent.styles
+  const style = textContent?.styles?.[fontName];
+  if (style) {
+    if (!rawName && style.fontFamily) {
+      rawName = style.fontFamily;
+    }
+    if (style.fontFamily === 'serif' || style.fontFamily === 'monospace') {
+      fallbackName = style.fontFamily;
+    }
+  }
+
+  // 4. Default to fontName itself
+  if (!rawName) {
+    rawName = fontName || 'Helvetica';
+  }
+
+  // Analyze rawName for bold / italic indicators
+  const lower = rawName.toLowerCase();
+  if (
+    lower.includes('bold') ||
+    lower.includes('black') ||
+    lower.includes('heavy') ||
+    lower.includes('demi') ||
+    lower.includes('semibold') ||
+    /-bd\b|_bd\b/i.test(rawName)
+  ) {
+    isBold = true;
+  }
+  if (lower.includes('italic') || lower.includes('oblique') || /-it\b|_it\b/i.test(rawName)) {
+    isItalic = true;
+  }
+
+  // Clean PDF subset prefix like "BAAAAA+Calibri"
+  let cleanName = rawName.replace(/^[A-Z]{6}\+/, '');
+  // Strip style suffixes
+  cleanName = cleanName
+    .replace(
+      /-(Bold|Italic|Regular|BoldItalic|Oblique|Roman|Medium|Light|Semibold|Black|Heavy|MT|PSMT|PS)+$/i,
+      '',
+    )
+    .trim();
+
+  const cleanLower = cleanName.toLowerCase();
+  let realFontName = 'Arial';
+  let fontFamily: FontFamily = 'Helvetica';
+
+  if (cleanLower.includes('calibri') || cleanLower.includes('aptos')) {
+    realFontName = 'Calibri';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('arial')) {
+    realFontName = 'Arial';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('times')) {
+    realFontName = 'Times New Roman';
+    fontFamily = 'Times';
+  } else if (cleanLower.includes('courier')) {
+    realFontName = 'Courier New';
+    fontFamily = 'Courier';
+  } else if (cleanLower.includes('georgia')) {
+    realFontName = 'Georgia';
+    fontFamily = 'Times';
+  } else if (cleanLower.includes('cambria')) {
+    realFontName = 'Cambria';
+    fontFamily = 'Times';
+  } else if (cleanLower.includes('garamond')) {
+    realFontName = 'Garamond';
+    fontFamily = 'Times';
+  } else if (cleanLower.includes('verdana')) {
+    realFontName = 'Verdana';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('tahoma')) {
+    realFontName = 'Tahoma';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('trebuchet')) {
+    realFontName = 'Trebuchet MS';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('roboto')) {
+    realFontName = 'Roboto';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('segoe')) {
+    realFontName = 'Segoe UI';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('helvetica')) {
+    realFontName = 'Helvetica';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('impact')) {
+    realFontName = 'Impact';
+    fontFamily = 'Helvetica';
+  } else if (cleanLower.includes('consolas')) {
+    realFontName = 'Consolas';
+    fontFamily = 'Courier';
+  } else if (fallbackName === 'serif') {
+    realFontName = 'Times New Roman';
+    fontFamily = 'Times';
+  } else if (fallbackName === 'monospace') {
+    realFontName = 'Courier New';
+    fontFamily = 'Courier';
+  } else {
+    if (cleanName && cleanName.length > 2 && !cleanName.startsWith('g_')) {
+      realFontName = cleanName;
+      fontFamily =
+        fallbackName === 'serif' ? 'Times' : fallbackName === 'monospace' ? 'Courier' : 'Helvetica';
+    } else {
+      realFontName = 'Arial';
+      fontFamily = 'Helvetica';
+    }
+  }
+
+  return {
+    fontFamily,
+    realFontName,
+    isBold,
+    isItalic,
+  };
+}
+
+function sampleTextColor(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  canvasWidth: number,
+  canvasHeight: number,
+): string {
+  try {
+    const startX = Math.max(0, Math.min(canvasWidth - 1, Math.round(x)));
+    const startY = Math.max(0, Math.min(canvasHeight - 1, Math.round(y)));
+    const w = Math.max(1, Math.min(canvasWidth - startX, Math.round(width)));
+    const h = Math.max(1, Math.min(canvasHeight - startY, Math.round(height)));
+
+    if (w <= 0 || h <= 0) return '#000000';
+
+    const sampleW = Math.min(w, 50);
+    const sampleH = Math.min(h, 25);
+    const imgData = ctx.getImageData(startX, startY, sampleW, sampleH);
+    const data = imgData.data;
+
+    // Corner sampling for background determination
+    const cornerIndices = [
+      0,
+      (sampleW - 1) * 4,
+      (sampleH - 1) * sampleW * 4,
+      ((sampleH - 1) * sampleW + (sampleW - 1)) * 4,
+    ];
+
+    let bgR = 255;
+    let bgG = 255;
+    let bgB = 255;
+    let validCorners = 0;
+    let sumR = 0;
+    let sumG = 0;
+    let sumB = 0;
+
+    for (const idx of cornerIndices) {
+      if (idx >= 0 && idx + 3 < data.length && data[idx + 3] > 100) {
+        sumR += data[idx];
+        sumG += data[idx + 1];
+        sumB += data[idx + 2];
+        validCorners++;
+      }
+    }
+
+    if (validCorners > 0) {
+      bgR = Math.round(sumR / validCorners);
+      bgG = Math.round(sumG / validCorners);
+      bgB = Math.round(sumB / validCorners);
+    }
+
+    let maxDist = 0;
+    let bestR = 0;
+    let bestG = 0;
+    let bestB = 0;
+    let found = false;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a < 120) continue;
+
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      const dist = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
+      if (dist > 75 && dist > maxDist) {
+        maxDist = dist;
+        bestR = r;
+        bestG = g;
+        bestB = b;
+        found = true;
+      }
+    }
+
+    if (!found) {
+      const bgLum = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
+      return bgLum < 128 ? '#FFFFFF' : '#000000';
+    }
+
+    if (bestR < 35 && bestG < 35 && bestB < 35) return '#000000';
+    if (bestR > 235 && bestG > 235 && bestB > 235) return '#FFFFFF';
+
+    const toHex = (n: number) => n.toString(16).padStart(2, '0');
+    return `#${toHex(bestR)}${toHex(bestG)}${toHex(bestB)}`;
+  } catch (e) {
+    return '#000000';
+  }
+}
+
+function getCssFontFamily(realFontName?: string, fontFamily?: FontFamily): string {
+  const primary = realFontName ? `"${realFontName}", ` : '';
+  if (fontFamily === 'Times') {
+    return `${primary}"Times New Roman", Times, Georgia, serif`;
+  }
+  if (fontFamily === 'Courier') {
+    return `${primary}"Courier New", Courier, monospace`;
+  }
+  return `${primary}"Calibri", "Helvetica Neue", Helvetica, Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+}
+
 export default function NativePdfEditor({
   file,
   filePrefix = 'Documento_Editado',
@@ -157,6 +417,7 @@ export default function NativePdfEditor({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
   const [editingFontFamily, setEditingFontFamily] = useState<FontFamily>('Helvetica');
+  const [editingRealFontName, setEditingRealFontName] = useState<string>('Arial');
   const [editingFontSize, setEditingFontSize] = useState<number>(12);
   const [editingColor, setEditingColor] = useState<string>('#000000');
   const [editingBold, setEditingBold] = useState<boolean>(false);
@@ -362,6 +623,21 @@ export default function NativePdfEditor({
                 : Math.abs(item.transform[3]) || Math.abs(item.transform[0]) || 11;
 
             const [vx, vy] = textViewport.convertToViewportPoint(tx, ty);
+            const itemLeft = vx;
+            const itemTop = vy - fontHeight * 0.82;
+            const itemWidth = rawWidth;
+            const itemHeight = fontHeight * 1.04;
+
+            const detectedFont = detectFontProperties(page, textContent, item.fontName || '');
+            const detectedColor = sampleTextColor(
+              ctx,
+              itemLeft * scale,
+              itemTop * scale,
+              itemWidth * scale,
+              itemHeight * scale,
+              canvas.width,
+              canvas.height,
+            );
 
             items.push({
               id: `text-${currentPage}-${idx}-${Date.now()}`,
@@ -371,12 +647,17 @@ export default function NativePdfEditor({
               pdfY: ty,
               pdfWidth: rawWidth,
               pdfHeight: fontHeight,
-              vx,
-              vy: vy - fontHeight * 0.82,
-              vWidth: rawWidth,
-              vHeight: fontHeight * 1.04,
+              vx: itemLeft,
+              vy: itemTop,
+              vWidth: itemWidth,
+              vHeight: itemHeight,
               fontSize: Math.round(fontHeight),
               fontName: item.fontName || 'Helvetica',
+              detectedFontFamily: detectedFont.fontFamily,
+              detectedRealFontName: detectedFont.realFontName,
+              detectedIsBold: detectedFont.isBold,
+              detectedIsItalic: detectedFont.isItalic,
+              detectedColor,
             });
           }
         });
@@ -430,6 +711,17 @@ export default function NativePdfEditor({
   });
 
   // ── 3. MANEJO DE EDICIÓN IN-SITU DE TEXTO ────────────────────────────
+  const updateSelectedTextProperty = useCallback(
+    (updates: Partial<TextModification>) => {
+      if (selectedId && selectedType === 'text') {
+        setModifications((prev) =>
+          prev.map((m) => (m.id === selectedId ? { ...m, ...updates } : m)),
+        );
+      }
+    },
+    [selectedId, selectedType],
+  );
+
   const handleStartEditingOriginal = (item: ExtractedText) => {
     saveSnapshot();
     const existingMod = modifications.find((m) => m.id === item.id);
@@ -442,6 +734,7 @@ export default function NativePdfEditor({
       setSelectedType('text');
       setEditingText(existingMod.text);
       setEditingFontFamily(existingMod.fontFamily);
+      setEditingRealFontName(existingMod.realFontName || 'Arial');
       setEditingFontSize(existingMod.fontSize);
       setEditingColor(existingMod.color);
       setEditingBold(existingMod.isBold);
@@ -452,6 +745,12 @@ export default function NativePdfEditor({
       const yPercent = (item.vy / pDim.height) * 100;
       const widthPercent = Math.min(100 - xPercent, Math.max(10, (item.vWidth / pDim.width) * 100));
       const heightPercent = (item.vHeight / pDim.height) * 100;
+
+      const detectedFam = item.detectedFontFamily || 'Helvetica';
+      const detectedReal = item.detectedRealFontName || 'Arial';
+      const detectedBold = Boolean(item.detectedIsBold);
+      const detectedItalic = Boolean(item.detectedIsItalic);
+      const detectedColor = item.detectedColor || '#000000';
 
       const newMod: TextModification = {
         id: item.id,
@@ -464,10 +763,11 @@ export default function NativePdfEditor({
         pdfWidth: item.pdfWidth,
         pdfHeight: item.pdfHeight,
         fontSize: item.fontSize,
-        fontFamily: 'Helvetica',
-        color: '#000000',
-        isBold: false,
-        isItalic: false,
+        fontFamily: detectedFam,
+        realFontName: detectedReal,
+        color: detectedColor,
+        isBold: detectedBold,
+        isItalic: detectedItalic,
         align: 'left',
         xPercent,
         yPercent,
@@ -480,11 +780,12 @@ export default function NativePdfEditor({
       setSelectedId(item.id);
       setSelectedType('text');
       setEditingText(item.str);
-      setEditingFontFamily('Helvetica');
+      setEditingFontFamily(detectedFam);
+      setEditingRealFontName(detectedReal);
       setEditingFontSize(item.fontSize);
-      setEditingColor('#000000');
-      setEditingBold(false);
-      setEditingItalic(false);
+      setEditingColor(detectedColor);
+      setEditingBold(detectedBold);
+      setEditingItalic(detectedItalic);
       setEditingAlign('left');
     }
   };
@@ -499,6 +800,7 @@ export default function NativePdfEditor({
             ...mod,
             text: editingText,
             fontFamily: editingFontFamily,
+            realFontName: editingRealFontName,
             fontSize: editingFontSize,
             color: editingColor,
             isBold: editingBold,
@@ -549,6 +851,7 @@ export default function NativePdfEditor({
         pdfHeight: 14,
         fontSize: editingFontSize || 14,
         fontFamily: editingFontFamily || 'Helvetica',
+        realFontName: editingRealFontName || 'Arial',
         color: editingColor || '#000000',
         isBold: editingBold || false,
         isItalic: editingItalic || false,
@@ -1781,17 +2084,42 @@ export default function NativePdfEditor({
           <PropertyBar
             selectedType={selectedType}
             fontFamily={editingFontFamily}
-            onChangeFontFamily={setEditingFontFamily}
+            onChangeFontFamily={(font) => {
+              setEditingFontFamily(font);
+              updateSelectedTextProperty({ fontFamily: font });
+            }}
+            realFontName={editingRealFontName}
+            onChangeRealFontName={(name) => {
+              setEditingRealFontName(name);
+              updateSelectedTextProperty({ realFontName: name });
+            }}
             fontSize={editingFontSize}
-            onChangeFontSize={setEditingFontSize}
+            onChangeFontSize={(size) => {
+              setEditingFontSize(size);
+              updateSelectedTextProperty({ fontSize: size });
+            }}
             textColor={editingColor}
-            onChangeTextColor={setEditingColor}
+            onChangeTextColor={(color) => {
+              setEditingColor(color);
+              updateSelectedTextProperty({ color });
+            }}
             isBold={editingBold}
-            onToggleBold={() => setEditingBold(!editingBold)}
+            onToggleBold={() => {
+              const nb = !editingBold;
+              setEditingBold(nb);
+              updateSelectedTextProperty({ isBold: nb });
+            }}
             isItalic={editingItalic}
-            onToggleItalic={() => setEditingItalic(!editingItalic)}
+            onToggleItalic={() => {
+              const ni = !editingItalic;
+              setEditingItalic(ni);
+              updateSelectedTextProperty({ isItalic: ni });
+            }}
             textAlign={editingAlign}
-            onChangeTextAlign={setEditingAlign}
+            onChangeTextAlign={(align) => {
+              setEditingAlign(align);
+              updateSelectedTextProperty({ align });
+            }}
             strokeColor={currentStrokeColor}
             onChangeStrokeColor={setCurrentStrokeColor}
             strokeWidth={currentStrokeWidth}
@@ -2026,6 +2354,7 @@ export default function NativePdfEditor({
                           setSelectedType('text');
                           setEditingText(mod.text);
                           setEditingFontFamily(mod.fontFamily);
+                          setEditingRealFontName(mod.realFontName || 'Arial');
                           setEditingFontSize(mod.fontSize);
                           setEditingColor(mod.color);
                           setEditingBold(mod.isBold);
@@ -2073,19 +2402,17 @@ export default function NativePdfEditor({
                             }}
                             style={{
                               fontSize: `${mod.fontSize * scale}px`,
-                              fontFamily:
-                                mod.fontFamily === 'Times'
-                                  ? 'Times New Roman, serif'
-                                  : mod.fontFamily === 'Courier'
-                                    ? 'Courier New, monospace'
-                                    : 'Helvetica, Arial, sans-serif',
+                              fontFamily: getCssFontFamily(
+                                mod.realFontName || editingRealFontName,
+                                editingFontFamily,
+                              ),
                               color: editingColor,
                               fontWeight: editingBold ? 'bold' : 'normal',
                               fontStyle: editingItalic ? 'italic' : 'normal',
                               lineHeight: 1.15,
                               textAlign: editingAlign,
                             }}
-                            className="w-full bg-white outline-none text-black px-1 py-0.5 border-0 resize-none overflow-hidden"
+                            className="w-full bg-white outline-none px-1 py-0.5 border-0 resize-none overflow-hidden"
                             rows={Math.max(1, editingText.split('\n').length)}
                           />
                         ) : (
@@ -2096,6 +2423,7 @@ export default function NativePdfEditor({
                               setSelectedType('text');
                               setEditingText(mod.text);
                               setEditingFontFamily(mod.fontFamily);
+                              setEditingRealFontName(mod.realFontName || 'Arial');
                               setEditingFontSize(mod.fontSize);
                               setEditingColor(mod.color);
                               setEditingBold(mod.isBold);
@@ -2104,12 +2432,7 @@ export default function NativePdfEditor({
                             }}
                             style={{
                               fontSize: `${mod.fontSize * scale}px`,
-                              fontFamily:
-                                mod.fontFamily === 'Times'
-                                  ? 'Times New Roman, serif'
-                                  : mod.fontFamily === 'Courier'
-                                    ? 'Courier New, monospace'
-                                    : 'Helvetica, Arial, sans-serif',
+                              fontFamily: getCssFontFamily(mod.realFontName, mod.fontFamily),
                               color: mod.color,
                               fontWeight: mod.isBold ? 'bold' : 'normal',
                               fontStyle: mod.isItalic ? 'italic' : 'normal',

@@ -36,6 +36,11 @@ export interface ExtractedText {
   vHeight: number;
   fontSize: number;
   fontName: string;
+  detectedFontFamily?: FontFamily;
+  detectedRealFontName?: string;
+  detectedIsBold?: boolean;
+  detectedIsItalic?: boolean;
+  detectedColor?: string;
 }
 
 export interface TextModification {
@@ -50,6 +55,7 @@ export interface TextModification {
   pdfHeight: number;
   fontSize: number;
   fontFamily: FontFamily;
+  realFontName?: string;
   color: string;
   isBold: boolean;
   isItalic: boolean;

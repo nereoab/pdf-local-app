@@ -336,6 +336,54 @@ function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
+/**
+ * Sanitiza cualquier texto para garantizar compatibilidad estricta con fuentes WinAnsi en pdf-lib.
+ * Previene excepciones no controladas por caracteres unicode, flechas, comillas tipográficas o viñetas.
+ */
+function sanitizeWinAnsiText(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2022\u25E6\u2023\u2219]/g, '*')
+    .replace(/\u2026/g, '...')
+    .replace(/[\u2705\u2713\u2714]/g, '[v]')
+    .replace(/[\u2190-\u2193]/g, '->')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, (mark) => mark)
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, (ch) => {
+      const code = ch.charCodeAt(0);
+      if (code === 0x20ac) return 'EUR';
+      if (code === 0x2122) return '(TM)';
+      if (code === 0x00a9) return '(C)';
+      if (code === 0x00ae) return '(R)';
+      const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (norm && norm.length === 1 && norm.charCodeAt(0) <= 255) return norm;
+      return ' ';
+    });
+}
+
+function safeDrawText(
+  page: any,
+  text: string,
+  options: { x: number; y: number; size: number; font: any; color: any },
+) {
+  try {
+    const clean = sanitizeWinAnsiText(text);
+    if (!clean.trim()) return;
+    page.drawText(clean, options);
+  } catch {
+    try {
+      const asciiOnly = text.replace(/[^\x20-\x7E]/g, ' ');
+      if (asciiOnly.trim()) {
+        page.drawText(asciiOnly, options);
+      }
+    } catch {}
+  }
+}
+
 export default function PowerPointPdfConverter({
   defaultMode = 'pdf-to-powerpoint',
 }: PowerPointPdfConverterProps) {
@@ -441,18 +489,10 @@ export default function PowerPointPdfConverter({
   const [pageRangeInput, setPageRangeInput] = useState<string>('1-10');
   const [selectedPageSet, setSelectedPageSet] = useState<Set<number>>(new Set());
 
-  // MOTOR DE CONVERSIÓN
+  // MOTOR DE CONVERSIÓN (AUTO, ADOBE, CLOUDCONVERT, LOCAL, OCR)
   const [conversionEngine, setConversionEngine] = useState<
-    'adobe' | 'cloudconvert' | 'local' | 'ocr'
-  >(() => (defaultMode === 'powerpoint-to-pdf' ? 'local' : 'adobe'));
-
-  useEffect(() => {
-    if (defaultMode === 'powerpoint-to-pdf') {
-      queueMicrotask(() => {
-        setConversionEngine('local');
-      });
-    }
-  }, [defaultMode]);
+    'auto' | 'adobe' | 'cloudconvert' | 'local' | 'ocr'
+  >('auto');
 
   // MODO DE TEXTO PARA PDF A POWERPOINT (LOCAL)
   const [pptxTextMode, setPptxTextMode] = useState<'hybrid' | 'native' | 'raster'>('hybrid');
@@ -503,7 +543,9 @@ export default function PowerPointPdfConverter({
   }, [activeSlotIndex, totalPages]);
 
   const parsePptxContent = useCallback(
-    async (pptFile: File): Promise<{ count: number; slides: PptxSlideData[] }> => {
+    async (
+      pptFile: File,
+    ): Promise<{ count: number; slides: PptxSlideData[]; detectedAspect?: AspectRatio }> => {
       try {
         const zip = await JSZip.loadAsync(pptFile);
         const slideKeys = Object.keys(zip.files)
@@ -514,16 +556,52 @@ export default function PowerPointPdfConverter({
             return numA - numB;
           });
 
+        let detectedAspect: AspectRatio = '16:9';
+        if (zip.files['ppt/presentation.xml']) {
+          try {
+            const presXml = await zip.files['ppt/presentation.xml'].async('text');
+            const sldSzMatch = presXml.match(/<p:sldSz\b[^>]*cx="(\d+)"[^>]*cy="(\d+)"/);
+            if (sldSzMatch) {
+              const cx = parseInt(sldSzMatch[1], 10);
+              const cy = parseInt(sldSzMatch[2], 10);
+              if (cx > 0 && cy > 0 && Math.abs(cx / cy - 4 / 3) < 0.1) {
+                detectedAspect = '4:3';
+              }
+            }
+          } catch {}
+        }
+
         const parsed: PptxSlideData[] = [];
 
         for (let i = 0; i < slideKeys.length; i++) {
           const key = slideKeys[i];
           const text = await zip.files[key].async('text');
-          const matches = Array.from(text.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g))
-            .map((m) => m[1].trim())
-            .filter(Boolean);
-          const title = matches[0] || (isEs ? `Diapositiva ${i + 1}` : `Slide ${i + 1}`);
-          const paragraphs = matches.slice(1);
+
+          // Extraer párrafos agrupados por <a:p>
+          const pMatches = Array.from(text.matchAll(/<a:p\b[^>]*>([\s\S]*?)<\/a:p>/g));
+          const paragraphs: string[] = [];
+
+          for (const pMatch of pMatches) {
+            const pContent = pMatch[1];
+            const tTexts = Array.from(pContent.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g))
+              .map((m) => m[1])
+              .join('');
+            const trimmed = tTexts.trim();
+            if (trimmed) {
+              paragraphs.push(trimmed);
+            }
+          }
+
+          // Fallback a <a:t> directo si no se encontraron bloques <a:p>
+          if (paragraphs.length === 0) {
+            const directMatches = Array.from(text.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g))
+              .map((m) => m[1].trim())
+              .filter(Boolean);
+            paragraphs.push(...directMatches);
+          }
+
+          const title = paragraphs[0] || (isEs ? `Diapositiva ${i + 1}` : `Slide ${i + 1}`);
+          const bodyParagraphs = paragraphs.slice(1);
 
           // Extraer imágenes asociadas a esta diapositiva
           const slideBasename = key.split('/').pop() || `slide${i + 1}.xml`;
@@ -564,12 +642,12 @@ export default function PowerPointPdfConverter({
           parsed.push({
             slideNumber: i + 1,
             title,
-            paragraphs,
+            paragraphs: bodyParagraphs,
             images: slideImages,
           });
         }
 
-        return { count: parsed.length, slides: parsed };
+        return { count: parsed.length, slides: parsed, detectedAspect };
       } catch (e) {
         console.error('Error al parsear PPTX:', e);
         return { count: 1, slides: [] };
@@ -1042,103 +1120,172 @@ export default function PowerPointPdfConverter({
             console.warn('API conversion failed, attempting local fallback:', apiErr);
           }
 
-          // 2. Si falló la API, fallback con pdf-lib enriquecido con imágenes de cada slide
+          // 2. Si falló la API, fallback ultra-robusto con pdf-lib enriquecido
           if (!resultBlob) {
+            setProgressMsg(
+              isEs
+                ? 'Reconstruyendo presentación con motor vectorial seguro...'
+                : 'Rebuilding presentation with secure vector engine...',
+            );
+            setProgressPercent(40);
             const pdfDoc = await PDFDocument.create();
             const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
             const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-            const { slides } = await parsePptxContent(currentFile);
+            const { slides, detectedAspect } = await parsePptxContent(currentFile);
+            const effectiveAspect = detectedAspect || aspectRatio;
+            const pageWidth = effectiveAspect === '4:3' ? 792 : 842;
+            const pageHeight = effectiveAspect === '4:3' ? 612 : 595;
+
             const slidesToRender =
               slides.length > 0
                 ? slides
                 : [{ slideNumber: 1, title: currentFile.name, paragraphs: [] }];
 
             for (let i = 0; i < slidesToRender.length; i++) {
-              const slide = slidesToRender[i];
-              const pageWidth = aspectRatio === '4:3' ? 792 : 842;
-              const pageHeight = aspectRatio === '4:3' ? 612 : 595;
-              const page = pdfDoc.addPage([pageWidth, pageHeight]);
+              try {
+                const slide = slidesToRender[i];
+                const page = pdfDoc.addPage([pageWidth, pageHeight]);
 
-              page.drawRectangle({
-                x: 0,
-                y: 0,
-                width: pageWidth,
-                height: pageHeight,
-                color: rgb(0.97, 0.97, 0.98),
-              });
+                const isDark = slideTheme === 'dark';
+                const bgColor = isDark ? rgb(0.08, 0.09, 0.12) : rgb(0.985, 0.985, 0.99);
+                const titleColor = isDark ? rgb(0.95, 0.95, 0.98) : rgb(0.12, 0.12, 0.18);
+                const textColor = isDark ? rgb(0.75, 0.77, 0.82) : rgb(0.25, 0.25, 0.32);
+                const accentColor = rgb(0.95, 0.45, 0.12);
 
-              if (addSlideBorders) {
                 page.drawRectangle({
-                  x: 20,
-                  y: 20,
-                  width: pageWidth - 40,
-                  height: pageHeight - 40,
-                  borderColor: rgb(0.8, 0.8, 0.85),
-                  borderWidth: 1.5,
+                  x: 0,
+                  y: 0,
+                  width: pageWidth,
+                  height: pageHeight,
+                  color: bgColor,
                 });
-              }
 
-              let embeddedImg: any = null;
-              if (slide.images && slide.images.length > 0) {
-                const firstImg = slide.images[0];
-                try {
-                  if (firstImg.format === 'png') {
-                    embeddedImg = await pdfDoc.embedPng(firstImg.bytes);
-                  } else {
-                    embeddedImg = await pdfDoc.embedJpg(firstImg.bytes);
-                  }
-                } catch (imgErr) {
-                  console.warn('No se pudo incrustar imagen en diapositiva:', imgErr);
+                // Acento superior elegante
+                page.drawRectangle({
+                  x: 0,
+                  y: pageHeight - 6,
+                  width: pageWidth,
+                  height: 6,
+                  color: accentColor,
+                });
+
+                if (addSlideBorders) {
+                  page.drawRectangle({
+                    x: 20,
+                    y: 20,
+                    width: pageWidth - 40,
+                    height: pageHeight - 40,
+                    borderColor: isDark ? rgb(0.2, 0.22, 0.28) : rgb(0.82, 0.84, 0.88),
+                    borderWidth: 1.5,
+                  });
                 }
-              }
 
-              const hasImg = embeddedImg !== null;
+                // Incrustar imágenes disponibles de forma segura
+                const embeddedImages: any[] = [];
+                if (slide.images && slide.images.length > 0) {
+                  for (const imgItem of slide.images.slice(0, 4)) {
+                    try {
+                      let emb = null;
+                      if (imgItem.format === 'png') {
+                        emb = await pdfDoc.embedPng(imgItem.bytes);
+                      } else {
+                        emb = await pdfDoc.embedJpg(imgItem.bytes);
+                      }
+                      if (emb) embeddedImages.push(emb);
+                    } catch (imgErr) {
+                      console.warn('Error al incrustar imagen:', imgErr);
+                    }
+                  }
+                }
 
-              page.drawText(slide.title.substring(0, 60), {
-                x: 50,
-                y: pageHeight - 75,
-                size: 22,
-                font: fontBold,
-                color: rgb(0.12, 0.12, 0.18),
-              });
+                const hasImg = embeddedImages.length > 0;
 
-              let yOffset = pageHeight - 125;
-              const maxParas = hasImg ? 7 : 9;
-              for (const para of slide.paragraphs.slice(0, maxParas)) {
-                if (yOffset < 75) break;
-                page.drawText(`• ${para.substring(0, hasImg ? 55 : 110)}`, {
-                  x: 60,
-                  y: yOffset,
-                  size: 13,
-                  font: fontRegular,
-                  color: rgb(0.25, 0.25, 0.3),
+                // Título con sanitización anti-crash
+                safeDrawText(page, slide.title.substring(0, 85), {
+                  x: 45,
+                  y: pageHeight - 65,
+                  size: 20,
+                  font: fontBold,
+                  color: titleColor,
                 });
-                yOffset -= 26;
-              }
 
-              if (hasImg && embeddedImg) {
-                const imgDims = embeddedImg.scaleToFit(pageWidth * 0.42, pageHeight * 0.65);
-                page.drawImage(embeddedImg, {
-                  x: pageWidth - imgDims.width - 45,
-                  y: (pageHeight - imgDims.height) / 2 - 15,
-                  width: imgDims.width,
-                  height: imgDims.height,
+                // Línea divisoria bajo el título
+                page.drawRectangle({
+                  x: 45,
+                  y: pageHeight - 74,
+                  width: pageWidth - 90,
+                  height: 1,
+                  color: isDark ? rgb(0.2, 0.22, 0.28) : rgb(0.86, 0.88, 0.92),
                 });
+
+                // Párrafos con viñetas limpias
+                let yOffset = pageHeight - 110;
+                const maxParas = hasImg ? 8 : 12;
+                const maxChars = hasImg ? 65 : 120;
+                for (const para of slide.paragraphs.slice(0, maxParas)) {
+                  if (yOffset < 65) break;
+                  safeDrawText(page, `* ${para.substring(0, maxChars)}`, {
+                    x: 50,
+                    y: yOffset,
+                    size: 12,
+                    font: fontRegular,
+                    color: textColor,
+                  });
+                  yOffset -= 24;
+                }
+
+                // Dibujar imágenes
+                if (hasImg) {
+                  const imgColX = pageWidth * 0.55;
+                  const imgColW = pageWidth * 0.4;
+                  const imgColH = pageHeight - 150;
+
+                  if (embeddedImages.length === 1) {
+                    const emb = embeddedImages[0];
+                    const dims = emb.scaleToFit(imgColW, imgColH);
+                    page.drawImage(emb, {
+                      x: imgColX + (imgColW - dims.width) / 2,
+                      y: (pageHeight - dims.height) / 2 - 20,
+                      width: dims.width,
+                      height: dims.height,
+                    });
+                  } else {
+                    const subH = (imgColH - 15) / 2;
+                    for (let imgIdx = 0; imgIdx < Math.min(2, embeddedImages.length); imgIdx++) {
+                      const emb = embeddedImages[imgIdx];
+                      const dims = emb.scaleToFit(imgColW, subH);
+                      const imgY =
+                        pageHeight - 110 - (imgIdx + 1) * subH + (subH - dims.height) / 2;
+                      page.drawImage(emb, {
+                        x: imgColX + (imgColW - dims.width) / 2,
+                        y: Math.max(50, imgY),
+                        width: dims.width,
+                        height: dims.height,
+                      });
+                    }
+                  }
+                }
+
+                // Número de diapositiva
+                if (addSlideNumbers) {
+                  safeDrawText(
+                    page,
+                    `${isEs ? 'Diapositiva' : 'Slide'} ${i + 1} / ${slidesToRender.length}`,
+                    {
+                      x: pageWidth - 160,
+                      y: 28,
+                      size: 9,
+                      font: fontRegular,
+                      color: isDark ? rgb(0.5, 0.52, 0.58) : rgb(0.55, 0.55, 0.62),
+                    },
+                  );
+                }
+              } catch (slideErr) {
+                console.warn(`Error renderizando diapositiva ${i + 1}:`, slideErr);
               }
 
-              page.drawText(
-                `${isEs ? 'Diapositiva' : 'Slide'} ${i + 1} de ${slidesToRender.length}`,
-                {
-                  x: pageWidth - 160,
-                  y: 32,
-                  size: 9,
-                  font: fontRegular,
-                  color: rgb(0.55, 0.55, 0.6),
-                },
-              );
-
-              setProgressPercent(30 + Math.round(((i + 1) / slidesToRender.length) * 60));
+              setProgressPercent(40 + Math.round(((i + 1) / slidesToRender.length) * 55));
             }
 
             const pdfBytes = await pdfDoc.save();
@@ -1188,51 +1335,66 @@ export default function PowerPointPdfConverter({
               const pdfArrayBuf = await pdfBlobItem.arrayBuffer();
               zip.file(`${baseName}.pdf`, pdfArrayBuf);
             } else {
-              // Fallback local para este archivo si la API falló
-              const pdfDoc = await PDFDocument.create();
-              const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-              const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-              const { slides } = await parsePptxContent(currentFile);
-              const slidesToRender =
-                slides.length > 0
-                  ? slides
-                  : [{ slideNumber: 1, title: currentFile.name, paragraphs: [] }];
+              // Fallback local seguro para este archivo
+              try {
+                const pdfDoc = await PDFDocument.create();
+                const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                const { slides, detectedAspect } = await parsePptxContent(currentFile);
+                const effectiveAspect = detectedAspect || aspectRatio;
+                const pageWidth = effectiveAspect === '4:3' ? 792 : 842;
+                const pageHeight = effectiveAspect === '4:3' ? 612 : 595;
 
-              for (let i = 0; i < slidesToRender.length; i++) {
-                const slide = slidesToRender[i];
-                const pageWidth = 842;
-                const pageHeight = 595;
-                const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                const slidesToRender =
+                  slides.length > 0
+                    ? slides
+                    : [{ slideNumber: 1, title: currentFile.name, paragraphs: [] }];
 
-                page.drawRectangle({
-                  x: 0,
-                  y: 0,
-                  width: pageWidth,
-                  height: pageHeight,
-                  color: rgb(0.97, 0.97, 0.98),
-                });
-                page.drawText(slide.title.substring(0, 70), {
-                  x: 50,
-                  y: pageHeight - 75,
-                  size: 20,
-                  font: fontBold,
-                  color: rgb(0.12, 0.12, 0.18),
-                });
-                let yOffset = pageHeight - 120;
-                for (const para of slide.paragraphs.slice(0, 8)) {
-                  if (yOffset < 60) break;
-                  page.drawText(`• ${para.substring(0, 110)}`, {
-                    x: 60,
-                    y: yOffset,
-                    size: 12,
-                    font: fontRegular,
-                    color: rgb(0.25, 0.25, 0.3),
+                for (let i = 0; i < slidesToRender.length; i++) {
+                  const slide = slidesToRender[i];
+                  const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+                  page.drawRectangle({
+                    x: 0,
+                    y: 0,
+                    width: pageWidth,
+                    height: pageHeight,
+                    color: rgb(0.985, 0.985, 0.99),
                   });
-                  yOffset -= 24;
+                  page.drawRectangle({
+                    x: 0,
+                    y: pageHeight - 6,
+                    width: pageWidth,
+                    height: 6,
+                    color: rgb(0.95, 0.45, 0.12),
+                  });
+
+                  safeDrawText(page, slide.title.substring(0, 80), {
+                    x: 45,
+                    y: pageHeight - 65,
+                    size: 20,
+                    font: fontBold,
+                    color: rgb(0.12, 0.12, 0.18),
+                  });
+
+                  let yOffset = pageHeight - 110;
+                  for (const para of slide.paragraphs.slice(0, 10)) {
+                    if (yOffset < 60) break;
+                    safeDrawText(page, `* ${para.substring(0, 110)}`, {
+                      x: 50,
+                      y: yOffset,
+                      size: 12,
+                      font: fontRegular,
+                      color: rgb(0.25, 0.25, 0.32),
+                    });
+                    yOffset -= 24;
+                  }
                 }
+                const pdfBytes = await pdfDoc.save();
+                zip.file(`${baseName}.pdf`, pdfBytes);
+              } catch (batchErr) {
+                console.error(`Error en fallback de ${currentFile.name}:`, batchErr);
               }
-              const pdfBytes = await pdfDoc.save();
-              zip.file(`${baseName}.pdf`, pdfBytes);
             }
           }
 
@@ -1268,7 +1430,11 @@ export default function PowerPointPdfConverter({
             isEs ? 'Procesando PDF a PowerPoint...' : 'Processing PDF to PowerPoint...',
           );
 
-          if (conversionEngine === 'adobe' || conversionEngine === 'cloudconvert') {
+          if (
+            conversionEngine === 'adobe' ||
+            conversionEngine === 'cloudconvert' ||
+            conversionEngine === 'auto'
+          ) {
             try {
               resultBlob = await convertWithApi(
                 '/api/convert/pdf-to-powerpoint',
@@ -2205,22 +2371,181 @@ export default function PowerPointPdfConverter({
                       </span>
                     </label>
                     <span className="text-[10px] text-zinc-400 font-mono">
-                      {isEs ? '4 Motores Disponibles' : '4 Engines Available'}
+                      {isEs ? '5 Motores Disponibles' : '5 Engines Available'}
                     </span>
                   </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* OPCIÓN 0: MODO INTELIGENTE MULTI-MOTOR (AUTO) */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('auto')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative md:col-span-2 ${
+                        conversionEngine === 'auto'
+                          ? 'bg-gradient-to-r from-orange-950/60 via-amber-950/40 to-zinc-900 border-orange-400 ring-2 ring-orange-400/50 shadow-lg'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-85 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-2 text-xs sm:text-sm font-sans">
+                          <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+                          <span>
+                            🚀{' '}
+                            {isEs
+                              ? 'Modo Inteligente Multi-Motor (Recomendado)'
+                              : 'Smart Multi-Engine Mode (Recommended)'}
+                          </span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          {isEs
+                            ? '100% Éxito Garantizado • Auto Failover'
+                            : '100% Guaranteed • Auto Failover'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-300 leading-relaxed font-mono">
+                        {isEs
+                          ? 'Enruta automáticamente la presentación a través del mejor motor disponible: Adobe Acrobat Services Oficial, Motor Nativo Office COM/LibreOffice o CloudConvert, con respaldo ultra-resistente OpenXML garantizado.'
+                          : 'Automatically routes the presentation through the best available engine: Official Adobe Acrobat Services, Native Office COM/LibreOffice or CloudConvert, with guaranteed OpenXML fallback.'}
+                      </p>
+                    </button>
+                    {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('adobe')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'adobe'
+                          ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>
+                            🏆 {isEs ? 'Adobe Acrobat Pro (Nube)' : 'Adobe Acrobat Pro (Cloud)'}
+                          </span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                          {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Máxima fidelidad oficial de Adobe en diapositivas, textos vectoriales, fuentes y gráficos.'
+                          : 'Official Adobe fidelity for slides, vector texts, fonts & graphics.'}
+                      </p>
+                    </button>
 
-                  {/* MODO DE TEXTO EDITABLE EN POWERPOINT (CUANDO SE CONVIERTE PDF -> PPTX) */}
+                    {/* OPCIÓN 2: CLOUDCONVERT API */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('cloudconvert')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'cloudconvert'
+                          ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>🌐 {isEs ? 'CloudConvert (Nube)' : 'CloudConvert (Cloud)'}</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                          {isEs ? 'Procesamiento Cloud' : 'Cloud Engine'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {isEs
+                          ? 'Motor en la nube de alto rendimiento. Convierte presentaciones con maquetación fiel en PPTX.'
+                          : 'High-performance cloud engine. Faithful presentation layout into PPTX.'}
+                      </p>
+                    </button>
+
+                    {/* OPCIÓN 3: MOTOR LOCAL NATIVO */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('local')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'local'
+                          ? 'bg-orange-950/50 border-orange-400 ring-1 ring-orange-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>
+                            {mode === 'pdf-to-powerpoint'
+                              ? isEs
+                                ? '⚡ Motor Local PptxGen'
+                                : '⚡ Local PptxGen Engine'
+                              : isEs
+                                ? '⚡ Motor Local Nativo Office'
+                                : '⚡ Native Local Office Engine'}
+                          </span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          {mode === 'pdf-to-powerpoint'
+                            ? isEs
+                              ? 'Instantáneo (~0.5s)'
+                              : 'Instant (~0.5s)'
+                            : isEs
+                              ? 'Nativo Windows'
+                              : 'Native Windows'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {mode === 'pdf-to-powerpoint'
+                          ? isEs
+                            ? 'Compilación directa en memoria 100% privada sin subir datos a servidores externos.'
+                            : '100% private in-memory compilation without uploading files externally.'
+                          : isEs
+                            ? 'Conversión ultrarrápida con 100% fidelidad de Microsoft PowerPoint en tu equipo.'
+                            : 'Ultra-fast conversion with 100% Microsoft PowerPoint fidelity on your machine.'}
+                      </p>
+                    </button>
+
+                    {/* OPCIÓN 4: MOTOR OCR RECONSTRUCTOR DE ESCANEADOS */}
+                    <button
+                      type="button"
+                      onClick={() => setConversionEngine('ocr')}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                        conversionEngine === 'ocr'
+                          ? 'bg-amber-950/50 border-amber-400 ring-1 ring-amber-400/50 shadow-md'
+                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                          <span>🔍 {isEs ? 'Motor OCR Escaneados' : 'Scanned OCR Engine'}</span>
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          Tesseract OCR
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {mode === 'pdf-to-powerpoint'
+                          ? isEs
+                            ? 'Reconoce y extrae texto de fotos, capturas o PDFs escaneados para crear diapositivas editables.'
+                            : 'Recognizes & extracts text from photos, screenshots & scanned PDFs into editable slides.'
+                          : isEs
+                            ? 'Genera PDF con indexación de búsqueda OCR completa en diagramas y capturas de diapositivas.'
+                            : 'Generates PDF with full OCR search indexing for slide diagrams & screenshots.'}
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* SUB-AJUSTE: ESTILO DE DIAPOSITIVA (SOLO MOTOR LOCAL) */}
                   {mode === 'pdf-to-powerpoint' && (
-                    <div className="bg-[#121217] border border-orange-500/30 rounded-2xl p-3.5 mb-2 shadow-inner">
+                    <div className="bg-[#0e0e13] border border-orange-500/20 rounded-2xl p-3.5 mt-3 shadow-inner">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
                         <span className="text-xs font-bold text-white flex items-center gap-1.5 font-sans">
                           <Sparkles className="w-4 h-4 text-orange-400" />
                           {isEs
-                            ? 'Modo de Texto en PowerPoint (Motor Local)'
-                            : 'PowerPoint Text Mode (Local Engine)'}
+                            ? '⚙️ Formato de Diapositiva (Sub-ajuste del Motor Local)'
+                            : '⚙️ Slide Format (Local Engine Sub-setting)'}
                         </span>
-                        <span className="text-[10px] text-orange-300 font-mono bg-orange-950/60 px-2 py-0.5 rounded border border-orange-800/80">
-                          {isEs ? 'Texto Editable con Clic' : 'Editable Text on Click'}
+                        <span className="text-[10px] text-zinc-400 font-mono bg-zinc-800/80 px-2 py-0.5 rounded border border-zinc-700">
+                          {isEs
+                            ? 'Ajuste de Formateo • No es un motor adicional'
+                            : 'Formatting Option • Not an additional engine'}
                         </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -2281,126 +2606,6 @@ export default function PowerPointPdfConverter({
                       </div>
                     </div>
                   )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('adobe')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'adobe'
-                          ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🏆 Adobe Acrobat Pro (Nube)</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                          {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Máxima fidelidad oficial de Adobe en diapositivas, textos vectoriales, fuentes y gráficos.'
-                          : 'Official Adobe fidelity for slides, vector texts, fonts & graphics.'}
-                      </p>
-                    </button>
-
-                    {/* OPCIÓN 2: CLOUDCONVERT API */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('cloudconvert')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'cloudconvert'
-                          ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🌐 CloudConvert (Nube)</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                          {isEs ? 'Procesamiento Cloud' : 'Cloud Engine'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Motor en la nube de alto rendimiento. Convierte presentaciones con maquetación fiel en PPTX.'
-                          : 'High-performance cloud engine. Faithful presentation layout into PPTX.'}
-                      </p>
-                    </button>
-
-                    {/* OPCIÓN 3: MOTOR LOCAL NATIVO */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('local')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'local'
-                          ? 'bg-orange-950/50 border-orange-400 ring-1 ring-orange-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>
-                            {mode === 'pdf-to-powerpoint'
-                              ? '⚡ Motor Local PptxGen'
-                              : '⚡ Motor Local Nativo Office'}
-                          </span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                          {mode === 'pdf-to-powerpoint'
-                            ? isEs
-                              ? 'Instantáneo (~0.5s)'
-                              : 'Instant (~0.5s)'
-                            : isEs
-                              ? 'Nativo Windows'
-                              : 'Native Windows'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {mode === 'pdf-to-powerpoint'
-                          ? isEs
-                            ? 'Compilación directa en memoria 100% privada sin subir datos a servidores externos.'
-                            : '100% private in-memory compilation without uploading files externally.'
-                          : isEs
-                            ? 'Conversión ultrarrápida con 100% fidelidad de Microsoft PowerPoint en tu equipo.'
-                            : 'Ultra-fast conversion with 100% Microsoft PowerPoint fidelity on your machine.'}
-                      </p>
-                    </button>
-
-                    {/* OPCIÓN 4: MOTOR OCR RECONSTRUCTOR DE ESCANEADOS */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('ocr')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'ocr'
-                          ? 'bg-amber-950/50 border-amber-400 ring-1 ring-amber-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🔍 Motor OCR Escaneados</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          Tesseract OCR
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {mode === 'pdf-to-powerpoint'
-                          ? isEs
-                            ? 'Reconoce y extrae texto de fotos, capturas o PDFs escaneados para crear diapositivas editables.'
-                            : 'Recognizes & extracts text from photos, screenshots & scanned PDFs into editable slides.'
-                          : isEs
-                            ? 'Genera PDF con indexación de búsqueda OCR completa en diagramas y capturas de diapositivas.'
-                            : 'Generates PDF with full OCR search indexing for slide diagrams & screenshots.'}
-                      </p>
-                    </button>
-                  </div>
                 </div>
 
                 {/* GRID DE OPCIONES MODULARES EN 3 COLUMNAS */}

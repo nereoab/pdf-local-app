@@ -9,11 +9,17 @@ import { convertPowerPointToPdfWithCloudConvert } from '@/lib/cloudconvert-servi
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
+interface LocalConversionResult {
+  buffer: Buffer;
+  engineUsed: string;
+}
+
 async function runLocalPptxToPdf(
   buffer: Buffer,
   originalFilename: string,
   aspectRatio: string = '16:9',
-): Promise<Buffer | null> {
+  preferredSubEngine: 'auto' | 'com' | 'libreoffice' | 'python-pptx' = 'auto',
+): Promise<LocalConversionResult | null> {
   const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   const tempDir = os.tmpdir();
   const ext = originalFilename.toLowerCase().endsWith('.ppt') ? '.ppt' : '.pptx';
@@ -26,7 +32,15 @@ async function runLocalPptxToPdf(
 
     const pyProcess = spawn(
       'python',
-      [scriptPath, tempInputPath, tempOutputPath, '--aspect-ratio', aspectRatio],
+      [
+        scriptPath,
+        tempInputPath,
+        tempOutputPath,
+        '--aspect-ratio',
+        aspectRatio,
+        '--engine',
+        preferredSubEngine,
+      ],
       {
         windowsHide: true,
       },
@@ -43,15 +57,28 @@ async function runLocalPptxToPdf(
       stderrData += data.toString();
     });
 
-    const exitCode = await new Promise<number>((resolve) => {
+    // Timeout de seguridad de 45 segundos para evitar cuelgues del proceso COM o LibreOffice
+    const timeoutPromise = new Promise<number>((resolve) => {
+      const timer = setTimeout(() => {
+        try {
+          pyProcess.kill();
+        } catch {}
+        console.warn('[PowerPoint-to-PDF] Local python process timed out after 45s');
+        resolve(-1);
+      }, 45000);
+
       pyProcess.on('close', (code) => {
+        clearTimeout(timer);
         resolve(code ?? 1);
       });
       pyProcess.on('error', (err) => {
-        console.error('Python pptx spawn error:', err);
+        clearTimeout(timer);
+        console.error('[PowerPoint-to-PDF] Python pptx spawn error:', err);
         resolve(1);
       });
     });
+
+    const exitCode = await timeoutPromise;
 
     if (
       exitCode === 0 &&
@@ -59,13 +86,24 @@ async function runLocalPptxToPdf(
       (await fs.promises.stat(tempOutputPath)).size > 0
     ) {
       const pdfOutBuffer = await fs.promises.readFile(tempOutputPath);
-      return pdfOutBuffer;
+      let engineName = 'Local Native Engine';
+      try {
+        const jsonMatch = stdoutData.match(/\{"status":\s*"success",\s*"engine":\s*"([^"]+)"/);
+        if (jsonMatch && jsonMatch[1]) {
+          engineName = jsonMatch[1];
+        }
+      } catch {}
+
+      return { buffer: pdfOutBuffer, engineUsed: engineName };
     } else {
-      console.warn('Local Python pptx conversion error:', stderrData || stdoutData);
+      console.warn(
+        `[PowerPoint-to-PDF] Local Python conversion failed (exit code ${exitCode}):`,
+        stderrData || stdoutData,
+      );
       return null;
     }
   } catch (err) {
-    console.error('runLocalPptxToPdf exception:', err);
+    console.error('[PowerPoint-to-PDF] runLocalPptxToPdf exception:', err);
     return null;
   } finally {
     try {
@@ -79,7 +117,7 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    const engine = (formData.get('engine') as string) || 'local';
+    const requestedEngine = (formData.get('engine') as string) || 'auto';
     const aspectRatio = (formData.get('aspectRatio') as string) || '16:9';
 
     if (!file) {
@@ -92,88 +130,114 @@ export async function POST(req: NextRequest) {
     const originalName = file.name.replace(/\.[^/.]+$/, '');
     const safeOutName = `${encodeURIComponent(originalName)}.pdf`;
 
-    // 1. Motor Local Nativo (Prioritario si se solicita 'local', 'auto' o predeterminado en entorno local)
-    if (engine === 'local' || engine === 'auto') {
-      console.log('[PowerPoint-to-PDF] Converting with Local Native Office/PyMuPDF Engine...');
-      const localPdf = await runLocalPptxToPdf(buffer, file.name, aspectRatio);
-      if (localPdf) {
-        return new NextResponse(new Uint8Array(localPdf), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${originalName.replace(/["\\]/g, '')}.pdf"; filename*=UTF-8''${safeOutName}`,
-            'Content-Length': localPdf.length.toString(),
-          },
-        });
-      }
-    }
+    const hasAdobeCredentials = Boolean(
+      process.env.PDF_SERVICES_CLIENT_ID && process.env.PDF_SERVICES_CLIENT_SECRET,
+    );
+    const hasCloudConvertCredentials = Boolean(
+      process.env.CLOUDCONVERT_API_KEY ||
+      process.env.NEXT_PUBLIC_CLOUDCONVERT_API_KEY ||
+      process.env.NEXT_PUBLIC_CONVERTAPI_SECRET,
+    );
 
-    // 2. Adobe Acrobat Services API (si se seleccionó específicamente y hay credenciales)
-    if (
-      engine === 'adobe' &&
-      process.env.PDF_SERVICES_CLIENT_ID &&
-      process.env.PDF_SERVICES_CLIENT_SECRET
-    ) {
+    const makePdfResponse = (pdfBuffer: Buffer, engineName: string) => {
+      return new NextResponse(new Uint8Array(pdfBuffer), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${originalName.replace(/["\\]/g, '')}.pdf"; filename*=UTF-8''${safeOutName}`,
+          'Content-Length': pdfBuffer.length.toString(),
+          'X-Conversion-Engine': engineName,
+        },
+      });
+    };
+
+    // ── ESTRATEGIA CASCADA MULTI-MOTOR EMPRESARIAL ──
+
+    // 1. CASO A: El usuario solicitó específicamente ADOBE ACROBAT
+    if (requestedEngine === 'adobe' && hasAdobeCredentials) {
       try {
-        console.log('[PowerPoint-to-PDF] Converting with Adobe Acrobat Services...');
-        const pdfBuffer = await convertPowerPointToPdfWithAdobe(buffer, isPptx);
-        return new NextResponse(new Uint8Array(pdfBuffer), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${originalName.replace(/["\\]/g, '')}.pdf"; filename*=UTF-8''${safeOutName}`,
-            'Content-Length': pdfBuffer.length.toString(),
-          },
-        });
+        console.log('[PowerPoint-to-PDF] Converting with requested Adobe Acrobat Services...');
+        const adobePdf = await convertPowerPointToPdfWithAdobe(buffer, isPptx);
+        return makePdfResponse(adobePdf, 'Adobe Acrobat Services API');
       } catch (adobeErr) {
         console.warn(
-          '[PowerPoint-to-PDF] Adobe API error/timeout, falling back to Local Native Engine:',
+          '[PowerPoint-to-PDF] Adobe API failed, cascading to Local Native Engine:',
           adobeErr,
         );
       }
     }
 
-    // 3. CloudConvert API v2 (si se seleccionó específicamente)
-    if (engine === 'cloudconvert') {
+    // 2. CASO B: El usuario solicitó específicamente CLOUDCONVERT
+    if (requestedEngine === 'cloudconvert' && hasCloudConvertCredentials) {
       try {
-        console.log('[PowerPoint-to-PDF] Converting with CloudConvert API v2...');
-        const pdfBuffer = await convertPowerPointToPdfWithCloudConvert(buffer, file.name);
-        return new NextResponse(new Uint8Array(pdfBuffer), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${originalName.replace(/["\\]/g, '')}.pdf"; filename*=UTF-8''${safeOutName}`,
-            'Content-Length': pdfBuffer.length.toString(),
-          },
-        });
+        console.log('[PowerPoint-to-PDF] Converting with requested CloudConvert API v2...');
+        const ccPdf = await convertPowerPointToPdfWithCloudConvert(buffer, file.name);
+        return makePdfResponse(ccPdf, 'CloudConvert API v2');
       } catch (ccErr) {
         console.warn(
-          '[PowerPoint-to-PDF] CloudConvert API error, falling back to Local Native Engine:',
+          '[PowerPoint-to-PDF] CloudConvert API failed, cascading to Local Native Engine:',
           ccErr,
         );
       }
     }
 
-    // 4. Fallback Seguro Garantizado: Motor Local Nativo (Office COM / PyMuPDF)
-    console.log('[PowerPoint-to-PDF] Executing guaranteed Local Native Engine...');
-    const localPdfFallback = await runLocalPptxToPdf(buffer, file.name, aspectRatio);
-    if (localPdfFallback) {
-      return new NextResponse(new Uint8Array(localPdfFallback), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${originalName.replace(/["\\]/g, '')}.pdf"; filename*=UTF-8''${safeOutName}`,
-          'Content-Length': localPdfFallback.length.toString(),
-        },
-      });
+    // 3. CASO C: Modo 'auto' (Inteligente) o 'local'
+    // En entornos locales o cuando se pide local, intentamos primero el motor nativo de alta precisión
+    if (requestedEngine === 'local' || requestedEngine === 'auto') {
+      console.log(
+        '[PowerPoint-to-PDF] Attempting Tier-1: Local Native Engine (COM / LibreOffice / python-pptx)...',
+      );
+      const localResult = await runLocalPptxToPdf(buffer, file.name, aspectRatio, 'auto');
+      if (localResult) {
+        console.log(`[PowerPoint-to-PDF] Success with ${localResult.engineUsed}`);
+        return makePdfResponse(localResult.buffer, localResult.engineUsed);
+      }
+    }
+
+    // 4. FAILOVER TIER-2: Adobe Acrobat Services API (si no se ejecutó antes y hay credenciales)
+    if (requestedEngine !== 'adobe' && hasAdobeCredentials) {
+      try {
+        console.log('[PowerPoint-to-PDF] Cascading to Tier-2: Adobe Acrobat Services API...');
+        const adobePdf = await convertPowerPointToPdfWithAdobe(buffer, isPptx);
+        return makePdfResponse(adobePdf, 'Adobe Acrobat Services API (Failover)');
+      } catch (adobeErr) {
+        console.warn('[PowerPoint-to-PDF] Tier-2 Adobe API failed:', adobeErr);
+      }
+    }
+
+    // 5. FAILOVER TIER-3: CloudConvert API v2 (si no se ejecutó antes y hay credenciales)
+    if (requestedEngine !== 'cloudconvert' && hasCloudConvertCredentials) {
+      try {
+        console.log('[PowerPoint-to-PDF] Cascading to Tier-3: CloudConvert API v2...');
+        const ccPdf = await convertPowerPointToPdfWithCloudConvert(buffer, file.name);
+        return makePdfResponse(ccPdf, 'CloudConvert API v2 (Failover)');
+      } catch (ccErr) {
+        console.warn('[PowerPoint-to-PDF] Tier-3 CloudConvert API failed:', ccErr);
+      }
+    }
+
+    // 6. FAILOVER TIER-4 (Último recurso garantizado): python-pptx / OpenXML Pure Engine
+    console.log(
+      '[PowerPoint-to-PDF] Cascading to Tier-4: Guaranteed python-pptx Fallback Engine...',
+    );
+    const resilientResult = await runLocalPptxToPdf(buffer, file.name, aspectRatio, 'python-pptx');
+    if (resilientResult) {
+      console.log(`[PowerPoint-to-PDF] Success with ${resilientResult.engineUsed}`);
+      return makePdfResponse(resilientResult.buffer, resilientResult.engineUsed);
     }
 
     return NextResponse.json(
-      { error: 'No se pudo procesar la presentación PowerPoint' },
+      {
+        error:
+          'No se pudo procesar la presentación PowerPoint tras intentar todos los motores disponibles (Local, Adobe y Cloud). Por favor verifica que el archivo no tenga contraseña o esté corrupto.',
+      },
       { status: 500 },
     );
   } catch (error: any) {
-    console.error('API powerpoint-to-pdf error:', error);
-    return NextResponse.json({ error: error?.message || 'Error interno' }, { status: 500 });
+    console.error('API powerpoint-to-pdf unhandled error:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Error interno del servidor' },
+      { status: 500 },
+    );
   }
 }

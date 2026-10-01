@@ -1216,7 +1216,7 @@ export default function NativePdfEditor({
                       }}
                       className={`group ${
                         isEditingThis
-                          ? 'ring-2 ring-blue-500 bg-white shadow-lg rounded-xs'
+                          ? 'ring-2 ring-blue-500 bg-white shadow-lg'
                           : 'cursor-pointer hover:ring-1 hover:ring-blue-400/80'
                       }`}
                     >
@@ -1237,13 +1237,17 @@ export default function NativePdfEditor({
                                 ? 'Times New Roman, serif'
                                 : mod.fontFamily === 'Courier'
                                   ? 'Courier New, monospace'
-                                  : 'Helvetica, Arial, sans-serif',
+                                  : 'Calibri, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, Helvetica, sans-serif',
                             color: editingColor,
                             fontWeight: editingBold ? 'bold' : 'normal',
                             fontStyle: editingItalic ? 'italic' : 'normal',
                             lineHeight: 1,
+                            padding: 0,
+                            margin: 0,
+                            border: 'none',
+                            outline: 'none',
                           }}
-                          className="w-full bg-white outline-none text-black px-1 py-0 border-0"
+                          className="w-full bg-white outline-none text-black p-0 m-0 border-0"
                         />
                       ) : (
                         <div
@@ -1263,14 +1267,16 @@ export default function NativePdfEditor({
                                 ? 'Times New Roman, serif'
                                 : mod.fontFamily === 'Courier'
                                   ? 'Courier New, monospace'
-                                  : 'Helvetica, Arial, sans-serif',
+                                  : 'Calibri, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, Helvetica, sans-serif',
                             color: mod.color,
                             fontWeight: mod.isBold ? 'bold' : 'normal',
                             fontStyle: mod.isItalic ? 'italic' : 'normal',
                             backgroundColor: mod.isOriginal ? '#FFFFFF' : 'transparent',
                             lineHeight: 1,
+                            padding: 0,
+                            margin: 0,
                           }}
-                          className="px-0.5 rounded-xs whitespace-pre select-none"
+                          className="p-0 m-0 whitespace-pre select-none"
                         >
                           {mod.text}
                         </div>

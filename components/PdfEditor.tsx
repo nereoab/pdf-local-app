@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Loader2,
-  ShieldCheck,
   FileText,
   X,
   Save,
@@ -56,6 +55,9 @@ export default function PdfEditor() {
 
   // MOTOR ACTIVO: 'native' (In-Situ) | 'fabric' (Vectorial Canva) | 'apryse' (WebAssembly)
   const [activeEngine, setActiveEngine] = useState<'native' | 'fabric' | 'apryse'>('fabric');
+  const [apryseActiveTool, setApryseActiveTool] = useState<
+    'contentEdit' | 'addParagraph' | 'freeText'
+  >('contentEdit');
   const [showComparisonModal, setShowComparisonModal] = useState<boolean>(false);
   const [isCompactMode, setIsCompactMode] = useState<boolean>(false);
 
@@ -182,6 +184,8 @@ export default function PdfEditor() {
 
         const webviewerOptions: any = {
           path: '/webviewer',
+          fullAPI: true,
+          preloadWorker: 'contentEdit',
           enableCompositionInput: true,
           ...(effectiveLicense ? { licenseKey: effectiveLicense } : {}),
         };
@@ -207,6 +211,13 @@ export default function PdfEditor() {
           UI.Feature.FilePicker,
           UI.Feature.Print,
           UI.Feature.Download,
+        ]);
+
+        UI.enableElements([
+          'contentEditButton',
+          'addParagraphToolGroupButton',
+          'addImageContentToolGroupButton',
+          'toolbarGroup-EditText',
         ]);
 
         UI.setTheme('dark');
@@ -278,7 +289,11 @@ export default function PdfEditor() {
               UI.openElements(['leftPanel']);
             } catch {}
             try {
-              UI.setToolbarGroup('toolbarGroup-Edit');
+              if (UI.ToolbarGroup?.EDIT_TEXT) {
+                UI.setToolbarGroup(UI.ToolbarGroup.EDIT_TEXT);
+              } else {
+                UI.setToolbarGroup('toolbarGroup-EditText');
+              }
             } catch {
               try {
                 UI.setToolbarGroup('toolbarGroup-Annotate');
@@ -304,8 +319,8 @@ export default function PdfEditor() {
 
             toast.success(
               isEsRef.current
-                ? '¡Documento abierto y listo para editar texto!'
-                : 'Document loaded and ready to edit text!',
+                ? '¡Documento listo! Haz doble clic en el texto para editarlo o pulsa en "+ Añadir Texto".'
+                : 'Document ready! Double-click text to edit or click "+ Add Text".',
             );
           }
         });
@@ -1321,17 +1336,23 @@ export default function PdfEditor() {
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
-                  {/* Botón explícito para activar modo edición de texto en Apryse */}
+                  {/* Botón 1: Editar Texto Existente (ContentEdit) */}
                   <button
                     type="button"
                     onClick={async () => {
                       try {
                         const instance = viewerInstanceRef.current;
                         if (instance) {
-                          instance.UI?.setToolbarGroup('toolbarGroup-Edit');
+                          if (instance.UI?.ToolbarGroup?.EDIT_TEXT) {
+                            instance.UI.setToolbarGroup(instance.UI.ToolbarGroup.EDIT_TEXT);
+                          } else {
+                            instance.UI?.setToolbarGroup('toolbarGroup-EditText');
+                          }
                           const cem = instance.Core?.documentViewer?.getContentEditManager();
                           if (cem) {
-                            await cem.startContentEditMode();
+                            if (!cem.isInContentEditMode || !cem.isInContentEditMode()) {
+                              await cem.startContentEditMode();
+                            }
                             const editTool = instance.Core.documentViewer.getTool(
                               instance.Core.Tools.ToolNames.CONTENT_EDIT,
                             );
@@ -1339,23 +1360,121 @@ export default function PdfEditor() {
                               instance.Core.documentViewer.setToolMode(editTool);
                             }
                           }
-                          toast.success(
+                          setApryseActiveTool('contentEdit');
+                          toast.info(
                             isEs
-                              ? 'Modo edición de texto activado. Haz clic sobre cualquier texto.'
-                              : 'Text edit mode active. Click any text to edit.',
+                              ? 'Modo Edición: Haz doble clic sobre cualquier texto del PDF para editarlo.'
+                              : 'Edit Mode: Double-click any text in the PDF to edit it.',
                           );
                         }
                       } catch (err) {
                         console.error('Error al activar modo texto en Apryse:', err);
                       }
                     }}
-                    className="flex items-center gap-1.5 bg-purple-950/70 hover:bg-purple-900 text-purple-200 border border-purple-500/60 hover:border-purple-400 px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]"
+                    className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm ${
+                      apryseActiveTool === 'contentEdit'
+                        ? 'bg-purple-600 text-white border border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+                        : 'bg-purple-950/70 hover:bg-purple-900 text-purple-200 border border-purple-500/60 hover:border-purple-400'
+                    }`}
                     title={
-                      isEs ? 'Activar recuadros de edición de texto' : 'Enable text editing boxes'
+                      isEs
+                        ? 'Hacer doble clic sobre texto existente para modificarlo'
+                        : 'Double-click existing text to modify'
                     }
                   >
-                    <Type className="w-3.5 h-3.5 text-purple-400" />
-                    <span>{isEs ? 'Modo Editar Texto' : 'Edit Text Mode'}</span>
+                    <Type className="w-3.5 h-3.5 text-purple-300" />
+                    <span>{isEs ? 'Editar Texto Existente' : 'Edit Existing Text'}</span>
+                  </button>
+
+                  {/* Botón 2: Añadir Nuevo Texto / Párrafo (Add Paragraph) */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const instance = viewerInstanceRef.current;
+                        if (instance) {
+                          if (instance.UI?.ToolbarGroup?.EDIT_TEXT) {
+                            instance.UI.setToolbarGroup(instance.UI.ToolbarGroup.EDIT_TEXT);
+                          } else {
+                            instance.UI?.setToolbarGroup('toolbarGroup-EditText');
+                          }
+                          const cem = instance.Core?.documentViewer?.getContentEditManager();
+                          if (cem) {
+                            if (!cem.isInContentEditMode || !cem.isInContentEditMode()) {
+                              await cem.startContentEditMode();
+                            }
+                            const addTool = instance.Core.documentViewer.getTool(
+                              instance.Core.Tools.ToolNames.ADD_PARAGRAPH,
+                            );
+                            if (addTool) {
+                              instance.Core.documentViewer.setToolMode(addTool);
+                            }
+                          }
+                          setApryseActiveTool('addParagraph');
+                          toast.success(
+                            isEs
+                              ? 'Nuevo Texto: Haz clic o arrastra un recuadro en la página para escribir.'
+                              : 'New Text: Click or drag a box on the page to type.',
+                          );
+                        }
+                      } catch (err) {
+                        console.error('Error al activar herramienta nuevo texto en Apryse:', err);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm ${
+                      apryseActiveTool === 'addParagraph'
+                        ? 'bg-emerald-600 text-white border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                        : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-200 border border-emerald-600/60 hover:border-emerald-400'
+                    }`}
+                    title={
+                      isEs
+                        ? 'Crear un recuadro nuevo y escribir texto directamente en el PDF'
+                        : 'Create new box and type text directly into PDF'
+                    }
+                  >
+                    <Plus className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>{isEs ? '+ Añadir Nuevo Texto' : '+ Add New Text'}</span>
+                  </button>
+
+                  {/* Botón 3: Cuadro de Texto Libre (FreeText Annotation) */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const instance = viewerInstanceRef.current;
+                        if (instance) {
+                          try {
+                            instance.UI?.setToolbarGroup('toolbarGroup-Annotate');
+                          } catch {}
+                          const freeTextTool = instance.Core?.documentViewer?.getTool(
+                            instance.Core.Tools.ToolNames.FREETEXT,
+                          );
+                          if (freeTextTool) {
+                            instance.Core.documentViewer.setToolMode(freeTextTool);
+                          }
+                          setApryseActiveTool('freeText');
+                          toast.info(
+                            isEs
+                              ? 'Texto Libre: Haz clic donde quieras colocar el recuadro flotante.'
+                              : 'Free Text: Click where you want to place the floating box.',
+                          );
+                        }
+                      } catch (err) {
+                        console.error('Error al activar texto libre:', err);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm ${
+                      apryseActiveTool === 'freeText'
+                        ? 'bg-blue-600 text-white border border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.4)]'
+                        : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/80 hover:border-zinc-500'
+                    }`}
+                    title={
+                      isEs
+                        ? 'Insertar una caja de texto libre flotante'
+                        : 'Insert a floating free text box'
+                    }
+                  >
+                    <span>{isEs ? 'Texto Libre (Caja)' : 'Free Text (Box)'}</span>
                   </button>
 
                   {/* Botón rápido para alternar a Motor Nativo */}

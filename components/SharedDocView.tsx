@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Download,
@@ -23,12 +24,15 @@ import { triggerLuxuryConfetti } from '@/components/ui/AnimatedSuccessCheck';
 import { toast } from 'sonner';
 import PdfPageViewer from '@/components/PdfPageViewer';
 import { trackToolEvent } from '@/lib/analytics';
+import { useFileStore } from '@/store/useFileStore';
 
 interface SharedDocViewProps {
   shareId: string;
 }
 
 export default function SharedDocView({ shareId }: SharedDocViewProps) {
+  const router = useRouter();
+  const setGlobalFile = useFileStore((state) => state.setGlobalFile);
   const [loading, setLoading] = useState(true);
   const [docData, setDocData] = useState<ShareMetadata | null>(null);
   const [downloaded, setDownloaded] = useState(false);
@@ -146,6 +150,15 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
       // no-op
     }
     toast.success('¡Descarga iniciada con éxito!');
+  };
+
+  const handleOpenInTool = (toolPath: string, toolLabel: string) => {
+    trackToolEvent('share_viewer', 'opened_in_tool', { tool: toolLabel, shareId });
+    if (pdfFile) {
+      setGlobalFile(pdfFile);
+      toast.success(`Abriendo ${docData?.originalName || 'archivo'} en ${toolLabel}...`);
+    }
+    router.push(toolPath);
   };
 
   const showcaseTools = [
@@ -315,6 +328,55 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
             </motion.button>
           </div>
         </motion.div>
+
+        {/* ── BARRITA DE ACCIÓN VIRAL: ¿QUÉ DESEAS HACER CON ESTE PDF? ── */}
+        <div className="bg-gradient-to-r from-[#181822] via-[#121217] to-[#181822] border border-[#E8DFCF]/25 rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-xl bg-[#FAF6EE]/10 border border-[#FAF6EE]/20 flex items-center justify-center flex-shrink-0 text-[#FAF6EE]">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-extrabold text-white">
+                ¿Necesitas editar, firmar o comprimir este documento?
+              </h3>
+              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                Ábrelo directamente en las herramientas gratuitas y 100% privadas de PDFBlack en 1
+                clic.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap justify-center w-full md:w-auto">
+            <button
+              onClick={() => handleOpenInTool('/editar/texto', 'Editar')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm hover:scale-105"
+            >
+              <PenTool className="w-3.5 h-3.5 text-[#FAF6EE]" />
+              <span>Editar PDF</span>
+            </button>
+            <button
+              onClick={() => handleOpenInTool('/editar/firmar', 'Firmar')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm hover:scale-105"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Firmar</span>
+            </button>
+            <button
+              onClick={() => handleOpenInTool('/optimizar/comprimir', 'Comprimir')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm hover:scale-105"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span>Comprimir</span>
+            </button>
+            <button
+              onClick={() => handleOpenInTool('/convertir/pdf-word', 'PDF a Word')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm hover:scale-105"
+            >
+              <FileText className="w-3.5 h-3.5 text-sky-400" />
+              <span>A Word</span>
+            </button>
+          </div>
+        </div>
 
         {/* ── VISOR EMBEBIDO DEL PDF ── */}
         <div className="bg-[#101015] border border-zinc-800 rounded-3xl overflow-hidden shadow-xl">

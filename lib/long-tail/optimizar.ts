@@ -348,6 +348,180 @@ export const OPTIMIZAR_SOLUTIONS_ES: Record<string, LongTailSolution> = {
     esEquivalentSlug: 'comparar-dos-versiones-contrato-pdf',
     enEquivalentSlug: 'compare-two-pdf-contract-versions',
   },
+
+  'bajarle-el-peso-a-un-pdf': {
+    slug: 'bajarle-el-peso-a-un-pdf',
+    category: 'optimizar',
+    toolKey: 'comprimir',
+    badge: 'Reducción Inteligente de Megas',
+    h1: 'Cómo Bajarle el Peso a un PDF sin Perder Calidad — Gratis Online',
+    subtitle:
+      'Reduce megabytes en tus archivos PDF pesados en segundos. Nuestro motor optimiza imágenes y flujos internos manteniendo tipografía vectorial nítida y firmas perfectamente legibles sin subir nada a la nube.',
+    metaTitle: 'Cómo Bajarle el Peso a un PDF Gratis Online — Reducir Megabytes | PDFBlack',
+    metaDescription:
+      '¿Quieres saber cómo bajarle el peso a un PDF? Reduce megabytes al instante gratis sin perder nitidez en textos o firmas. 100% privado en tu navegador, sin límites ni registro.',
+    keywords: [
+      'como bajarle el peso a un pdf',
+      'bajarle peso a un pdf',
+      'bajar el peso de un pdf',
+      'como reducir el peso a un pdf',
+      'bajar peso pdf online gratis',
+      'reducir megas a un pdf',
+      'bajarle el tamano a un pdf',
+    ],
+    parentPath: '/optimizar/comprimir',
+    parentName: 'Comprimir PDF',
+    specifications: [
+      {
+        feature: 'Privacidad',
+        value: '100% Local en RAM',
+        note: 'Tus documentos confidenciales nunca tocan un servidor externo',
+      },
+      {
+        feature: 'Tecnología',
+        value: 'Resampling Inteligente + Deflate Nivel 9',
+        note: 'Equilibrio perfecto entre ligereza y nitidez visual',
+      },
+      {
+        feature: 'Tipografía y Firmas',
+        value: 'Vectorial intacta',
+        note: 'Textos y sellos conservan definición impecable',
+      },
+      {
+        feature: 'Compatibilidad',
+        value: 'Estándar ISO 32000-1',
+        note: 'Aceptado en juzgados, SAT, mesas de partes y correos',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Carga el documento pesado',
+        desc: 'Arrastra tu archivo PDF de 20 MB, 50 MB o más sin límites de subida.',
+      },
+      {
+        step: 2,
+        title: 'Selecciona nivel de optimización',
+        desc: 'Elige compresión recomendada para mantener nitidez o compresión extrema para máximo ahorro.',
+      },
+      {
+        step: 3,
+        title: 'Descarga tu PDF optimizado',
+        desc: 'Obtén tu archivo con megabytes reducidos listo para enviar por correo o subir a portales.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Aprobación Inmediata en Plataformas Web',
+        desc: 'Olvídate de errores que rechazan archivos por superar el peso permitido.',
+      },
+      {
+        title: 'Cero Riesgo de Fugas de Información',
+        desc: 'Al procesarse íntegramente en la memoria de tu dispositivo, tus datos bancarios y personales quedan a salvo.',
+      },
+    ],
+    faqs: [
+      {
+        q: '¿Cómo bajarle el peso a un PDF sin que se vuelva borroso?',
+        a: 'PDFBlack preserva la capa vectorial de las fuentes y el texto. Solo aplica remuestreo y compresión con pérdida controlada a imágenes embebidas de alta densidad.',
+      },
+      {
+        q: '¿Existe límite en la cantidad de páginas o megas que puedo reducir?',
+        a: 'No. Como el procesamiento se realiza en tu propio equipo mediante WebAssembly, no hay cuotas diarias ni restricciones de tamaño.',
+      },
+    ],
+    relatedSolutions: [
+      'comprimir-pdf-a-200kb',
+      'comprimir-pdf-a-1mb',
+      'comprimir-pdf-para-correo-gmail',
+    ],
+    esEquivalentSlug: 'bajarle-el-peso-a-un-pdf',
+    enEquivalentSlug: 'reduce-pdf-file-size-without-losing-quality',
+  },
+
+  'comprimir-pdf-a-500kb': {
+    slug: 'comprimir-pdf-a-500kb',
+    category: 'optimizar',
+    toolKey: 'comprimir',
+    badge: 'Límite Portales y SAT',
+    h1: 'Comprimir PDF a 500 KB o menos — Bajar Peso para Trámites Oficiales',
+    subtitle:
+      'Ajusta el tamaño de tus archivos PDF para que no superen el límite estricto de 500 KB requerido por el SAT, mesas de partes, sistemas consulares y plataformas de contratación pública.',
+    metaTitle: 'Comprimir PDF a 500 KB Online Gratis — Bajar Peso al Máximo | PDFBlack',
+    metaDescription:
+      'Comprime tu PDF a menos de 500 KB online gratis. Cumple con los topes de subida de SAT, juzgados y visas con total privacidad en tu navegador.',
+    keywords: [
+      'comprimir pdf a 500 kb',
+      'comprimir pdf a 500kb',
+      'reducir pdf a 500 kb',
+      'bajar peso pdf a 500kb',
+      'comprimir pdf menos de 500kb',
+      'comprimir pdf sat 500kb',
+    ],
+    parentPath: '/optimizar/comprimir',
+    parentName: 'Comprimir PDF',
+    specifications: [
+      {
+        feature: 'Límite objetivo',
+        value: '≤ 500 KB',
+        note: 'Pasa las validaciones más estrictas de portales gubernamentales',
+      },
+      {
+        feature: 'Procesamiento',
+        value: '100% en Navegador (WASM)',
+        note: 'Sin colas de espera en servidores externos',
+      },
+      {
+        feature: 'Nitidez',
+        value: '150 DPI Balanceado',
+        note: 'Lectura perfecta en pantalla e impresión estándar',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Selecciona tu archivo PDF',
+        desc: 'Carga el documento que supera el tope de 500 KB permitido por el portal.',
+      },
+      {
+        step: 2,
+        title: 'Aplica compresión calibrada',
+        desc: 'El algoritmo descarta metadatos y optimiza imágenes para aproximarse a los 500 KB.',
+      },
+      {
+        step: 3,
+        title: 'Descarga y envía',
+        desc: 'Tu documento queda validado y listo para ser admitido en el sistema oficial.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Aceptación Garantizada en Formularios',
+        desc: 'Evita frustrantes errores de rechazo en convocatorias públicas y solicitudes de visa.',
+      },
+      {
+        title: 'Confidencialidad Absoluta',
+        desc: 'Extractos tributarios y declaraciones juradas permanecen 100% privados.',
+      },
+    ],
+    faqs: [
+      {
+        q: '¿Por qué las entidades oficiales fijan un límite de 500 KB?',
+        a: 'Para optimizar el almacenamiento masivo en sus servidores y asegurar descargas instantáneas para los funcionarios revisores.',
+      },
+      {
+        q: '¿Se alteran las firmas digitales o sellos?',
+        a: 'No. Las firmas conservan su integridad vectorial para no invalidar el documento.',
+      },
+    ],
+    relatedSolutions: [
+      'comprimir-pdf-a-200kb',
+      'comprimir-pdf-a-1mb',
+      'comprimir-pdf-para-correo-gmail',
+    ],
+    esEquivalentSlug: 'comprimir-pdf-a-500kb',
+    enEquivalentSlug: 'compress-pdf-to-500kb',
+  },
 };
 
 export const OPTIMIZAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
@@ -698,6 +872,178 @@ export const OPTIMIZAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     esEquivalentSlug: 'comparar-dos-versiones-contrato-pdf',
     enEquivalentSlug: 'compare-two-pdf-contract-versions',
   },
+
+  'reduce-pdf-file-size-without-losing-quality': {
+    slug: 'reduce-pdf-file-size-without-losing-quality',
+    category: 'optimizar',
+    toolKey: 'comprimir',
+    badge: 'Lossless Visual Quality',
+    h1: 'How to Reduce PDF File Size Without Losing Quality — Free Online',
+    subtitle:
+      'Shrink heavy PDF megabytes in seconds. Our engine selectively optimizes high-DPI image assets and compacts structural data streams while keeping vector text and scanned signatures razor-sharp.',
+    metaTitle: 'Reduce PDF File Size Without Losing Quality Online Free | PDFBlack',
+    metaDescription:
+      'Learn how to reduce PDF file size without losing quality. Compress megabytes for free in your browser with 100% client-side privacy, zero watermarks, and no sign-up.',
+    keywords: [
+      'reduce pdf file size without losing quality',
+      'compress pdf without losing quality',
+      'how to reduce pdf size without blur',
+      'shrink pdf keep high quality',
+      'compress pdf free online no quality loss',
+      'reduce mb of pdf file free',
+    ],
+    parentPath: '/en/compress-pdf',
+    parentName: 'Compress PDF',
+    specifications: [
+      {
+        feature: 'Privacy',
+        value: '100% In-Browser RAM',
+        note: 'Zero server uploads; your data never leaves your device',
+      },
+      {
+        feature: 'Optimization',
+        value: 'Smart Resampling + Deflate 9',
+        note: 'Up to 85% file size reduction',
+      },
+      {
+        feature: 'Typography & Signatures',
+        value: 'Lossless Vector',
+        note: 'Text glyphs and stamp vectors retain pixel-perfect sharpness',
+      },
+      {
+        feature: 'Compliance',
+        value: 'ISO 32000-1 Compliant',
+        note: 'Guaranteed valid for court filings, job portals, and emails',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Upload large PDF file',
+        desc: 'Drag and drop your 20MB, 50MB, or large document with no initial cap.',
+      },
+      {
+        step: 2,
+        title: 'Choose compression level',
+        desc: 'Select recommended balance to maintain visual fidelity or extreme mode for maximum shrink.',
+      },
+      {
+        step: 3,
+        title: 'Instant local download',
+        desc: 'Save your compressed PDF right away without email verification or server queues.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Pass Portal & Email Size Filters',
+        desc: 'Never suffer file attachment bounces or upload rejections on strict enterprise portals.',
+      },
+      {
+        title: 'Confidentiality By Architecture',
+        desc: 'Because execution runs in local WebAssembly, proprietary contracts and bank statements stay confidential.',
+      },
+    ],
+    faqs: [
+      {
+        q: 'How does it compress without making text blurry?',
+        a: 'Unlike naive tools that rasterize entire pages into low-res JPEG, PDFBlack leaves text vectors untouched and targets only embedded heavy image streams.',
+      },
+      {
+        q: 'Is there a limit on daily conversions or file size?',
+        a: 'No limits whatsoever. The processing leverages your local CPU hardware, making it free and unlimited.',
+      },
+    ],
+    relatedSolutions: [
+      'compress-pdf-to-200kb',
+      'compress-pdf-to-1mb',
+      'compress-pdf-for-email-attachment',
+    ],
+    esEquivalentSlug: 'bajarle-el-peso-a-un-pdf',
+    enEquivalentSlug: 'reduce-pdf-file-size-without-losing-quality',
+  },
+
+  'compress-pdf-to-500kb': {
+    slug: 'compress-pdf-to-500kb',
+    category: 'optimizar',
+    toolKey: 'comprimir',
+    badge: '500 KB Portal Threshold',
+    h1: 'Compress PDF to 500 KB or Less Online Free — Fast & Lossless',
+    subtitle:
+      'Downsize oversized PDF documents to comply with strict 500 KB upload thresholds enforced by visa application systems, tax agencies, and public tender portals.',
+    metaTitle: 'Compress PDF to 500 KB or Less Online Free | PDFBlack',
+    metaDescription:
+      'Compress PDF to under 500 KB online free for tax filings, government forms, and job submissions. 100% private in-browser processing with zero server leaks.',
+    keywords: [
+      'compress pdf to 500 kb',
+      'compress pdf to 500kb',
+      'reduce pdf size below 500kb',
+      'shrink pdf under 500kb online free',
+      'compress pdf 500kb free',
+    ],
+    parentPath: '/en/compress-pdf',
+    parentName: 'Compress PDF',
+    specifications: [
+      {
+        feature: 'Target File Size',
+        value: '≤ 500 KB',
+        note: 'Passes rigid automated size checks on public submission portals',
+      },
+      {
+        feature: 'Processing Mode',
+        value: '100% Client-Side WebAssembly',
+        note: 'Zero server queues and zero data transmission',
+      },
+      {
+        feature: 'Image Clarity',
+        value: '150 DPI Balanced',
+        note: 'Clear display across monitors and standard office printers',
+      },
+    ],
+    steps: [
+      {
+        step: 1,
+        title: 'Upload your document',
+        desc: 'Drag your PDF file that exceeds the 500 KB limit.',
+      },
+      {
+        step: 2,
+        title: 'Apply targeted compression',
+        desc: 'Algorithms strip redundant metadata and recompress image rasters down toward 500 KB.',
+      },
+      {
+        step: 3,
+        title: 'Download and submit',
+        desc: 'Submit your compliant file directly to government portals without errors.',
+      },
+    ],
+    benefits: [
+      {
+        title: 'Guaranteed Acceptance on Public Forms',
+        desc: 'Bypass the frustration of rejection messages on government and consular portals.',
+      },
+      {
+        title: 'Zero Privacy Risk',
+        desc: 'Tax records, identity scans, and salary slips remain exclusively on your computer.',
+      },
+    ],
+    faqs: [
+      {
+        q: 'Why do official systems enforce a 500 KB cap?',
+        a: 'To manage database footprints and ensure that civil servants can open incoming claims instantly.',
+      },
+      {
+        q: 'Will electronic certificates or digital signatures be broken?',
+        a: 'No. Visual signatures and text formatting are preserved intact.',
+      },
+    ],
+    relatedSolutions: [
+      'compress-pdf-to-200kb',
+      'compress-pdf-to-1mb',
+      'compress-pdf-for-email-attachment',
+    ],
+    esEquivalentSlug: 'comprimir-pdf-a-500kb',
+    enEquivalentSlug: 'compress-pdf-to-500kb',
+  },
 };
 
 export const OPTIMIZAR_PAIRS: Record<string, string> = {
@@ -705,4 +1051,6 @@ export const OPTIMIZAR_PAIRS: Record<string, string> = {
   'proteger-pdf-con-contrasena-sin-subir-a-nube': 'encrypt-confidential-pdf-aes256-offline',
   'desbloquear-pdf-para-imprimir-o-copiar': 'unlock-pdf-print-copy-permissions',
   'comparar-dos-versiones-contrato-pdf': 'compare-two-pdf-contract-versions',
+  'bajarle-el-peso-a-un-pdf': 'reduce-pdf-file-size-without-losing-quality',
+  'comprimir-pdf-a-500kb': 'compress-pdf-to-500kb',
 };

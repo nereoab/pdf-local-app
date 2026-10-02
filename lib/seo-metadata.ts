@@ -217,11 +217,11 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       titleEs:
         'Convertir PDF a Blanco y Negro Gratis Online — Escala de Grises y Ahorro de Tinta | PDFBlack',
       titleEn:
-        'Convert PDF to Black and White Online Free — Save Printer Ink & Grayscale | PDFBlack',
+        'Convert PDF to Black and White Online Free — Grayscale & Printer Ink Saver | PDFBlack',
       descEs:
         'Convierte archivos PDF a blanco y negro puro o escala de grises (grayscale) online gratis. Ahorra tinta de impresora y reduce el peso del archivo 100% en tu navegador sin subir datos a servidores.',
       descEn:
-        'Save expensive printer ink! Convert color PDF to clean black and white (monochrome grayscale) online for free in 1-click. 100% private in-browser conversion ready for office printing.',
+        'Change color PDF to black and white online for free in 1 click! Save expensive printer ink and reduce PDF file size with clean monochrome grayscale conversion. 100% private in-browser.',
       keywordsEs: [
         'pdf black',
         'pdfblack',
@@ -233,10 +233,11 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
       keywordsEn: [
         'convert pdf to black and white',
+        'change pdf to black and white',
+        'black and white pdf converter',
         'convert color pdf to black and white online',
         'save printer ink pdf',
         'pdf grayscale converter online',
-        'black and white pdf for printing',
         'turn color pdf to monochrome',
         'ink saver pdf printer',
         'convert pdf to bw free',
@@ -333,11 +334,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     },
     recortar: {
       titleEs: 'Recortar PDF Gratis Online — Ajustar Márgenes y Tamaño de Página | PDFBlack',
-      titleEn: 'Crop PDF Online Free — Trim Margins & Page Size | PDFBlack',
+      titleEn:
+        'Crop PDF Online Free — Trim White Margins, Pages & Dimensions in 1 Click | PDFBlack',
       descEs:
         'Recorta PDF gratis online. Ajusta márgenes blancos, recorta automáticamente y define tamaños de página (A4, Carta). 100% privado en tu navegador sin límites.',
       descEn:
-        'Crop PDF online free. Trim white margins, adjust page sizes (A4, Letter) and auto-crop with millimeter precision. 100% private in-browser, no limits or signup.',
+        'Can you crop a PDF online for free? Yes! Trim white margins, crop individual pages or auto-crop documents to custom sizes. 100% private in-browser, no limits or signup.',
       keywordsEs: [
         'recortar pdf gratis',
         'recortar un pdf',
@@ -380,11 +382,11 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   optimizar: {
     comprimir: {
       titleEs:
-        'Comprimir PDF Gratis Online — Bajar Peso a PDF sin Perder Calidad (a 200 KB o 1 MB) | PDFBlack',
+        '¿Cómo Bajarle el Peso a un PDF Gratis? — Reducir a 1 MB o 200 KB sin Perder Calidad | PDFBlack',
       titleEn:
-        'Compress PDF Free Online — Reduce File Size Without Quality Loss (Under 200KB or 1MB) | PDFBlack',
+        'Compress PDF Online Free — Reduce PDF MB to 200KB or 1MB Without Quality Loss | PDFBlack',
       descEs:
-        '¿Cómo bajarle el peso a un PDF? Reduce megabytes al instante gratis y sin perder calidad en textos ni firmas. Optimiza documentos a menos de 200 KB o 1 MB para enviar por correo o portales oficiales. 100% privado.',
+        'Aprende cómo bajarle el peso a un PDF al instante. Reduce megabytes gratis sin perder nitidez en textos ni firmas, ideal para correos y trámites oficiales. 100% privado sin subir archivos.',
       descEn:
         'Reduce PDF file size online for free without losing sharpness on text or signatures. Compress PDFs under 200KB or 1MB for email attachments and official portal uploads. 100% private in-browser, zero uploads.',
       keywordsEs: [
@@ -549,12 +551,13 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['watermark pdf free', 'add watermark to pdf', 'stamp pdf online'],
     },
     'quitar-marca-agua': {
-      titleEs: 'Quitar Marca de Agua de PDF Gratis Online — Eliminar Sellos de Agua | PDFBlack',
-      titleEn: 'Remove Watermark from PDF Free Online — Delete Stamps and Logos | PDFBlack',
+      titleEs:
+        'Quitar Marca de Agua de PDF Gratis Online — Borrar Sellos y Logos de PDF | PDFBlack',
+      titleEn: 'Remove Watermark from PDF Free Online — Delete Stamps & Text Overlays | PDFBlack',
       descEs:
-        'Remueve marcas de agua, sellos y logos superpuestos de tus documentos PDF de forma limpia conservando el texto de fondo intacto.',
+        '¿Cómo borrar una marca de agua de un PDF? Elimina sellos, textos sobrepuestos y logos molestos de documentos PDF online gratis y sin dejar rastros. 100% privado en tu navegador.',
       descEn:
-        'Remove watermarks, stamps, and overlay logos from PDF documents cleanly while preserving the underlying text and vectors.',
+        'Remove watermarks, stamps, and overlay logos from PDF documents cleanly while preserving the underlying text and vectors. 100% private in-browser, no limits.',
       keywordsEs: [
         'quitar marca de agua pdf gratis',
         'eliminar sello de agua de pdf',

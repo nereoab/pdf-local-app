@@ -12,7 +12,7 @@ declare global {
 
 export function trackToolEvent(
   toolName: string,
-  action: 'file_loaded' | 'tool_completed' | 'file_downloaded' | 'file_shared',
+  action: 'file_loaded' | 'tool_completed' | 'file_downloaded' | 'file_shared' | 'opened_in_tool',
   extraParams?: Record<string, any>,
 ) {
   if (typeof window === 'undefined' || typeof window.gtag !== 'function') {

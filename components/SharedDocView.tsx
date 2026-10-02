@@ -16,6 +16,7 @@ import {
   Zap,
   Loader2,
   Maximize2,
+  RotateCcw,
 } from 'lucide-react';
 import { getShareDetails, ShareMetadata } from '@/lib/share-service';
 import { triggerLuxuryConfetti } from '@/components/ui/AnimatedSuccessCheck';
@@ -32,6 +33,7 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
   const [docData, setDocData] = useState<ShareMetadata | null>(null);
   const [downloaded, setDownloaded] = useState(false);
   const [syncStatusText, setSyncStatusText] = useState('Cargando documento seguro de PDFBlack...');
+  const [retryCount, setRetryCount] = useState(0);
 
   // Estados para el visor de PDF
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -43,7 +45,8 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
   useEffect(() => {
     let isMounted = true;
     let attempts = 0;
-    const maxAttempts = 15; // 15 intentos * 1.5s = ~22s de tolerancia de subida background
+    const maxAttempts = 35; // 35 intentos * 2s = ~70s de tolerancia para archivos grandes en conexiones móviles
+    setLoading(true);
 
     const checkDocument = async () => {
       try {
@@ -60,11 +63,10 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
       attempts++;
       if (attempts < maxAttempts && isMounted) {
         if (attempts > 1) {
-          setSyncStatusText(
-            'Sincronizando archivo en la nube segura de PDFBlack... Estará listo en un momento.',
-          );
+          const percent = Math.min(95, Math.round((attempts / maxAttempts) * 100));
+          setSyncStatusText(`Sincronizando archivo en la nube segura de PDFBlack... (${percent}%)`);
         }
-        setTimeout(checkDocument, 1500);
+        setTimeout(checkDocument, 2000);
       } else if (isMounted) {
         setDocData(null);
         setLoading(false);
@@ -76,7 +78,7 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
     return () => {
       isMounted = false;
     };
-  }, [shareId]);
+  }, [shareId, retryCount]);
 
   // Cargar el archivo PDF en un objeto File para renderizado en Canvas de alta definición
   useEffect(() => {
@@ -178,10 +180,19 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#08080A] text-zinc-200 flex flex-col items-center justify-center p-4 font-sans text-center">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FAF6EE]/20 to-[#E8DFCF]/5 border border-[#E8DFCF]/30 flex items-center justify-center animate-spin">
-          <Sparkles className="w-6 h-6 text-[#FAF6EE]" />
+        <div className="p-6 bg-gradient-to-b from-[#13131a] to-[#0a0a0d] border border-zinc-800 rounded-3xl max-w-sm w-full space-y-4 shadow-2xl flex flex-col items-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FAF6EE]/15 to-[#E8DFCF]/5 border border-[#E8DFCF]/30 flex items-center justify-center">
+            <Loader2 className="w-7 h-7 text-[#FAF6EE] animate-spin" />
+          </div>
+          <div className="space-y-1 text-center">
+            <h2 className="text-sm font-bold text-white tracking-tight">Accediendo al documento</h2>
+            <p className="text-xs font-mono text-zinc-400">{syncStatusText}</p>
+          </div>
+          <div className="pt-2 flex items-center gap-1.5 text-[11px] font-mono text-zinc-500">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Conexión cifrada de extremo a extremo</span>
+          </div>
         </div>
-        <p className="mt-4 text-xs font-mono text-zinc-400 max-w-sm">{syncStatusText}</p>
       </div>
     );
   }
@@ -189,19 +200,32 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
   if (!docData) {
     return (
       <div className="min-h-screen bg-[#08080A] text-zinc-200 flex flex-col items-center justify-center p-6 text-center font-sans">
-        <div className="p-4 bg-zinc-900/80 border border-zinc-800 rounded-3xl max-w-md w-full space-y-4 shadow-2xl">
+        <div className="p-6 bg-zinc-900/90 border border-zinc-800 rounded-3xl max-w-md w-full space-y-5 shadow-2xl">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
             <Clock className="w-7 h-7" />
           </div>
-          <h1 className="text-xl font-extrabold text-white">Documento No Disponible</h1>
-          <p className="text-xs text-zinc-400 leading-relaxed font-mono">
-            Este enlace ha expirado o el archivo fue eliminado por políticas de privacidad. Los
-            documentos compartidos en PDFBlack se eliminan automáticamente tras 24 horas.
-          </p>
-          <div className="pt-2">
+          <div className="space-y-1.5">
+            <h1 className="text-xl font-extrabold text-white">Documento No Disponible</h1>
+            <p className="text-xs text-zinc-400 leading-relaxed font-mono">
+              Este enlace aún no ha finalizado su subida o ya expiró por políticas de privacidad.
+              Los documentos en PDFBlack se eliminan automáticamente tras 24 horas.
+            </p>
+          </div>
+          <div className="pt-2 space-y-2.5">
+            <button
+              onClick={() => {
+                setLoading(true);
+                setSyncStatusText('Reintentando comprobación del documento seguro...');
+                setRetryCount((c) => c + 1);
+              }}
+              className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl bg-[#FAF6EE] text-black font-extrabold text-xs hover:bg-white transition-all cursor-pointer shadow-md"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Reintentar comprobación</span>
+            </button>
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl bg-[#FAF6EE] text-black font-bold text-xs hover:bg-[#E8DFCF] transition-colors"
+              className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white font-bold text-xs transition-colors"
             >
               <span>Ir al inicio de PDFBlack</span>
               <ArrowRight className="w-4 h-4" />

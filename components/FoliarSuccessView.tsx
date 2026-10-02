@@ -119,36 +119,40 @@ export default function FoliarSuccessView({
 
   const activeFilename = customFilename.trim() || completedResult.filename;
 
-  // Iniciar subida segura en segundo plano sin bloquear jamás la UI ni el copiado
-  const ensureUploadStarted = useCallback((): Promise<string> => {
-    if (uploadPromiseRef.current) return uploadPromiseRef.current;
-    const blob = completedResult.rawBlob;
-    if (!blob) {
-      setUploadStatus('ready');
-      return Promise.resolve(instantShareUrl);
-    }
-
-    setUploadStatus('uploading');
-    const promise = (async () => {
-      try {
-        const resolvedToolName = toolName || (isEs ? 'Foliado de PDF' : 'PDF Numbering');
-        const res = await createShareLink(blob, activeFilename, resolvedToolName, shareId);
+  // Iniciar subida segura en segundo plano sin bloquear la UI
+  const ensureUploadStarted = useCallback(
+    (forceRetry: boolean = false): Promise<string> => {
+      if (!forceRetry && uploadPromiseRef.current) return uploadPromiseRef.current;
+      const blob = completedResult.rawBlob;
+      if (!blob) {
         setUploadStatus('ready');
-        if (res?.shareUrl) {
-          setShareUrl(res.shareUrl);
-          return res.shareUrl;
-        }
-        return instantShareUrl;
-      } catch (err) {
-        console.warn('[FoliarSuccessView] Sincronización en segundo plano reportó error:', err);
-        setUploadStatus('error');
-        return instantShareUrl;
+        return Promise.resolve(instantShareUrl);
       }
-    })();
 
-    uploadPromiseRef.current = promise;
-    return promise;
-  }, [completedResult.rawBlob, activeFilename, shareId, toolName, isEs, instantShareUrl]);
+      setUploadStatus('uploading');
+      const promise = (async () => {
+        try {
+          const resolvedToolName = toolName || (isEs ? 'Foliado de PDF' : 'PDF Numbering');
+          const res = await createShareLink(blob, activeFilename, resolvedToolName, shareId);
+          setUploadStatus('ready');
+          if (res?.shareUrl) {
+            setShareUrl(res.shareUrl);
+            return res.shareUrl;
+          }
+          return instantShareUrl;
+        } catch (err) {
+          console.warn('[FoliarSuccessView] Sincronización en segundo plano reportó error:', err);
+          setUploadStatus('error');
+          uploadPromiseRef.current = null;
+          throw err;
+        }
+      })();
+
+      uploadPromiseRef.current = promise;
+      return promise;
+    },
+    [completedResult.rawBlob, activeFilename, shareId, toolName, isEs, instantShareUrl],
+  );
 
   // Disparar confetti inicial y arrancar subida en background de inmediato
   useEffect(() => {
@@ -161,10 +165,29 @@ export default function FoliarSuccessView({
     ensureUploadStarted();
   }, [ensureUploadStarted, toolName, activeFilename]);
 
-  // Recuperar enlace de descarga oficial de PDFBlack (siempre instantáneo)
-  const getOrCreateShareLink = async (): Promise<string> => {
-    ensureUploadStarted();
-    return shareUrl;
+  // Recuperar enlace de descarga oficial de PDFBlack garantizando subida activa
+  const getOrCreateShareLink = async (channel: string = 'compartir'): Promise<string> => {
+    if (uploadStatus === 'ready') return shareUrl;
+
+    const toastId = toast.loading(
+      isEs
+        ? `Sincronizando archivo seguro en la nube para ${channel}...`
+        : `Securing file in cloud for ${channel}...`,
+    );
+
+    try {
+      const confirmedUrl = await ensureUploadStarted(uploadStatus === 'error');
+      toast.dismiss(toastId);
+      return confirmedUrl;
+    } catch {
+      toast.error(
+        isEs
+          ? `No se pudo preparar el enlace para ${channel}. Haz clic para reintentar.`
+          : `Could not prepare link for ${channel}. Click to retry.`,
+        { id: toastId },
+      );
+      throw new Error('Upload not ready');
+    }
   };
 
   // Helper universal para copiar al portapapeles con fallback para evitar restricciones de permisos del navegador
@@ -252,105 +275,132 @@ export default function FoliarSuccessView({
     toast.success(isEs ? '¡Descarga iniciada con éxito!' : 'Download started successfully!');
   };
 
-  // 2. Copiar enlace oficial al portapapeles (100% instantáneo en 0 milisegundos)
+  // 2. Copiar enlace oficial al portapapeles
   const handleCopyShareLink = async () => {
-    ensureUploadStarted();
-    const ok = await copyToClipboard(shareUrl);
-    if (ok) {
-      trackToolEvent(toolName || 'pdf_tool', 'file_shared', { method: 'copy_link' });
-      setCopiedFile(true);
-      setTimeout(() => setCopiedFile(false), 3000);
-      toast.success(
-        isEs
-          ? '¡Enlace oficial de PDFBlack copiado al portapapeles!'
-          : 'Official PDFBlack link copied to clipboard!',
-      );
+    try {
+      const targetUrl = await getOrCreateShareLink(isEs ? 'copiar enlace' : 'copy link');
+      const ok = await copyToClipboard(targetUrl);
+      if (ok) {
+        trackToolEvent(toolName || 'pdf_tool', 'file_shared', { method: 'copy_link' });
+        setCopiedFile(true);
+        setTimeout(() => setCopiedFile(false), 3000);
+        toast.success(
+          isEs
+            ? '¡Enlace oficial de PDFBlack copiado al portapapeles!'
+            : 'Official PDFBlack link copied to clipboard!',
+        );
+      }
+    } catch {
+      // Error notificado en getOrCreateShareLink
     }
   };
 
   // 3. Compartir en WhatsApp - Abrir selector Web vs Escritorio
   const handleShareWhatsApp = () => {
     setShowWhatsAppModal(true);
-    ensureUploadStarted();
+    if (uploadStatus === 'error') {
+      ensureUploadStarted(true).catch(() => {});
+    } else {
+      ensureUploadStarted().catch(() => {});
+    }
   };
 
-  const handleLaunchWhatsAppWeb = () => {
-    ensureUploadStarted();
-    const subject = shareSubject || (isEs ? 'documento' : 'document');
-    const text = encodeURIComponent(
-      isEs
-        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${shareUrl}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
-        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${shareUrl}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
-    );
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
-    setShowWhatsAppModal(false);
-    toast.success(
-      isEs
-        ? '¡Elige tu contacto en WhatsApp para enviarle el enlace!'
-        : 'Choose your contact in WhatsApp to send the link!',
-      { duration: 5000 },
-    );
+  const handleLaunchWhatsAppWeb = async () => {
+    try {
+      const link = await getOrCreateShareLink('WhatsApp');
+      const subject = shareSubject || (isEs ? 'documento' : 'document');
+      const text = encodeURIComponent(
+        isEs
+          ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
+          : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
+      );
+      window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
+      setShowWhatsAppModal(false);
+      toast.success(
+        isEs
+          ? '¡Elige tu contacto en WhatsApp para enviarle el enlace!'
+          : 'Choose your contact in WhatsApp to send the link!',
+        { duration: 5000 },
+      );
+    } catch {
+      // Error notificado en getOrCreateShareLink
+    }
   };
 
-  const handleLaunchWhatsAppDesktop = () => {
-    ensureUploadStarted();
-    const subject = shareSubject || (isEs ? 'documento' : 'document');
-    const text = encodeURIComponent(
-      isEs
-        ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${shareUrl}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
-        : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${shareUrl}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
-    );
-    window.location.href = `whatsapp://send?text=${text}`;
-    setShowWhatsAppModal(false);
-    toast.success(
-      isEs
-        ? '¡Elige tu contacto en WhatsApp para enviarle el enlace!'
-        : 'Choose your contact in WhatsApp to send the link!',
-      { duration: 5000 },
-    );
+  const handleLaunchWhatsAppDesktop = async () => {
+    try {
+      const link = await getOrCreateShareLink('WhatsApp');
+      const subject = shareSubject || (isEs ? 'documento' : 'document');
+      const text = encodeURIComponent(
+        isEs
+          ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
+          : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
+      );
+      window.location.href = `whatsapp://send?text=${text}`;
+      setShowWhatsAppModal(false);
+      toast.success(
+        isEs
+          ? '¡Elige tu contacto en WhatsApp para enviarle el enlace!'
+          : 'Choose your contact in WhatsApp to send the link!',
+        { duration: 5000 },
+      );
+    } catch {
+      // Error notificado en getOrCreateShareLink
+    }
   };
 
   const handleDirectMobileShareWhatsApp = async () => {
-    ensureUploadStarted();
-    const link = shareUrl;
-    const subject = shareSubject || (isEs ? 'documento' : 'document');
-    if (completedResult.rawBlob && typeof navigator !== 'undefined' && navigator.canShare) {
-      const file = new File([completedResult.rawBlob], activeFilename, {
-        type: 'application/pdf',
-      });
-      if (navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: activeFilename,
-            url: link,
-            text: isEs
-              ? `Te comparto el ${subject}: ${activeFilename} (${link})`
-              : `Sharing ${subject}: ${activeFilename} (${link})`,
-          });
-          setShowWhatsAppModal(false);
-          toast.success(isEs ? '¡Archivo enviado a WhatsApp!' : 'File sent to WhatsApp!');
-          return;
-        } catch (e) {
-          if ((e as Error).name === 'AbortError') return;
+    try {
+      const link = await getOrCreateShareLink('WhatsApp');
+      const subject = shareSubject || (isEs ? 'documento' : 'document');
+      if (completedResult.rawBlob && typeof navigator !== 'undefined' && navigator.canShare) {
+        const file = new File([completedResult.rawBlob], activeFilename, {
+          type: 'application/pdf',
+        });
+        if (navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: activeFilename,
+              url: link,
+              text: isEs
+                ? `Te comparto el ${subject}: ${activeFilename} (${link})`
+                : `Sharing ${subject}: ${activeFilename} (${link})`,
+            });
+            setShowWhatsAppModal(false);
+            toast.success(isEs ? '¡Archivo enviado a WhatsApp!' : 'File sent to WhatsApp!');
+            return;
+          } catch (e) {
+            if ((e as Error).name === 'AbortError') return;
+          }
         }
       }
+      handleLaunchWhatsAppDesktop();
+    } catch {
+      // Error notificado en getOrCreateShareLink
     }
-    handleLaunchWhatsAppDesktop();
   };
 
   // 4. Compartir en Telegram
   const handleShareTelegram = async () => {
-    const link = await getOrCreateShareLink();
-    const sizeStr = completedResult.fileSize ? ` (${completedResult.fileSize})` : '';
-    const text = encodeURIComponent(
-      isEs
-        ? `📁 *${activeFilename}*${sizeStr}\n⚡ Documento optimizado con PDFBlack\n🔗 Descárgalo o visualízalo aquí:`
-        : `📁 *${activeFilename}*${sizeStr}\n⚡ Document processed with PDFBlack\n🔗 Download or view it here:`,
-    );
-    const url = encodeURIComponent(link);
-    window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank', 'noopener,noreferrer');
-    toast.success(isEs ? 'Abriendo Telegram...' : 'Opening Telegram...');
+    try {
+      const link = await getOrCreateShareLink('Telegram');
+      const sizeStr = completedResult.fileSize ? ` (${completedResult.fileSize})` : '';
+      const text = encodeURIComponent(
+        isEs
+          ? `📁 *${activeFilename}*${sizeStr}\n⚡ Documento optimizado con PDFBlack\n🔗 Descárgalo o visualízalo aquí:`
+          : `📁 *${activeFilename}*${sizeStr}\n⚡ Document processed with PDFBlack\n🔗 Download or view it here:`,
+      );
+      const url = encodeURIComponent(link);
+      window.open(
+        `https://t.me/share/url?url=${url}&text=${text}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
+      toast.success(isEs ? 'Abriendo Telegram...' : 'Opening Telegram...');
+    } catch {
+      // Error notificado en getOrCreateShareLink
+    }
   };
 
   // 5. Guardar en Google Drive (OAuth + Upload directo)
@@ -423,29 +473,37 @@ export default function FoliarSuccessView({
 
   // 6. Compartir en Facebook
   const handleShareFacebook = async () => {
-    const link = await getOrCreateShareLink();
-    const url = encodeURIComponent(link);
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${url}`,
-      '_blank',
-      'noopener,noreferrer,width=600,height=500',
-    );
+    try {
+      const link = await getOrCreateShareLink('Facebook');
+      const url = encodeURIComponent(link);
+      window.open(
+        `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+        '_blank',
+        'noopener,noreferrer,width=600,height=500',
+      );
+    } catch {
+      // Error notificado en getOrCreateShareLink
+    }
   };
 
   // 7. Enviar por Correo / Gmail
   const handleShareEmail = async () => {
-    const link = await getOrCreateShareLink();
-    const subjectTitle = shareSubject || (isEs ? 'documento procesado' : 'processed document');
-    const capitalizedSubject = subjectTitle.charAt(0).toUpperCase() + subjectTitle.slice(1);
-    const subject = encodeURIComponent(`${capitalizedSubject}: ${activeFilename} - PDFBlack`);
-    const body = encodeURIComponent(
-      isEs
-        ? `Hola,\n\nTe comparto el ${subjectTitle} "${activeFilename}" procesado de forma segura mediante PDFBlack.\n\nPuedes previsualizarlo o descargarlo directamente aquí:\n${link}\n\nSaludos,\nPDFBlack Suite`
-        : `Hi,\n\nSharing the ${subjectTitle} "${activeFilename}" processed securely via PDFBlack.\n\nYou can preview or download it directly here:\n${link}\n\nRegards,\nPDFBlack Suite`,
-    );
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
-    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
-    toast.success(isEs ? 'Abriendo Gmail...' : 'Opening Gmail...');
+    try {
+      const link = await getOrCreateShareLink(isEs ? 'correo' : 'email');
+      const subjectTitle = shareSubject || (isEs ? 'documento procesado' : 'processed document');
+      const capitalizedSubject = subjectTitle.charAt(0).toUpperCase() + subjectTitle.slice(1);
+      const subject = encodeURIComponent(`${capitalizedSubject}: ${activeFilename} - PDFBlack`);
+      const body = encodeURIComponent(
+        isEs
+          ? `Hola,\n\nTe comparto el ${subjectTitle} "${activeFilename}" procesado de forma segura mediante PDFBlack.\n\nPuedes previsualizarlo o descargarlo directamente aquí:\n${link}\n\nSaludos,\nPDFBlack Suite`
+          : `Hi,\n\nSharing the ${subjectTitle} "${activeFilename}" processed securely via PDFBlack.\n\nYou can preview or download it directly here:\n${link}\n\nRegards,\nPDFBlack Suite`,
+      );
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+      toast.success(isEs ? 'Abriendo Gmail...' : 'Opening Gmail...');
+    } catch {
+      // Error notificado en getOrCreateShareLink
+    }
   };
 
   // 8. Compartir del Sistema / Más Apps (AirDrop, Bluetooth, etc.)
@@ -742,18 +800,35 @@ export default function FoliarSuccessView({
 
           {/* ── B) BOTONES PARA COMPARTIR EL ARCHIVO (MISMO PROTAGONISMO) ── */}
           <div className="space-y-3 pt-2 border-t border-zinc-800/80">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="text-[11px] sm:text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider font-sans">
                 <Share2 className="w-3.5 h-3.5 text-[#FAF6EE]" />
                 {isEs
                   ? 'COMPARTIR ARCHIVO AL INSTANTE (100% PRIVADO)'
                   : 'INSTANT SHARE (100% PRIVATE)'}
               </span>
-              <span className="text-[10px] text-zinc-400 font-mono">
-                {isEs
-                  ? 'Transferencia directa sin guardar en la nube'
-                  : 'Direct transfer without cloud storage'}
-              </span>
+
+              {uploadStatus === 'uploading' && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-mono">
+                  <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
+                  <span>{isEs ? 'Sincronizando enlace seguro...' : 'Securing cloud link...'}</span>
+                </span>
+              )}
+              {uploadStatus === 'ready' && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span>{isEs ? 'Enlace verificado y listo' : 'Verified link ready'}</span>
+                </span>
+              )}
+              {uploadStatus === 'error' && (
+                <button
+                  onClick={() => ensureUploadStarted(true)}
+                  className="inline-flex items-center gap-1.5 text-[10px] text-rose-300 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500/20 px-2.5 py-0.5 rounded-full font-mono transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3 text-rose-400" />
+                  <span>{isEs ? 'Reintentar sincronización' : 'Retry cloud sync'}</span>
+                </button>
+              )}
             </div>
 
             {/* CUADRÍCULA DE BOTONES DE COMPARTIR CON EL MISMO PROTAGONISMO */}

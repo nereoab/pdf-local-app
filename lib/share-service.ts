@@ -47,8 +47,16 @@ export async function createShareLink(
   const shareId = targetShareId || generateShareId();
   const prebuiltShareUrl = buildShareUrl(shareId);
 
-  // 1. Intento primario: Endpoint /api/share con timeout de 12 segundos para evitar esperas eternas
-  try {
+  const fileSize = fileOrBlob.size || 0;
+  // Timeout adaptativo: mínimo 2.5 min (150s), hasta 5 min (300s) para PDFs pesados
+  const timeoutMs = Math.min(300000, Math.max(150000, Math.ceil(fileSize / 15000) * 1000));
+
+  // Función interna para intentar subida mediante endpoint seguro /api/share
+  const attemptServerUpload = async (): Promise<{
+    shareId: string;
+    shareUrl: string;
+    downloadUrl: string;
+  } | null> => {
     const formData = new FormData();
     formData.append('file', fileOrBlob, filename);
     formData.append('filename', filename);
@@ -56,43 +64,61 @@ export async function createShareLink(
     formData.append('shareId', shareId);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const res = await fetch('/api/share', {
-      method: 'POST',
-      body: formData,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.shareId) {
-        const origin =
-          typeof window !== 'undefined' ? window.location.origin : 'https://pdf-black.com';
-        const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
-        const siteUrl = isLocal ? origin : 'https://pdf-black.com';
-        const cleanShareUrl = data.shareUrl?.includes('a.run.app')
-          ? `${siteUrl}/share/${data.shareId}`
-          : data.shareUrl || prebuiltShareUrl;
-        const cleanDownloadUrl =
-          data.downloadUrl && !data.downloadUrl.includes('a.run.app')
-            ? data.downloadUrl
-            : `${siteUrl}/api/share?id=${data.shareId}&download=1`;
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.shareId) {
+          const origin =
+            typeof window !== 'undefined' ? window.location.origin : 'https://pdf-black.com';
+          const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+          const siteUrl = isLocal ? origin : 'https://pdf-black.com';
+          const cleanShareUrl = data.shareUrl?.includes('a.run.app')
+            ? `${siteUrl}/share/${data.shareId}`
+            : data.shareUrl || prebuiltShareUrl;
+          const cleanDownloadUrl =
+            data.downloadUrl && !data.downloadUrl.includes('a.run.app')
+              ? data.downloadUrl
+              : `${siteUrl}/api/share?id=${data.shareId}&download=1`;
 
-        return {
-          shareId: data.shareId,
-          shareUrl: cleanShareUrl,
-          downloadUrl: cleanDownloadUrl,
-        };
+          return {
+            shareId: data.shareId,
+            shareUrl: cleanShareUrl,
+            downloadUrl: cleanDownloadUrl,
+          };
+        }
       }
+      return null;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      console.warn('[ShareService] Intento POST /api/share:', err?.message || err);
+      return null;
     }
-  } catch (apiErr) {
-    console.warn('[ShareService] POST /api/share falló o timeout, activando fallback:', apiErr);
+  };
+
+  // 1. Primer intento por el servidor
+  let result = await attemptServerUpload();
+
+  // 2. Reintento automático en caso de glitch de red transitorio
+  if (!result) {
+    console.log('[ShareService] Reintentando subida a /api/share...');
+    await new Promise((r) => setTimeout(r, 1200));
+    result = await attemptServerUpload();
   }
 
-  // 2. Fallback de alta resiliencia: Subida directa cliente-a-Firebase Storage
-  // storage.rules permite escribir en /temp-shares/{shareId} hasta 50MB
+  if (result) {
+    return result;
+  }
+
+  // 3. Fallback de alta resiliencia: Subida directa cliente-a-Firebase Storage si la API de Cloud Run falla
   try {
     const { initializeApp, getApps, getApp } = await import('firebase/app');
     const { getStorage, ref, uploadBytes } = await import('firebase/storage');
@@ -136,13 +162,12 @@ export async function createShareLink(
       downloadUrl: `${siteUrl}/api/share?id=${shareId}&download=1`,
     };
   } catch (storageErr) {
-    console.error('[ShareService] Fallback de subida directa a Storage también falló:', storageErr);
-    // Aunque falle el upload físico en este instante, devolvemos el enlace pre-construido
-    return {
-      shareId,
-      shareUrl: prebuiltShareUrl,
-      downloadUrl: `${prebuiltShareUrl}?download=1`,
-    };
+    console.error('[ShareService] Fallback de subida a Storage falló:', storageErr);
+    // IMPORTANTE: Lanzar error para que la UI sepa que falló y permita reintentar,
+    // en lugar de entregar un enlace fantasma a un archivo que nunca se subió.
+    throw new Error(
+      'No se pudo sincronizar el archivo compartido con la nube. Por favor, reintenta.',
+    );
   }
 }
 

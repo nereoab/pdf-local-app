@@ -16,8 +16,8 @@ export default async function Image({ params }: Props) {
   const meta = await getServerShareMetadata(shareId);
 
   const rawFilename = meta?.originalName || 'Documento.pdf';
-  // Acortar si es excesivamente largo para mantener tipografía impecable
-  const filename = rawFilename.length > 40 ? rawFilename.substring(0, 37) + '...' : rawFilename;
+  // Permitir hasta 60 caracteres para que nombres largos quepan perfectamente
+  const filename = rawFilename.length > 60 ? rawFilename.substring(0, 57) + '...' : rawFilename;
   const formattedSize = meta?.formattedSize || 'PDF';
   const toolName = meta?.tool || 'Comprimir PDF';
 
@@ -319,7 +319,7 @@ export default async function Image({ params }: Props) {
             fontFamily: 'monospace',
           }}
         >
-          <span>✓ Listo para descargar</span>
+          <span>Listo para descargar</span>
           <span>•</span>
           <span>Cero registros en servidores</span>
           <span>•</span>

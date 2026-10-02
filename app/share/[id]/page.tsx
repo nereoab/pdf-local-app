@@ -28,6 +28,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       index: false,
       follow: false,
     },
+    alternates: {
+      canonical: `${siteUrl}/share/${shareId}`,
+    },
     openGraph: {
       title: `📄 ${filename}${sizeText} • PDFBlack`,
       description: pageDescription,

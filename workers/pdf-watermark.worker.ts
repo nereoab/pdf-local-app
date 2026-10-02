@@ -197,7 +197,7 @@ self.onmessage = async (e: MessageEvent<WatermarkWorkerMessageIn>) => {
       ) => {
         let nativeX = vx;
         let nativeY = vy;
-        let combinedRotation = (((pageRotation + itemRotation) % 360) + 360) % 360;
+        const combinedRotation = (((pageRotation + itemRotation) % 360) + 360) % 360;
 
         if (pageRotation === 0) {
           nativeX = vx;

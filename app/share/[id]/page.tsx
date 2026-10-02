@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import SharedDocView from '@/components/SharedDocView';
+import { getServerShareMetadata } from '@/lib/share-server';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -8,37 +9,46 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
   const shareId = resolvedParams.id;
+  const meta = await getServerShareMetadata(shareId);
+
+  const filename = meta?.originalName || 'Documento PDF';
+  const sizeText = meta?.formattedSize ? ` (${meta.formattedSize})` : '';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
+  const ogImageUrl = `${siteUrl}/share/${shareId}/opengraph-image`;
+
+  const pageTitle = `📄 ${filename}${sizeText} | PDFBlack`;
+  const pageDescription = `Descarga o previsualiza ${filename}${sizeText} de forma rápida, segura y privada a través de PDFBlack. Almacenamiento temporal protegido con cifrado en tránsito (expira en 24h).`;
 
   return {
     title: {
-      absolute: 'Documento Compartido | PDFBlack',
+      absolute: pageTitle,
     },
-    description:
-      'Descarga y visualiza este documento de forma rápida, segura y privada a través de PDFBlack.',
+    description: pageDescription,
     robots: {
       index: false,
-      follow: true,
+      follow: false,
     },
     openGraph: {
-      title: 'Documento PDF Seguro | PDFBlack',
-      description:
-        'Haz clic para previsualizar o descargar este documento compartido a través de PDFBlack.',
-      url: `https://pdf-black.com/share/${shareId}`,
-      siteName: 'PDFBlack Suite',
+      title: `📄 ${filename}${sizeText} • PDFBlack`,
+      description: pageDescription,
+      url: `${siteUrl}/share/${shareId}`,
+      siteName: 'PDFBlack',
       images: [
         {
-          url: 'https://pdf-black.com/icon.png',
-          width: 512,
-          height: 512,
-          alt: 'PDFBlack Documento',
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${filename} en PDFBlack`,
+          type: 'image/png',
         },
       ],
       type: 'website',
     },
     twitter: {
-      card: 'summary',
-      title: 'Documento Compartido | PDFBlack',
-      description: 'Descarga este documento compartido a través de PDFBlack.',
+      card: 'summary_large_image',
+      title: `📄 ${filename}${sizeText} • PDFBlack`,
+      description: pageDescription,
+      images: [ogImageUrl],
     },
   };
 }

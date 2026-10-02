@@ -21,7 +21,6 @@ import {
   Trash2,
   Plus,
   Maximize2,
-  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,7 +28,6 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import FoliarSuccessView from './FoliarSuccessView';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
 import type { ProtectProgress, ProtectResult, ProtectError } from '../workers/pdf-protect.worker';
 

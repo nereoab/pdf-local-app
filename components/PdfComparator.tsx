@@ -29,7 +29,6 @@ import {
   FileDown,
   Keyboard,
   FileCode,
-  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -37,7 +36,6 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import FoliarSuccessView from './FoliarSuccessView';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 import type { CompareResult, CompareOptions, DiffWord } from '../workers/pdf-compare.worker';
 
 export default function PdfComparator() {

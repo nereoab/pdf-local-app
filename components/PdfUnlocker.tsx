@@ -31,7 +31,6 @@ import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import FoliarSuccessView from './FoliarSuccessView';
 import type { BatchDownloadItem } from './DownloadSuccessCard';
-import { AnimatedNumber } from '@/components/ui/AnimatedSuccessCheck';
 
 import type {
   EncryptionDetection,

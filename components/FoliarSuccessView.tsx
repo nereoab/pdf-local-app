@@ -342,11 +342,11 @@ export default function FoliarSuccessView({
   // 4. Compartir en Telegram
   const handleShareTelegram = async () => {
     const link = await getOrCreateShareLink();
-    const subject = shareSubject || (isEs ? 'documento foliado' : 'numbered document');
+    const sizeStr = completedResult.fileSize ? ` (${completedResult.fileSize})` : '';
     const text = encodeURIComponent(
       isEs
-        ? `📄 Te comparto el ${subject} procesado con PDFBlack: ${activeFilename}`
-        : `📄 Sharing ${subject} processed with PDFBlack: ${activeFilename}`,
+        ? `📁 *${activeFilename}*${sizeStr}\n⚡ Documento optimizado con PDFBlack\n🔗 Descárgalo o visualízalo aquí:`
+        : `📁 *${activeFilename}*${sizeStr}\n⚡ Document processed with PDFBlack\n🔗 Download or view it here:`,
     );
     const url = encodeURIComponent(link);
     window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank', 'noopener,noreferrer');

@@ -23,7 +23,6 @@ import {
   Layers,
   FileCode,
   Hash,
-  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
@@ -717,16 +716,6 @@ export default function PdfRedacter() {
         resetRedacter();
       }
     }
-  };
-
-  const handleRemoveAllFiles = () => {
-    setSlots([
-      { id: 1, file: null },
-      { id: 2, file: null },
-      { id: 3, file: null },
-    ]);
-    setActiveSlotIndex(0);
-    resetRedacter();
   };
 
   const resetRedacter = () => {

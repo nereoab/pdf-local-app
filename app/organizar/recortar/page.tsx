@@ -13,7 +13,6 @@ import {
   HelpCircle,
   Crop,
   Check,
-  X as XIcon,
   Scale,
   GraduationCap,
   Sliders,

@@ -6,7 +6,6 @@ import Link from 'next/link';
 import {
   Loader2,
   ShieldCheck,
-  Zap,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -19,14 +18,11 @@ import {
   FileDigit,
   Briefcase,
   Sparkles,
-  Sliders,
   Maximize2,
-  Lock,
   Link2,
   Crop,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
-import { motion, AnimatePresence } from 'framer-motion';
 import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfFoliador = dynamic(() => import('@/components/PdfFoliador'), {

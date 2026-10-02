@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Hash,
   Loader2,
-  Settings2,
   ShieldCheck,
   ArrowLeft,
   Sparkles,
@@ -13,13 +12,11 @@ import {
   Plus,
   LayoutGrid,
   Check,
-  UploadCloud,
   Sliders,
   Lock,
   Unlock,
   BookOpen,
   FileCheck,
-  Cpu,
   Layers,
 } from 'lucide-react';
 import { useFileStore } from '@/store/useFileStore';
@@ -88,9 +85,9 @@ export default function PdfFoliador() {
   const [endPage, setEndPage] = useState<number>(1);
 
   // METADATOS EMPRESARIALES
-  const [docTitle, setDocTitle] = useState<string>('');
+  const docTitle = '';
   const [docAuthor, setDocAuthor] = useState<string>('');
-  const [docSubject, setDocSubject] = useState<string>('');
+  const docSubject = '';
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const topContainerRef = useRef<HTMLDivElement>(null);
@@ -234,7 +231,9 @@ export default function PdfFoliador() {
 
   useEffect(() => {
     if (file && pageThumbnails.length === 0 && !isEncrypted) {
-      loadThumbnails(file);
+      queueMicrotask(() => {
+        loadThumbnails(file);
+      });
     }
   }, [file, pageThumbnails.length, isEncrypted, loadThumbnails]);
 

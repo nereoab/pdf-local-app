@@ -55,9 +55,9 @@ export default function PdfEditor() {
 
   // MOTOR ACTIVO: 'native' (In-Situ) | 'fabric' (Vectorial Canva) | 'apryse' (WebAssembly)
   const [activeEngine, setActiveEngine] = useState<'native' | 'fabric' | 'apryse'>('fabric');
-  const [apryseActiveTool, setApryseActiveTool] = useState<
-    'contentEdit' | 'addParagraph' | 'freeText'
-  >('contentEdit');
+  const [apryseActiveTool, setApryseActiveTool] = useState<'contentEdit' | 'addParagraph'>(
+    'contentEdit',
+  );
   const [showComparisonModal, setShowComparisonModal] = useState<boolean>(false);
   const [isCompactMode, setIsCompactMode] = useState<boolean>(false);
 
@@ -1436,59 +1436,7 @@ export default function PdfEditor() {
                     <span>{isEs ? '+ Añadir Nuevo Texto' : '+ Add New Text'}</span>
                   </button>
 
-                  {/* Botón 3: Cuadro de Texto Libre (FreeText Annotation) */}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const instance = viewerInstanceRef.current;
-                        if (instance) {
-                          try {
-                            instance.UI?.setToolbarGroup('toolbarGroup-Annotate');
-                          } catch {}
-                          const freeTextTool = instance.Core?.documentViewer?.getTool(
-                            instance.Core.Tools.ToolNames.FREETEXT,
-                          );
-                          if (freeTextTool) {
-                            instance.Core.documentViewer.setToolMode(freeTextTool);
-                          }
-                          setApryseActiveTool('freeText');
-                          toast.info(
-                            isEs
-                              ? 'Texto Libre: Haz clic donde quieras colocar el recuadro flotante.'
-                              : 'Free Text: Click where you want to place the floating box.',
-                          );
-                        }
-                      } catch (err) {
-                        console.error('Error al activar texto libre:', err);
-                      }
-                    }}
-                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm ${
-                      apryseActiveTool === 'freeText'
-                        ? 'bg-blue-600 text-white border border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.4)]'
-                        : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/80 hover:border-zinc-500'
-                    }`}
-                    title={
-                      isEs
-                        ? 'Insertar una caja de texto libre flotante'
-                        : 'Insert a floating free text box'
-                    }
-                  >
-                    <span>{isEs ? 'Texto Libre (Caja)' : 'Free Text (Box)'}</span>
-                  </button>
-
-                  {/* Botón rápido para alternar a Motor Nativo */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveEngine('native')}
-                    className="flex items-center gap-1.5 bg-blue-950/70 hover:bg-blue-900 text-blue-200 border border-blue-600/70 hover:border-blue-400 px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(37,99,235,0.3)]"
-                    title={
-                      isEs ? 'Cambiar al Motor In-Situ Nativo' : 'Switch to Native In-Situ Engine'
-                    }
-                  >
-                    <Zap className="w-3.5 h-3.5 text-blue-400" />
-                    <span>{isEs ? 'Cambiar a Motor Nativo' : 'Switch to Native'}</span>
-                  </button>
+                  {/* Botón Cancelar y Botón Principal Grabar */}
 
                   <button
                     onClick={handleStartOver}

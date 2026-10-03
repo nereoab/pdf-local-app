@@ -216,12 +216,11 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     'pdf-blanco-negro': {
       titleEs:
         'Convertir PDF a Blanco y Negro Gratis Online — Escala de Grises y Ahorro de Tinta | PDFBlack',
-      titleEn:
-        'Convert PDF to Black and White Online Free — Grayscale & Printer Ink Saver | PDFBlack',
+      titleEn: 'Convert PDF to Black and White Online Free (Grayscale) | PDFBlack',
       descEs:
         'Convierte archivos PDF a blanco y negro puro o escala de grises (grayscale) online gratis. Ahorra tinta de impresora y reduce el peso del archivo 100% en tu navegador sin subir datos a servidores.',
       descEn:
-        'Change color PDF to black and white online for free in 1 click! Save expensive printer ink and reduce PDF file size with clean monochrome grayscale conversion. 100% private in-browser.',
+        'Convert PDF to black and white or grayscale online for free. Save printer ink and shrink file size with 100% private in-browser conversion. No file upload.',
       keywordsEs: [
         'pdf black',
         'pdfblack',
@@ -334,12 +333,11 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     },
     recortar: {
       titleEs: 'Recortar PDF Gratis Online — Ajustar Márgenes y Tamaño de Página | PDFBlack',
-      titleEn:
-        'Crop PDF Online Free — Trim White Margins, Pages & Dimensions in 1 Click | PDFBlack',
+      titleEn: 'Crop PDF Online Free — Trim Pages & White Margins | PDFBlack',
       descEs:
         'Recorta PDF gratis online. Ajusta márgenes blancos, recorta automáticamente y define tamaños de página (A4, Carta). 100% privado en tu navegador sin límites.',
       descEn:
-        'Can you crop a PDF online for free? Yes! Trim white margins, crop individual pages or auto-crop documents to custom sizes. 100% private in-browser, no limits or signup.',
+        'Crop PDF files online for free. Easily trim white margins, crop individual pages or auto-crop documents without uploading to servers. 100% private in-browser.',
       keywordsEs: [
         'recortar pdf gratis',
         'recortar un pdf',
@@ -383,12 +381,11 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     comprimir: {
       titleEs:
         '¿Cómo Bajarle el Peso a un PDF Gratis? — Reducir a 1 MB o 200 KB sin Perder Calidad | PDFBlack',
-      titleEn:
-        'Compress PDF Online Free — Reduce PDF MB to 200KB or 1MB Without Quality Loss | PDFBlack',
+      titleEn: 'Compress PDF Online Free — Reduce MB to 200KB or 1MB | PDFBlack',
       descEs:
         'Aprende cómo bajarle el peso a un PDF al instante. Reduce megabytes gratis sin perder nitidez en textos ni firmas, ideal para correos y trámites oficiales. 100% privado sin subir archivos.',
       descEn:
-        'Reduce PDF file size online for free without losing sharpness on text or signatures. Compress PDFs under 200KB or 1MB for email attachments and official portal uploads. 100% private in-browser, zero uploads.',
+        'Compress PDF files online for free. Lower PDF MB size under 200KB or 1MB without losing sharpness. 100% private client-side processing, zero server uploads.',
       keywordsEs: [
         'comprimir pdf gratis',
         'como bajarle el peso a un pdf',

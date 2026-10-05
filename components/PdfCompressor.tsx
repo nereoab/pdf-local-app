@@ -34,6 +34,7 @@ import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import FoliarSuccessView from './FoliarSuccessView';
 import JSZip from 'jszip';
+import { trackToolEvent } from '@/lib/analytics';
 import type {
   CompressionLevel,
   OutputColorMode,
@@ -333,6 +334,11 @@ export default function PdfCompressor() {
         });
         setActiveSlotIndex(index);
         setCompletedResult(null);
+        trackToolEvent('comprimir', 'file_loaded', {
+          file_count: 1,
+          total_bytes: file.size,
+          slot_index: index,
+        });
         toast.success(
           isEs ? `Archivo asignado a la Caja ${index + 1}` : `File assigned to Box ${index + 1}`,
         );
@@ -369,6 +375,10 @@ export default function PdfCompressor() {
 
     setActiveSlotIndex(0);
     setCompletedResult(null);
+    trackToolEvent('comprimir', 'file_loaded', {
+      file_count: validPdfs.length,
+      total_bytes: validPdfs.reduce((acc, f) => acc + f.size, 0),
+    });
     toast.success(
       isEs
         ? `${validPdfs.length} archivo(s) PDF cargado(s)`
@@ -574,6 +584,15 @@ export default function PdfCompressor() {
               items: [...collectedResults],
             });
 
+            trackToolEvent('comprimir', 'tool_completed', {
+              overall_reduction: overallReduction,
+              file_count: collectedResults.length,
+              preset: targetPreset || 'custom',
+              level: compressionLevel,
+              total_original_bytes: totalOriginal,
+              total_compressed_bytes: totalCompressed,
+            });
+
             setIsProcessing(false);
             worker.terminate();
 
@@ -627,6 +646,12 @@ export default function PdfCompressor() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(zipUrl);
+
+      trackToolEvent('comprimir', 'file_downloaded', {
+        type: 'zip',
+        file_count: completedResult.items.length,
+      });
+
       toast.success(
         isEs ? 'Paquete ZIP descargado con éxito' : 'ZIP package downloaded successfully',
       );

@@ -10,19 +10,15 @@ import {
   Sliders,
   ChevronDown,
   ChevronUp,
-  FileText,
   HelpCircle,
-  HardDrive,
-  CheckCircle2,
-  Layers,
   Sparkles,
   FileCheck2,
   Link2,
   Crop,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
-import { motion, AnimatePresence } from 'framer-motion';
 import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
+import { buildFullToolSchemas } from '@/lib/seo-metadata';
 
 const PdfCompressor = dynamic(() => import('@/components/PdfCompressor'), {
   ssr: false,
@@ -33,10 +29,6 @@ const PdfCompressor = dynamic(() => import('@/components/PdfCompressor'), {
     </div>
   ),
 });
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
-
-import { buildFullToolSchemas } from '@/lib/seo-metadata';
 
 export default function ComprimirPdfPage() {
   const { lang } = useLanguage();
@@ -99,11 +91,42 @@ export default function ComprimirPdfPage() {
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  const steps = isEs
+    ? [
+        {
+          title: '1. Selecciona o arrastra tus archivos PDF',
+          desc: 'Arrastra tus documentos PDF pesados al área de trabajo o cárgalos en las 3 cajas de procesamiento por lotes.',
+        },
+        {
+          title: '2. Selecciona el objetivo de tamaño o calidad',
+          desc: 'Elige un preset rápido (<2 MB para Correo, <5 MB para Trámites Judiciales, <1 MB Web Ligero o CAD 150 DPI) o calibra un tamaño personalizado en megabytes con preservación vectorial.',
+        },
+        {
+          title: '3. Comprime y descarga tu PDF optimizado',
+          desc: 'Pulsa el botón «Comprimir Ahora» para ejecutar la compactación Deflate Nivel 9 en tu navegador y descarga tu PDF individual o en lote .ZIP.',
+        },
+      ]
+    : [
+        {
+          title: '1. Select or drag and drop your PDF files',
+          desc: 'Drag your large PDF documents into the workspace or upload them across the 3 batch processing boxes.',
+        },
+        {
+          title: '2. Choose your target size or compression preset',
+          desc: 'Pick a 1-click preset (<2 MB for Email, <5 MB for Legal/Court Filing, <1 MB Light Web, or CAD 150 DPI) or define custom MB with full vector text preservation.',
+        },
+        {
+          title: '3. Compress and download your optimized PDF',
+          desc: 'Click «Compress Now» to trigger client-side Level 9 Deflate stream optimization and download your PDF individually or as a unified ZIP archive.',
+        },
+      ];
+
   const schemas = buildFullToolSchemas({
     category: 'optimizar',
     toolSlug: 'comprimir',
     lang: isEs ? 'es' : 'en',
     faqs,
+    steps,
   });
 
   return (
@@ -133,7 +156,11 @@ export default function ComprimirPdfPage() {
         <div className="w-full text-center space-y-2.5 pt-2 pb-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-xs text-zinc-300 font-sans tracking-wide">
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>100% Local • Zero-Knowledge • Sin Subir Archivos</span>
+            <span>
+              {isEs
+                ? '100% Local • Zero-Knowledge • Sin Subir Archivos'
+                : '100% Client-Side • Zero-Knowledge • No File Upload'}
+            </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
             {isEs

@@ -379,33 +379,37 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
   optimizar: {
     comprimir: {
-      titleEs:
-        '¿Cómo Bajarle el Peso a un PDF Gratis? — Reducir a 1 MB o 200 KB sin Perder Calidad | PDFBlack',
-      titleEn: 'Compress PDF Online Free — Reduce MB to 200KB or 1MB | PDFBlack',
+      titleEs: 'Comprimir PDF Gratis Online — Reducir Tamaño sin Perder Calidad | PDFBlack',
+      titleEn: 'Compress PDF Online Free — Reduce PDF File Size (100% Quality) | PDFBlack',
       descEs:
-        'Aprende cómo bajarle el peso a un PDF al instante. Reduce megabytes gratis sin perder nitidez en textos ni firmas, ideal para correos y trámites oficiales. 100% privado sin subir archivos.',
+        'Comprime archivos PDF online gratis al instante. Reduce el peso en MB para correo o trámites judiciales conservando texto y vectores. 100% privado en tu navegador.',
       descEn:
-        'Compress PDF files online for free. Lower PDF MB size under 200KB or 1MB without losing sharpness. 100% private client-side processing, zero server uploads.',
+        'Compress PDF files online for free. Shrink large documents for email and legal filings while preserving 100% vector text quality. 100% private in-browser tool.',
       keywordsEs: [
         'comprimir pdf gratis',
+        'comprimir pdf online gratis',
+        'reducir tamano pdf sin perder calidad',
         'como bajarle el peso a un pdf',
         'como bajarle los mb a un pdf',
         'bajar peso a un pdf',
         'comprimir pdf a 200 kb',
         'comprimir pdf a 1 mb',
-        'reducir tamano pdf sin perder calidad',
-        'bajar megas a un pdf',
+        'comprimir pdf para correo',
+        'comprimir planos pdf',
         'comprimir pdf sin subir archivos',
       ],
       keywordsEn: [
         'compress pdf free',
+        'compress pdf online free',
         'reduce pdf file size',
+        'shrink pdf file size',
         'compress pdf without uploading',
         'compress pdf to 200kb',
-        'compress pdf to 100kb free',
+        'compress pdf to 1mb free',
         'shrink pdf for email attachment',
         'lower pdf file size without losing quality',
         'reduce pdf mb',
+        'private pdf compressor',
       ],
     },
     reparar: {

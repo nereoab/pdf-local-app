@@ -32,11 +32,21 @@ import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 const PdfOcr = dynamic(() => import('@/components/PdfOcr'), {
   ssr: false,
   loading: () => (
-    <div className="flex flex-col items-center justify-center min-h-[500px] gap-4 font-mono">
-      <Loader2 className="w-10 h-10 animate-spin text-white" />
-      <p className="text-zinc-400 font-mono text-xs">
-        Cargando motor de reconocimiento óptico de caracteres (OCR v5.0)...
-      </p>
+    <div className="w-full flex flex-col items-center">
+      <div className="w-full max-w-7xl py-6 flex flex-col gap-2">
+        <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+          RECONOCIMIENTO ÓPTICO DE CARACTERES E INTELIGENCIA DOCUMENTAL
+        </span>
+        <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+          <span>OCR PARA PDF GRATIS ONLINE — RECONOCIMIENTO DE TEXTO Y BÚSQUEDA</span>
+        </h1>
+      </div>
+      <div className="flex flex-col items-center justify-center min-h-[460px] w-full border border-zinc-800 rounded-2xl bg-zinc-950/40 gap-4 font-mono">
+        <Loader2 className="w-10 h-10 animate-spin text-white" />
+        <p className="text-zinc-400 font-mono text-xs">
+          Cargando motor de reconocimiento óptico de caracteres (OCR v5.0)...
+        </p>
+      </div>
     </div>
   ),
 });

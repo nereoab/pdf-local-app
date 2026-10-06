@@ -26,11 +26,21 @@ import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 const PdfMerger = dynamic(() => import('@/components/PdfMerger'), {
   ssr: false,
   loading: () => (
-    <div className="flex flex-col items-center justify-center min-h-[500px] gap-4 font-mono">
-      <Loader2 className="w-10 h-10 animate-spin text-white" />
-      <p className="text-zinc-400 font-mono text-xs">
-        Cargando motor de consolidación y fusión de documentos PDF...
-      </p>
+    <div className="w-full flex flex-col items-center">
+      <div className="w-full max-w-7xl py-6 flex flex-col gap-2">
+        <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+          ORGANIZACIÓN Y FUSIÓN DE ARCHIVOS PDF
+        </span>
+        <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+          <span>UNIR ARCHIVOS PDF (COMBINAR Y FUSIONAR DOCUMENTOS)</span>
+        </h1>
+      </div>
+      <div className="flex flex-col items-center justify-center min-h-[460px] w-full border border-zinc-800 rounded-2xl bg-zinc-950/40 gap-4 font-mono">
+        <Loader2 className="w-10 h-10 animate-spin text-white" />
+        <p className="text-zinc-400 font-mono text-xs">
+          Cargando motor de consolidación y fusión de documentos PDF...
+        </p>
+      </div>
     </div>
   ),
 });

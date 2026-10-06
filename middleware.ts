@@ -58,9 +58,9 @@ export function middleware(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || '';
 
     // 1. Robots de Búsqueda (Googlebot, Bingbot):
-    // Redirigir limpiamente a la versión canónica x-default (/en) para indexación sin trampas
+    // Redirigir permanentemente a la versión canónica x-default (/en) con HTTP 308 para consolidar autoridad
     if (isSearchBot(userAgent)) {
-      return NextResponse.redirect(new URL('/en', request.url));
+      return NextResponse.redirect(new URL('/en', request.url), 308);
     }
 
     // 2. Preferencia de Usuario Manual Persistida en Cookie:

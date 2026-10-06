@@ -18,14 +18,12 @@ export interface ToolSeoInfo {
 export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>> = {
   convertir: {
     'pdf-word': {
-      titleEs:
-        'Convertir PDF a Word Gratis Online — DOCX 100% Editable sin Desconfigurar Formato | PDFBlack',
-      titleEn:
-        'Convert PDF to Word Free Online — 100% Editable DOCX (No Formatting Loss) | PDFBlack',
+      titleEs: 'Convertir PDF a Word Gratis Online — DOCX Editable | PDFBlack',
+      titleEn: 'Convert PDF to Word Free Online — Editable DOCX | PDFBlack',
       descEs:
-        'Convierte PDF a Word DOCX 100% editable gratis online. Conserva tablas, columnas y fuentes tipográficas con fidelidad absoluta. Sin registros, sin límites y 100% privado en tu navegador.',
+        'Convierte PDF a Word DOCX 100% editable gratis online. Conserva tablas, columnas y fuentes. Sin registros, sin límites y 100% privado en tu navegador.',
       descEn:
-        'Convert PDF to editable Word (DOCX) free online. Preserves tables, columns, and embedded fonts losslessly. No email, no registration, no file size limit, 100% private in-browser.',
+        'Convert PDF to editable Word (DOCX) free online. Preserves tables, columns, and fonts losslessly. No registration, no limits, 100% private in-browser.',
       keywordsEs: [
         'convertir pdf a word',
         'pdf a word gratis',
@@ -46,8 +44,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     'word-pdf': {
-      titleEs: 'Convertir Word a PDF Gratis Online — Guardar DOCX en PDF | PDFBlack',
-      titleEn: 'Convert Word to PDF Free Online — DOCX to High Quality PDF | PDFBlack',
+      titleEs: 'Convertir Word a PDF Gratis Online — DOCX a PDF | PDFBlack',
+      titleEn: 'Convert Word to PDF Free Online — DOCX to PDF | PDFBlack',
       descEs:
         'Convierte documentos de Word (.doc y .docx) a PDF con fidelidad vectorial impecable. 100% gratis, sin registro y sin subir tus archivos a servidores.',
       descEn:
@@ -67,7 +65,7 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     },
     'pdf-excel': {
       titleEs: 'Convertir PDF a Excel Gratis Online — Tablas a XLSX | PDFBlack',
-      titleEn: 'Convert PDF to Excel Free Online — Extract Tables to XLSX | PDFBlack',
+      titleEn: 'Convert PDF to Excel Free Online — Tables to XLSX | PDFBlack',
       descEs:
         'Extrae tablas numéricas de tus archivos PDF a hojas de cálculo de Microsoft Excel (.xlsx) con fórmulas limpias y celdas editables.',
       descEn:
@@ -86,8 +84,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     'excel-pdf': {
-      titleEs: 'Convertir Excel a PDF Gratis Online — Hojas de Cálculo a PDF | PDFBlack',
-      titleEn: 'Convert Excel to PDF Free Online — Spreadsheets to PDF | PDFBlack',
+      titleEs: 'Convertir Excel a PDF Gratis Online — Hojas a PDF | PDFBlack',
+      titleEn: 'Convert Excel to PDF Free Online — Sheet to PDF | PDFBlack',
       descEs:
         'Convierte tus hojas de cálculo de Excel (.xlsx, .xls) a documentos PDF perfectamente formateados y listos para imprimir.',
       descEn:
@@ -106,8 +104,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     'pdf-powerpoint': {
-      titleEs: 'Convertir PDF a PowerPoint Gratis Online — Presentación PPTX | PDFBlack',
-      titleEn: 'Convert PDF to PowerPoint Free Online — Slides to PPTX | PDFBlack',
+      titleEs: 'Convertir PDF a PowerPoint Gratis — Diapositivas | PDFBlack',
+      titleEn: 'Convert PDF to PowerPoint Free Online — Slides | PDFBlack',
       descEs:
         'Transforma cada página de tu PDF en diapositivas editables de PowerPoint (.pptx) con imágenes y textos independientes.',
       descEn:
@@ -120,8 +118,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['convert pdf to powerpoint', 'pdf to pptx free', 'pdf to presentation slides'],
     },
     'powerpoint-pdf': {
-      titleEs: 'Convertir PowerPoint a PDF Gratis Online — PPTX a PDF | PDFBlack',
-      titleEn: 'Convert PowerPoint to PDF Free Online — PPTX to Clean PDF | PDFBlack',
+      titleEs: 'Convertir PowerPoint a PDF Gratis Online — PPTX | PDFBlack',
+      titleEn: 'Convert PowerPoint to PDF Free Online — PPTX | PDFBlack',
       descEs:
         'Guarda presentaciones de PowerPoint (.pptx, .ppt) como documentos PDF de máxima resolución listos para proyectar o imprimir.',
       descEn:
@@ -134,8 +132,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['convert powerpoint to pdf', 'pptx to pdf free', 'slides to pdf'],
     },
     'pdf-jpg': {
-      titleEs: 'Convertir PDF a JPG Gratis Online — Extraer Imágenes en Alta Calidad | PDFBlack',
-      titleEn: 'Convert PDF to JPG Free Online — High Resolution Image Extraction | PDFBlack',
+      titleEs: 'Convertir PDF a JPG Gratis Online — Extraer Fotos | PDFBlack',
+      titleEn: 'Convert PDF to JPG Free Online — Extract Images | PDFBlack',
       descEs:
         'Convierte páginas de PDF a imágenes JPG y PNG nítidas en alta definición (300 DPI) con descarga individual o en paquete ZIP.',
       descEn:
@@ -154,8 +152,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     'jpg-pdf': {
-      titleEs: 'Convertir JPG a PDF Gratis Online — Unir Imágenes en un Solo PDF | PDFBlack',
-      titleEn: 'Convert JPG to PDF Free Online — Combine Images into Single PDF | PDFBlack',
+      titleEs: 'Convertir JPG a PDF Gratis Online — Unir Fotos | PDFBlack',
+      titleEn: 'Convert JPG to PDF Free Online — Images to PDF | PDFBlack',
       descEs:
         'Convierte imágenes JPG, PNG y WebP en un único archivo PDF ordenado. Ajusta orientación, márgenes y tamaño de página al instante.',
       descEn:
@@ -175,7 +173,7 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
     },
     'pdf-html': {
       titleEs: 'Convertir PDF a HTML Gratis Online — Código Web Limpio | PDFBlack',
-      titleEn: 'Convert PDF to HTML Free Online — Clean Web Code & Layout | PDFBlack',
+      titleEn: 'Convert PDF to HTML Free Online — Clean Web Code | PDFBlack',
       descEs:
         'Convierte documentos PDF en páginas web HTML5 responsivas con CSS embebido y maquetación fiel.',
       descEn:
@@ -184,8 +182,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['convert pdf to html', 'pdf to web code', 'pdf to html5 free'],
     },
     'html-pdf': {
-      titleEs: 'Convertir HTML a PDF Gratis Online — Guardar Páginas Web en PDF | PDFBlack',
-      titleEn: 'Convert HTML to PDF Free Online — Web Pages & Code to PDF | PDFBlack',
+      titleEs: 'Convertir HTML a PDF Gratis Online — Web a PDF | PDFBlack',
+      titleEn: 'Convert HTML to PDF Free Online — Webpage to PDF | PDFBlack',
       descEs:
         'Convierte código HTML, archivos web o páginas completas en documentos PDF vectoriales con estilos CSS intactos.',
       descEn:
@@ -194,8 +192,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['convert html to pdf', 'html to pdf free', 'webpage to pdf converter'],
     },
     'pdf-texto': {
-      titleEs: 'Convertir PDF a Texto Gratis Online — Extraer Texto Plano TXT | PDFBlack',
-      titleEn: 'Convert PDF to Text Free Online — Extract Clean TXT Content | PDFBlack',
+      titleEs: 'Convertir PDF a Texto Gratis Online — Extraer TXT | PDFBlack',
+      titleEn: 'Convert PDF to Text Free Online — Extract TXT | PDFBlack',
       descEs:
         'Extrae todo el texto seleccionable de un archivo PDF a texto plano (.txt) sin caracteres extraños ni pérdida de saltos de línea.',
       descEn:
@@ -204,8 +202,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['convert pdf to text', 'extract text from pdf', 'pdf to txt free'],
     },
     'texto-pdf': {
-      titleEs: 'Convertir Texto a PDF Gratis Online — Archivos TXT a PDF | PDFBlack',
-      titleEn: 'Convert Text to PDF Free Online — Plain TXT to PDF Document | PDFBlack',
+      titleEs: 'Convertir Texto a PDF Gratis Online — TXT a PDF | PDFBlack',
+      titleEn: 'Convert Text to PDF Free Online — TXT to PDF | PDFBlack',
       descEs:
         'Convierte notas y archivos de texto plano (.txt) en documentos PDF tipográficamente estructurados con márgenes elegantes.',
       descEn:
@@ -214,11 +212,10 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['convert text to pdf', 'txt to pdf free', 'create pdf from text'],
     },
     'pdf-blanco-negro': {
-      titleEs:
-        'Convertir PDF a Blanco y Negro Gratis Online — Escala de Grises y Ahorro de Tinta | PDFBlack',
-      titleEn: 'Convert PDF to Black and White Online Free (Grayscale) | PDFBlack',
+      titleEs: 'Convertir PDF a Blanco y Negro Gratis Online | PDFBlack',
+      titleEn: 'Convert PDF to Black and White Online Free | PDFBlack',
       descEs:
-        'Convierte archivos PDF a blanco y negro puro o escala de grises (grayscale) online gratis. Ahorra tinta de impresora y reduce el peso del archivo 100% en tu navegador sin subir datos a servidores.',
+        'Convierte archivos PDF a blanco y negro o escala de grises online gratis. Ahorra tinta y reduce tamaño en tu navegador sin subir datos a servidores.',
       descEn:
         'Convert PDF to black and white or grayscale online for free. Save printer ink and shrink file size with 100% private in-browser conversion. No file upload.',
       keywordsEs: [
@@ -245,13 +242,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
   organizar: {
     unir: {
-      titleEs:
-        'Unir PDF Gratis Online — Sin Límites de Tamaño ni Registro (100% Privado) | PDFBlack',
-      titleEn: 'Free PDF Merger Online — Combine PDFs with No Limits or Sign-Up | PDFBlack',
+      titleEs: 'Unir PDF Gratis Online — Sin Límites ni Registro | PDFBlack',
+      titleEn: 'Merge PDF Free Online — Combine PDFs No Limits | PDFBlack',
       descEs:
-        'Combina y une múltiples archivos PDF en un solo documento sin límites de peso ni de archivos. 100% local en tu navegador, sin subir a servidores, gratis y sin registro.',
+        'Combina y une múltiples archivos PDF en un documento sin límites de tamaño. 100% local en tu navegador, sin subir a servidores, gratis y sin registro.',
       descEn:
-        'Merge multiple PDF files into one document with no file size limits and no account required. 100% private in-browser local processing, automatic Table of Contents, and zero server uploads.',
+        'Merge multiple PDF files into one document with no size limits and no account required. 100% private in-browser processing, zero server uploads.',
       keywordsEs: [
         'unir pdf gratis',
         'unir pdf online gratis sin limite',
@@ -274,14 +270,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     dividir: {
-      titleEs:
-        'Dividir PDF Gratis Online — Separar Páginas y Extraer en ZIP sin Límites | PDFBlack',
-      titleEn:
-        'Split PDF Free Online — Extract Pages & Split into ZIP Chunks (No Limits) | PDFBlack',
+      titleEs: 'Dividir PDF Gratis Online — Separar Páginas en ZIP | PDFBlack',
+      titleEn: 'Split PDF Free Online — Extract Pages to ZIP | PDFBlack',
       descEs:
-        'Separa y divide páginas de documentos PDF gratis online. Extrae hojas pares o impares, rangos personalizados o bloques iguales descargables en un archivo ZIP al instante sin subir tus archivos.',
+        'Separa y divide páginas de documentos PDF gratis online. Extrae rangos o páginas en un archivo ZIP al instante sin subir tus archivos a la nube.',
       descEn:
-        'Split and extract PDF pages free online. Partition by custom ranges, separate even/odd pages, or split into equal chunks with 1-click ZIP download. 100% private, zero file limits.',
+        'Split and extract PDF pages free online. Partition by custom ranges or separate pages with 1-click ZIP download. 100% private, zero file limits.',
       keywordsEs: [
         'dividir pdf gratis',
         'separar paginas pdf',
@@ -302,8 +296,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     eliminar: {
-      titleEs: 'Eliminar Páginas de PDF Gratis Online — Borrar Hojas Innecesarias | PDFBlack',
-      titleEn: 'Delete PDF Pages Free Online — Remove Unwanted Pages from PDF | PDFBlack',
+      titleEs: 'Eliminar Páginas de PDF Gratis — Borrar Hojas | PDFBlack',
+      titleEn: 'Delete PDF Pages Free Online — Remove Pages | PDFBlack',
       descEs:
         'Elimina hojas en blanco o páginas innecesarias de tu PDF con selección visual en miniaturas y descarga instantánea.',
       descEn:
@@ -312,8 +306,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['delete pdf pages', 'remove pages from pdf', 'delete sheets from pdf free'],
     },
     reordenar: {
-      titleEs: 'Ordenar Páginas de PDF Gratis Online — Reorganizar Hojas PDF | PDFBlack',
-      titleEn: 'Reorder PDF Pages Free Online — Rearrange PDF Sheet Order | PDFBlack',
+      titleEs: 'Ordenar Páginas de PDF Gratis — Reorganizar Hojas | PDFBlack',
+      titleEn: 'Reorder PDF Pages Free Online — Rearrange Pages | PDFBlack',
       descEs:
         'Arrastra y suelta las páginas de tu PDF para organizarlas en el orden correcto. Procesamiento ultrarrápido y seguro en tu memoria RAM.',
       descEn:
@@ -322,8 +316,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['reorder pdf pages', 'rearrange pdf sheets', 'change pdf page order free'],
     },
     rotar: {
-      titleEs: 'Rotar PDF Gratis Online — Girar Páginas 90, 180 o 270 Grados | PDFBlack',
-      titleEn: 'Rotate PDF Free Online — Turn Pages 90, 180, or 270 Degrees | PDFBlack',
+      titleEs: 'Rotar PDF Gratis Online — Girar Páginas 90º o 180º | PDFBlack',
+      titleEn: 'Rotate PDF Free Online — Rotate Pages 90° or 180° | PDFBlack',
       descEs:
         'Corrige la orientación de tus documentos PDF y escaneos girando páginas individuales o todo el documento en 90°, 180° o 270° permanentemente.',
       descEn:
@@ -332,8 +326,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['rotate pdf free', 'turn pdf pages', 'rotate pdf 90 degrees online'],
     },
     recortar: {
-      titleEs: 'Recortar PDF Gratis Online — Ajustar Márgenes y Tamaño de Página | PDFBlack',
-      titleEn: 'Crop PDF Online Free — Trim Pages & White Margins | PDFBlack',
+      titleEs: 'Recortar PDF Gratis Online — Ajustar Márgenes | PDFBlack',
+      titleEn: 'Crop PDF Online Free — Trim White Margins | PDFBlack',
       descEs:
         'Recorta PDF gratis online. Ajusta márgenes blancos, recorta automáticamente y define tamaños de página (A4, Carta). 100% privado en tu navegador sin límites.',
       descEn:
@@ -379,10 +373,10 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
   optimizar: {
     comprimir: {
-      titleEs: 'Comprimir PDF Gratis Online — Reducir Tamaño sin Perder Calidad | PDFBlack',
-      titleEn: 'Compress PDF Online Free — Reduce PDF File Size (100% Quality) | PDFBlack',
+      titleEs: 'Comprimir PDF Gratis Online — Reducir Tamaño en MB | PDFBlack',
+      titleEn: 'Compress PDF Free Online — Reduce PDF File Size | PDFBlack',
       descEs:
-        'Comprime archivos PDF online gratis al instante. Reduce el peso en MB para correo o trámites judiciales conservando texto y vectores. 100% privado en tu navegador.',
+        'Comprime archivos PDF online gratis al instante. Reduce el peso en MB para correo o trámites conservando vectores. 100% privado en tu navegador.',
       descEn:
         'Compress PDF files online for free. Shrink large documents for email and legal filings while preserving 100% vector text quality. 100% private in-browser tool.',
       keywordsEs: [
@@ -413,8 +407,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     reparar: {
-      titleEs: 'Reparar PDF Dañado Gratis Online — Recuperar Archivos Corruptos | PDFBlack',
-      titleEn: 'Repair Damaged PDF Free Online — Recover Corrupted PDF Files | PDFBlack',
+      titleEs: 'Reparar PDF Dañado Gratis Online — Recuperar PDF | PDFBlack',
+      titleEn: 'Repair Damaged PDF Free Online — Recover PDF Files | PDFBlack',
       descEs:
         'Recupera y repara archivos PDF dañados que no abren o muestran errores de lectura. Reconstruye tablas cruzadas y encabezados rotos.',
       descEn:
@@ -427,8 +421,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['repair damaged pdf', 'fix corrupted pdf free', 'recover unreadable pdf'],
     },
     proteger: {
-      titleEs: 'Proteger PDF con Contraseña Gratis Online — Cifrado Militar AES-256 | PDFBlack',
-      titleEn: 'Protect PDF with Password Free Online — AES-256 Military Encryption | PDFBlack',
+      titleEs: 'Proteger PDF con Contraseña Gratis — Cifrado AES | PDFBlack',
+      titleEn: 'Protect PDF with Password Free — AES-256 Encrypt | PDFBlack',
       descEs:
         'Protege tus documentos confidenciales con contraseñas seguras y cifrado AES de 256 bits. Bloquea apertura, impresión o copia de contenido.',
       descEn:
@@ -441,8 +435,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['protect pdf with password', 'encrypt pdf free', 'add password to pdf online'],
     },
     desbloquear: {
-      titleEs: 'Desbloquear PDF Gratis Online — Quitar Contraseña y Restricciones | PDFBlack',
-      titleEn: 'Unlock PDF Free Online — Remove Password & Restrictions | PDFBlack',
+      titleEs: 'Desbloquear PDF Gratis Online — Quitar Contraseña | PDFBlack',
+      titleEn: 'Unlock PDF Free Online — Remove Password Rights | PDFBlack',
       descEs:
         'Elimina contraseñas y permisos de seguridad de archivos PDF para poder editarlos, imprimirlos y compartirlos libremente.',
       descEn:
@@ -455,8 +449,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['unlock pdf free', 'remove pdf password online', 'unlock protected pdf'],
     },
     censurar: {
-      titleEs: 'Censurar PDF Gratis Online — Ocultar Datos Confidenciales | PDFBlack',
-      titleEn: 'Redact PDF Free Online — Black Out Confidential Information | PDFBlack',
+      titleEs: 'Censurar PDF Gratis Online — Redactar Información | PDFBlack',
+      titleEn: 'Redact PDF Free Online — Black Out Sensitive Data | PDFBlack',
       descEs:
         'Censura texto sensible, números de tarjeta o datos personales en tu PDF de forma permanente e irrecuperable en memoria RAM.',
       descEn:
@@ -465,8 +459,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['redact pdf free', 'black out text in pdf', 'sanitize confidential pdf'],
     },
     comparar: {
-      titleEs: 'Comparar Dos PDFs Gratis Online — Detectar Diferencias Visuales | PDFBlack',
-      titleEn: 'Compare Two PDFs Free Online — Visual Difference Detection | PDFBlack',
+      titleEs: 'Comparar Dos PDFs Gratis Online — Detectar Cambios | PDFBlack',
+      titleEn: 'Compare Two PDFs Free Online — Visual Diffs | PDFBlack',
       descEs:
         'Compara dos versiones de un documento PDF lado a lado y resalta cambios en textos, imágenes y diseño con precisión milimétrica.',
       descEn:
@@ -481,14 +475,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
   editar: {
     texto: {
-      titleEs:
-        'Editar Texto de PDF Gratis Online — Modificar Texto e Imágenes sin Mover Formato | PDFBlack',
-      titleEn:
-        'Edit PDF Text Free Online — Modify Text & Images Without Formatting Loss | PDFBlack',
+      titleEs: 'Editar Texto de PDF Gratis Online — Modificar PDF | PDFBlack',
+      titleEn: 'Edit PDF Text Free Online — Modify Text & Images | PDFBlack',
       descEs:
-        'Edita texto existente en tu PDF online gratis: cambia fechas, corrige nombres, inserta párrafos y añade firmas respetando tipografías y alineación original. 100% privado en memoria RAM sin marcas de agua.',
+        'Edita texto de tu PDF online gratis: cambia fechas, corrige nombres y añade firmas respetando tipografías originales. 100% privado sin marcas de agua.',
       descEn:
-        'Free online PDF editor: modify existing text, fix typos, insert new paragraphs, images, and signatures directly in your browser without losing original formatting. 100% private, no signup, no watermark.',
+        'Free online PDF editor: modify text, fix typos, insert paragraphs and signatures directly in your browser. 100% private, no signup, no watermark.',
       keywordsEs: [
         'editar texto pdf gratis',
         'modificar texto en pdf',
@@ -510,12 +502,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     foliar: {
-      titleEs: 'Foliar PDF Gratis Online — Numerar Páginas de Expedientes Judiciales | PDFBlack',
-      titleEn: 'Add Page Numbers to PDF Free Online — Bates Stamping & Page Numbering | PDFBlack',
+      titleEs: 'Foliar PDF Gratis Online — Numeración Bates | PDFBlack',
+      titleEn: 'Add Page Numbers to PDF Free — Bates Stamping | PDFBlack',
       descEs:
-        'Folia expedientes judiciales, notariales y licitaciones públicas online gratis. Añade numeración correlativa continua, foliado Bates, prefijos y sellos en memoria local 100% privada.',
+        'Folia expedientes judiciales y contratos online gratis. Añade numeración correlativa continua, foliado Bates y sellos en memoria 100% privada.',
       descEn:
-        'Add page numbers and Bates stamps to PDF documents online for free. Custom positions (top, bottom, corners), prefix formats (Page 1 of N), and legal stamping 100% privately in your browser.',
+        'Add page numbers and Bates stamps to PDF documents for free. Custom positions, prefix formats, and legal stamping 100% privately in your browser.',
       keywordsEs: [
         'foliado pdf',
         'foliar pdf gratis',
@@ -538,8 +530,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     'marca-agua': {
-      titleEs: 'Poner Marca de Agua a PDF Gratis Online — Sello de Agua Personalizado | PDFBlack',
-      titleEn: 'Watermark PDF Free Online — Add Custom Text or Image Stamp | PDFBlack',
+      titleEs: 'Poner Marca de Agua a PDF Gratis — Sellos y Texto | PDFBlack',
+      titleEn: 'Watermark PDF Free Online — Custom Text or Stamp | PDFBlack',
       descEs:
         'Añade marcas de agua con texto (CONFIDENCIAL, COPIA) o tu logo en imagen PNG a todas las páginas de tu PDF con opacidad y rotación ajustable.',
       descEn:
@@ -552,11 +544,10 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['watermark pdf free', 'add watermark to pdf', 'stamp pdf online'],
     },
     'quitar-marca-agua': {
-      titleEs:
-        'Quitar Marca de Agua de PDF Gratis Online — Borrar Sellos y Logos de PDF | PDFBlack',
-      titleEn: 'Remove Watermark from PDF Free Online — Delete Stamps & Text Overlays | PDFBlack',
+      titleEs: 'Quitar Marca de Agua de PDF Gratis — Borrar Sellos | PDFBlack',
+      titleEn: 'Remove Watermark from PDF Free — Delete Stamps | PDFBlack',
       descEs:
-        '¿Cómo borrar una marca de agua de un PDF? Elimina sellos, textos sobrepuestos y logos molestos de documentos PDF online gratis y sin dejar rastros. 100% privado en tu navegador.',
+        'Elimina sellos, marcas de agua y logos sobrepuestos de documentos PDF online gratis y sin dejar rastros. Procesamiento 100% privado en tu navegador.',
       descEn:
         'Remove watermarks, stamps, and overlay logos from PDF documents cleanly while preserving the underlying text and vectors. 100% private in-browser, no limits.',
       keywordsEs: [
@@ -571,8 +562,8 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     firmar: {
-      titleEs: 'Firmar PDF Gratis Online — Firma Digital y Rúbrica en PDF | PDFBlack',
-      titleEn: 'Sign PDF Free Online — Digital Signature & Electronic Signatures | PDFBlack',
+      titleEs: 'Firmar PDF Gratis Online — Firma Digital y Rúbrica | PDFBlack',
+      titleEn: 'Sign PDF Free Online — Digital & eSignatures | PDFBlack',
       descEs:
         'Firma contratos y documentos PDF con tu rúbrica dibujada, firma en imagen o certificado. Cumplimiento legal y privacidad total en tu dispositivo.',
       descEn:
@@ -589,12 +580,12 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     ocr: {
-      titleEs: 'OCR PDF Online Gratis — Reconocer Texto y PDF Buscable | PDFBlack',
-      titleEn: 'OCR PDF Free Online — Make Scanned PDF Searchable & Selectable Text | PDFBlack',
+      titleEs: 'OCR PDF Online Gratis — Reconocer Texto y Buscable | PDFBlack',
+      titleEn: 'OCR PDF Free Online — Make Scanned PDF Searchable | PDFBlack',
       descEs:
         'Aplica OCR a PDFs escaneados e imágenes gratis online. Extrae texto copiable y haz tu PDF buscable (Ctrl+F) sin subir archivos. 100% privado en tu navegador.',
       descEn:
-        'Free online OCR PDF: convert scanned paper documents and photo PDFs into searchable, selectable text (Ctrl+F). 100% private in-browser Tesseract OCR recognition with zero server uploads.',
+        'Free online OCR PDF: convert scanned paper and photo PDFs into searchable, selectable text (Ctrl+F). 100% private in-browser recognition, zero uploads.',
       keywordsEs: [
         'ocr pdf',
         'ocr pdf online gratis',
@@ -990,12 +981,12 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
   organizar: {
     categoryEs: 'organizar',
     categoryEn: 'organize',
-    titleEs: 'Organizar PDF Gratis — Unir, Dividir, Rotar, Recortar y Reordenar | PDFBlack',
-    titleEn: 'Organize PDF Files Online for Free — Merge, Split, Rotate & Reorder | PDFBlack',
+    titleEs: 'Organizar PDF Gratis — Unir, Dividir, Rotar | PDFBlack',
+    titleEn: 'Organize PDF Files Free — Merge, Split, Rotate | PDFBlack',
     descEs:
-      'Reestructura y organiza tus documentos PDF al instante: une múltiples archivos, divide por páginas, gira la orientación, recorta márgenes y elimina hojas innecesarias. Procesamiento 100% privado en tu navegador sin registro.',
+      'Reestructura y organiza tus documentos PDF al instante: une, divide, rota y recorta páginas. 100% privado en tu navegador, gratis y sin registro.',
     descEn:
-      'Free client-side tools to organize your PDF documents. Merge, split, delete, rotate, crop, and reorder pages 100% privately in your browser without file size limits.',
+      'Free client-side tools to organize your PDF documents. Merge, split, delete, rotate, and crop pages 100% privately in your browser without file limits.',
     keywordsEs: [
       'organizar pdf gratis',
       'unir pdf',
@@ -1021,10 +1012,10 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
   optimizar: {
     categoryEs: 'optimizar',
     categoryEn: 'optimize',
-    titleEs: 'Optimizar PDF Gratis — Comprimir, Desbloquear, Proteger y Reparar | PDFBlack',
-    titleEn: 'Optimize PDF Files Online for Free — Compress, Protect & Repair | PDFBlack',
+    titleEs: 'Optimizar PDF Gratis — Comprimir y Proteger | PDFBlack',
+    titleEn: 'Optimize PDF Files Free — Compress & Protect | PDFBlack',
     descEs:
-      'Suite completa de herramientas para optimizar archivos PDF gratis: reduce tamaño, desbloquea permisos, protege con contraseña AES-256, censura datos confidenciales y repara archivos dañados. 100% local en tu navegador con privacidad absoluta.',
+      'Suite para optimizar PDF gratis: reduce tamaño, desbloquea permisos, protege con contraseña AES-256 y repara daños. 100% local con privacidad total.',
     descEn:
       'Compress, protect, unlock, redact, and repair PDF files locally in your browser with zero file uploads and complete privacy.',
     keywordsEs: [
@@ -1052,10 +1043,10 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
   editar: {
     categoryEs: 'editar',
     categoryEn: 'edit',
-    titleEs: 'Editar PDF Gratis Online — Texto, Firma, OCR y Marcas de Agua | PDFBlack',
-    titleEn: 'Edit PDF Files Online for Free — Text, Sign, OCR & Watermark | PDFBlack',
+    titleEs: 'Editar PDF Gratis Online — Texto, Firma y OCR | PDFBlack',
+    titleEn: 'Edit PDF Files Online Free — Text, Sign & OCR | PDFBlack',
     descEs:
-      'Edita documentos PDF directamente en tu navegador web: modifica texto, añade firmas digitales y sellos, numera folios, inserta marcas de agua y aplica OCR para hacer texto seleccionable. 100% privado en memoria RAM, gratis y sin límites.',
+      'Edita documentos PDF en tu navegador: modifica texto, añade firmas digitales, numera folios y aplica OCR. 100% privado en memoria RAM y sin límites.',
     descEn:
       'Edit text, sign documents, apply OCR, number pages, and add watermarks to PDF files 100% privately in your browser without file uploads.',
     keywordsEs: [
@@ -1082,12 +1073,12 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
   convertir: {
     categoryEs: 'convertir',
     categoryEn: 'convert',
-    titleEs: 'Convertir PDF Gratis Online — Word, Excel, PowerPoint, JPG | PDFBlack',
-    titleEn: 'Convert PDF to Word, Excel, PPT, JPG & HTML Online for Free | PDFBlack',
+    titleEs: 'Convertir PDF Gratis Online — Word, Excel, JPG | PDFBlack',
+    titleEn: 'Convert PDF Free Online — Word, Excel, PPT, JPG | PDFBlack',
     descEs:
-      'Convierte archivos PDF a Word, Excel, PowerPoint, imágenes JPG, HTML y Texto online gratis. Motor de conversión de alta fidelidad sin registros ni marcas de agua.',
+      'Convierte archivos PDF a Word, Excel, PowerPoint, imágenes JPG y Texto gratis. Motor de alta fidelidad sin registros ni marcas de agua.',
     descEn:
-      'Convert PDF documents to and from Word, Excel, PowerPoint, JPG, HTML, and Text. 100% client-side conversion preserving formatting, tables, and vectors without server uploads.',
+      'Convert PDF files to and from Word, Excel, PowerPoint, JPG and Text online for free. Fast, secure, formatting-preserving conversion in your browser.',
     keywordsEs: [
       'convertir pdf gratis',
       'convertir pdf a word',

@@ -53,9 +53,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
           <Sparkles className="w-3.5 h-3.5" />
           <span>{solution.badge}</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-3">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-3">
           {solution.h1}
-        </h2>
+        </h1>
         <p className="text-base sm:text-lg text-neutral-600 dark:text-neutral-400 leading-relaxed max-w-3xl">
           {solution.subtitle}
         </p>
@@ -65,9 +65,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
       {solution.specifications && solution.specifications.length > 0 && (
         <div className="mb-12 overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 shadow-sm">
           <div className="bg-neutral-50 dark:bg-neutral-800/50 px-6 py-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
               Technical Specifications & Requirements
-            </h3>
+            </h2>
             <span className="text-xs text-neutral-500 dark:text-neutral-400">
               ISO 32000-1 Standard
             </span>
@@ -112,9 +112,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
 
       {/* ─── ILLUSTRATED HOW-TO STEP-BY-STEP GUIDE ─── */}
       <div className="mb-12">
-        <h3 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 mb-6">
+        <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 mb-6">
           Step-by-Step Instructions
-        </h3>
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {solution.steps.map((s) => (
             <div
@@ -144,9 +144,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
             <Cpu className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-2 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-2 flex items-center gap-2">
               Absolute Privacy: 100% In-Browser Client-Side Processing
-            </h3>
+            </h2>
             <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed mb-4">
               Unlike legacy cloud PDF web converters that upload your confidential files to
               third-party servers,{' '}
@@ -183,9 +183,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
         <div className="mb-12">
           <div className="flex items-center gap-2 mb-6">
             <HelpCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <h3 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
               Frequently Asked Questions about {solution.h1.split('—')[0].trim()}
-            </h3>
+            </h2>
           </div>
           <div className="space-y-3">
             {solution.faqs.map((faq, index) => {
@@ -224,9 +224,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
       <div className="border-t border-neutral-200 dark:border-neutral-800 pt-8 mt-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h4 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+            <h2 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
               Looking for the full unconstrained tool?
-            </h4>
+            </h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
               Access all customization settings and advanced options in {solution.parentName}.
             </p>
@@ -242,9 +242,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
 
         {solution.relatedSolutions && solution.relatedSolutions.length > 0 && (
           <div>
-            <h5 className="text-xs uppercase font-bold tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
+            <p className="text-xs uppercase font-bold tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
               Related Solutions & Workflow Guides:
-            </h5>
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {solution.relatedSolutions.map((relSlug) => {
                 const rel = LONG_TAIL_SOLUTIONS_EN[relSlug];

@@ -192,9 +192,9 @@ export default function ConverterSeoSection({
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-white/10 pb-3">
             <Layers className="w-5 h-5 text-emerald-400" />
-            <h3 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
+            <h2 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
               {isEs ? '¿Cómo funciona en 3 pasos?' : 'How does it work in 3 steps?'}
-            </h3>
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -209,7 +209,7 @@ export default function ConverterSeoSection({
                 <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-sm font-bold text-white mb-4 group-hover:scale-110 transition-transform">
                   {idx + 1}
                 </div>
-                <h4 className="text-base font-bold font-sans text-white mb-2">{step.title}</h4>
+                <h3 className="text-base font-bold font-sans text-white mb-2">{step.title}</h3>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">{step.desc}</p>
               </div>
             ))}
@@ -220,9 +220,9 @@ export default function ConverterSeoSection({
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-white/10 pb-3">
             <Zap className="w-5 h-5 text-amber-400" />
-            <h3 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
+            <h2 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
               {isEs ? 'Ventajas y Calidad de Conversión' : 'Features & Conversion Quality'}
-            </h3>
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -233,7 +233,7 @@ export default function ConverterSeoSection({
               >
                 <div className="flex items-center gap-2">
                   <FileCheck2 className="w-4 h-4 text-blue-400 shrink-0" />
-                  <h4 className="text-sm font-bold font-sans text-zinc-100">{feat.title}</h4>
+                  <h3 className="text-sm font-bold font-sans text-zinc-100">{feat.title}</h3>
                 </div>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">{feat.desc}</p>
               </div>
@@ -245,9 +245,9 @@ export default function ConverterSeoSection({
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-white/10 pb-3">
             <HelpCircle className="w-5 h-5 text-purple-400" />
-            <h3 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
+            <h2 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
               {isEs ? 'Preguntas Frecuentes' : 'Frequently Asked Questions'}
-            </h3>
+            </h2>
           </div>
 
           <div className="space-y-3">
@@ -289,9 +289,9 @@ export default function ConverterSeoSection({
             <Lock className="w-6 h-6 text-emerald-400" />
           </div>
           <div className="space-y-1">
-            <h4 className="text-sm font-bold font-sans text-white">
+            <h3 className="text-sm font-bold font-sans text-white">
               {isEs ? 'Privacidad y Seguridad Garantizada' : 'Guaranteed Privacy & Security'}
-            </h4>
+            </h3>
             <p className="text-xs text-zinc-400 font-sans">
               {isEs
                 ? 'Tus archivos son procesados con cifrado SSL/TLS de 256 bits y se eliminan automáticamente de forma irreversible una vez finalizada la sesión.'

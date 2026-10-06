@@ -1,1 +1,5 @@
-export { default } from '../proteger/page';
+import { permanentRedirect } from 'next/navigation';
+
+export default function ProtegerPdfOptAliasPage() {
+  permanentRedirect('/optimizar/proteger');
+}

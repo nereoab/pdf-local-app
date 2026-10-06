@@ -2117,11 +2117,25 @@ import {
   SOLUTION_PAIRS_PT_TO_ES,
 } from './long-tail-pt';
 
-export { LONG_TAIL_SOLUTIONS_PT, SOLUTION_PAIRS_ES_TO_PT, SOLUTION_PAIRS_PT_TO_ES };
+import {
+  LONG_TAIL_SOLUTIONS_FR,
+  SOLUTION_PAIRS_ES_TO_FR,
+  SOLUTION_PAIRS_FR_TO_ES,
+} from './long-tail-fr';
+
+export {
+  LONG_TAIL_SOLUTIONS_PT,
+  SOLUTION_PAIRS_ES_TO_PT,
+  SOLUTION_PAIRS_PT_TO_ES,
+  LONG_TAIL_SOLUTIONS_FR,
+  SOLUTION_PAIRS_ES_TO_FR,
+  SOLUTION_PAIRS_FR_TO_ES,
+};
 
 export const ALL_LONG_TAIL_SLUGS = Object.keys(LONG_TAIL_SOLUTIONS);
 export const ALL_LONG_TAIL_SLUGS_EN = Object.keys(LONG_TAIL_SOLUTIONS_EN);
 export const ALL_LONG_TAIL_SLUGS_PT = Object.keys(LONG_TAIL_SOLUTIONS_PT);
+export const ALL_LONG_TAIL_SLUGS_FR = Object.keys(LONG_TAIL_SOLUTIONS_FR);
 
 export function getSolutionBySlug(slug: string): LongTailSolution | undefined {
   return LONG_TAIL_SOLUTIONS[slug];
@@ -2135,30 +2149,35 @@ export function getSolutionBySlugPt(slug: string): LongTailSolution | undefined 
   return LONG_TAIL_SOLUTIONS_PT[slug];
 }
 
+export function getSolutionBySlugFr(slug: string): LongTailSolution | undefined {
+  return LONG_TAIL_SOLUTIONS_FR[slug];
+}
+
 export function getEquivalentSlug(
   slug: string,
-  currentLang: 'es' | 'en' | 'pt',
-  targetLang: 'es' | 'en' | 'pt' = 'en',
+  currentLang: 'es' | 'en' | 'pt' | 'fr',
+  targetLang: 'es' | 'en' | 'pt' | 'fr' = 'en',
 ): string | undefined {
-  if (currentLang === 'es' && targetLang === 'en') return SOLUTION_PAIRS[slug];
-  if (currentLang === 'es' && targetLang === 'pt') return SOLUTION_PAIRS_ES_TO_PT[slug];
-  if (currentLang === 'en' && targetLang === 'es') return SOLUTION_PAIRS_EN_TO_ES[slug];
-  if (currentLang === 'en' && targetLang === 'pt') {
-    const es = SOLUTION_PAIRS_EN_TO_ES[slug];
-    return es ? SOLUTION_PAIRS_ES_TO_PT[es] : undefined;
-  }
-  if (currentLang === 'pt' && targetLang === 'es') return SOLUTION_PAIRS_PT_TO_ES[slug];
-  if (currentLang === 'pt' && targetLang === 'en') {
-    const es = SOLUTION_PAIRS_PT_TO_ES[slug];
-    return es ? SOLUTION_PAIRS[es] : undefined;
-  }
+  // Resolver primero a español
+  let esSlug: string | undefined = slug;
+  if (currentLang === 'en') esSlug = SOLUTION_PAIRS_EN_TO_ES[slug];
+  else if (currentLang === 'pt') esSlug = SOLUTION_PAIRS_PT_TO_ES[slug];
+  else if (currentLang === 'fr') esSlug = SOLUTION_PAIRS_FR_TO_ES[slug];
+
+  if (!esSlug) return undefined;
+  if (targetLang === 'es') return esSlug;
+  if (targetLang === 'en') return SOLUTION_PAIRS[esSlug];
+  if (targetLang === 'pt') return SOLUTION_PAIRS_ES_TO_PT[esSlug];
+  if (targetLang === 'fr') return SOLUTION_PAIRS_ES_TO_FR[esSlug];
   return undefined;
 }
 
 export function getSolutionsByToolKey(
   toolKey: string,
-  lang: 'es' | 'en' | 'pt' = 'es',
+  lang: 'es' | 'en' | 'pt' | 'fr' = 'es',
 ): LongTailSolution[] {
+  if (lang === 'fr')
+    return Object.values(LONG_TAIL_SOLUTIONS_FR).filter((s) => s.toolKey === toolKey);
   if (lang === 'pt')
     return Object.values(LONG_TAIL_SOLUTIONS_PT).filter((s) => s.toolKey === toolKey);
   const dict = lang === 'es' ? LONG_TAIL_SOLUTIONS : LONG_TAIL_SOLUTIONS_EN;

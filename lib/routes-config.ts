@@ -8,12 +8,15 @@ export interface ToolRouteConfig {
   category: 'organizar' | 'optimizar' | 'editar' | 'convertir';
   categoryEn: 'organize' | 'optimize' | 'edit' | 'convert';
   categoryPt: 'organizar' | 'otimizar' | 'editar' | 'converter';
+  categoryFr?: 'organiser' | 'optimiser' | 'editer' | 'convertir';
   slugEs: string;
   slugEn: string;
   slugPt: string;
+  slugFr?: string;
   pathEs: string;
   pathEn: string;
   pathPt: string;
+  pathFr?: string;
   clientType: 'organizar' | 'optimizar' | 'editar' | 'convertir';
   toolKey: string;
 }
@@ -31,6 +34,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/organizar/unir',
     pathEn: '/en/merge-pdf',
     pathPt: '/pt/juntar-pdf',
+    categoryFr: 'organiser',
+    slugFr: 'fusionner-pdf',
+    pathFr: '/fr/fusionner-pdf',
     clientType: 'organizar',
     toolKey: 'unir',
   },
@@ -45,6 +51,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/organizar/dividir',
     pathEn: '/en/split-pdf',
     pathPt: '/pt/dividir-pdf',
+    categoryFr: 'organiser',
+    slugFr: 'diviser-pdf',
+    pathFr: '/fr/diviser-pdf',
     clientType: 'organizar',
     toolKey: 'dividir',
   },
@@ -59,6 +68,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/organizar/eliminar',
     pathEn: '/en/delete-pdf-pages',
     pathPt: '/pt/excluir-paginas-pdf',
+    categoryFr: 'organiser',
+    slugFr: 'supprimer-pages-pdf',
+    pathFr: '/fr/supprimer-pages-pdf',
     clientType: 'organizar',
     toolKey: 'eliminar',
   },
@@ -73,6 +85,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/organizar/reordenar',
     pathEn: '/en/reorder-pdf-pages',
     pathPt: '/pt/organizar-paginas-pdf',
+    categoryFr: 'organiser',
+    slugFr: 'organiser-pages-pdf',
+    pathFr: '/fr/organiser-pages-pdf',
     clientType: 'organizar',
     toolKey: 'reordenar',
   },
@@ -87,6 +102,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/organizar/rotar',
     pathEn: '/en/rotate-pdf',
     pathPt: '/pt/girar-pdf',
+    categoryFr: 'organiser',
+    slugFr: 'pivoter-pdf',
+    pathFr: '/fr/pivoter-pdf',
     clientType: 'organizar',
     toolKey: 'rotar',
   },
@@ -101,6 +119,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/organizar/recortar',
     pathEn: '/en/crop-pdf',
     pathPt: '/pt/recortar-pdf',
+    categoryFr: 'organiser',
+    slugFr: 'recadrer-pdf',
+    pathFr: '/fr/recadrer-pdf',
     clientType: 'organizar',
     toolKey: 'recortar',
   },
@@ -117,6 +138,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/optimizar/comprimir',
     pathEn: '/en/compress-pdf',
     pathPt: '/pt/comprimir-pdf',
+    categoryFr: 'optimiser',
+    slugFr: 'compresser-pdf',
+    pathFr: '/fr/compresser-pdf',
     clientType: 'optimizar',
     toolKey: 'comprimir',
   },
@@ -131,6 +155,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/optimizar/reparar',
     pathEn: '/en/repair-pdf',
     pathPt: '/pt/reparar-pdf',
+    categoryFr: 'optimiser',
+    slugFr: 'reparer-pdf',
+    pathFr: '/fr/reparer-pdf',
     clientType: 'optimizar',
     toolKey: 'reparar',
   },
@@ -145,6 +172,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/optimizar/proteger',
     pathEn: '/en/protect-pdf',
     pathPt: '/pt/proteger-pdf',
+    categoryFr: 'optimiser',
+    slugFr: 'proteger-pdf',
+    pathFr: '/fr/proteger-pdf',
     clientType: 'optimizar',
     toolKey: 'proteger',
   },
@@ -159,6 +189,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/optimizar/desbloquear',
     pathEn: '/en/unlock-pdf',
     pathPt: '/pt/desbloquear-pdf',
+    categoryFr: 'optimiser',
+    slugFr: 'deverrouiller-pdf',
+    pathFr: '/fr/deverrouiller-pdf',
     clientType: 'optimizar',
     toolKey: 'desbloquear',
   },
@@ -173,6 +206,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/optimizar/censurar',
     pathEn: '/en/redact-pdf',
     pathPt: '/pt/ocultar-texto-pdf',
+    categoryFr: 'optimiser',
+    slugFr: 'caviarder-pdf',
+    pathFr: '/fr/caviarder-pdf',
     clientType: 'optimizar',
     toolKey: 'censurar',
   },
@@ -187,6 +223,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/optimizar/comparar',
     pathEn: '/en/compare-pdf',
     pathPt: '/pt/comparar-pdf',
+    categoryFr: 'optimiser',
+    slugFr: 'comparer-pdf',
+    pathFr: '/fr/comparer-pdf',
     clientType: 'optimizar',
     toolKey: 'comparar',
   },
@@ -203,6 +242,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/editar/texto',
     pathEn: '/en/edit-pdf',
     pathPt: '/pt/editar-pdf',
+    categoryFr: 'editer',
+    slugFr: 'editer-pdf',
+    pathFr: '/fr/editer-pdf',
     clientType: 'editar',
     toolKey: 'texto',
   },
@@ -217,6 +259,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/editar/foliar',
     pathEn: '/en/bates-numbering',
     pathPt: '/pt/numerar-paginas-pdf',
+    categoryFr: 'editer',
+    slugFr: 'numeroter-pages-pdf',
+    pathFr: '/fr/numeroter-pages-pdf',
     clientType: 'editar',
     toolKey: 'foliar',
   },
@@ -231,6 +276,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/editar/marca-agua',
     pathEn: '/en/watermark-pdf',
     pathPt: '/pt/marca-dagua-pdf',
+    categoryFr: 'editer',
+    slugFr: 'ajouter-filigrane-pdf',
+    pathFr: '/fr/ajouter-filigrane-pdf',
     clientType: 'editar',
     toolKey: 'marca-agua',
   },
@@ -245,6 +293,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/editar/quitar-marca-agua',
     pathEn: '/en/remove-watermark',
     pathPt: '/pt/remover-marca-dagua-pdf',
+    categoryFr: 'editer',
+    slugFr: 'supprimer-filigrane-pdf',
+    pathFr: '/fr/supprimer-filigrane-pdf',
     clientType: 'editar',
     toolKey: 'quitar-marca-agua',
   },
@@ -259,6 +310,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/editar/firmar',
     pathEn: '/en/sign-pdf',
     pathPt: '/pt/assinar-pdf',
+    categoryFr: 'editer',
+    slugFr: 'signer-pdf',
+    pathFr: '/fr/signer-pdf',
     clientType: 'editar',
     toolKey: 'firmar',
   },
@@ -273,6 +327,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/editar/ocr',
     pathEn: '/en/ocr-pdf',
     pathPt: '/pt/ocr-pdf',
+    categoryFr: 'editer',
+    slugFr: 'ocr-pdf',
+    pathFr: '/fr/ocr-pdf',
     clientType: 'editar',
     toolKey: 'ocr',
   },
@@ -289,6 +346,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/pdf-word',
     pathEn: '/en/pdf-to-word',
     pathPt: '/pt/pdf-para-word',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-pdf-en-word',
+    pathFr: '/fr/convertir-pdf-en-word',
     clientType: 'convertir',
     toolKey: 'pdf-word',
   },
@@ -303,6 +363,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/word-pdf',
     pathEn: '/en/word-to-pdf',
     pathPt: '/pt/word-para-pdf',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-word-en-pdf',
+    pathFr: '/fr/convertir-word-en-pdf',
     clientType: 'convertir',
     toolKey: 'word-pdf',
   },
@@ -317,6 +380,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/pdf-excel',
     pathEn: '/en/pdf-to-excel',
     pathPt: '/pt/pdf-para-excel',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-pdf-en-excel',
+    pathFr: '/fr/convertir-pdf-en-excel',
     clientType: 'convertir',
     toolKey: 'pdf-excel',
   },
@@ -331,6 +397,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/excel-pdf',
     pathEn: '/en/excel-to-pdf',
     pathPt: '/pt/excel-para-pdf',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-excel-en-pdf',
+    pathFr: '/fr/convertir-excel-en-pdf',
     clientType: 'convertir',
     toolKey: 'excel-pdf',
   },
@@ -345,6 +414,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/pdf-powerpoint',
     pathEn: '/en/pdf-to-powerpoint',
     pathPt: '/pt/pdf-para-powerpoint',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-pdf-en-powerpoint',
+    pathFr: '/fr/convertir-pdf-en-powerpoint',
     clientType: 'convertir',
     toolKey: 'pdf-powerpoint',
   },
@@ -359,6 +431,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/powerpoint-pdf',
     pathEn: '/en/powerpoint-to-pdf',
     pathPt: '/pt/powerpoint-para-pdf',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-powerpoint-en-pdf',
+    pathFr: '/fr/convertir-powerpoint-en-pdf',
     clientType: 'convertir',
     toolKey: 'powerpoint-pdf',
   },
@@ -373,6 +448,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/pdf-jpg',
     pathEn: '/en/pdf-to-jpg',
     pathPt: '/pt/pdf-para-jpg',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-pdf-en-jpg',
+    pathFr: '/fr/convertir-pdf-en-jpg',
     clientType: 'convertir',
     toolKey: 'pdf-jpg',
   },
@@ -387,6 +465,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/jpg-pdf',
     pathEn: '/en/jpg-to-pdf',
     pathPt: '/pt/jpg-para-pdf',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-jpg-en-pdf',
+    pathFr: '/fr/convertir-jpg-en-pdf',
     clientType: 'convertir',
     toolKey: 'jpg-pdf',
   },
@@ -401,6 +482,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/pdf-html',
     pathEn: '/en/pdf-to-html',
     pathPt: '/pt/pdf-para-html',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-pdf-en-html',
+    pathFr: '/fr/convertir-pdf-en-html',
     clientType: 'convertir',
     toolKey: 'pdf-html',
   },
@@ -415,6 +499,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/html-pdf',
     pathEn: '/en/html-to-pdf',
     pathPt: '/pt/html-para-pdf',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-html-en-pdf',
+    pathFr: '/fr/convertir-html-en-pdf',
     clientType: 'convertir',
     toolKey: 'html-pdf',
   },
@@ -429,6 +516,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/pdf-texto',
     pathEn: '/en/pdf-to-txt',
     pathPt: '/pt/pdf-para-txt',
+    categoryFr: 'convertir',
+    slugFr: 'extraire-texte-pdf',
+    pathFr: '/fr/extraire-texte-pdf',
     clientType: 'convertir',
     toolKey: 'pdf-texto',
   },
@@ -443,6 +533,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/texto-pdf',
     pathEn: '/en/txt-to-pdf',
     pathPt: '/pt/txt-para-pdf',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-txt-en-pdf',
+    pathFr: '/fr/convertir-txt-en-pdf',
     clientType: 'convertir',
     toolKey: 'texto-pdf',
   },
@@ -457,6 +550,9 @@ export const TOOLS_ROUTES: ToolRouteConfig[] = [
     pathEs: '/convertir/pdf-blanco-negro',
     pathEn: '/en/convert-pdf-to-black-and-white',
     pathPt: '/pt/pdf-preto-e-branco',
+    categoryFr: 'convertir',
+    slugFr: 'convertir-pdf-en-noir-et-blanc',
+    pathFr: '/fr/convertir-pdf-en-noir-et-blanc',
     clientType: 'convertir',
     toolKey: 'pdf-blanco-negro',
   },
@@ -493,6 +589,25 @@ export const STATIC_ROUTES_PT_MAP: Record<string, string> = {
   '/dpa': '/pt/dpa',
 };
 
+export const STATIC_ROUTES_FR_MAP: Record<string, string> = {
+  '/': '/fr',
+  '/es': '/fr',
+  '/organizar': '/fr',
+  '/optimizar': '/fr',
+  '/editar': '/fr',
+  '/convertir': '/fr',
+  '/faq': '/fr/faq',
+  '/privacidad': '/fr/confidentialite',
+  '/terminos': '/fr/conditions',
+  '/contacto': '/fr/contact',
+  '/aviso-legal': '/fr/mentions-legales',
+  '/dpa': '/fr/dpa',
+};
+
+const ES_TO_FR_MAP = new Map<string, string>();
+const FR_TO_ES_MAP = new Map<string, string>();
+const FR_SLUG_TO_TOOL = new Map<string, ToolRouteConfig>();
+
 // Mapeos rápidos para búsquedas O(1)
 const ES_TO_EN_MAP = new Map<string, string>();
 const EN_TO_ES_MAP = new Map<string, string>();
@@ -508,6 +623,11 @@ for (const [es, en] of Object.entries(STATIC_ROUTES_MAP)) {
   EN_TO_ES_MAP.set(en, es);
 }
 
+for (const [es, fr] of Object.entries(STATIC_ROUTES_FR_MAP)) {
+  ES_TO_FR_MAP.set(es, fr);
+  FR_TO_ES_MAP.set(fr, es);
+}
+
 for (const [es, pt] of Object.entries(STATIC_ROUTES_PT_MAP)) {
   ES_TO_PT_MAP.set(es, pt);
   PT_TO_ES_MAP.set(pt, es);
@@ -521,10 +641,49 @@ for (const tool of TOOLS_ROUTES) {
   ES_TO_PT_MAP.set(tool.pathEs, tool.pathPt);
   PT_TO_ES_MAP.set(tool.pathPt, tool.pathEs);
   PT_SLUG_TO_TOOL.set(tool.slugPt, tool);
+
+  if (tool.pathFr && tool.slugFr) {
+    ES_TO_FR_MAP.set(tool.pathEs, tool.pathFr);
+    FR_TO_ES_MAP.set(tool.pathFr, tool.pathEs);
+    FR_SLUG_TO_TOOL.set(tool.slugFr, tool);
+  }
 }
 
 export const ALL_ENGLISH_TOOL_SLUGS = TOOLS_ROUTES.map((t) => t.slugEn);
 export const ALL_PORTUGUESE_TOOL_SLUGS = TOOLS_ROUTES.map((t) => t.slugPt);
+export const ALL_FRENCH_TOOL_SLUGS = TOOLS_ROUTES.map((t) => t.slugFr!).filter(Boolean);
+
+/**
+ * Obtiene la URL equivalente en francés para una ruta en español.
+ */
+export function getFrenchUrlForSpanish(esPath: string): string {
+  const normalized = esPath.replace(/\/$/, '') || '/';
+  if (normalized === '/' || normalized === '/es') {
+    return '/fr';
+  }
+  return ES_TO_FR_MAP.get(normalized) || (normalized === '/' ? '/fr' : `/fr${normalized}`);
+}
+
+/**
+ * Obtiene la URL equivalente en español para una ruta en francés.
+ */
+export function getSpanishUrlForFrench(frPath: string): string {
+  const normalized = frPath.replace(/\/$/, '') || '/';
+  if (normalized === '/fr') {
+    return '/es';
+  }
+  if (FR_TO_ES_MAP.has(normalized)) {
+    return FR_TO_ES_MAP.get(normalized)!;
+  }
+  return normalized.replace(/^\/fr/, '') || '/es';
+}
+
+/**
+ * Obtiene la configuración de una herramienta por su slug en francés.
+ */
+export function getToolBySlugFr(slugFr: string): ToolRouteConfig | undefined {
+  return FR_SLUG_TO_TOOL.get(slugFr);
+}
 
 /**
  * Obtiene la URL equivalente en inglés para una ruta en español.
@@ -602,7 +761,10 @@ export function getToolBySlugPt(slugPt: string): ToolRouteConfig | undefined {
 /**
  * Obtiene la URL correspondiente al cambiar de idioma desde cualquier ruta activa (ES, EN o PT).
  */
-export function getLanguageSwitchUrl(currentPath: string, targetLang: 'es' | 'en' | 'pt'): string {
+export function getLanguageSwitchUrl(
+  currentPath: string,
+  targetLang: 'es' | 'en' | 'pt' | 'fr',
+): string {
   const normalized = currentPath.replace(/\/$/, '') || '/';
 
   // 1. Resolver la ruta canónica en español base
@@ -611,6 +773,8 @@ export function getLanguageSwitchUrl(currentPath: string, targetLang: 'es' | 'en
     esPath = getSpanishUrlForEnglish(normalized);
   } else if (normalized.startsWith('/pt')) {
     esPath = getSpanishUrlForPortuguese(normalized);
+  } else if (normalized.startsWith('/fr')) {
+    esPath = getSpanishUrlForFrench(normalized);
   }
 
   // 2. Proyectar al idioma destino
@@ -619,6 +783,9 @@ export function getLanguageSwitchUrl(currentPath: string, targetLang: 'es' | 'en
   }
   if (targetLang === 'pt') {
     return getPortugueseUrlForSpanish(esPath);
+  }
+  if (targetLang === 'fr') {
+    return getFrenchUrlForSpanish(esPath);
   }
   // Si targetLang === 'es'
   return esPath === '/es' ? '/' : esPath;

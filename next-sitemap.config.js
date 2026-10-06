@@ -1,4 +1,5 @@
 const ptSolutionData = require('./lib/long-tail/pt-solutions-routes.json');
+const frSolutionData = require('./lib/long-tail/fr-solutions-routes.json');
 
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
@@ -181,8 +182,44 @@ module.exports = {
       ...ptSolutionData.routes,
     ];
 
+    const frRoutes = [
+      '/fr',
+      '/fr/fusionner-pdf',
+      '/fr/diviser-pdf',
+      '/fr/supprimer-pages-pdf',
+      '/fr/organiser-pages-pdf',
+      '/fr/pivoter-pdf',
+      '/fr/recadrer-pdf',
+      '/fr/compresser-pdf',
+      '/fr/reparer-pdf',
+      '/fr/proteger-pdf',
+      '/fr/deverrouiller-pdf',
+      '/fr/caviarder-pdf',
+      '/fr/comparer-pdf',
+      '/fr/editer-pdf',
+      '/fr/numeroter-pages-pdf',
+      '/fr/ajouter-filigrane-pdf',
+      '/fr/supprimer-filigrane-pdf',
+      '/fr/signer-pdf',
+      '/fr/ocr-pdf',
+      '/fr/convertir-pdf-en-word',
+      '/fr/convertir-word-en-pdf',
+      '/fr/convertir-pdf-en-excel',
+      '/fr/convertir-excel-en-pdf',
+      '/fr/convertir-pdf-en-powerpoint',
+      '/fr/convertir-powerpoint-en-pdf',
+      '/fr/convertir-pdf-en-jpg',
+      '/fr/convertir-jpg-en-pdf',
+      '/fr/convertir-pdf-en-html',
+      '/fr/convertir-html-en-pdf',
+      '/fr/extraire-texte-pdf',
+      '/fr/convertir-txt-en-pdf',
+      '/fr/convertir-pdf-en-noir-et-blanc',
+      ...frSolutionData.routes,
+    ];
+
     const results = [];
-    for (const r of [...enRoutes, ...ptRoutes]) {
+    for (const r of [...enRoutes, ...ptRoutes, ...frRoutes]) {
       results.push(await config.transform(config, r));
     }
     return results;
@@ -356,6 +393,42 @@ module.exports = {
       ...ptSolutionData.pairs,
     };
 
+    const ROUTE_PAIRS_FR = {
+      '/': '/fr',
+      '/organizar/unir': '/fr/fusionner-pdf',
+      '/organizar/dividir': '/fr/diviser-pdf',
+      '/organizar/eliminar': '/fr/supprimer-pages-pdf',
+      '/organizar/reordenar': '/fr/organiser-pages-pdf',
+      '/organizar/rotar': '/fr/pivoter-pdf',
+      '/organizar/recortar': '/fr/recadrer-pdf',
+      '/optimizar/comprimir': '/fr/compresser-pdf',
+      '/optimizar/reparar': '/fr/reparer-pdf',
+      '/optimizar/proteger': '/fr/proteger-pdf',
+      '/optimizar/desbloquear': '/fr/deverrouiller-pdf',
+      '/optimizar/censurar': '/fr/caviarder-pdf',
+      '/optimizar/comparar': '/fr/comparer-pdf',
+      '/editar/texto': '/fr/editer-pdf',
+      '/editar/foliar': '/fr/numeroter-pages-pdf',
+      '/editar/marca-agua': '/fr/ajouter-filigrane-pdf',
+      '/editar/quitar-marca-agua': '/fr/supprimer-filigrane-pdf',
+      '/editar/firmar': '/fr/signer-pdf',
+      '/editar/ocr': '/fr/ocr-pdf',
+      '/convertir/pdf-word': '/fr/convertir-pdf-en-word',
+      '/convertir/word-pdf': '/fr/convertir-word-en-pdf',
+      '/convertir/pdf-excel': '/fr/convertir-pdf-en-excel',
+      '/convertir/excel-pdf': '/fr/convertir-excel-en-pdf',
+      '/convertir/pdf-powerpoint': '/fr/convertir-pdf-en-powerpoint',
+      '/convertir/powerpoint-pdf': '/fr/convertir-powerpoint-en-pdf',
+      '/convertir/pdf-jpg': '/fr/convertir-pdf-en-jpg',
+      '/convertir/jpg-pdf': '/fr/convertir-jpg-en-pdf',
+      '/convertir/pdf-html': '/fr/convertir-pdf-en-html',
+      '/convertir/html-pdf': '/fr/convertir-html-en-pdf',
+      '/convertir/pdf-texto': '/fr/extraire-texte-pdf',
+      '/convertir/texto-pdf': '/fr/convertir-txt-en-pdf',
+      '/convertir/pdf-blanco-negro': '/fr/convertir-pdf-en-noir-et-blanc',
+      ...frSolutionData.pairs,
+    };
+
     const INVERTED_PAIRS = Object.fromEntries(
       Object.entries(ROUTE_PAIRS).map(([es, en]) => [en, es]),
     );
@@ -364,20 +437,25 @@ module.exports = {
       Object.entries(ROUTE_PAIRS_PT).map(([es, pt]) => [pt, es]),
     );
 
+    const INVERTED_PAIRS_FR = Object.fromEntries(
+      Object.entries(ROUTE_PAIRS_FR).map(([es, fr]) => [fr, es]),
+    );
+
     let priority = config.priority;
     let changefreq = config.changefreq;
 
-    if (path === '/' || path === '/en' || path === '/pt') {
+    if (path === '/' || path === '/en' || path === '/pt' || path === '/fr') {
       priority = 1.0;
       changefreq = 'daily';
     } else if (
+      path.startsWith('/fr/solutions/') ||
       path.startsWith('/pt/solutions/') ||
       path.startsWith('/soluciones/') ||
       path.startsWith('/en/solutions/')
     ) {
       priority = 0.85;
       changefreq = 'weekly';
-    } else if (path.startsWith('/pt/')) {
+    } else if (path.startsWith('/pt/') || path.startsWith('/fr/')) {
       priority = 0.9;
       changefreq = 'weekly';
     } else if (
@@ -445,22 +523,32 @@ module.exports = {
 
     const isEn = path.startsWith('/en');
     const isPt = path.startsWith('/pt');
+    const isFr = path.startsWith('/fr');
     let esPath = path;
     let enPath = null;
     let ptPath = null;
+    let frPath = null;
 
     if (isEn) {
       esPath = INVERTED_PAIRS[path] || '/';
       enPath = path;
       ptPath = ROUTE_PAIRS_PT[esPath] || null;
+      frPath = ROUTE_PAIRS_FR[esPath] || null;
     } else if (isPt) {
       esPath = INVERTED_PAIRS_PT[path] || '/';
       enPath = ROUTE_PAIRS[esPath] || null;
       ptPath = path;
+      frPath = ROUTE_PAIRS_FR[esPath] || null;
+    } else if (isFr) {
+      esPath = INVERTED_PAIRS_FR[path] || '/';
+      enPath = ROUTE_PAIRS[esPath] || null;
+      ptPath = ROUTE_PAIRS_PT[esPath] || null;
+      frPath = path;
     } else {
       esPath = path;
       enPath = ROUTE_PAIRS[path] || null;
       ptPath = ROUTE_PAIRS_PT[path] || null;
+      frPath = ROUTE_PAIRS_FR[path] || null;
     }
 
     const alternateRefs = [
@@ -481,6 +569,14 @@ module.exports = {
         { href: `${config.siteUrl}${ptPath}`, hreflang: 'pt-BR', hrefIsAbsolute: true },
         { href: `${config.siteUrl}${ptPath}`, hreflang: 'pt', hrefIsAbsolute: true },
       );
+    }
+
+    if (frPath) {
+      alternateRefs.push({
+        href: `${config.siteUrl}${frPath}`,
+        hreflang: 'fr',
+        hrefIsAbsolute: true,
+      });
     }
 
     return {

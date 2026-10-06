@@ -845,24 +845,37 @@ export const PORTUGUESE_TOOL_METADATA: Record<
   },
 };
 
+import frenchToolMetadataJson from './french-tool-metadata.json';
+
+export const FRENCH_TOOL_METADATA: Record<
+  string,
+  { title: string; desc: string; keywords: string[] }
+> = frenchToolMetadataJson as any;
+
 /**
  * Genera la metadata completa de Next.js para una herramienta en un idioma dado.
  */
 export function buildToolMetadata(
   category: string,
   toolSlug: string,
-  lang: 'es' | 'en' | 'pt' = 'es',
+  lang: 'es' | 'en' | 'pt' | 'fr' = 'es',
 ): Metadata {
   const info = TOOLS_METADATA_REGISTRY[category]?.[toolSlug];
   const ptInfo = PORTUGUESE_TOOL_METADATA[toolSlug];
+  const frInfo = FRENCH_TOOL_METADATA[toolSlug];
   const isEs = lang === 'es';
   const isPt = lang === 'pt';
+  const isFr = lang === 'fr';
 
   let rawTitle = `${toolSlug.toUpperCase()} — PDFBlack`;
-  let description = 'Ferramenta de PDF gratuita, rápida e 100% privada no seu navegador.';
-  let keywords = ['pdf gratis', 'ferramentas pdf'];
+  let description = 'Outil PDF gratuit, rapide et 100% privé dans votre navigateur.';
+  let keywords = ['pdf gratuit', 'outils pdf'];
 
-  if (isPt && ptInfo) {
+  if (isFr && frInfo) {
+    rawTitle = frInfo.title;
+    description = frInfo.desc;
+    keywords = frInfo.keywords;
+  } else if (isPt && ptInfo) {
     rawTitle = ptInfo.title;
     description = ptInfo.desc;
     keywords = ptInfo.keywords;
@@ -877,8 +890,14 @@ export function buildToolMetadata(
 
   const matchingTool = TOOLS_ROUTES.find(
     (t) =>
-      (t.category === category || t.categoryEn === category || t.categoryPt === category) &&
-      (t.slugEs === toolSlug || t.slugEn === toolSlug || t.slugPt === toolSlug),
+      (t.category === category ||
+        t.categoryEn === category ||
+        t.categoryPt === category ||
+        t.categoryFr === category) &&
+      (t.slugEs === toolSlug ||
+        t.slugEn === toolSlug ||
+        t.slugPt === toolSlug ||
+        t.slugFr === toolSlug),
   );
 
   const esUrl = matchingTool
@@ -890,7 +909,10 @@ export function buildToolMetadata(
   const ptUrl = matchingTool
     ? `${SITE_URL}${matchingTool.pathPt}`
     : `${SITE_URL}/pt/${category}/${toolSlug}`;
-  const canonicalUrl = isEs ? esUrl : isPt ? ptUrl : enUrl;
+  const frUrl = matchingTool?.pathFr
+    ? `${SITE_URL}${matchingTool.pathFr}`
+    : `${SITE_URL}/fr/${category}/${toolSlug}`;
+  const canonicalUrl = isEs ? esUrl : isPt ? ptUrl : isFr ? frUrl : enUrl;
 
   const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
     cleanTitle.split('—')[0].trim(),
@@ -912,6 +934,7 @@ export function buildToolMetadata(
         es: esUrl,
         en: enUrl,
         pt: ptUrl,
+        fr: frUrl,
         'x-default': esUrl,
       },
     },
@@ -920,7 +943,7 @@ export function buildToolMetadata(
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
-      locale: isEs ? 'es_ES' : isPt ? 'pt_BR' : 'en_US',
+      locale: isEs ? 'es_ES' : isPt ? 'pt_BR' : isFr ? 'fr_FR' : 'en_US',
       type: 'website',
       images: [
         {

@@ -1,3 +1,5 @@
+const ptSolutionData = require('./lib/long-tail/pt-solutions-routes.json');
+
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com',
@@ -141,6 +143,8 @@ module.exports = {
       '/en/industries/government',
     ];
 
+    const ptSolutionData = require('./lib/long-tail/pt-solutions-routes.json');
+
     const ptRoutes = [
       '/pt',
       '/pt/juntar-pdf',
@@ -174,6 +178,7 @@ module.exports = {
       '/pt/pdf-para-txt',
       '/pt/txt-para-pdf',
       '/pt/pdf-preto-e-branco',
+      ...ptSolutionData.routes,
     ];
 
     const results = [];
@@ -182,6 +187,7 @@ module.exports = {
     }
     return results;
   },
+
   transform: async (config, path) => {
     const ROUTE_PAIRS = {
       '/': '/en',
@@ -347,6 +353,7 @@ module.exports = {
       '/convertir/pdf-texto': '/pt/pdf-para-txt',
       '/convertir/texto-pdf': '/pt/txt-para-pdf',
       '/convertir/pdf-blanco-negro': '/pt/pdf-preto-e-branco',
+      ...ptSolutionData.pairs,
     };
 
     const INVERTED_PAIRS = Object.fromEntries(
@@ -363,11 +370,15 @@ module.exports = {
     if (path === '/' || path === '/en' || path === '/pt') {
       priority = 1.0;
       changefreq = 'daily';
+    } else if (
+      path.startsWith('/pt/solutions/') ||
+      path.startsWith('/soluciones/') ||
+      path.startsWith('/en/solutions/')
+    ) {
+      priority = 0.85;
+      changefreq = 'weekly';
     } else if (path.startsWith('/pt/')) {
       priority = 0.9;
-      changefreq = 'weekly';
-    } else if (path.startsWith('/soluciones/') || path.startsWith('/en/solutions/')) {
-      priority = 0.85;
       changefreq = 'weekly';
     } else if (
       path.startsWith('/comparar/') ||

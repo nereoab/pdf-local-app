@@ -14,11 +14,14 @@ export interface IndustryChallengeItem {
 export interface IndustryRecommendedTool {
   name: string;
   nameEn: string;
+  namePt?: string;
   pathEs: string;
   pathEn: string;
+  pathPt?: string;
   badge: string;
   reason: string;
   reasonEn: string;
+  reasonPt?: string;
 }
 
 export interface IndustryPageData {

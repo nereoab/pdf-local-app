@@ -2111,8 +2111,17 @@ export const LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
   ...CONVERTIR_SOLUTIONS_EN,
 };
 
+import {
+  LONG_TAIL_SOLUTIONS_PT,
+  SOLUTION_PAIRS_ES_TO_PT,
+  SOLUTION_PAIRS_PT_TO_ES,
+} from './long-tail-pt';
+
+export { LONG_TAIL_SOLUTIONS_PT, SOLUTION_PAIRS_ES_TO_PT, SOLUTION_PAIRS_PT_TO_ES };
+
 export const ALL_LONG_TAIL_SLUGS = Object.keys(LONG_TAIL_SOLUTIONS);
 export const ALL_LONG_TAIL_SLUGS_EN = Object.keys(LONG_TAIL_SOLUTIONS_EN);
+export const ALL_LONG_TAIL_SLUGS_PT = Object.keys(LONG_TAIL_SOLUTIONS_PT);
 
 export function getSolutionBySlug(slug: string): LongTailSolution | undefined {
   return LONG_TAIL_SOLUTIONS[slug];
@@ -2122,17 +2131,36 @@ export function getSolutionBySlugEn(slug: string): LongTailSolution | undefined 
   return LONG_TAIL_SOLUTIONS_EN[slug];
 }
 
-export function getEquivalentSlug(slug: string, currentLang: 'es' | 'en'): string | undefined {
-  if (currentLang === 'es') {
-    return SOLUTION_PAIRS[slug];
+export function getSolutionBySlugPt(slug: string): LongTailSolution | undefined {
+  return LONG_TAIL_SOLUTIONS_PT[slug];
+}
+
+export function getEquivalentSlug(
+  slug: string,
+  currentLang: 'es' | 'en' | 'pt',
+  targetLang: 'es' | 'en' | 'pt' = 'en',
+): string | undefined {
+  if (currentLang === 'es' && targetLang === 'en') return SOLUTION_PAIRS[slug];
+  if (currentLang === 'es' && targetLang === 'pt') return SOLUTION_PAIRS_ES_TO_PT[slug];
+  if (currentLang === 'en' && targetLang === 'es') return SOLUTION_PAIRS_EN_TO_ES[slug];
+  if (currentLang === 'en' && targetLang === 'pt') {
+    const es = SOLUTION_PAIRS_EN_TO_ES[slug];
+    return es ? SOLUTION_PAIRS_ES_TO_PT[es] : undefined;
   }
-  return SOLUTION_PAIRS_EN_TO_ES[slug];
+  if (currentLang === 'pt' && targetLang === 'es') return SOLUTION_PAIRS_PT_TO_ES[slug];
+  if (currentLang === 'pt' && targetLang === 'en') {
+    const es = SOLUTION_PAIRS_PT_TO_ES[slug];
+    return es ? SOLUTION_PAIRS[es] : undefined;
+  }
+  return undefined;
 }
 
 export function getSolutionsByToolKey(
   toolKey: string,
-  lang: 'es' | 'en' = 'es',
+  lang: 'es' | 'en' | 'pt' = 'es',
 ): LongTailSolution[] {
+  if (lang === 'pt')
+    return Object.values(LONG_TAIL_SOLUTIONS_PT).filter((s) => s.toolKey === toolKey);
   const dict = lang === 'es' ? LONG_TAIL_SOLUTIONS : LONG_TAIL_SOLUTIONS_EN;
   return Object.values(dict).filter((s) => s.toolKey === toolKey);
 }

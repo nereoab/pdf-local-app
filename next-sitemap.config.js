@@ -140,8 +140,44 @@ module.exports = {
       '/en/industries/finance',
       '/en/industries/government',
     ];
+
+    const ptRoutes = [
+      '/pt',
+      '/pt/juntar-pdf',
+      '/pt/dividir-pdf',
+      '/pt/excluir-paginas-pdf',
+      '/pt/organizar-paginas-pdf',
+      '/pt/girar-pdf',
+      '/pt/recortar-pdf',
+      '/pt/comprimir-pdf',
+      '/pt/reparar-pdf',
+      '/pt/proteger-pdf',
+      '/pt/desbloquear-pdf',
+      '/pt/ocultar-texto-pdf',
+      '/pt/comparar-pdf',
+      '/pt/editar-pdf',
+      '/pt/numerar-paginas-pdf',
+      '/pt/marca-dagua-pdf',
+      '/pt/remover-marca-dagua-pdf',
+      '/pt/assinar-pdf',
+      '/pt/ocr-pdf',
+      '/pt/pdf-para-word',
+      '/pt/word-para-pdf',
+      '/pt/pdf-para-excel',
+      '/pt/excel-para-pdf',
+      '/pt/pdf-para-powerpoint',
+      '/pt/powerpoint-para-pdf',
+      '/pt/pdf-para-jpg',
+      '/pt/jpg-para-pdf',
+      '/pt/pdf-para-html',
+      '/pt/html-para-pdf',
+      '/pt/pdf-para-txt',
+      '/pt/txt-para-pdf',
+      '/pt/pdf-preto-e-branco',
+    ];
+
     const results = [];
-    for (const r of enRoutes) {
+    for (const r of [...enRoutes, ...ptRoutes]) {
       results.push(await config.transform(config, r));
     }
     return results;
@@ -278,16 +314,58 @@ module.exports = {
       '/industrias/gobierno': '/en/industries/government',
     };
 
+    const ROUTE_PAIRS_PT = {
+      '/': '/pt',
+      '/organizar/unir': '/pt/juntar-pdf',
+      '/organizar/dividir': '/pt/dividir-pdf',
+      '/organizar/eliminar': '/pt/excluir-paginas-pdf',
+      '/organizar/reordenar': '/pt/organizar-paginas-pdf',
+      '/organizar/rotar': '/pt/girar-pdf',
+      '/organizar/recortar': '/pt/recortar-pdf',
+      '/optimizar/comprimir': '/pt/comprimir-pdf',
+      '/optimizar/reparar': '/pt/reparar-pdf',
+      '/optimizar/proteger': '/pt/proteger-pdf',
+      '/optimizar/desbloquear': '/pt/desbloquear-pdf',
+      '/optimizar/censurar': '/pt/ocultar-texto-pdf',
+      '/optimizar/comparar': '/pt/comparar-pdf',
+      '/editar/texto': '/pt/editar-pdf',
+      '/editar/foliar': '/pt/numerar-paginas-pdf',
+      '/editar/marca-agua': '/pt/marca-dagua-pdf',
+      '/editar/quitar-marca-agua': '/pt/remover-marca-dagua-pdf',
+      '/editar/firmar': '/pt/assinar-pdf',
+      '/editar/ocr': '/pt/ocr-pdf',
+      '/convertir/pdf-word': '/pt/pdf-para-word',
+      '/convertir/word-pdf': '/pt/word-para-pdf',
+      '/convertir/pdf-excel': '/pt/pdf-para-excel',
+      '/convertir/excel-pdf': '/pt/excel-para-pdf',
+      '/convertir/pdf-powerpoint': '/pt/pdf-para-powerpoint',
+      '/convertir/powerpoint-pdf': '/pt/powerpoint-para-pdf',
+      '/convertir/pdf-jpg': '/pt/pdf-para-jpg',
+      '/convertir/jpg-pdf': '/pt/jpg-para-pdf',
+      '/convertir/pdf-html': '/pt/pdf-para-html',
+      '/convertir/html-pdf': '/pt/html-para-pdf',
+      '/convertir/pdf-texto': '/pt/pdf-para-txt',
+      '/convertir/texto-pdf': '/pt/txt-para-pdf',
+      '/convertir/pdf-blanco-negro': '/pt/pdf-preto-e-branco',
+    };
+
     const INVERTED_PAIRS = Object.fromEntries(
       Object.entries(ROUTE_PAIRS).map(([es, en]) => [en, es]),
+    );
+
+    const INVERTED_PAIRS_PT = Object.fromEntries(
+      Object.entries(ROUTE_PAIRS_PT).map(([es, pt]) => [pt, es]),
     );
 
     let priority = config.priority;
     let changefreq = config.changefreq;
 
-    if (path === '/' || path === '/en') {
+    if (path === '/' || path === '/en' || path === '/pt') {
       priority = 1.0;
       changefreq = 'daily';
+    } else if (path.startsWith('/pt/')) {
+      priority = 0.9;
+      changefreq = 'weekly';
     } else if (path.startsWith('/soluciones/') || path.startsWith('/en/solutions/')) {
       priority = 0.85;
       changefreq = 'weekly';
@@ -355,14 +433,44 @@ module.exports = {
     }
 
     const isEn = path.startsWith('/en');
-    const esPath = isEn ? INVERTED_PAIRS[path] || '/' : path;
-    const enPath = isEn ? path : ROUTE_PAIRS[path] || '/en';
+    const isPt = path.startsWith('/pt');
+    let esPath = path;
+    let enPath = null;
+    let ptPath = null;
+
+    if (isEn) {
+      esPath = INVERTED_PAIRS[path] || '/';
+      enPath = path;
+      ptPath = ROUTE_PAIRS_PT[esPath] || null;
+    } else if (isPt) {
+      esPath = INVERTED_PAIRS_PT[path] || '/';
+      enPath = ROUTE_PAIRS[esPath] || null;
+      ptPath = path;
+    } else {
+      esPath = path;
+      enPath = ROUTE_PAIRS[path] || null;
+      ptPath = ROUTE_PAIRS_PT[path] || null;
+    }
 
     const alternateRefs = [
       { href: `${config.siteUrl}${esPath}`, hreflang: 'es', hrefIsAbsolute: true },
-      { href: `${config.siteUrl}${enPath}`, hreflang: 'en', hrefIsAbsolute: true },
       { href: `${config.siteUrl}${esPath}`, hreflang: 'x-default', hrefIsAbsolute: true },
     ];
+
+    if (enPath) {
+      alternateRefs.push({
+        href: `${config.siteUrl}${enPath}`,
+        hreflang: 'en',
+        hrefIsAbsolute: true,
+      });
+    }
+
+    if (ptPath) {
+      alternateRefs.push(
+        { href: `${config.siteUrl}${ptPath}`, hreflang: 'pt-BR', hrefIsAbsolute: true },
+        { href: `${config.siteUrl}${ptPath}`, hreflang: 'pt', hrefIsAbsolute: true },
+      );
+    }
 
     return {
       loc: path,

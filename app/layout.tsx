@@ -64,6 +64,7 @@ export const metadata: Metadata = {
     languages: {
       es: `${SITE_URL}/es`,
       en: `${SITE_URL}/en`,
+      pt: `${SITE_URL}/pt`,
       'x-default': `${SITE_URL}/en`,
     },
   },
@@ -113,6 +114,11 @@ export const metadata: Metadata = {
   // ── Verificación search engines ──
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: {
+      ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+        ? { 'msvalidate.01': process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+        : {}),
+    },
   },
 
   // ── App Links / Mobile ──

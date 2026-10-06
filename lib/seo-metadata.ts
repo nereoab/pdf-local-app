@@ -622,36 +622,263 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   },
 };
 
+export const PORTUGUESE_TOOL_METADATA: Record<
+  string,
+  { title: string; desc: string; keywords: string[] }
+> = {
+  unir: {
+    title: 'Juntar PDF Grátis Online — Combinar Vários Arquivos PDF | PDFBlack',
+    desc: 'Junte múltiplos arquivos PDF em um único documento grátis online. Arraste e ordene páginas facilmente. 100% privado na sua memória RAM, sem upload de arquivos.',
+    keywords: [
+      'juntar pdf',
+      'juntar pdf gratis',
+      'combinar pdf',
+      'unir pdf online',
+      'juntar arquivos pdf brasil',
+      'juntar pdf sem limite',
+    ],
+  },
+  dividir: {
+    title: 'Dividir PDF Grátis Online — Extrair Páginas de PDF | PDFBlack',
+    desc: 'Separe um arquivo PDF grande em vários documentos ou extraia páginas específicas. 100% grátis e processado localmente no seu navegador.',
+    keywords: ['dividir pdf', 'separar pdf', 'extrair paginas pdf', 'cortar pdf online'],
+  },
+  eliminar: {
+    title: 'Excluir Páginas de PDF Online Grátis — Remover Folhas | PDFBlack',
+    desc: 'Remova páginas desnecessárias ou folhas em branco do seu documento PDF com pré-visualização em miniatura. Sem limites de arquivos.',
+    keywords: [
+      'excluir paginas pdf',
+      'remover paginas pdf',
+      'apagar folha pdf',
+      'deletar pagina pdf',
+    ],
+  },
+  reordenar: {
+    title: 'Organizar Páginas de PDF Online — Reordenar Folhas | PDFBlack',
+    desc: 'Mude a ordem das páginas do seu PDF arrastando as miniaturas visualmente. Salve seu novo documento em segundos.',
+    keywords: ['organizar paginas pdf', 'reordenar pdf', 'mudar ordem pdf'],
+  },
+  rotar: {
+    title: 'Girar PDF Online Grátis — Girar Páginas de Cabeça para Baixo | PDFBlack',
+    desc: 'Gire páginas de PDF escaneadas invertidas ou na horizontal. Ajuste 90°, 180° ou 270° com um clique.',
+    keywords: ['girar pdf', 'rodar pdf', 'desvirar pdf', 'girar paginas pdf'],
+  },
+  recortar: {
+    title: 'Recortar PDF Online Grátis — Cortar Margens Brancas | PDFBlack',
+    desc: 'Ajuste a área visível do seu PDF, remova margens brancas e recorte páginas para impressão ou leitura em tablets.',
+    keywords: ['recortar pdf', 'cortar margem pdf', 'crop pdf online'],
+  },
+  comprimir: {
+    title: 'Comprimir PDF Grátis Online — Diminuir Tamanho de PDF | PDFBlack',
+    desc: 'Reduza o tamanho do seu PDF mantendo a máxima qualidade de texto e imagens. Perfeito para e-mails, WhatsApp e portais governamentais.',
+    keywords: [
+      'comprimir pdf',
+      'diminuir tamanho pdf',
+      'reduzir peso pdf',
+      'comprimir pdf gratis',
+      'otimizar pdf',
+    ],
+  },
+  reparar: {
+    title: 'Reparar PDF Danificado Online Grátis — Recuperar Arquivo | PDFBlack',
+    desc: 'Recupere e reconstrua documentos PDF corrompidos ou ilegíveis que não abrem no leitor.',
+    keywords: ['reparar pdf', 'recuperar pdf corrompido', 'consertar pdf danificado'],
+  },
+  proteger: {
+    title: 'Proteger PDF com Senha Online — Criptografia AES-256 | PDFBlack',
+    desc: 'Adicione senha e restrinja permissões de impressão e cópia no seu PDF com criptografia bancária AES-256. 100% privado.',
+    keywords: [
+      'proteger pdf',
+      'colocar senha em pdf',
+      'bloquear pdf com senha',
+      'criptografar pdf',
+    ],
+  },
+  desbloquear: {
+    title: 'Desbloquear PDF Online Grátis — Remover Senha de PDF | PDFBlack',
+    desc: 'Remova senhas e restrições de permissão do seu arquivo PDF para imprimir, editar e copiar livremente.',
+    keywords: ['desbloquear pdf', 'remover senha pdf', 'tirar senha de pdf'],
+  },
+  censurar: {
+    title: 'Tarjar PDF Online Grátis — Ocultar Dados Pessoais e Confidenciais | PDFBlack',
+    desc: 'Oculte permanentemente dados bancários, CPF, RG e textos sensíveis com exclusão binária irreversível. Em conformidade com a LGPD.',
+    keywords: ['tarjar pdf', 'ocultar dados pdf', 'censurar pdf', 'redact pdf', 'ocultar cpf pdf'],
+  },
+  comparar: {
+    title: 'Comparar Documentos PDF Online — Encontrar Diferenças | PDFBlack',
+    desc: 'Compare duas versões de um contrato ou relatório PDF e visualize as alterações de texto lado a lado.',
+    keywords: ['comparar pdf', 'diferenca entre dois pdfs', 'comparar contratos pdf'],
+  },
+  texto: {
+    title: 'Editar PDF Online Grátis — Adicionar Texto e Notas em PDF | PDFBlack',
+    desc: 'Edite seus documentos PDF diretamente no navegador. Adicione textos, anotações e comentários sem instalar programas.',
+    keywords: [
+      'editar pdf',
+      'editar pdf online gratis',
+      'escrever em pdf',
+      'adicionar texto em pdf',
+    ],
+  },
+  foliar: {
+    title: 'Numerar Páginas de PDF Online — Paginação e Numeração Bates | PDFBlack',
+    desc: 'Adicione números de página e carimbos de paginação (Bates) em processos jurídicos, contratos e relatórios.',
+    keywords: ['numerar paginas pdf', 'paginar pdf', 'foliar processo pdf', 'numeracao bates pdf'],
+  },
+  'marca-agua': {
+    title: "Colocar Marca d'Água em PDF Online — Texto ou Imagem | PDFBlack",
+    desc: "Adicione marcas d'água de confidencialidade, logotipos ou rascunho em todas as páginas do seu documento PDF.",
+    keywords: ['marca dagua pdf', 'colocar marca dagua em pdf', 'carimbo pdf'],
+  },
+  'quitar-marca-agua': {
+    title: "Remover Marca d'Água de PDF Online Grátis | PDFBlack",
+    desc: "Remova marcas d'água de aplicativos como CamScanner e textos sobrepostos em documentos PDF.",
+    keywords: ['remover marca dagua pdf', 'tirar marca dagua camscanner', 'apagar marca dagua pdf'],
+  },
+  firmar: {
+    title: 'Assinar PDF Online Grátis — Assinatura Digital e Eletrônica | PDFBlack',
+    desc: 'Assine documentos PDF desenhando sua assinatura, digitando ou carregando imagem. 100% privado e válido.',
+    keywords: [
+      'assinar pdf',
+      'assinar pdf online gratis',
+      'assinatura eletronica pdf',
+      'rubricar pdf',
+    ],
+  },
+  ocr: {
+    title: 'OCR em PDF Online Grátis — Reconhecer Texto em PDF Escaneado | PDFBlack',
+    desc: 'Transforme PDFs escaneados e fotos de documentos em texto pesquisável e selecionável com inteligência artificial OCR.',
+    keywords: ['ocr pdf', 'reconhecer texto pdf', 'pdf escaneado para texto', 'ocr online gratis'],
+  },
+  'pdf-word': {
+    title: 'Converter PDF para Word Grátis Online — DOCX 100% Editável | PDFBlack',
+    desc: 'Converta seus arquivos PDF para Word (.docx) editável com fidelidade absoluta de tabelas, fontes e layout. Sem cadastro.',
+    keywords: [
+      'converter pdf para word',
+      'pdf para word gratis',
+      'transformar pdf em word',
+      'pdf para docx editavel',
+    ],
+  },
+  'word-pdf': {
+    title: 'Converter Word para PDF Grátis Online — DOCX para PDF | PDFBlack',
+    desc: 'Converta arquivos de Word (.doc e .docx) para PDF de alta resolução com layout e formatação preservados.',
+    keywords: ['converter word para pdf', 'word para pdf gratis', 'salvar docx como pdf'],
+  },
+  'pdf-excel': {
+    title: 'Converter PDF para Excel Grátis Online — Extrair Tabelas para XLSX | PDFBlack',
+    desc: 'Extraia tabelas de faturas e extratos bancários em PDF direto para planilhas do Excel (.xlsx) sem desalinhar colunas.',
+    keywords: [
+      'converter pdf para excel',
+      'pdf para excel gratis',
+      'extrair tabela pdf excel',
+      'pdf para xlsx',
+    ],
+  },
+  'excel-pdf': {
+    title: 'Converter Excel para PDF Grátis Online — XLSX para PDF | PDFBlack',
+    desc: 'Converta planilhas e relatórios do Excel (.xls e .xlsx) em documentos PDF formatados prontos para envio.',
+    keywords: ['converter excel para pdf', 'excel para pdf gratis', 'salvar planilha em pdf'],
+  },
+  'pdf-powerpoint': {
+    title: 'Converter PDF para PowerPoint Online Grátis — Slides PPTX | PDFBlack',
+    desc: 'Transforme páginas de PDF em apresentações de slides editáveis do PowerPoint (.pptx).',
+    keywords: ['converter pdf para powerpoint', 'pdf para pptx', 'pdf para slides'],
+  },
+  'powerpoint-pdf': {
+    title: 'Converter PowerPoint para PDF Online Grátis — PPTX para PDF | PDFBlack',
+    desc: 'Converta seus slides de apresentação (.ppt e .pptx) em arquivos PDF compactos e fáceis de compartilhar.',
+    keywords: [
+      'converter powerpoint para pdf',
+      'pptx para pdf gratis',
+      'salvar apresentacao em pdf',
+    ],
+  },
+  'pdf-jpg': {
+    title: 'Converter PDF para JPG Grátis Online — Extrair Imagens em Alta Resolução | PDFBlack',
+    desc: 'Converta cada página do seu PDF em imagens JPG nítidas de alta definição ou extraia todas as fotos embutidas.',
+    keywords: [
+      'converter pdf para jpg',
+      'pdf para jpg gratis',
+      'transformar pdf em foto',
+      'pdf para imagem',
+    ],
+  },
+  'jpg-pdf': {
+    title: 'Converter JPG para PDF Grátis Online — Juntar Fotos em PDF | PDFBlack',
+    desc: 'Junte imagens JPG, PNG ou WebP em um único documento PDF organizado. Ideal para recibos e fotos de documentos.',
+    keywords: [
+      'converter jpg para pdf',
+      'jpg para pdf gratis',
+      'juntar fotos em pdf',
+      'transformar imagem em pdf',
+    ],
+  },
+  'pdf-html': {
+    title: 'Converter PDF para HTML Online — Código Web Responsivo | PDFBlack',
+    desc: 'Exporte seu documento PDF para código HTML5 sem perdas para publicar diretamente na web.',
+    keywords: ['converter pdf para html', 'pdf para html5', 'transformar pdf em pagina web'],
+  },
+  'html-pdf': {
+    title: 'Converter HTML para PDF Online — Salvar Página Web em PDF | PDFBlack',
+    desc: 'Transforme código HTML ou páginas web em documentos PDF perfeitamente formatados.',
+    keywords: ['converter html para pdf', 'salvar pagina web em pdf', 'html para pdf gratis'],
+  },
+  'pdf-texto': {
+    title: 'Converter PDF para Texto TXT Online — Extrair Texto Puro | PDFBlack',
+    desc: 'Extraia todo o texto de um documento PDF para arquivo de texto simples (.txt) sem formatação desnecessária.',
+    keywords: ['converter pdf para texto', 'extrair texto de pdf', 'pdf para txt gratis'],
+  },
+  'texto-pdf': {
+    title: 'Converter Texto para PDF Online — TXT para Documento PDF | PDFBlack',
+    desc: 'Transforme notas e arquivos de texto (.txt) em documentos PDF com tipografia e margens profissionais.',
+    keywords: ['converter texto para pdf', 'txt para pdf gratis', 'criar pdf a partir de texto'],
+  },
+  'pdf-blanco-negro': {
+    title: 'Converter PDF para Preto e Branco Online — Escala de Cinza | PDFBlack',
+    desc: 'Converta PDFs coloridos para tons de cinza ou monocromático puro para economizar tinta de impressão e reduzir tamanho.',
+    keywords: [
+      'converter pdf para preto e branco',
+      'pdf preto e branco',
+      'pdf escala de cinza',
+      'economizar tinta pdf',
+    ],
+  },
+};
+
 /**
  * Genera la metadata completa de Next.js para una herramienta en un idioma dado.
  */
 export function buildToolMetadata(
   category: string,
   toolSlug: string,
-  lang: 'es' | 'en' = 'es',
+  lang: 'es' | 'en' | 'pt' = 'es',
 ): Metadata {
   const info = TOOLS_METADATA_REGISTRY[category]?.[toolSlug];
+  const ptInfo = PORTUGUESE_TOOL_METADATA[toolSlug];
   const isEs = lang === 'es';
+  const isPt = lang === 'pt';
 
-  const rawTitle = info
-    ? isEs
-      ? info.titleEs
-      : info.titleEn
-    : `${toolSlug.toUpperCase()} — PDFBlack`;
+  let rawTitle = `${toolSlug.toUpperCase()} — PDFBlack`;
+  let description = 'Ferramenta de PDF gratuita, rápida e 100% privada no seu navegador.';
+  let keywords = ['pdf gratis', 'ferramentas pdf'];
+
+  if (isPt && ptInfo) {
+    rawTitle = ptInfo.title;
+    description = ptInfo.desc;
+    keywords = ptInfo.keywords;
+  } else if (info) {
+    rawTitle = isEs ? info.titleEs : info.titleEn;
+    description = isEs ? info.descEs : info.descEn;
+    keywords = isEs ? info.keywordsEs : info.keywordsEn;
+  }
+
   const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
   const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
 
-  const description = info
-    ? isEs
-      ? info.descEs
-      : info.descEn
-    : 'Herramienta PDF gratuita, rápida y 100% privada en tu navegador.';
-  const keywords = info ? (isEs ? info.keywordsEs : info.keywordsEn) : ['pdf gratis', 'pdf tools'];
-
   const matchingTool = TOOLS_ROUTES.find(
     (t) =>
-      (t.category === category || t.categoryEn === category) &&
-      (t.slugEs === toolSlug || t.slugEn === toolSlug),
+      (t.category === category || t.categoryEn === category || t.categoryPt === category) &&
+      (t.slugEs === toolSlug || t.slugEn === toolSlug || t.slugPt === toolSlug),
   );
 
   const esUrl = matchingTool
@@ -660,7 +887,10 @@ export function buildToolMetadata(
   const enUrl = matchingTool
     ? `${SITE_URL}${matchingTool.pathEn}`
     : `${SITE_URL}/en/${category}/${toolSlug}`;
-  const canonicalUrl = isEs ? esUrl : enUrl;
+  const ptUrl = matchingTool
+    ? `${SITE_URL}${matchingTool.pathPt}`
+    : `${SITE_URL}/pt/${category}/${toolSlug}`;
+  const canonicalUrl = isEs ? esUrl : isPt ? ptUrl : enUrl;
 
   const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
     cleanTitle.split('—')[0].trim(),
@@ -681,6 +911,7 @@ export function buildToolMetadata(
       languages: {
         es: esUrl,
         en: enUrl,
+        pt: ptUrl,
         'x-default': esUrl,
       },
     },
@@ -689,7 +920,7 @@ export function buildToolMetadata(
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
-      locale: isEs ? 'es_ES' : 'en_US',
+      locale: isEs ? 'es_ES' : isPt ? 'pt_BR' : 'en_US',
       type: 'website',
       images: [
         {

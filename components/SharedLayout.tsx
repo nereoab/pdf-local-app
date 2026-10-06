@@ -12,18 +12,30 @@ import { useUIStore } from '../store/useUIStore';
 import AuthModal from './AuthModal';
 import CookieConsent from './CookieConsent';
 import Breadcrumbs from './Breadcrumbs';
-import { getEnglishUrlForSpanish, getSpanishUrlForEnglish } from '@/lib/routes-config';
+import {
+  getEnglishUrlForSpanish,
+  getSpanishUrlForEnglish,
+  getPortugueseUrlForSpanish,
+  getSpanishUrlForPortuguese,
+  getLanguageSwitchUrl,
+  getUrlForLanguage,
+} from '@/lib/routes-config';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
   const { lang, setLang } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
   const isEnRoute = pathname?.startsWith('/en');
-  const langPrefix = isEnRoute ? '/en' : '';
-  const isEs = !isEnRoute && lang === 'es';
+  const isPtRoute = pathname?.startsWith('/pt');
+  const isEs = !isEnRoute && !isPtRoute && lang === 'es';
+  const isPt = isPtRoute || lang === 'pt';
   const isZh = lang === 'zh';
-  const isHome = pathname === '/' || pathname === '/en' || pathname === '/es';
-  const getNavUrl = (path: string) => (isEnRoute ? getEnglishUrlForSpanish(path) : path);
+  const isHome = pathname === '/' || pathname === '/en' || pathname === '/es' || pathname === '/pt';
+  const getNavUrl = (path: string) => {
+    if (isPtRoute || lang === 'pt') return getPortugueseUrlForSpanish(path);
+    if (isEnRoute || lang === 'en') return getEnglishUrlForSpanish(path);
+    return path;
+  };
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { currentUser, logout, hydrate: hydrateAuth, isHydrated } = useAuthStore();
   const isHeaderHidden = useUIStore((s) => s.isHeaderHidden);
@@ -51,7 +63,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
       return;
     }
-    if (pathname === '/' || pathname === '/en' || pathname === '/es') {
+    if (pathname === '/' || pathname === '/en' || pathname === '/es' || pathname === '/pt') {
       e.preventDefault();
       window.location.reload();
     }
@@ -70,10 +82,16 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
             {/* LOGO TECHNICAL - AS DE ESPADAS */}
             <Link
-              href={isEnRoute ? '/en' : '/es'}
+              href={isPtRoute ? '/pt' : isEnRoute ? '/en' : '/es'}
               onClick={handleLogoClick}
               className="flex-shrink-0"
-              aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
+              aria-label={
+                isPt
+                  ? 'PDFBlack — Ir para o início'
+                  : isEs
+                    ? 'PDFBlack — Ir al inicio'
+                    : 'PDFBlack — Go to homepage'
+              }
             >
               <motion.div
                 whileHover={{ scale: 1.02 }}
@@ -97,82 +115,168 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             {/* MENÚ DE NAVEGACIÓN */}
             <nav
               className="hidden lg:flex items-center gap-4 xl:gap-6 font-mono text-xs"
-              aria-label={isZh ? '主导航' : isEs ? 'Navegación principal' : 'Main navigation'}
+              aria-label={
+                isZh
+                  ? '主导航'
+                  : isPt
+                    ? 'Navegação principal'
+                    : isEs
+                      ? 'Navegación principal'
+                      : 'Main navigation'
+              }
             >
               <DropdownMenu
-                title={isZh ? '01 / 编辑' : isEs ? '01 / EDITAR' : '01 / EDIT'}
+                title={
+                  isZh ? '01 / 编辑' : isPt ? '01 / EDITAR' : isEs ? '01 / EDITAR' : '01 / EDIT'
+                }
                 basePath="/editar"
                 items={[
                   {
                     label: isZh
                       ? '编辑文本与图片'
-                      : isEs
-                        ? 'Editar Texto e Imágenes'
-                        : 'Edit Text & Images',
+                      : isPt
+                        ? 'Editar Texto e Imagens'
+                        : isEs
+                          ? 'Editar Texto e Imágenes'
+                          : 'Edit Text & Images',
                     path: '/editar/texto',
                   },
                   {
                     label: isZh
                       ? '添加页码'
-                      : isEs
-                        ? 'Poner Números a Páginas (Foliado)'
-                        : 'Add Page Numbers',
+                      : isPt
+                        ? 'Numerar Páginas (Foliação)'
+                        : isEs
+                          ? 'Poner Números a Páginas (Foliado)'
+                          : 'Add Page Numbers',
                     path: '/editar/foliar',
                   },
                   {
-                    label: isZh ? '添加水印' : isEs ? 'Poner Sello de Agua' : 'Add Watermark',
+                    label: isZh
+                      ? '添加水印'
+                      : isPt
+                        ? 'Marca-d’água no PDF'
+                        : isEs
+                          ? 'Poner Sello de Agua'
+                          : 'Add Watermark',
                     path: '/editar/marca-agua',
                   },
                   {
-                    label: isZh ? '移除水印' : isEs ? 'Quitar Sello de Agua' : 'Remove Watermark',
+                    label: isZh
+                      ? '移除水印'
+                      : isPt
+                        ? 'Remover Marca-d’água'
+                        : isEs
+                          ? 'Quitar Sello de Agua'
+                          : 'Remove Watermark',
                     path: '/editar/quitar-marca-agua',
                   },
                   {
-                    label: isZh ? 'PDF 签名' : isEs ? 'Firmar PDF' : 'Sign PDF',
+                    label: isZh
+                      ? 'PDF 签名'
+                      : isPt
+                        ? 'Assinar PDF Online'
+                        : isEs
+                          ? 'Firmar PDF'
+                          : 'Sign PDF',
                     path: '/editar/firmar',
                   },
                   {
                     label: isZh
                       ? 'OCR 文字识别'
-                      : isEs
-                        ? 'OCR PDF (Texto Seleccionable)'
-                        : 'OCR PDF (Searchable Text)',
+                      : isPt
+                        ? 'OCR PDF (Texto Pesquisável)'
+                        : isEs
+                          ? 'OCR PDF (Texto Seleccionable)'
+                          : 'OCR PDF (Searchable Text)',
                     path: '/editar/ocr',
                   },
                 ]}
               />
               <DropdownMenu
-                title={isZh ? '02 / 排列' : isEs ? '02 / ORGANIZAR' : '02 / ORGANIZE'}
+                title={
+                  isZh
+                    ? '02 / 排列'
+                    : isPt
+                      ? '02 / ORGANIZAR'
+                      : isEs
+                        ? '02 / ORGANIZAR'
+                        : '02 / ORGANIZE'
+                }
                 basePath="/organizar"
                 items={[
                   {
-                    label: isZh ? '合并 PDF' : isEs ? 'Unir PDF' : 'Merge PDF',
+                    label: isZh
+                      ? '合并 PDF'
+                      : isPt
+                        ? 'Juntar PDF'
+                        : isEs
+                          ? 'Unir PDF'
+                          : 'Merge PDF',
                     path: '/organizar/unir',
                   },
                   {
-                    label: isZh ? '拆分 PDF' : isEs ? 'Dividir PDF' : 'Split PDF',
+                    label: isZh
+                      ? '拆分 PDF'
+                      : isPt
+                        ? 'Dividir PDF'
+                        : isEs
+                          ? 'Dividir PDF'
+                          : 'Split PDF',
                     path: '/organizar/dividir',
                   },
                   {
-                    label: isZh ? '删除页面' : isEs ? 'Eliminar Páginas' : 'Delete Pages',
+                    label: isZh
+                      ? '删除页面'
+                      : isPt
+                        ? 'Excluir Páginas'
+                        : isEs
+                          ? 'Eliminar Páginas'
+                          : 'Delete Pages',
                     path: '/organizar/eliminar',
                   },
                   {
-                    label: isZh ? '重新排序' : isEs ? 'Ordenar PDF' : 'Reorder PDF',
+                    label: isZh
+                      ? '重新排序'
+                      : isPt
+                        ? 'Organizar Páginas'
+                        : isEs
+                          ? 'Ordenar PDF'
+                          : 'Reorder PDF',
                     path: '/organizar/reordenar',
                   },
                   {
-                    label: isZh ? '旋转 PDF' : isEs ? 'Rotar PDF' : 'Rotate PDF',
+                    label: isZh
+                      ? '旋转 PDF'
+                      : isPt
+                        ? 'Girar PDF'
+                        : isEs
+                          ? 'Rotar PDF'
+                          : 'Rotate PDF',
                     path: '/organizar/rotar',
                   },
                   {
-                    label: isZh ? '裁剪 PDF' : isEs ? 'Recortar PDF' : 'Crop PDF',
+                    label: isZh
+                      ? '裁剪 PDF'
+                      : isPt
+                        ? 'Recortar PDF'
+                        : isEs
+                          ? 'Recortar PDF'
+                          : 'Crop PDF',
                     path: '/organizar/recortar',
                   },
                 ]}
               />
               <DropdownMenu
-                title={isZh ? '03 / 转换' : isEs ? '03 / CONVERTIR' : '03 / CONVERT'}
+                title={
+                  isZh
+                    ? '03 / 转换'
+                    : isPt
+                      ? '03 / CONVERTER'
+                      : isEs
+                        ? '03 / CONVERTIR'
+                        : '03 / CONVERT'
+                }
                 basePath="/convertir"
                 items={[
                   { label: 'PDF ↔ Word', path: '/convertir/pdf-word' },
@@ -181,51 +285,105 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   {
                     label: isZh
                       ? 'PDF ↔ JPG / 图片'
-                      : isEs
-                        ? 'PDF ↔ JPG / Imagen'
-                        : 'PDF ↔ JPG / Image',
+                      : isPt
+                        ? 'PDF ↔ JPG / Imagem'
+                        : isEs
+                          ? 'PDF ↔ JPG / Imagen'
+                          : 'PDF ↔ JPG / Image',
                     path: '/convertir/pdf-jpg',
                   },
                   {
                     label: isZh
                       ? 'PDF ↔ 黑白 / 灰度'
-                      : isEs
-                        ? 'PDF ↔ Blanco y Negro'
-                        : 'PDF ↔ Black & White',
+                      : isPt
+                        ? 'PDF ↔ Preto e Branco'
+                        : isEs
+                          ? 'PDF ↔ Blanco y Negro'
+                          : 'PDF ↔ Black & White',
                     path: '/convertir/pdf-blanco-negro',
                   },
                   {
-                    label: isZh ? 'PDF ↔ 纯文本' : isEs ? 'PDF ↔ Texto' : 'PDF ↔ Text',
+                    label: isZh
+                      ? 'PDF ↔ 纯文本'
+                      : isPt
+                        ? 'PDF ↔ Texto'
+                        : isEs
+                          ? 'PDF ↔ Texto'
+                          : 'PDF ↔ Text',
                     path: '/convertir/pdf-texto',
                   },
                 ]}
               />
               <DropdownMenu
-                title={isZh ? '04 / 优化' : isEs ? '04 / OPTIMIZAR' : '04 / OPTIMIZE'}
+                title={
+                  isZh
+                    ? '04 / 优化'
+                    : isPt
+                      ? '04 / OTIMIZAR'
+                      : isEs
+                        ? '04 / OPTIMIZAR'
+                        : '04 / OPTIMIZE'
+                }
                 basePath="/optimizar"
                 items={[
                   {
-                    label: isZh ? '压缩 PDF' : isEs ? 'Comprimir PDF' : 'Compress PDF',
+                    label: isZh
+                      ? '压缩 PDF'
+                      : isPt
+                        ? 'Comprimir PDF'
+                        : isEs
+                          ? 'Comprimir PDF'
+                          : 'Compress PDF',
                     path: '/optimizar/comprimir',
                   },
                   {
-                    label: isZh ? '修复 PDF' : isEs ? 'Reparar PDF' : 'Repair PDF',
+                    label: isZh
+                      ? '修复 PDF'
+                      : isPt
+                        ? 'Reparar PDF'
+                        : isEs
+                          ? 'Reparar PDF'
+                          : 'Repair PDF',
                     path: '/optimizar/reparar',
                   },
                   {
-                    label: isZh ? '解密 PDF' : isEs ? 'Desbloquear PDF' : 'Unlock PDF',
+                    label: isZh
+                      ? '解密 PDF'
+                      : isPt
+                        ? 'Desbloquear PDF'
+                        : isEs
+                          ? 'Desbloquear PDF'
+                          : 'Unlock PDF',
                     path: '/optimizar/desbloquear',
                   },
                   {
-                    label: isZh ? '加密 PDF' : isEs ? 'Proteger PDF' : 'Protect PDF',
+                    label: isZh
+                      ? '加密 PDF'
+                      : isPt
+                        ? 'Proteger PDF'
+                        : isEs
+                          ? 'Proteger PDF'
+                          : 'Protect PDF',
                     path: '/optimizar/proteger',
                   },
                   {
-                    label: isZh ? '涂黑遮蔽' : isEs ? 'Censurar PDF' : 'Redact PDF',
+                    label: isZh
+                      ? '涂黑遮蔽'
+                      : isPt
+                        ? 'Ocultar Texto / Censurar'
+                        : isEs
+                          ? 'Censurar PDF'
+                          : 'Redact PDF',
                     path: '/optimizar/censurar',
                   },
                   {
-                    label: isZh ? '对比 PDF' : isEs ? 'Comparar PDF' : 'Compare PDF',
+                    label: isZh
+                      ? '对比 PDF'
+                      : isPt
+                        ? 'Comparar PDFs'
+                        : isEs
+                          ? 'Comparar PDF'
+                          : 'Compare PDF',
                     path: '/optimizar/comparar',
                   },
                 ]}
@@ -240,41 +398,43 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             >
               <AnimatePresence mode="wait">
                 {!isHome && (
-                  <Link key="home-nav-link" href={isEnRoute ? '/en' : '/'}>
+                  <Link key="home-nav-link" href={isPtRoute ? '/pt' : isEnRoute ? '/en' : '/'}>
                     <motion.button
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="hidden sm:flex items-center gap-2 text-xs font-semibold text-zinc-200 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap"
-                      aria-label={isEs ? 'Volver al inicio' : 'Back to home'}
+                      className="hidden sm:flex items-center gap-2 text-xs font-semibold text-zinc-200 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer"
+                      aria-label={
+                        isPt ? 'Voltar ao início' : isEs ? 'Volver al inicio' : 'Back to home'
+                      }
                     >
                       <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />{' '}
-                      {isEs ? 'INICIO' : 'HOME'}
+                      {isPt ? 'INÍCIO' : isEs ? 'INICIO' : 'HOME'}
                     </motion.button>
                   </Link>
                 )}
               </AnimatePresence>
 
-              {/* SELECTOR DE IDIOMA — SEGMENTED PILL [ ES | EN ] */}
+              {/* SELECTOR DE IDIOMA — SEGMENTED PILL [ ES | EN | PT ] */}
               <div
                 className="flex items-center bg-zinc-900 border border-zinc-700 p-0.5 rounded-full font-mono text-xs flex-shrink-0 shadow-inner"
                 role="group"
-                aria-label={isEs ? 'Seleccionar idioma' : 'Select language'}
+                aria-label={
+                  isPt ? 'Selecionar idioma' : isEs ? 'Seleccionar idioma' : 'Select language'
+                }
               >
                 <button
                   onClick={() => {
                     setLang('es');
-                    if (pathname?.startsWith('/en')) {
-                      const target = getSpanishUrlForEnglish(pathname);
-                      router.push(target);
-                    }
+                    const target = getLanguageSwitchUrl(pathname || '/', 'es');
+                    router.push(target);
                   }}
-                  className={`px-3 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    !isEnRoute && lang === 'es'
+                  className={`px-2.5 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
+                    !isEnRoute && !isPtRoute && lang === 'es'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-300 hover:text-white'
                   }`}
-                  aria-pressed={!isEnRoute && lang === 'es'}
+                  aria-pressed={!isEnRoute && !isPtRoute && lang === 'es'}
                   title="Español"
                 >
                   ES
@@ -282,12 +442,10 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 <button
                   onClick={() => {
                     setLang('en');
-                    if (!pathname?.startsWith('/en')) {
-                      const target = getEnglishUrlForSpanish(pathname || '/es');
-                      router.push(target);
-                    }
+                    const target = getLanguageSwitchUrl(pathname || '/', 'en');
+                    router.push(target);
                   }}
-                  className={`px-3 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
                     isEnRoute || lang === 'en'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-300 hover:text-white'
@@ -296,6 +454,22 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   title="English"
                 >
                   EN
+                </button>
+                <button
+                  onClick={() => {
+                    setLang('pt');
+                    const target = getLanguageSwitchUrl(pathname || '/', 'pt');
+                    router.push(target);
+                  }}
+                  className={`px-2.5 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
+                    isPtRoute || lang === 'pt'
+                      ? 'bg-white text-black shadow-md'
+                      : 'text-zinc-300 hover:text-white'
+                  }`}
+                  aria-pressed={isPtRoute || lang === 'pt'}
+                  title="Português (Brasil)"
+                >
+                  PT
                 </button>
               </div>
 
@@ -675,10 +849,16 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           {/* BARRA INFERIOR DE LEGALIDAD & COPYRIGHT */}
           <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs">
             <Link
-              href={isEnRoute ? '/en' : '/'}
+              href={isPtRoute ? '/pt' : isEnRoute ? '/en' : '/'}
               onClick={handleLogoClick}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-              aria-label={isEs ? 'PDFBlack — Ir al inicio' : 'PDFBlack — Go to homepage'}
+              aria-label={
+                isPt
+                  ? 'PDFBlack — Ir para o início'
+                  : isEs
+                    ? 'PDFBlack — Ir al inicio'
+                    : 'PDFBlack — Go to homepage'
+              }
             >
               <Spade className="w-4 h-4 text-white" fill="currentColor" aria-hidden="true" />
               <span className="text-zinc-400 font-medium">
@@ -689,27 +869,35 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[11px]">
               <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />
               <span>
-                {isEs
-                  ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR'
-                  : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}
+                {isPt
+                  ? 'MOTOR: PROCESSAMENTO 100% LOCAL NO NAVEGADOR (LGPD)'
+                  : isEs
+                    ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR'
+                    : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}
               </span>
             </div>
 
             <nav
               className="flex flex-wrap items-center gap-4 sm:gap-5 text-zinc-400"
-              aria-label={isEs ? 'Enlaces legales y comparativas' : 'Legal and comparison links'}
+              aria-label={
+                isPt
+                  ? 'Links legais e comparativas'
+                  : isEs
+                    ? 'Enlaces legales y comparativas'
+                    : 'Legal and comparison links'
+              }
             >
               <Link
                 href={isEnRoute ? '/en/industries' : '/industrias'}
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isEs ? 'Industrias' : 'Industries'}
+                {isPt ? 'Indústrias' : isEs ? 'Industrias' : 'Industries'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/glossary' : '/glosario'}
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isEs ? 'Glosario Técnico' : 'Technical Glossary'}
+                {isPt ? 'Glossário Técnico' : isEs ? 'Glosario Técnico' : 'Technical Glossary'}
               </Link>
               <Link
                 href={
@@ -717,7 +905,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isEs ? 'vs iLovePDF' : 'vs iLovePDF'}
+                {isPt ? 'vs iLovePDF' : isEs ? 'vs iLovePDF' : 'vs iLovePDF'}
               </Link>
               <Link
                 href={
@@ -725,7 +913,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isEs ? 'vs Smallpdf' : 'vs Smallpdf'}
+                {isPt ? 'vs Smallpdf' : isEs ? 'vs Smallpdf' : 'vs Smallpdf'}
               </Link>
               <Link
                 href={
@@ -735,37 +923,41 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isEs ? 'Alternativa Privada' : 'Private Alternative'}
+                {isPt
+                  ? 'Alternativa Privada'
+                  : isEs
+                    ? 'Alternativa Privada'
+                    : 'Private Alternative'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/privacy' : '/privacidad'}
                 className="hover:text-white transition-colors"
               >
-                {isEs ? 'Privacidad' : 'Privacy'}
+                {isPt ? 'Privacidade' : isEs ? 'Privacidad' : 'Privacy'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/terms' : '/terminos'}
                 className="hover:text-white transition-colors"
               >
-                {isEs ? 'Términos' : 'Terms'}
+                {isPt ? 'Termos' : isEs ? 'Términos' : 'Terms'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/faq' : '/faq'}
                 className="hover:text-white transition-colors"
               >
-                {isEs ? 'FAQ' : 'FAQ'}
+                {isPt ? 'FAQ' : isEs ? 'FAQ' : 'FAQ'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/contact' : '/contacto'}
                 className="hover:text-white transition-colors"
               >
-                {isEs ? 'Contacto' : 'Contact'}
+                {isPt ? 'Contato' : isEs ? 'Contacto' : 'Contact'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/legal-notice' : '/aviso-legal'}
                 className="hover:text-white transition-colors"
               >
-                {isEs ? 'Aviso Legal' : 'Legal Notice'}
+                {isPt ? 'Aviso Legal' : isEs ? 'Aviso Legal' : 'Legal Notice'}
               </Link>
             </nav>
           </div>
@@ -791,7 +983,12 @@ function DropdownMenu({
 }) {
   const pathname = usePathname();
   const isEn = pathname?.startsWith('/en');
-  const resolvedBasePath = isEn ? getEnglishUrlForSpanish(basePath) : basePath;
+  const isPt = pathname?.startsWith('/pt');
+  const resolvedBasePath = isPt
+    ? getPortugueseUrlForSpanish(basePath)
+    : isEn
+      ? getEnglishUrlForSpanish(basePath)
+      : basePath;
   const isActive = pathname.startsWith(resolvedBasePath) || pathname.startsWith(basePath);
 
   return (
@@ -823,7 +1020,11 @@ function DropdownMenu({
       >
         <div className="bg-[#0d0d12] border border-zinc-700 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl backdrop-blur-xl">
           {items.map((item, idx) => {
-            const resolvedPath = isEn ? getEnglishUrlForSpanish(item.path) : item.path;
+            const resolvedPath = isPt
+              ? getPortugueseUrlForSpanish(item.path)
+              : isEn
+                ? getEnglishUrlForSpanish(item.path)
+                : item.path;
             const isItemActive = pathname === resolvedPath;
             return (
               <Link

@@ -35,7 +35,7 @@ import PdfPreviewThumbnail from '@/components/PdfPreviewThumbnail';
 import SpotlightCard from '@/components/SpotlightCard';
 import DocumentUploadProgress from '@/components/DocumentUploadProgress';
 import CategoryQuickTools from '@/components/CategoryQuickTools';
-import { getEnglishUrlForSpanish } from '@/lib/routes-config';
+import { getEnglishUrlForSpanish, getUrlForLanguage } from '@/lib/routes-config';
 
 // ─── JSON-LD Structured Data (Rich Snippets) ───
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
@@ -88,25 +88,50 @@ const categories = [
     id: 'editar',
     indexEs: '001 / Edición visual directa',
     indexEn: '001 / Direct visual editing',
+    indexPt: '001 / Edição visual direta',
     titleEs: 'Editar PDF',
     titleEn: 'Edit PDF',
+    titlePt: 'Editar PDF',
     descEs:
       'Edición directa de texto, firmas digitales, folios correlativos y marcas de agua sobre el documento.',
     descEn: 'Direct text editing, digital signatures, page numbering, and watermarks.',
+    descPt: 'Edição direta de texto, assinaturas digitais, numeração de páginas e marcas d’água.',
     tools: [
-      { nameEs: '1. Editar Texto', nameEn: '1. Edit Text', path: '/editar/texto' },
-      { nameEs: '2. Foliar Páginas', nameEn: '2. Page Numbers', path: '/editar/foliar' },
-      { nameEs: '3. Poner Marca Agua', nameEn: '3. Add Watermark', path: '/editar/marca-agua' },
+      {
+        nameEs: '1. Editar Texto',
+        nameEn: '1. Edit Text',
+        namePt: '1. Editar Texto',
+        path: '/editar/texto',
+      },
+      {
+        nameEs: '2. Foliar Páginas',
+        nameEn: '2. Page Numbers',
+        namePt: '2. Numerar Páginas',
+        path: '/editar/foliar',
+      },
+      {
+        nameEs: '3. Poner Marca Agua',
+        nameEn: '3. Add Watermark',
+        namePt: "3. Marca d'Água",
+        path: '/editar/marca-agua',
+      },
       {
         nameEs: '4. Quitar Marca Agua',
         nameEn: '4. Remove Watermark',
+        namePt: "4. Remover Marca d'Água",
         path: '/editar/quitar-marca-agua',
       },
-      { nameEs: '5. Firmar PDF', nameEn: '5. Sign PDF', path: '/editar/firmar' },
-      { nameEs: '6. OCR PDF', nameEn: '6. OCR PDF', path: '/editar/ocr' },
+      {
+        nameEs: '5. Firmar PDF',
+        nameEn: '5. Sign PDF',
+        namePt: '5. Assinar PDF',
+        path: '/editar/firmar',
+      },
+      { nameEs: '6. OCR PDF', nameEn: '6. OCR PDF', namePt: '6. OCR em PDF', path: '/editar/ocr' },
     ],
     badgeEs: 'MÁS USADO',
     badgeEn: 'MOST USED',
+    badgePt: 'MAIS USADO',
     icon: Edit3,
     path: '/editar',
   },
@@ -114,21 +139,55 @@ const categories = [
     id: 'organizar',
     indexEs: '002 / Estructura y organizador',
     indexEn: '002 / Structure & page builder',
+    indexPt: '002 / Estrutura e organizador',
     titleEs: 'Organizar PDF',
     titleEn: 'Organize PDF',
+    titlePt: 'Organizar PDF',
     descEs:
       'Gestión completa de estructura: unir múltiples archivos, dividir por rangos, rotar y recortar.',
     descEn: 'Full structure management: merge multiple files, split by range, rotate and crop.',
+    descPt: 'Gestão completa: juntar vários arquivos, dividir por intervalos, girar e recortar.',
     tools: [
-      { nameEs: '1. Unir PDF', nameEn: '1. Merge PDF', path: '/organizar/unir' },
-      { nameEs: '2. Dividir PDF', nameEn: '2. Split PDF', path: '/organizar/dividir' },
-      { nameEs: '3. Eliminar Páginas', nameEn: '3. Delete Pages', path: '/organizar/eliminar' },
-      { nameEs: '4. Reordenar PDF', nameEn: '4. Reorder PDF', path: '/organizar/reordenar' },
-      { nameEs: '5. Rotar PDF', nameEn: '5. Rotate PDF', path: '/organizar/rotar' },
-      { nameEs: '6. Recortar PDF', nameEn: '6. Crop PDF', path: '/organizar/recortar' },
+      {
+        nameEs: '1. Unir PDF',
+        nameEn: '1. Merge PDF',
+        namePt: '1. Juntar PDF',
+        path: '/organizar/unir',
+      },
+      {
+        nameEs: '2. Dividir PDF',
+        nameEn: '2. Split PDF',
+        namePt: '2. Dividir PDF',
+        path: '/organizar/dividir',
+      },
+      {
+        nameEs: '3. Eliminar Páginas',
+        nameEn: '3. Delete Pages',
+        namePt: '3. Excluir Páginas',
+        path: '/organizar/eliminar',
+      },
+      {
+        nameEs: '4. Reordenar PDF',
+        nameEn: '4. Reorder PDF',
+        namePt: '4. Organizar PDF',
+        path: '/organizar/reordenar',
+      },
+      {
+        nameEs: '5. Rotar PDF',
+        nameEn: '5. Rotate PDF',
+        namePt: '5. Girar PDF',
+        path: '/organizar/rotar',
+      },
+      {
+        nameEs: '6. Recortar PDF',
+        nameEn: '6. Crop PDF',
+        namePt: '6. Recortar PDF',
+        path: '/organizar/recortar',
+      },
     ],
     badgeEs: 'INDISPENSABLE',
     badgeEn: 'ESSENTIAL',
+    badgePt: 'INDISPENSÁVEL',
     icon: FolderOpen,
     path: '/organizar',
   },
@@ -136,30 +195,56 @@ const categories = [
     id: 'convertir',
     indexEs: '003 / Conversión de alta precisión',
     indexEn: '003 / High precision conversion',
+    indexPt: '003 / Conversão de alta precisão',
     titleEs: 'Convertir PDF',
     titleEn: 'Convert PDF',
+    titlePt: 'Converter PDF',
     descEs:
       'Conversión bidireccional de alta precisión entre PDF y formatos Word, Excel, PowerPoint e imágenes.',
     descEn:
       'High-precision bidirectional conversion between PDF and Word, Excel, PowerPoint, and images.',
+    descPt: 'Conversão de alta precisão entre PDF e formatos Word, Excel, PowerPoint e imagens.',
     tools: [
-      { nameEs: '1. PDF ↔ Word', nameEn: '1. PDF ↔ Word', path: '/convertir/pdf-word' },
-      { nameEs: '2. PDF ↔ Excel', nameEn: '2. PDF ↔ Excel', path: '/convertir/pdf-excel' },
+      {
+        nameEs: '1. PDF ↔ Word',
+        nameEn: '1. PDF ↔ Word',
+        namePt: '1. PDF ↔ Word',
+        path: '/convertir/pdf-word',
+      },
+      {
+        nameEs: '2. PDF ↔ Excel',
+        nameEn: '2. PDF ↔ Excel',
+        namePt: '2. PDF ↔ Excel',
+        path: '/convertir/pdf-excel',
+      },
       {
         nameEs: '3. PDF ↔ PowerPoint',
         nameEn: '3. PDF ↔ PowerPoint',
+        namePt: '3. PDF ↔ PowerPoint',
         path: '/convertir/pdf-powerpoint',
       },
-      { nameEs: '4. PDF ↔ JPG', nameEn: '4. PDF ↔ JPG', path: '/convertir/pdf-jpg' },
+      {
+        nameEs: '4. PDF ↔ JPG',
+        nameEn: '4. PDF ↔ JPG',
+        namePt: '4. PDF ↔ JPG',
+        path: '/convertir/pdf-jpg',
+      },
       {
         nameEs: '5. PDF ↔ Blanco y Negro',
         nameEn: '5. PDF ↔ Black & White',
+        namePt: '5. PDF ↔ Preto e Branco',
         path: '/convertir/pdf-blanco-negro',
       },
-      { nameEs: '6. PDF ↔ Texto', nameEn: '6. PDF ↔ Text', path: '/convertir/pdf-texto' },
+      {
+        nameEs: '6. PDF ↔ Texto',
+        nameEn: '6. PDF ↔ Text',
+        namePt: '6. PDF ↔ Texto',
+        path: '/convertir/pdf-texto',
+      },
     ],
     badgeEs: 'ALTA PRECISIÓN',
     badgeEn: 'HIGH PRECISION',
+    badgePt: 'ALTA PRECISÃO',
     icon: RefreshCw,
     path: '/convertir',
   },
@@ -167,29 +252,55 @@ const categories = [
     id: 'optimizar',
     indexEs: '004 / Seguridad local y compresión',
     indexEn: '004 / Local security & compression',
+    indexPt: '004 / Segurança local e compressão',
     titleEs: 'Optimizar PDF',
     titleEn: 'Optimize PDF',
+    titlePt: 'Otimizar PDF',
     descEs:
       'Algoritmos locales de compresión de tamaño, cifrado de seguridad, censura y reparación.',
     descEn: 'Local algorithms for size compression, security encryption, redaction, and repair.',
+    descPt: 'Algoritmos locais de compressão de tamanho, segurança, criptografia, tarja e reparo.',
     tools: [
-      { nameEs: '1. Comprimir PDF', nameEn: '1. Compress PDF', path: '/optimizar/comprimir' },
-      { nameEs: '2. Reparar PDF', nameEn: '2. Repair PDF', path: '/optimizar/reparar' },
+      {
+        nameEs: '1. Comprimir PDF',
+        nameEn: '1. Compress PDF',
+        namePt: '1. Comprimir PDF',
+        path: '/optimizar/comprimir',
+      },
+      {
+        nameEs: '2. Reparar PDF',
+        nameEn: '2. Repair PDF',
+        namePt: '2. Reparar PDF',
+        path: '/optimizar/reparar',
+      },
       {
         nameEs: '3. Desbloquear PDF',
         nameEn: '3. Unlock PDF',
+        namePt: '3. Desbloquear PDF',
         path: '/optimizar/desbloquear',
       },
-      { nameEs: '4. Proteger PDF', nameEn: '4. Protect PDF', path: '/optimizar/proteger' },
-      { nameEs: '5. Censurar PDF', nameEn: '5. Redact PDF', path: '/optimizar/censurar' },
+      {
+        nameEs: '4. Proteger PDF',
+        nameEn: '4. Protect PDF',
+        namePt: '4. Proteger PDF',
+        path: '/optimizar/proteger',
+      },
+      {
+        nameEs: '5. Censurar PDF',
+        nameEn: '5. Redact PDF',
+        namePt: '5. Tarjar PDF',
+        path: '/optimizar/censurar',
+      },
       {
         nameEs: '6. Comparar PDF',
         nameEn: '6. Compare PDF',
+        namePt: '6. Comparar PDF',
         path: '/optimizar/comparar',
       },
     ],
     badgeEs: 'REDUCE HASTA 90%',
     badgeEn: 'SAVE UP TO 90%',
+    badgePt: 'REDUZ ATÉ 90%',
     icon: Zap,
     path: '/optimizar',
   },
@@ -199,11 +310,14 @@ function CategoryCard({
   cat,
   file,
   isEs,
+  lang = 'es',
 }: {
   cat: (typeof categories)[0];
   file: File | null;
   isEs: boolean;
+  lang?: 'es' | 'en' | 'pt' | 'zh';
 }) {
+  const isPt = lang === 'pt';
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
 
@@ -216,6 +330,10 @@ function CategoryCard({
   };
 
   const IconComponent = cat.icon;
+
+  const getLocalizedTitle = () => (isEs ? cat.titleEs : isPt ? cat.titlePt : cat.titleEn);
+  const getLocalizedBadge = () => (isEs ? cat.badgeEs : isPt ? cat.badgePt : cat.badgeEn);
+  const getLocalizedDesc = () => (isEs ? cat.descEs : isPt ? cat.descPt : cat.descEn);
 
   return (
     <motion.div
@@ -248,69 +366,81 @@ function CategoryCard({
               <IconComponent className="w-4 h-4 text-white" aria-hidden="true" />
             </div>
             <span className="text-xs text-zinc-300 group-hover:text-white transition-colors font-bold tracking-wider">
-              {isEs ? cat.indexEs : cat.indexEn}
+              {isEs ? cat.indexEs : isPt ? cat.indexPt : cat.indexEn}
             </span>
           </div>
-          {cat.badgeEs && (
+          {getLocalizedBadge() && (
             <span
               className="px-3 py-1 text-[10px] font-bold border border-zinc-500 bg-zinc-800 text-white rounded-full shadow-sm"
-              aria-label={isEs ? cat.badgeEs : cat.badgeEn}
+              aria-label={getLocalizedBadge()}
             >
-              {isEs ? cat.badgeEs : cat.badgeEn}
+              {getLocalizedBadge()}
             </span>
           )}
         </div>
 
-        <Link
-          href={isEs ? cat.path : getEnglishUrlForSpanish(cat.path)}
-          className="group/title block"
-        >
+        <Link href={getUrlForLanguage(cat.path, lang)} className="group/title block">
           <h3 className="text-2xl font-black text-white tracking-tight mb-2 group-hover/title:text-zinc-200 transition-colors flex items-center gap-2">
-            <span>{isEs ? cat.titleEs : cat.titleEn}</span>
+            <span>{getLocalizedTitle()}</span>
           </h3>
         </Link>
 
         <p className="text-xs text-zinc-300 mb-5 font-normal leading-relaxed">
-          {isEs ? cat.descEs : cat.descEn}
+          {getLocalizedDesc()}
         </p>
 
         {/* LISTA DE FUNCIONES INTERACTIVAS (ENLACES DIRECTOS) */}
         <div
           className="grid grid-cols-2 gap-2.5 mb-2 font-mono relative z-20"
           role="list"
-          aria-label={isEs ? 'Herramientas disponibles' : 'Available tools'}
+          aria-label={
+            isEs ? 'Herramientas disponibles' : isPt ? 'Ferramentas disponíveis' : 'Available tools'
+          }
         >
-          {cat.tools.map((tool, tIdx) => (
-            <Link
-              key={tIdx}
-              href={isEs ? tool.path : getEnglishUrlForSpanish(tool.path)}
-              className="bg-[#181822] hover:bg-white hover:text-black border border-zinc-600 hover:border-white rounded-xl px-3.5 py-2.5 text-xs text-zinc-100 hover:text-black font-semibold transition-all duration-200 truncate flex items-center justify-between group/tool shadow-md active:scale-[0.98]"
-              role="listitem"
-              title={isEs ? `Ir a ${tool.nameEs}` : `Go to ${tool.nameEn}`}
-            >
-              <span className="truncate font-semibold">{isEs ? tool.nameEs : tool.nameEn}</span>
-              <ArrowRight
-                className="w-3.5 h-3.5 opacity-0 group-hover/tool:opacity-100 -translate-x-1 group-hover/tool:translate-x-0 transition-all flex-shrink-0 ml-1 text-black"
-                aria-hidden="true"
-              />
-            </Link>
-          ))}
+          {cat.tools.map((tool, tIdx) => {
+            const toolName = isEs ? tool.nameEs : isPt ? tool.namePt : tool.nameEn;
+            return (
+              <Link
+                key={tIdx}
+                href={getUrlForLanguage(tool.path, lang)}
+                className="bg-[#181822] hover:bg-white hover:text-black border border-zinc-600 hover:border-white rounded-xl px-3.5 py-2.5 text-xs text-zinc-100 hover:text-black font-semibold transition-all duration-200 truncate flex items-center justify-between group/tool shadow-md active:scale-[0.98]"
+                role="listitem"
+                title={
+                  isEs
+                    ? `Ir a ${tool.nameEs}`
+                    : isPt
+                      ? `Ir para ${tool.namePt}`
+                      : `Go to ${tool.nameEn}`
+                }
+              >
+                <span className="truncate font-semibold">{toolName}</span>
+                <ArrowRight
+                  className="w-3.5 h-3.5 opacity-0 group-hover/tool:opacity-100 -translate-x-1 group-hover/tool:translate-x-0 transition-all flex-shrink-0 ml-1 text-black"
+                  aria-hidden="true"
+                />
+              </Link>
+            );
+          })}
         </div>
       </div>
 
       <div className="mt-5 pt-4 border-t border-zinc-700 font-mono relative z-10">
         <Link
-          href={isEs ? cat.path : getEnglishUrlForSpanish(cat.path)}
+          href={getUrlForLanguage(cat.path, lang)}
           className="text-xs font-bold text-white hover:text-zinc-200 flex items-center justify-between transition-colors group/link py-1"
         >
           <span>
             {file
               ? isEs
                 ? 'Iniciar módulo completo →'
-                : 'Start full module →'
+                : isPt
+                  ? 'Iniciar módulo completo →'
+                  : 'Start full module →'
               : isEs
                 ? 'Explorar herramientas →'
-                : 'Explore tools →'}
+                : isPt
+                  ? 'Explorar ferramentas →'
+                  : 'Explore tools →'}
           </span>
           <ArrowRight
             className="w-4 h-4 group-hover/link:translate-x-1 transition-transform text-white"
@@ -830,7 +960,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               {categories.map((cat) => (
-                <CategoryCard key={cat.id} cat={cat} file={file} isEs={isEs} />
+                <CategoryCard key={cat.id} cat={cat} file={file} isEs={isEs} lang={lang} />
               ))}
             </div>
           </div>

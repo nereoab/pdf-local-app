@@ -1,11 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
-import { Globe, ArrowLeft, ShieldCheck, Spade, ChevronDown, User, LogOut } from 'lucide-react';
+import {
+  Globe,
+  ArrowLeft,
+  ShieldCheck,
+  Spade,
+  ChevronDown,
+  User,
+  LogOut,
+  Check,
+} from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUIStore } from '../store/useUIStore';
@@ -58,6 +67,55 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     hydrateAuth();
   }, [hydrateAuth]);
 
+  // Selector de idiomas desplegable (una sola columna)
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const langMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsLangMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isLangMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setIsLangMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsLangMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLangMenuOpen]);
+
+  const languages = [
+    { code: 'es' as const, name: 'Español', short: 'ES', flag: '🇪🇸' },
+    { code: 'en' as const, name: 'English', short: 'EN', flag: '🇺🇸' },
+    { code: 'pt' as const, name: 'Português', short: 'PT', flag: '🇧🇷' },
+    { code: 'fr' as const, name: 'Français', short: 'FR', flag: '🇫🇷' },
+  ];
+
+  const currentLangCode: 'es' | 'en' | 'pt' | 'fr' = isFrRoute
+    ? 'fr'
+    : isPtRoute
+      ? 'pt'
+      : isEnRoute
+        ? 'en'
+        : lang === 'en' || lang === 'pt' || lang === 'fr'
+          ? lang
+          : 'es';
+
+  const currentLanguage = languages.find((l) => l.code === currentLangCode) || languages[0];
+
   // Obtener iniciales del usuario
   const getUserInitials = () => {
     if (!currentUser) return '';
@@ -72,7 +130,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
       return;
     }
-    if (pathname === '/' || pathname === '/en' || pathname === '/es' || pathname === '/pt') {
+    if (
+      pathname === '/' ||
+      pathname === '/en' ||
+      pathname === '/es' ||
+      pathname === '/pt' ||
+      pathname === '/fr'
+    ) {
       e.preventDefault();
       window.location.reload();
     }
@@ -435,84 +499,99 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 )}
               </AnimatePresence>
 
-              {/* SELECTOR DE IDIOMA — SEGMENTED PILL [ ES | EN | PT | FR ] */}
-              <div
-                className="flex items-center bg-zinc-900 border border-zinc-700 p-0.5 rounded-full font-mono text-xs flex-shrink-0 shadow-inner"
-                role="group"
-                aria-label={
-                  isFr
-                    ? 'Sélectionner la langue'
-                    : isPt
-                      ? 'Selecionar idioma'
-                      : isEs
-                        ? 'Seleccionar idioma'
-                        : 'Select language'
-                }
-              >
+              {/* SELECTOR DE IDIOMA — MENÚ DESPLEGABLE DE UNA SOLA COLUMNA */}
+              <div className="relative flex-shrink-0" ref={langMenuRef}>
                 <button
-                  onClick={() => {
-                    setLang('es');
-                    const target = getLanguageSwitchUrl(pathname || '/', 'es');
-                    router.push(target);
-                  }}
-                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    !isEnRoute && !isPtRoute && !isFrRoute && lang === 'es'
-                      ? 'bg-white text-black shadow-md'
-                      : 'text-zinc-300 hover:text-white'
-                  }`}
-                  aria-pressed={!isEnRoute && !isPtRoute && !isFrRoute && lang === 'es'}
-                  title="Español"
+                  type="button"
+                  onClick={() => setIsLangMenuOpen((prev) => !prev)}
+                  className={`flex items-center gap-1.5 bg-zinc-900/90 hover:bg-zinc-800 border ${
+                    isLangMenuOpen
+                      ? 'border-zinc-500 bg-zinc-800 text-white'
+                      : 'border-zinc-700 text-zinc-200'
+                  } hover:border-zinc-500 px-3 py-1.5 rounded-full font-mono text-xs font-bold transition-all shadow-sm cursor-pointer select-none`}
+                  aria-haspopup="true"
+                  aria-expanded={isLangMenuOpen}
+                  aria-label={
+                    isFr
+                      ? 'Sélectionner la langue'
+                      : isPt
+                        ? 'Selecionar idioma'
+                        : isEs
+                          ? 'Seleccionar idioma'
+                          : 'Select language'
+                  }
                 >
-                  ES
+                  <Globe className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
+                  <span className="text-xs uppercase">{currentLanguage.short}</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+                      isLangMenuOpen ? 'rotate-180 text-white' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
                 </button>
-                <button
-                  onClick={() => {
-                    setLang('en');
-                    const target = getLanguageSwitchUrl(pathname || '/', 'en');
-                    router.push(target);
-                  }}
-                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    isEnRoute || lang === 'en'
-                      ? 'bg-white text-black shadow-md'
-                      : 'text-zinc-300 hover:text-white'
-                  }`}
-                  aria-pressed={isEnRoute || lang === 'en'}
-                  title="English"
-                >
-                  EN
-                </button>
-                <button
-                  onClick={() => {
-                    setLang('pt');
-                    const target = getLanguageSwitchUrl(pathname || '/', 'pt');
-                    router.push(target);
-                  }}
-                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    isPtRoute || lang === 'pt'
-                      ? 'bg-white text-black shadow-md'
-                      : 'text-zinc-300 hover:text-white'
-                  }`}
-                  aria-pressed={isPtRoute || lang === 'pt'}
-                  title="Português (Brasil)"
-                >
-                  PT
-                </button>
-                <button
-                  onClick={() => {
-                    setLang('fr');
-                    const target = getLanguageSwitchUrl(pathname || '/', 'fr');
-                    router.push(target);
-                  }}
-                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    isFrRoute || lang === 'fr'
-                      ? 'bg-white text-black shadow-md'
-                      : 'text-zinc-300 hover:text-white'
-                  }`}
-                  aria-pressed={isFrRoute || lang === 'fr'}
-                  title="Français"
-                >
-                  FR
-                </button>
+
+                <AnimatePresence>
+                  {isLangMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                      className="absolute right-0 top-full mt-2 w-48 sm:w-52 bg-[#0d0d12]/95 border border-zinc-700/80 rounded-2xl p-1.5 flex flex-col gap-1 shadow-2xl backdrop-blur-xl z-50 font-mono"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-label={
+                        isFr
+                          ? 'Menu des langues'
+                          : isPt
+                            ? 'Menu de idiomas'
+                            : isEs
+                              ? 'Menú de idiomas'
+                              : 'Language menu'
+                      }
+                    >
+                      {languages.map((item) => {
+                        const isSelected = currentLangCode === item.code;
+                        return (
+                          <button
+                            key={item.code}
+                            type="button"
+                            onClick={() => {
+                              setLang(item.code);
+                              setIsLangMenuOpen(false);
+                              const target = getLanguageSwitchUrl(pathname || '/', item.code);
+                              router.push(target);
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
+                              isSelected
+                                ? 'bg-zinc-800 text-white font-bold border border-zinc-700/80 shadow-inner'
+                                : 'text-zinc-300 hover:text-white hover:bg-zinc-800/60 font-medium'
+                            }`}
+                            role="menuitem"
+                            aria-selected={isSelected}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-sm leading-none" aria-hidden="true">
+                                {item.flag}
+                              </span>
+                              <span className="font-sans font-medium">{item.name}</span>
+                              <span className="text-[10px] font-mono text-zinc-400 uppercase">
+                                [{item.short}]
+                              </span>
+                            </div>
+                            {isSelected && (
+                              <Check
+                                className="w-3.5 h-3.5 text-white stroke-[2.5]"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* BOTÓN DE REGISTRO / CUENTA */}

@@ -56,116 +56,148 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 export default function OcrPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isFr = lang === 'fr';
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const faqs = isEs
+  const faqs = isFr
     ? [
         {
-          q: '¿Cómo convertir un PDF escaneado a texto buscable y copiable gratis?',
-          a: 'Sube tu archivo PDF escaneado a PDFBlack, selecciona el idioma del documento (por ejemplo, Español) y pulsa "Reconocer Texto (OCR)". Nuestro motor Tesseract v5 en WebAssembly procesa cada página localmente en tu navegador sin subir datos a servidores, incrustando una capa vectorial de texto invisible ("PDF Sandwich"). Esto te permite buscar cualquier palabra con Ctrl+F, seleccionar párrafos y copiar texto manteniendo intacta la apariencia visual del documento.',
+          q: 'Comment convertir un PDF scanné en texte sélectionnable et recherchable gratuitement ?',
+          a: 'Téléversez votre PDF scanné sur PDFBlack, choisissez la langue du document (ex. Français) et cliquez sur « Reconnaître le texte (OCR) ». Notre moteur Tesseract v5 en WebAssembly traite le fichier localement dans votre navigateur sans envoyer vos données vers des serveurs externes, en intégrant une couche de texte invisible (« PDF Sandwich ») permettant la recherche Ctrl+F et le copier-coller.',
         },
         {
-          q: '¿Puedo extraer el texto de un PDF escaneado directamente a Word (.docx) o TXT?',
-          a: 'Sí. Además de generar un PDF con texto seleccionable, PDFBlack te permite exportar el texto reconocido a Microsoft Word editable (.docx), texto plano (.txt) o formato estructurado (.json) con coordenadas milimétricas de cada palabra, ideal para reutilizar contratos, expedientes notariales o facturas sin transcribir a mano.',
+          q: 'Puis-je exporter le texte reconnu directement vers Word (.docx) ou TXT ?',
+          a: 'Oui. En plus de créer un PDF avec texte sélectionnable, PDFBlack permet d’exporter le contenu extrait vers Microsoft Word modifiable (.docx), fichier texte (.txt) ou JSON structuré avec coordonnées de chaque mot.',
         },
         {
-          q: '¿Cómo funciona la tecnología OCR y qué es un "PDF Sandwich"?',
-          a: 'El reconocimiento óptico de caracteres (OCR) analiza las matrices de píxeles en imágenes o documentos escaneados para identificar caracteres y palabras. Un "PDF Sandwich" conserva la imagen escaneada original intacta en primer plano con todos sus sellos, firmas y texturas, mientras incrusta por debajo una capa de texto invisible en sus coordenadas vectoriales exactas. Esto permite seleccionar, copiar y buscar texto (Ctrl + F) sin alterar la fidelidad visual del documento.',
+          q: 'Comment fonctionne la technologie OCR et qu’est-ce qu’un « PDF Sandwich » ?',
+          a: 'L’OCR (reconnaissance optique de caractères) analyse les pixels d’une image pour identifier les lettres et mots. Un « PDF Sandwich » conserve l’image originale scannée au premier plan avec ses tampons et signatures, tout en superposant une couche de texte vectoriel invisible exactement alignée.',
         },
         {
-          q: '¿Mis archivos confidenciales se envían o procesan en algún servidor externo?',
-          a: 'En absoluto. PDFBlack implementa una arquitectura 100% Zero-Knowledge. El motor OCR de Tesseract.js y las librerías de recomposición PDF se ejecutan dentro de Web Workers y WebAssembly directamente en la memoria RAM de tu navegador. Ningún byte, imagen o documento sale de tu dispositivo ni se almacena en discos remotos, garantizando el cumplimiento estricto del RGPD e HIPAA.',
+          q: 'Mes fichiers confidentiels sont-ils envoyés sur des serveurs distants ?',
+          a: 'Absolument pas. PDFBlack applique une architecture 100% Zero-Knowledge : l’OCR s’exécute entièrement dans la mémoire RAM de votre navigateur via Web Workers et WebAssembly. Aucun fichier ne quitte votre ordinateur, garantissant la conformité stricte au RGPD.',
         },
         {
-          q: '¿Qué idiomas soporta el motor de reconocimiento OCR?',
-          a: 'Soporta más de 10 modelos de idiomas optimizados por redes neuronales LSTM: Español (spa), Inglés (eng), Francés (fra), Alemán (deu), Portugués (por), Italiano (ita), Chino Simplificado (chi_sim), Japonés (jpn), Árabe (ara) y Ruso (rus). Puedes seleccionar el idioma antes de iniciar el procesamiento para maximizar la exactitud tipográfica.',
-        },
-        {
-          q: '¿Por qué mi PDF escaneado con sombras o fondos sucios no se lee bien y cómo ayuda el filtro de contraste?',
-          a: 'Cuando un documento se fotografía o escanea con poca luz, los fondos grises y manchas confunden los algoritmos de segmentación. Al activar la opción "Mejorar Contraste", nuestro motor aplica preprocesamiento adaptativo en OffscreenCanvas: convierte la imagen a escala de grises y estira los umbrales de luminancia para purificar el fondo blanco y maximizar el contraste de los trazos tipográficos antes del pase de OCR.',
-        },
-        {
-          q: '¿Puedo procesar únicamente páginas específicas o capítulos de un documento extenso?',
-          a: 'Sí. Puedes elegir procesar todas las páginas o definir un rango personalizado (por ejemplo: "1-5, 8, 12-20"). El motor aplicará OCR únicamente a los folios indicados y conservará el resto intacto, optimizando tiempos de cálculo y recursos de memoria en tu equipo.',
-        },
-        {
-          q: '¿Qué diferencia hay entre exportar a PDF Buscable, TXT o JSON?',
-          a: 'El formato PDF genera el documento completo con la imagen original y la capa invisible de búsqueda; TXT extrae exclusivamente el texto limpio separado por saltos de página para edición en Word o Bloc de Notas; y JSON devuelve una estructura programática con coordenadas de cada bloque, niveles de confianza y recuento de palabras, ideal para flujos de automatización e ingesta en bases de datos.',
-        },
-        {
-          q: '¿El documento resultante aumenta drásticamente de tamaño tras aplicar OCR?',
-          a: 'No. A diferencia de convertidores genéricos que re-rasterizan todo el documento inflando el archivo hasta 10 veces, PDFBlack inyecta directamente la capa vectorial de fuentes en la estructura interna de las páginas existentes o aplica compresión JPEG de alta fidelidad, resultando en un incremento de tamaño mínimo que preserva la ligereza del archivo para envíos por correo.',
-        },
-        {
-          q: '¿Funciona con PDFs protegidos con contraseña de apertura?',
-          a: 'Sí. Si el PDF cuenta con cifrado estándar, el sistema detectará la protección y te solicitará la clave para desencriptar el documento en la memoria local de tu navegador antes de renderizar e indexar el contenido.',
-        },
-        {
-          q: '¿Existe algún límite de páginas o costo por usar la herramienta OCR?',
-          a: 'No hay costos ocultos ni límites artificiales impuestos por servidores. Puedes procesar documentos tantas veces como necesites de forma totalmente gratuita y sin requerir registro de cuenta ni suscripción mensual.',
+          q: 'Quelles langues sont supportées par le moteur OCR ?',
+          a: 'Le moteur prend en charge plus de 10 langues optimisées par réseaux de neurones LSTM : Français (fra), Anglais (eng), Espagnol (spa), Allemand (deu), Portugais (por), Italien (ita), et plus encore.',
         },
       ]
-    : [
-        {
-          q: 'How do I make a scanned PDF searchable and selectable online for free?',
-          a: 'Select or drag your scanned PDF into PDFBlack, choose your document language, and click "Recognize Text (OCR)". Our in-browser WebAssembly engine processes the document locally, embedding an invisible OCR text layer directly aligned with the original scan. You can immediately search with Ctrl+F, highlight, and copy text without uploading files to any cloud server.',
-        },
-        {
-          q: 'Can I extract text from a scanned PDF directly to editable Word (.docx) or TXT?',
-          a: 'Yes. Along with producing an ISO-compliant Searchable PDF Sandwich, PDFBlack allows you to export recognized text directly into editable Microsoft Word (.docx), plain text (.txt), or structured JSON with word coordinates and confidence scores.',
-        },
-        {
-          q: 'How does OCR technology work and what is a "Searchable PDF Sandwich"?',
-          a: 'Optical Character Recognition (OCR) analyzes pixel patterns in images or scanned documents to recognize letters and words. A "Searchable PDF Sandwich" keeps the original scanned image completely intact in the foreground with all its stamps, signatures, and textures, while embedding an invisible text layer directly beneath each word at exact coordinates. This enables selecting, copying, and searching text (Ctrl + F) without altering visual authenticity.',
-        },
-        {
-          q: 'Are my confidential files uploaded or processed on external servers?',
-          a: 'Not at all. PDFBlack operates under a strict Zero-Knowledge architecture. Tesseract.js OCR and PDF composition run within Web Workers and WebAssembly entirely in your local browser RAM. No bytes, images, or documents ever leave your machine or touch cloud disks, fully complying with GDPR and HIPAA standards.',
-        },
-        {
-          q: 'Which languages are supported by the OCR engine?',
-          a: 'It supports over 10 neural-network LSTM language models: Spanish (spa), English (eng), French (fra), German (deu), Portuguese (por), Italian (ita), Simplified Chinese (chi_sim), Japanese (jpn), Arabic (ara), and Russian (rus). You can pick your document language before execution to ensure maximum typographical accuracy.',
-        },
-        {
-          q: 'Why do scanned documents with shadows or dirty backgrounds fail OCR, and how does contrast enhancement help?',
-          a: 'When documents are photographed or scanned with poor lighting, grayish shadows confuse segmentation algorithms. Enabling "Enhance Contrast" triggers an adaptive OffscreenCanvas pre-filter: it converts images to grayscale and stretches luminance thresholds, purifying backgrounds and sharpening letter contours before Tesseract processes them.',
-        },
-        {
-          q: 'Can I process only specific pages or chapters of a lengthy document?',
-          a: 'Yes. You can process the entire document or specify custom page ranges (e.g., "1-5, 8, 12-20"). The engine only scans the chosen pages and leaves the rest untouched, saving battery and CPU cycles on your device.',
-        },
-        {
-          q: 'What is the difference between exporting to Searchable PDF, TXT, or JSON?',
-          a: 'Searchable PDF produces a full document with the original scan and invisible text layer; TXT extracts raw clean text page by page for easy editing in Word; and JSON outputs a structured payload with word coordinates, bounding boxes, and confidence levels for automated data pipelines.',
-        },
-        {
-          q: 'Does the resulting PDF file size bloat dramatically after applying OCR?',
-          a: 'No. Unlike generic tools that re-rasterize entire documents into massive uncompressed bitmaps, PDFBlack injects invisible vector text directly into existing PDF streams or uses high-fidelity compression, keeping file sizes lightweight for easy email sharing.',
-        },
-        {
-          q: 'Does it work with password-encrypted PDF files?',
-          a: 'Yes. If a document has standard open security, PDFBlack detects the encrypted stream and offers an in-memory password prompt to authenticate locally before rendering and executing OCR.',
-        },
-        {
-          q: 'Are there any page limits or fees for using the OCR tool?',
-          a: 'No hidden fees or artificial server restrictions. You can process documents as often as needed 100% free with zero sign-up or credit card requirements.',
-        },
-      ];
+    : isEs
+      ? [
+          {
+            q: '¿Cómo convertir un PDF escaneado a texto buscable y copiable gratis?',
+            a: 'Sube tu archivo PDF escaneado a PDFBlack, selecciona el idioma del documento (por ejemplo, Español) y pulsa "Reconocer Texto (OCR)". Nuestro motor Tesseract v5 en WebAssembly procesa cada página localmente en tu navegador sin subir datos a servidores, incrustando una capa vectorial de texto invisible ("PDF Sandwich"). Esto te permite buscar cualquier palabra con Ctrl+F, seleccionar párrafos y copiar texto manteniendo intacta la apariencia visual del documento.',
+          },
+          {
+            q: '¿Puedo extraer el texto de un PDF escaneado directamente a Word (.docx) o TXT?',
+            a: 'Sí. Además de generar un PDF con texto seleccionable, PDFBlack te permite exportar el texto reconocido a Microsoft Word editable (.docx), texto plano (.txt) o formato estructurado (.json) con coordenadas milimétricas de cada palabra, ideal para reutilizar contratos, expedientes notariales o facturas sin transcribir a mano.',
+          },
+          {
+            q: '¿Cómo funciona la tecnología OCR y qué es un "PDF Sandwich"?',
+            a: 'El reconocimiento óptico de caracteres (OCR) analiza las matrices de píxeles en imágenes o documentos escaneados para identificar caracteres y palabras. Un "PDF Sandwich" conserva la imagen escaneada original intacta en primer plano con todos sus sellos, firmas y texturas, mientras incrusta por debajo una capa de texto invisible en sus coordenadas vectoriales exactas. Esto permite seleccionar, copiar y buscar texto (Ctrl + F) sin alterar la fidelidad visual del documento.',
+          },
+          {
+            q: '¿Mis archivos confidenciales se envían o procesan en algún servidor externo?',
+            a: 'En absoluto. PDFBlack implementa una arquitectura 100% Zero-Knowledge. El motor OCR de Tesseract.js y las librerías de recomposición PDF se ejecutan dentro de Web Workers y WebAssembly directamente en la memoria RAM de tu navegador. Ningún byte, imagen o documento sale de tu dispositivo ni se almacena en discos remotos, garantizando el cumplimiento estricto del RGPD e HIPAA.',
+          },
+          {
+            q: '¿Qué idiomas soporta el motor de reconocimiento OCR?',
+            a: 'Soporta más de 10 modelos de idiomas optimizados por redes neuronales LSTM: Español (spa), Inglés (eng), Francés (fra), Alemán (deu), Portugués (por), Italiano (ita), Chino Simplificado (chi_sim), Japonés (jpn), Árabe (ara) y Ruso (rus). Puedes seleccionar el idioma antes de iniciar el procesamiento para maximizar la exactitud tipográfica.',
+          },
+          {
+            q: '¿Por qué mi PDF escaneado con sombras o fondos sucios no se lee bien y cómo ayuda el filtro de contraste?',
+            a: 'Cuando un documento se fotografía o escanea con poca luz, los fondos grises y manchas confunden los algoritmos de segmentación. Al activar la opción "Mejorar Contraste", nuestro motor aplica preprocesamiento adaptativo en OffscreenCanvas: convierte la imagen a escala de grises y estira los umbrales de luminancia para purificar el fondo blanco y maximizar el contraste de los trazos tipográficos antes del pase de OCR.',
+          },
+          {
+            q: '¿Puedo procesar únicamente páginas específicas o capítulos de un documento extenso?',
+            a: 'Sí. Puedes elegir procesar todas las páginas o definir un rango personalizado (por ejemplo: "1-5, 8, 12-20"). El motor aplicará OCR únicamente a los folios indicados y conservará el resto intacto, optimizando tiempos de cálculo y recursos de memoria en tu equipo.',
+          },
+          {
+            q: '¿Qué diferencia hay entre exportar a PDF Buscable, TXT o JSON?',
+            a: 'El formato PDF genera el documento completo con la imagen original y la capa invisible de búsqueda; TXT extrae exclusivamente el texto limpio separado por saltos de página para edición en Word o Bloc de Notas; y JSON devuelve una estructura programática con coordenadas de cada bloque, niveles de confianza y recuento de palabras, ideal para flujos de automatización e ingesta en bases de datos.',
+          },
+          {
+            q: '¿El documento resultante aumenta drásticamente de tamaño tras aplicar OCR?',
+            a: 'No. A diferencia de convertidores genéricos que re-rasterizan todo el documento inflando el archivo hasta 10 veces, PDFBlack inyecta directamente la capa vectorial de fuentes en la estructura interna de las páginas existentes o aplica compresión JPEG de alta fidelidad, resultando en un incremento de tamaño mínimo que preserva la ligereza del archivo para envíos por correo.',
+          },
+          {
+            q: '¿Funciona con PDFs protegidos con contraseña de apertura?',
+            a: 'Sí. Si el PDF cuenta con cifrado estándar, el sistema detectará la protección y te solicitará la clave para desencriptar el documento en la memoria local de tu navegador antes de renderizar e indexar el contenido.',
+          },
+          {
+            q: '¿Existe algún límite de páginas o costo por usar la herramienta OCR?',
+            a: 'No hay costos ocultos ni límites artificiales impuestos por servidores. Puedes procesar documentos tantas veces como necesites de forma totalmente gratuita y sin requerir registro de cuenta ni suscripción mensual.',
+          },
+        ]
+      : [
+          {
+            q: 'How do I make a scanned PDF searchable and selectable online for free?',
+            a: 'Select or drag your scanned PDF into PDFBlack, choose your document language, and click "Recognize Text (OCR)". Our in-browser WebAssembly engine processes the document locally, embedding an invisible OCR text layer directly aligned with the original scan. You can immediately search with Ctrl+F, highlight, and copy text without uploading files to any cloud server.',
+          },
+          {
+            q: 'Can I extract text from a scanned PDF directly to editable Word (.docx) or TXT?',
+            a: 'Yes. Along with producing an ISO-compliant Searchable PDF Sandwich, PDFBlack allows you to export recognized text directly into editable Microsoft Word (.docx), plain text (.txt), or structured JSON with word coordinates and confidence scores.',
+          },
+          {
+            q: 'How does OCR technology work and what is a "Searchable PDF Sandwich"?',
+            a: 'Optical Character Recognition (OCR) analyzes pixel patterns in images or scanned documents to recognize letters and words. A "Searchable PDF Sandwich" keeps the original scanned image completely intact in the foreground with all its stamps, signatures, and textures, while embedding an invisible text layer directly beneath each word at exact coordinates. This enables selecting, copying, and searching text (Ctrl + F) without altering visual authenticity.',
+          },
+          {
+            q: 'Are my confidential files uploaded or processed on external servers?',
+            a: 'Not at all. PDFBlack operates under a strict Zero-Knowledge architecture. Tesseract.js OCR and PDF composition run within Web Workers and WebAssembly entirely in your local browser RAM. No bytes, images, or documents ever leave your machine or touch cloud disks, fully complying with GDPR and HIPAA standards.',
+          },
+          {
+            q: 'Which languages are supported by the OCR engine?',
+            a: 'It supports over 10 neural-network LSTM language models: Spanish (spa), English (eng), French (fra), German (deu), Portuguese (por), Italian (ita), Simplified Chinese (chi_sim), Japanese (jpn), Arabic (ara), and Russian (rus). You can pick your document language before execution to ensure maximum typographical accuracy.',
+          },
+          {
+            q: 'Why do scanned documents with shadows or dirty backgrounds fail OCR, and how does contrast enhancement help?',
+            a: 'When documents are photographed or scanned with poor lighting, grayish shadows confuse segmentation algorithms. Enabling "Enhance Contrast" triggers an adaptive OffscreenCanvas pre-filter: it converts images to grayscale and stretches luminance thresholds, purifying backgrounds and sharpening letter contours before Tesseract processes them.',
+          },
+          {
+            q: 'Can I process only specific pages or chapters of a lengthy document?',
+            a: 'Yes. You can process the entire document or specify custom page ranges (e.g., "1-5, 8, 12-20"). The engine only scans the chosen pages and leaves the rest untouched, saving battery and CPU cycles on your device.',
+          },
+          {
+            q: 'What is the difference between exporting to Searchable PDF, TXT, or JSON?',
+            a: 'Searchable PDF produces a full document with the original scan and invisible text layer; TXT extracts raw clean text page by page for easy editing in Word; and JSON outputs a structured payload with word coordinates, bounding boxes, and confidence levels for automated data pipelines.',
+          },
+          {
+            q: 'Does the resulting PDF file size bloat dramatically after applying OCR?',
+            a: 'No. Unlike generic tools that re-rasterize entire documents into massive uncompressed bitmaps, PDFBlack injects invisible vector text directly into existing PDF streams or uses high-fidelity compression, keeping file sizes lightweight for easy email sharing.',
+          },
+          {
+            q: 'Does it work with password-encrypted PDF files?',
+            a: 'Yes. If a document has standard open security, PDFBlack detects the encrypted stream and offers an in-memory password prompt to authenticate locally before rendering and executing OCR.',
+          },
+          {
+            q: 'Are there any page limits or fees for using the OCR tool?',
+            a: 'No hidden fees or artificial server restrictions. You can process documents as often as needed 100% free with zero sign-up or credit card requirements.',
+          },
+        ];
 
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': ['WebApplication', 'SoftwareApplication'],
-    name: isEs
-      ? 'OCR PDF Online Gratis — Reconocer Texto y PDF Buscable | PDFBlack'
-      : 'OCR PDF Free Online — Make Scanned PDF Searchable | PDFBlack',
-    url: isEs ? `${SITE_URL}/editar/ocr` : `${SITE_URL}/en/ocr-pdf`,
+    name: isFr
+      ? 'OCR PDF en Ligne Gratuit — Reconnaissance de Texte et Recherche | PDFBlack'
+      : isEs
+        ? 'OCR PDF Online Gratis — Reconocer Texto y PDF Buscable | PDFBlack'
+        : 'OCR PDF Free Online — Make Scanned PDF Searchable | PDFBlack',
+    url: isFr
+      ? `${SITE_URL}/fr/ocr-pdf`
+      : isEs
+        ? `${SITE_URL}/editar/ocr`
+        : `${SITE_URL}/en/ocr-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
-    description: isEs
-      ? 'Aplica OCR a PDFs escaneados e imágenes gratis online. Extrae texto copiable y haz tu PDF buscable (Ctrl+F) sin subir archivos. 100% privado en tu navegador.'
-      : 'Free OCR PDF online: turn scanned documents & images into searchable, selectable text (Ctrl+F). 100% private in-browser recognition, zero server uploads.',
+    description: isFr
+      ? 'Appliquez l’OCR à vos PDF scannés et images gratuitement en ligne. Extrayez du texte sélectionnable et rendez votre PDF recherchable (Ctrl+F) sans aucun téléversement. 100% privé dans votre navigateur.'
+      : isEs
+        ? 'Aplica OCR a PDFs escaneados e imágenes gratis online. Extrae texto copiable y haz tu PDF buscable (Ctrl+F) sin subir archivos. 100% privado en tu navegador.'
+        : 'Free OCR PDF online: turn scanned documents & images into searchable, selectable text (Ctrl+F). 100% private in-browser recognition, zero server uploads.',
     softwareVersion: '5.0',
     screenshot: `${SITE_URL}/og-ocr-pdf.png`,
     aggregateRating: {
@@ -180,16 +212,25 @@ export default function OcrPage() {
       price: '0',
       priceCurrency: 'USD',
     },
-    featureList: [
-      'Generación de PDF Sandwich con capa de texto invisible según norma ISO 32000-1',
-      'Motor de reconocimiento Tesseract v5.0 acelerado en WebAssembly',
-      'Soporte multilingüe en más de 10 idiomas (Español, Inglés, Francés, Alemán y más)',
-      'Preprocesamiento adaptativo de imagen con mejora de contraste y binarización',
-      'Alineación milimétrica de palabras mediante coordenadas HOCR y TSV',
-      'Exportación versátil a PDF Buscable, Microsoft Word editable (.DOCX), texto plano .TXT y estructura .JSON',
-      'Desbloqueo seguro de documentos PDF protegidos con contraseña en memoria',
-      'Procesamiento 100% en memoria RAM local sin subida a servidores (Zero-Knowledge)',
-    ],
+    featureList: isFr
+      ? [
+          'Génération de PDF Sandwich avec couche de texte invisible conforme ISO 32000-1',
+          'Moteur de reconnaissance Tesseract v5.0 accéléré par WebAssembly',
+          'Support multilingue dans plus de 10 langues (Français, Anglais, Espagnol, Allemand, etc.)',
+          'Prétraitement adaptatif de l’image avec amélioration du contraste',
+          'Exportation vers PDF Recherchable, Word éditable (.docx), texte brut .txt et structure JSON',
+          'Traitement 100% en mémoire RAM locale sans aucun téléversement de fichier (Zero-Knowledge)',
+        ]
+      : [
+          'Generación de PDF Sandwich con capa de texto invisible según norma ISO 32000-1',
+          'Motor de reconocimiento Tesseract v5.0 acelerado en WebAssembly',
+          'Soporte multilingüe en más de 10 idiomas (Español, Inglés, Francés, Alemán y más)',
+          'Preprocesamiento adaptativo de imagen con mejora de contraste y binarización',
+          'Alineación milimétrica de palabras mediante coordenadas HOCR y TSV',
+          'Exportación versátil a PDF Buscable, Microsoft Word editable (.DOCX), texto plano .TXT y estructura .JSON',
+          'Desbloqueo seguro de documentos PDF protegidos con contraseña en memoria',
+          'Procesamiento 100% en memoria RAM local sin subida a servidores (Zero-Knowledge)',
+        ],
   };
 
   const faqStructuredData = {
@@ -212,20 +253,24 @@ export default function OcrPage() {
       {
         '@type': 'ListItem',
         position: 1,
-        name: isEs ? 'Inicio' : 'Home',
-        item: isEs ? SITE_URL : `${SITE_URL}/en`,
+        name: isFr ? 'Accueil' : isEs ? 'Inicio' : 'Home',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
-        name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
+        name: isFr ? 'Modifier PDF' : isEs ? 'Editar PDF' : 'Edit PDF',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
-        name: isEs ? 'Reconocimiento OCR' : 'OCR PDF',
-        item: isEs ? `${SITE_URL}/editar/ocr` : `${SITE_URL}/en/ocr-pdf`,
+        name: isFr ? 'OCR PDF' : isEs ? 'Reconocimiento OCR' : 'OCR PDF',
+        item: isFr
+          ? `${SITE_URL}/fr/ocr-pdf`
+          : isEs
+            ? `${SITE_URL}/editar/ocr`
+            : `${SITE_URL}/en/ocr-pdf`,
       },
     ],
   };

@@ -42,97 +42,141 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 export default function FoliarPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isFr = lang === 'fr';
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const faqs = isEs
+  const faqs = isFr
     ? [
         {
-          q: '¿Qué es foliar un documento PDF y cuándo es legalmente obligatorio?',
-          a: 'Foliar consiste en numerar consecutivamente cada una de las hojas (fojas) de un expediente judicial, administrativo, notarial o licitación pública. Es obligatorio en procedimientos judiciales, arbitrajes y contrataciones estatales para garantizar la integridad documental, evitar la intercalación o sustracción de documentos y facilitar la citación precisa de fojas durante diligencias.',
+          q: 'Qu’est-ce que numéroter (folioter) un document PDF et quand est-ce obligatoire ?',
+          a: 'La numérotation consiste à paginer consécutivement chaque feuillet d’un dossier juridique, administratif, notarié ou d’un appel d’offres. Elle est obligatoire lors des dépôts d’actes et d’expertises pour garantir l’intégrité des pièces et faciliter la citation exacte lors des audiences.',
         },
         {
-          q: '¿Qué es la numeración Bates y por qué se utiliza en litigios y auditorías internacionales?',
-          a: 'El estampado Bates (Bates Numbering) es un estándar legal internacional que asigna un código identificador único correlativo (por ejemplo: PROCESO-000001, BATES-000145) a cada página de grandes volúmenes de evidencia. Es indispensable en auditorías forenses, fusiones y adquisiciones (M&A) y procesos de descubrimiento judicial (e-Discovery) para rastrear cada foja de forma inequívoca.',
+          q: 'Qu’est-ce que la numérotation Bates et pourquoi est-elle utilisée lors des audits ?',
+          a: 'L’estampillage Bates (Bates Numbering) est une norme internationale attribuant un identifiant alphanumérique unique et séquentiel (ex. DOSSIER-000001, BATES-000145) à chaque page de volumineux dossiers pour un suivi rigoureux en litige ou en audit.',
         },
         {
-          q: '¿Cómo funciona el modo de «Páginas Enfrentadas» (Duplex / Libro)?',
-          a: 'Cuando imprimes o encuadernas un expediente a doble cara, colocar los números siempre a la derecha provocaría que en las páginas pares el número quede oculto en el lomo interior. El modo de páginas enfrentadas alterna simétricamente la posición: las páginas impares muestran el folio en el margen exterior derecho y las páginas pares en el margen exterior izquierdo.',
+          q: 'Comment fonctionne le mode « Pages en regard » (Recto-verso / Livre) ?',
+          a: 'Lors de l’impression recto-verso ou de la reliure, placer les numéros toujours à droite masquerait le folio dans le pli intérieur des pages paires. Le mode pages en regard alterne la position de manière symétrique sur les marges extérieures.',
         },
         {
-          q: '¿Cómo resuelve PDFBlack la rotación de páginas apaisadas u horizontales?',
-          a: 'Muchos expedientes contienen hojas mixtas (como estados de cuenta o planos en horizontal junto a contratos en vertical). Nuestro motor empresarial lee la propiedad de rotación geométrica (0°, 90°, 180°, 270°) de cada página individual y ajusta matemáticamente el ángulo y las coordenadas del folio, garantizando que el sello aparezca siempre en la esquina visualmente correcta sin desfasarse.',
+          q: 'Comment PDFBlack gère-t-il la rotation des pages horizontales (paysage) ?',
+          a: 'Notre moteur analyse les métadonnées de rotation géométrique (0°, 90°, 180°, 270°) de chaque page et compense mathématiquement les coordonnées et l’angle pour que le tampon apparaisse toujours dans le bon angle visuel.',
         },
         {
-          q: '¿Qué ventaja aporta el «Escudo Protector Blanco» detrás del folio?',
-          a: 'En contratos escaneados, planos técnicos o documentos con fondos oscuros, el texto del folio puede volverse ilegible al superponerse con membretes o sellos previos. El escudo protector dibuja una caja blanca semitransparente u opaca con micro-borde detrás del número, garantizando lectura nítida al 100% tanto en pantalla como al imprimir.',
+          q: 'Quel est l’avantage du masque protecteur blanc sous le numéro ?',
+          a: 'Sur les documents scannés ou avec en-têtes denses, le masque protecteur applique une boîte blanche semi-transparente ou opaque derrière le numéro, garantissant une lisibilité optimale à 100% à l’écran comme à l’impression.',
         },
         {
-          q: '¿Puedo personalizar el prefijo, ceros a la izquierda y omitir la portada?',
-          a: 'Sí. Puedes definir el número inicial (por ejemplo comenzar en la foja 150), omitir la carátula o portada, seleccionar el estilo numérico con relleno de ceros (001 notarial, 000001 Bates, números romanos o arábigos clásicos) y añadir prefijos personalizados como «F° », «Folio: », «EXP-2026-» o «Causa Civil N° ».',
+          q: 'Puis-je personnaliser le préfixe, les zéros initiaux et ignorer la couverture ?',
+          a: 'Oui. Vous pouvez définir le numéro de départ, exclure la page de garde, choisir le style avec remplissage de zéros (001 notarié, 000001 Bates) et ajouter un préfixe personnalisé comme « Pièce N° », « Folio : » ou « DOSSIER-2026- ».',
         },
         {
-          q: '¿Es seguro foliar expedientes confidenciales o contratos con datos reservados?',
-          a: '100% seguro. PDFBlack opera bajo una arquitectura Zero-Knowledge estricta: todo el cálculo de diccionarios PDF, estampación vectorial y renderizado ocurre en la memoria RAM de tu navegador mediante Web Workers. Ningún archivo, texto o folio se transmite a servidores remotos ni se almacena en la nube, cumpliendo con el RGPD, LOPD e HIPAA.',
+          q: 'Est-il sécurisé de numéroter des dossiers confidentiels ou des contrats ?',
+          a: '100% sécurisé et privé. PDFBlack opère selon une architecture Zero-Knowledge stricte : l’injection vectorielle s’exécute dans la mémoire RAM de votre navigateur via Web Workers sans aucun téléversement de fichier vers des serveurs distants, en pleine conformité avec le RGPD.',
         },
         {
-          q: '¿Se degradan los textos, vectores o firmas digitales existentes en el PDF?',
-          a: 'No. El foliador realiza una inyección de capa tipográfica nativa en el flujo de contenido de cada página (`page.drawText`) sin recomprimir, rasterizar ni modificar la resolución de imágenes ni vectores existentes en el documento original.',
-        },
-        {
-          q: '¿El archivo foliado es aceptado en mesas de partes virtuales y LexNET?',
-          a: 'Sí. Al generar PDFs conformes con el estándar internacional ISO 32000-1, el documento resultante es plenamente compatible con plataformas judiciales electrónicas (como LexNET en España, PJF en México, Sinoe en Perú, etc.), visores como Adobe Acrobat y sistemas de digitalización notarial.',
+          q: 'Les textes ou signatures numériques existants sont-ils dégradés ?',
+          a: 'Non. L’outil effectue une injection vectorielle native directe dans le flux de contenu PDF (page.drawText) sans recompresser ni rasteriser le document original.',
         },
       ]
-    : [
-        {
-          q: 'What does page numbering (foliating) a PDF mean and when is it mandatory?',
-          a: 'Foliating refers to sequentially numbering every single page or leaf of a legal, administrative, or notarial docket. It is legally mandated in court filings, public tenders, and audits to prevent document tampering, ensure complete chain of custody, and allow precise citations during proceedings.',
-        },
-        {
-          q: 'What is Bates Numbering and why is it essential for litigation and audits?',
-          a: 'Bates stamping is an international legal standard that assigns a unique, sequential alphanumeric identifier (e.g., CASE-000001, BATES-000250) to every page in large evidentiary dockets. It is vital in e-Discovery, forensic audits, and cross-border litigation to track each record unequivocally.',
-        },
-        {
-          q: 'How does the "Facing Pages" (Duplex / Book) mode work?',
-          a: 'When printing or binding two-sided documents, placing stamps in a fixed right-side corner causes even pages to have numbers obscured inside the inner spine. Facing pages mode symmetrically mirrors stamp positions: odd pages place the folio in the outer right margin, while even pages position it in the outer left margin.',
-        },
-        {
-          q: 'How does PDFBlack handle landscape or rotated pages?',
-          a: 'Real-world dockets often mix portrait contracts with landscape tables or blueprints. Our enterprise engine reads each individual page rotation metadata (0°, 90°, 180°, 270°) and mathematically compensates both the coordinates and rotation angle, ensuring stamps stay upright in the correct visual corner.',
-        },
-        {
-          q: 'What are the benefits of the "Protective White Shield" behind numbers?',
-          a: 'On scanned contracts, technical drawings, or dark backgrounds, numbering can clash with existing headers or signatures. The white shield creates a crisp vector bounding box behind the stamp, providing 100% legibility on screens and printed copies.',
-        },
-        {
-          q: 'Can I customize prefixes, zero-padding, and skip cover pages?',
-          a: 'Yes. You can choose a starting number (e.g., resume at sheet 150), exclude the cover sheet, select zero-padded formats (001 notarial, 000001 Bates, Roman numerals, standard Arabic), and define custom prefixes like "Folio: ", "EXP-2026-", or "Exhibit-".',
-        },
-        {
-          q: 'Is it safe to number confidential legal dossiers and contracts?',
-          a: '100% private and secure. PDFBlack uses a Zero-Knowledge local architecture: all PDF stream manipulations and vector text injections take place inside your browser RAM via Web Workers. No file data is ever uploaded to external cloud servers, satisfying GDPR and HIPAA standards.',
-        },
-        {
-          q: 'Does numbering degrade existing text, vectors, or digital signatures?',
-          a: 'No. The numbering engine applies non-destructive vector text injection (`page.drawText`) directly into the PDF content stream without recompressing, rasterizing, or degrading the original document assets.',
-        },
-        {
-          q: 'Is the output accepted by electronic court filing systems (e-filing)?',
-          a: 'Yes. Output files strictly adhere to the ISO 32000-1 PDF specification and are fully compatible with electronic court filing systems, Adobe Acrobat, and official notarial platforms.',
-        },
-      ];
+    : isEs
+      ? [
+          {
+            q: '¿Qué es foliar un documento PDF y cuándo es legalmente obligatorio?',
+            a: 'Foliar consiste en numerar consecutivamente cada una de las hojas (fojas) de un expediente judicial, administrativo, notarial o licitación pública. Es obligatorio en procedimientos judiciales, arbitrajes y contrataciones estatales para garantizar la integridad documental, evitar la intercalación o sustracción de documentos y facilitar la citación precisa de fojas durante diligencias.',
+          },
+          {
+            q: '¿Qué es la numeración Bates y por qué se utiliza en litigios y auditorías internacionales?',
+            a: 'El estampado Bates (Bates Numbering) es un estándar legal internacional que asigna un código identificador único correlativo (por ejemplo: PROCESO-000001, BATES-000145) a cada página de grandes volúmenes de evidencia. Es indispensable en auditorías forenses, fusiones y adquisiciones (M&A) y procesos de descubrimiento judicial (e-Discovery) para rastrear cada foja de forma inequívoca.',
+          },
+          {
+            q: '¿Cómo funciona el modo de «Páginas Enfrentadas» (Duplex / Libro)?',
+            a: 'Cuando imprimes o encuadernas un expediente a doble cara, colocar los números siempre a la derecha provocaría que en las páginas pares el número quede oculto en el lomo interior. El modo de páginas enfrentadas alterna simétricamente la posición: las páginas impares muestran el folio en el margen exterior derecho y las páginas pares en el margen exterior izquierdo.',
+          },
+          {
+            q: '¿Cómo resuelve PDFBlack la rotación de páginas apaisadas u horizontales?',
+            a: 'Muchos expedientes contienen hojas mixtas (como estados de cuenta o planos en horizontal junto a contratos en vertical). Nuestro motor empresarial lee la propiedad de rotación geométrica (0°, 90°, 180°, 270°) de cada página individual y ajusta matemáticamente el ángulo y las coordenadas del folio, garantizando que el sello aparezca siempre en la esquina visualmente correcta sin desfasarse.',
+          },
+          {
+            q: '¿Qué ventaja aporta el «Escudo Protector Blanco» detrás del folio?',
+            a: 'En contratos escaneados, planos técnicos o documentos con fondos oscuros, el texto del folio puede volverse ilegible al superponerse con membretes o sellos previos. El escudo protector dibuja una caja blanca semitransparente u opaca con micro-borde detrás del número, garantizando lectura nítida al 100% tanto en pantalla como al imprimir.',
+          },
+          {
+            q: '¿Puedo personalizar el prefijo, ceros a la izquierda y omitir la portada?',
+            a: 'Sí. Puedes definir el número inicial (por ejemplo comenzar en la foja 150), omitir la carátula o portada, seleccionar el estilo numérico con relleno de ceros (001 notarial, 000001 Bates, números romanos o arábigos clásicos) y añadir prefijos personalizados como «F° », «Folio: », «EXP-2026-» o «Causa Civil N° ».',
+          },
+          {
+            q: '¿Es seguro foliar expedientes confidenciales o contratos con datos reservados?',
+            a: '100% seguro. PDFBlack opera bajo una arquitectura Zero-Knowledge estricta: todo el cálculo de diccionarios PDF, estampación vectorial y renderizado ocurre en la memoria RAM de tu navegador mediante Web Workers. Ningún archivo, texto o folio se transmite a servidores remotos ni se almacena en la nube, cumpliendo con el RGPD, LOPD e HIPAA.',
+          },
+          {
+            q: '¿Se degradan los textos, vectores o firmas digitales existentes en el PDF?',
+            a: 'No. El foliador realiza una inyección de capa tipográfica nativa en el flujo de contenido de cada página (`page.drawText`) sin recomprimir, rasterizar ni modificar la resolución de imágenes ni vectores existentes en el documento original.',
+          },
+          {
+            q: '¿El archivo foliado es aceptado en mesas de partes virtuales y LexNET?',
+            a: 'Sí. Al generar PDFs conformes con el estándar internacional ISO 32000-1, el documento resultante es plenamente compatible con plataformas judiciales electrónicas (como LexNET en España, PJF en México, Sinoe en Perú, etc.), visores como Adobe Acrobat y sistemas de digitalización notarial.',
+          },
+        ]
+      : [
+          {
+            q: 'What does page numbering (foliating) a PDF mean and when is it mandatory?',
+            a: 'Foliating refers to sequentially numbering every single page or leaf of a legal, administrative, or notarial docket. It is legally mandated in court filings, public tenders, and audits to prevent document tampering, ensure complete chain of custody, and allow precise citations during proceedings.',
+          },
+          {
+            q: 'What is Bates Numbering and why is it essential for litigation and audits?',
+            a: 'Bates stamping is an international legal standard that assigns a unique, sequential alphanumeric identifier (e.g., CASE-000001, BATES-000250) to every page in large evidentiary dockets. It is vital in e-Discovery, forensic audits, and cross-border litigation to track each record unequivocally.',
+          },
+          {
+            q: 'How does the "Facing Pages" (Duplex / Book) mode work?',
+            a: 'When printing or binding two-sided documents, placing stamps in a fixed right-side corner causes even pages to have numbers obscured inside the inner spine. Facing pages mode symmetrically mirrors stamp positions: odd pages place the folio in the outer right margin, while even pages position it in the outer left margin.',
+          },
+          {
+            q: 'How does PDFBlack handle landscape or rotated pages?',
+            a: 'Real-world dockets often mix portrait contracts with landscape tables or blueprints. Our enterprise engine reads each individual page rotation metadata (0°, 90°, 180°, 270°) and mathematically compensates both the coordinates and rotation angle, ensuring stamps stay upright in the correct visual corner.',
+          },
+          {
+            q: 'What are the benefits of the "Protective White Shield" behind numbers?',
+            a: 'On scanned contracts, technical drawings, or dark backgrounds, numbering can clash with existing headers or signatures. The white shield creates a crisp vector bounding box behind the stamp, providing 100% legibility on screens and printed copies.',
+          },
+          {
+            q: 'Can I customize prefixes, zero-padding, and skip cover pages?',
+            a: 'Yes. You can choose a starting number (e.g., resume at sheet 150), exclude the cover sheet, select zero-padded formats (001 notarial, 000001 Bates, Roman numerals, standard Arabic), and define custom prefixes like "Folio: ", "EXP-2026-", or "Exhibit-".',
+          },
+          {
+            q: 'Is it safe to number confidential legal dossiers and contracts?',
+            a: '100% private and secure. PDFBlack uses a Zero-Knowledge local architecture: all PDF stream manipulations and vector text injections take place inside your browser RAM via Web Workers. No file data is ever uploaded to external cloud servers, satisfying GDPR and HIPAA standards.',
+          },
+          {
+            q: 'Does numbering degrade existing text, vectors, or digital signatures?',
+            a: 'No. The numbering engine applies non-destructive vector text injection (`page.drawText`) directly into the PDF content stream without recompressing, rasterizing, or degrading the original document assets.',
+          },
+          {
+            q: 'Is the output accepted by electronic court filing systems (e-filing)?',
+            a: 'Yes. Output files strictly adhere to the ISO 32000-1 PDF specification and are fully compatible with electronic court filing systems, Adobe Acrobat, and official notarial platforms.',
+          },
+        ];
 
   const jsonLdWebApp = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: isEs
-      ? 'Foliar PDF Gratis Online — Numeración de Páginas PDF | PDFBlack'
-      : 'Number PDF Pages Online Free — Bates & Notarial Stamping | PDFBlack',
-    url: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/bates-numbering`,
-    description: isEs
-      ? 'Herramienta profesional para foliar y numerar páginas de documentos PDF online. Formatos notariales, foliado judicial Bates, páginas enfrentadas para encuadernación y escudo protector. 100% privado en memoria RAM.'
-      : 'Professional tool to number and foliate PDF documents online. Notarial formats, legal Bates stamping, facing pages for book binding, and protective shield. 100% in-browser RAM privacy.',
+    name: isFr
+      ? 'Numéroter des Pages PDF en Ligne Gratuit — Pagination et Numérotation Bates | PDFBlack'
+      : isEs
+        ? 'Foliar PDF Gratis Online — Numeración de Páginas PDF | PDFBlack'
+        : 'Number PDF Pages Online Free — Bates & Notarial Stamping | PDFBlack',
+    url: isFr
+      ? `${SITE_URL}/fr/numeroter-pages-pdf`
+      : isEs
+        ? `${SITE_URL}/editar/foliar`
+        : `${SITE_URL}/en/bates-numbering`,
+    description: isFr
+      ? 'Outil professionnel pour numéroter et paginer des documents PDF en ligne. Formats notariés, numérotation juridique Bates, pages en regard pour reliure et masque protecteur. 100% privé en mémoire RAM.'
+      : isEs
+        ? 'Herramienta profesional para foliar y numerar páginas de documentos PDF online. Formatos notariales, foliado judicial Bates, páginas enfrentadas para encuadernación y escudo protector. 100% privado en memoria RAM.'
+        : 'Professional tool to number and foliate PDF documents online. Notarial formats, legal Bates stamping, facing pages for book binding, and protective shield. 100% in-browser RAM privacy.',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',
@@ -141,15 +185,25 @@ export default function FoliarPage() {
       price: '0',
       priceCurrency: 'USD',
     },
-    featureList: [
-      'Foliado notarial tradicional (Folio N°, F° N°, fte/vto)',
-      'Numeración judicial Bates para litigios y expedientes (BATES-000001)',
-      'Modo páginas enfrentadas con alternancia simétrica para encuadernación',
-      'Compensación automática de rotación de páginas en 90°, 180° y 270°',
-      'Escudo protector blanco para garantizar máxima legibilidad',
-      'Tipografías profesionales Helvetica, Times-Roman y Courier incrustadas',
-      'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
-    ],
+    featureList: isFr
+      ? [
+          'Numérotation notariée traditionnelle et foliotage juridique',
+          'Numérotation Bates pour dossiers de litiges et appels d’offres (BATES-000001)',
+          'Mode pages en regard avec alternance symétrique pour reliure',
+          'Compensation automatique de l’orientation des pages à 90°, 180° et 270°',
+          'Masque protecteur blanc pour garantir une lisibilité optimale',
+          'Polices professionnelles Helvetica, Times-Roman et Courier intégrées',
+          'Traitement 100% privé en mémoire RAM locale via Web Workers',
+        ]
+      : [
+          'Foliado notarial tradicional (Folio N°, F° N°, fte/vto)',
+          'Numeración judicial Bates para litigios y expedientes (BATES-000001)',
+          'Modo páginas enfrentadas con alternancia simétrica para encuadernación',
+          'Compensación automática de rotación de páginas en 90°, 180° y 270°',
+          'Escudo protector blanco para garantizar máxima legibilidad',
+          'Tipografías profesionales Helvetica, Times-Roman y Courier incrustadas',
+          'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
+        ],
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: '4.95',
@@ -179,20 +233,24 @@ export default function FoliarPage() {
       {
         '@type': 'ListItem',
         position: 1,
-        name: isEs ? 'Inicio' : 'Home',
-        item: isEs ? SITE_URL : `${SITE_URL}/en`,
+        name: isFr ? 'Accueil' : isEs ? 'Inicio' : 'Home',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
-        name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
+        name: isFr ? 'Modifier PDF' : isEs ? 'Editar PDF' : 'Edit PDF',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
-        name: isEs ? 'Foliar Páginas' : 'Number Pages',
-        item: isEs ? `${SITE_URL}/editar/foliar` : `${SITE_URL}/en/bates-numbering`,
+        name: isFr ? 'Numéroter les Pages' : isEs ? 'Foliar Páginas' : 'Number Pages',
+        item: isFr
+          ? `${SITE_URL}/fr/numeroter-pages-pdf`
+          : isEs
+            ? `${SITE_URL}/editar/foliar`
+            : `${SITE_URL}/en/bates-numbering`,
       },
     ],
   };
@@ -200,36 +258,54 @@ export default function FoliarPage() {
   const jsonLdHowTo = {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
-    name: isEs
-      ? 'Cómo Foliar y Numerar Páginas de un Documento PDF Online'
-      : 'How to Number and Foliate PDF Pages Online',
-    description: isEs
-      ? 'Guía paso a paso para numerar expedientes legales, notariales o corporativos con prefijos, ceros a la izquierda y páginas enfrentadas en tu navegador.'
-      : 'Step-by-step tutorial to number legal, notarial, or business documents with custom prefixes, zero padding, and facing pages in your browser.',
+    name: isFr
+      ? 'Comment Numéroter et Paginer des Pages PDF en Ligne'
+      : isEs
+        ? 'Cómo Foliar y Numerar Páginas de un Documento PDF Online'
+        : 'How to Number and Foliate PDF Pages Online',
+    description: isFr
+      ? 'Guide pas à pas pour numéroter des dossiers juridiques ou d’entreprises avec préfixes, zéros initiaux et pages en regard dans votre navigateur.'
+      : isEs
+        ? 'Guía paso a paso para numerar expedientes legales, notariales o corporativos con prefijos, ceros a la izquierda y páginas enfrentadas en tu navegador.'
+        : 'Step-by-step tutorial to number legal, notarial, or business documents with custom prefixes, zero padding, and facing pages in your browser.',
     step: [
       {
         '@type': 'HowToStep',
         position: 1,
-        name: isEs ? 'Cargar el archivo PDF' : 'Upload PDF file',
-        text: isEs
-          ? 'Arrastra o selecciona el documento PDF que necesitas foliar o numerar en la mesa de trabajo.'
-          : 'Drag and drop or choose the PDF document you need to foliate or number into the workspace.',
+        name: isFr ? 'Charger le fichier PDF' : isEs ? 'Cargar el archivo PDF' : 'Upload PDF file',
+        text: isFr
+          ? 'Glissez-déposez ou sélectionnez le document PDF à numéroter dans l’espace de travail.'
+          : isEs
+            ? 'Arrastra o selecciona el documento PDF que necesitas foliar o numerar en la mesa de trabajo.'
+            : 'Drag and drop or choose the PDF document you need to foliate or number into the workspace.',
       },
       {
         '@type': 'HowToStep',
         position: 2,
-        name: isEs ? 'Configurar posición, formato y modo' : 'Configure position, format, and mode',
-        text: isEs
-          ? 'Elige la esquina o margen deseado, el formato (Simple, Notarial 001, Bates 000001), página suelta o enfrentadas para encuadernar.'
-          : 'Pick the desired corner or margin, format (Simple, Notarial 001, Bates 000001), single or facing pages for binding.',
+        name: isFr
+          ? 'Configurer la position et le format'
+          : isEs
+            ? 'Configurar posición, formato y modo'
+            : 'Configure position, format, and mode',
+        text: isFr
+          ? 'Choisissez le coin ou la marge, le format (Simple, Notarié 001, Bates 000001) et le mode feuille simple ou pages en regard.'
+          : isEs
+            ? 'Elige la esquina o margen deseado, el formato (Simple, Notarial 001, Bates 000001), página suelta o enfrentadas para encuadernar.'
+            : 'Pick the desired corner or margin, format (Simple, Notarial 001, Bates 000001), single or facing pages for binding.',
       },
       {
         '@type': 'HowToStep',
         position: 3,
-        name: isEs ? 'Estampar y Descargar' : 'Stamp and Download',
-        text: isEs
-          ? 'Pulsa «Aplicar Foliado al Documento» y descarga de inmediato tu PDF con la numeración legal estampada.'
-          : 'Click "Apply Page Numbering" and instantly download your legally numbered PDF file.',
+        name: isFr
+          ? 'Appliquer et Télécharger'
+          : isEs
+            ? 'Estampar y Descargar'
+            : 'Stamp and Download',
+        text: isFr
+          ? 'Cliquez sur « Appliquer la Numérotation » et téléchargez immédiatement votre PDF numéroté.'
+          : isEs
+            ? 'Pulsa «Aplicar Foliado al Documento» y descarga de inmediato tu PDF con la numeración legal estampada.'
+            : 'Click "Apply Page Numbering" and instantly download your legally numbered PDF file.',
       },
     ],
   };
@@ -259,17 +335,27 @@ export default function FoliarPage() {
           <div className="w-full text-center space-y-2.5 pt-2 pb-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 text-xs text-zinc-300 font-sans tracking-wide">
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span>Estándar Notarial, Judicial y Licitaciones • 100% Local</span>
+              <span>
+                {isFr
+                  ? 'Standard Notarié, Judiciaire et Appels d’Offres • 100% Local'
+                  : isEs
+                    ? 'Estándar Notarial, Judicial y Licitaciones • 100% Local'
+                    : 'Notarial, Legal & Corporate Stamping • 100% Local'}
+              </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-sans">
-              {isEs
-                ? 'Foliar PDF Gratis Online — Numerar Páginas de Expedientes Judiciales'
-                : 'Number PDF Pages Online Free — Bates Stamping & Legal Foliating'}
+              {isFr
+                ? 'Numéroter des Pages PDF en Ligne Gratuit — Pagination et Numérotation Bates'
+                : isEs
+                  ? 'Foliar PDF Gratis Online — Numerar Páginas de Expedientes Judiciales'
+                  : 'Number PDF Pages Online Free — Bates Stamping & Legal Foliating'}
             </h1>
             <p className="text-sm sm:text-base text-zinc-400 max-w-2xl mx-auto font-sans leading-relaxed">
-              {isEs
-                ? 'Inserta números de página correlativos, estampados Bates y folios notariales a tus archivos PDF en segundos con procesamiento 100% privado en memoria local.'
-                : 'Add consecutive page numbering, bates stamps, and legal folios to your PDF dossiers in seconds with 100% private in-browser memory processing.'}
+              {isFr
+                ? 'Ajoutez des numéros de page consécutifs, tampons Bates et folios juridiques à vos documents PDF en quelques secondes avec un traitement 100% privé en mémoire locale.'
+                : isEs
+                  ? 'Inserta números de página correlativos, estampados Bates y folios notariales a tus archivos PDF en segundos con procesamiento 100% privado en memoria local.'
+                  : 'Add consecutive page numbering, bates stamps, and legal folios to your PDF dossiers in seconds with 100% private in-browser memory processing.'}
             </p>
           </div>
 

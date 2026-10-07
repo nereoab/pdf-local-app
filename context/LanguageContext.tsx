@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 
-export type Language = 'es' | 'en' | 'pt' | 'zh';
+export type Language = 'es' | 'en' | 'pt' | 'zh' | 'fr';
 
 // ─── Translations Dictionary ─────────────────────
 const translations = {
@@ -464,6 +464,122 @@ const translations = {
     },
     soon: '即将推出',
   },
+  fr: {
+    nav: { back: 'Retour aux outils' },
+    hero: {
+      title: 'Tous les outils PDF dans votre navigateur',
+      subtitle:
+        'Modifiez, fusionnez et divisez vos documents PDF 100% localement. Sans aucun téléversement, garantissant une confidentialité absolue.',
+    },
+    tools: {
+      organize: {
+        title: 'Organiser PDF',
+        desc: 'Triez, ajoutez et supprimez des pages. Glissez-déposez les vignettes facilement.',
+      },
+      merge: {
+        title: 'Fusionner PDF',
+        desc: 'Combinez plusieurs fichiers PDF en un seul document dans l’ordre de votre choix.',
+      },
+      split: {
+        title: 'Diviser PDF',
+        desc: 'Extrayez des pages spécifiques ou séparez un document volumineux en plusieurs fichiers.',
+      },
+      delete: {
+        title: 'Supprimer des Pages',
+        desc: 'Supprimez les pages inutiles de votre PDF avec sélection visuelle.',
+      },
+      rotate: {
+        title: 'Pivoter PDF',
+        desc: 'Faites pivoter les pages de vos documents numérisés à l’envers.',
+      },
+      crop: {
+        title: 'Recadrer PDF',
+        desc: 'Ajustez les marges ou redimensionnez vos pages facilement.',
+      },
+      number: {
+        title: 'Numéroter les Pages',
+        desc: 'Ajoutez des numéros de page (folios) avec positionnement personnalisable.',
+      },
+      protect: {
+        title: 'Protéger PDF',
+        desc: 'Ajoutez un mot de passe pour empêcher l’ouverture de vos documents confidentiels.',
+      },
+      edit: { title: 'Ajouter du Texte', desc: 'Cliquez n’importe où sur le PDF...' },
+      pdfWord: {
+        title: 'PDF en Word',
+        desc: 'Convertissez votre PDF en document Word (.docx) modifiable.',
+      },
+      wordPdf: {
+        title: 'Word en PDF',
+        desc: 'Convertissez vos documents Word (.docx) au format PDF.',
+      },
+      pdfExcel: {
+        title: 'PDF en Excel',
+        desc: 'Extrayez les données et tableaux de votre PDF vers des feuilles de calcul (.xlsx).',
+      },
+      excelPdf: {
+        title: 'Excel en PDF',
+        desc: 'Convertissez vos feuilles Excel (.xlsx) en tableaux PDF.',
+      },
+      pdfPpt: {
+        title: 'PDF en PowerPoint',
+        desc: 'Convertissez votre PDF en présentation de diapositives PowerPoint (.pptx).',
+      },
+      pptPdf: {
+        title: 'PowerPoint en PDF',
+        desc: 'Convertissez vos présentations PowerPoint (.pptx) en PDF.',
+      },
+      pdfJpg: {
+        title: 'PDF en JPG',
+        desc: 'Convertissez chaque page du PDF en image JPG haute résolution.',
+      },
+      jpgPdf: {
+        title: 'JPG en PDF',
+        desc: 'Combinez vos images JPG, PNG ou WebP en un document PDF unique.',
+      },
+      pdfHtml: {
+        title: 'PDF en HTML',
+        desc: 'Exportez votre document PDF en code et page web HTML structurée.',
+      },
+      htmlPdf: {
+        title: 'HTML en PDF',
+        desc: 'Convertissez du code ou fichiers HTML en document PDF mis en forme.',
+      },
+      pdfText: {
+        title: 'PDF en Texte',
+        desc: 'Extrayez tout le texte brut de votre PDF dans un fichier (.txt).',
+      },
+      textPdf: {
+        title: 'Texte en PDF',
+        desc: 'Convertissez des fichiers texte brut (.txt) en document PDF structuré.',
+      },
+      compress: {
+        title: 'Compresser PDF',
+        desc: 'Réduisez le poids de votre fichier PDF en conservant une qualité optimale.',
+      },
+      repair: {
+        title: 'Réparer PDF',
+        desc: 'Récupérez et reconstruisez les documents PDF endommagés ou corrompus.',
+      },
+      unlock: {
+        title: 'Déverrouiller PDF',
+        desc: 'Supprimez les mots de passe et restrictions de vos fichiers PDF.',
+      },
+      redact: {
+        title: 'Censurer PDF',
+        desc: 'Masquez et supprimez définitivement les informations confidentielles de votre PDF.',
+      },
+      compare: {
+        title: 'Comparer PDF',
+        desc: 'Visualisez les différences entre deux versions de fichiers PDF similaires.',
+      },
+    },
+    footer: {
+      title: 'Traitement 100% Local et Sécurisé',
+      desc: 'Vos documents sont traités directement dans la mémoire de votre navigateur. Aucun fichier n’est téléversé vers des serveurs externes.',
+    },
+    soon: 'Bientôt disponible',
+  },
 };
 
 // ─── Mappings de locale para Intl ────────────────
@@ -472,6 +588,7 @@ const LOCALE_MAP: Record<Language, string> = {
   en: 'en-US',
   pt: 'pt-BR',
   zh: 'zh-CN',
+  fr: 'fr-FR',
 };
 
 // ─── Detecta idioma del navegador ────────────────
@@ -480,7 +597,7 @@ function detectBrowserLanguage(): Language {
   try {
     // 1. Intentar leer localStorage (persistencia)
     const stored = localStorage.getItem('pdfblack-lang');
-    if (stored === 'es' || stored === 'en' || stored === 'pt' || stored === 'zh')
+    if (stored === 'es' || stored === 'en' || stored === 'pt' || stored === 'zh' || stored === 'fr')
       return stored as Language;
 
     // 2. Detectar del navegador (navigator.language)
@@ -488,6 +605,7 @@ function detectBrowserLanguage(): Language {
     if (browserLang === 'en') return 'en';
     if (browserLang === 'pt') return 'pt';
     if (browserLang === 'zh') return 'zh';
+    if (browserLang === 'fr') return 'fr';
     // Cualquier otra cosa → español por defecto
   } catch {
     // ignorar errores de localStorage
@@ -499,7 +617,7 @@ function detectBrowserLanguage(): Language {
 interface LanguageContextType {
   lang: Language;
   t: (typeof translations)['es'];
-  /** Código locale completo para Intl (es-ES, en-US, pt-BR, zh-CN) */
+  /** Código locale completo para Intl (es-ES, en-US, pt-BR, zh-CN, fr-FR) */
   locale: string;
   toggleLanguage: () => void;
   setLang: (lang: Language) => void;
@@ -531,17 +649,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (pathname?.startsWith('/en')) return 'en';
     if (pathname?.startsWith('/pt')) return 'pt';
     if (pathname?.startsWith('/zh')) return 'zh';
+    if (pathname?.startsWith('/fr')) return 'fr';
     if (typeof window !== 'undefined') {
       const p = window.location.pathname;
       if (p.startsWith('/en')) return 'en';
       if (p.startsWith('/pt')) return 'pt';
       if (p.startsWith('/zh')) return 'zh';
+      if (p.startsWith('/fr')) return 'fr';
     }
     return 'es';
   });
   const [mounted, setMounted] = useState(false);
 
-  // Sincronizar idioma automáticamente según la URL (SEO Internacional /en/, /pt/ y /zh/)
+  // Sincronizar idioma automáticamente según la URL (SEO Internacional /en/, /pt/, /zh/ y /fr/)
   useEffect(() => {
     if (pathname?.startsWith('/en')) {
       setLangState('en');
@@ -549,6 +669,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       setLangState('pt');
     } else if (pathname?.startsWith('/zh')) {
       setLangState('zh');
+    } else if (pathname?.startsWith('/fr')) {
+      setLangState('fr');
     } else {
       setLangState('es');
     }
@@ -577,7 +699,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLangState((prev) => {
       if (prev === 'es') return 'en';
       if (prev === 'en') return 'pt';
-      if (prev === 'pt') return 'zh';
+      if (prev === 'pt') return 'fr';
+      if (prev === 'fr') return 'zh';
       return 'es';
     });
   }, []);

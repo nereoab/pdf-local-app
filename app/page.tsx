@@ -4,7 +4,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useEffect, useState, useRef, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import Link from 'next/link';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, type Language } from '../context/LanguageContext';
 import {
   ShieldCheck,
   Edit3,
@@ -315,7 +315,7 @@ function CategoryCard({
   cat: (typeof categories)[0];
   file: File | null;
   isEs: boolean;
-  lang?: 'es' | 'en' | 'pt' | 'zh';
+  lang?: Language;
 }) {
   const isPt = lang === 'pt';
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });

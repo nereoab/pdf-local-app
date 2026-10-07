@@ -55,97 +55,137 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 export default function MarcaAguaPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isFr = lang === 'fr';
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const faqs = isEs
+  const faqs = isFr
     ? [
         {
-          q: '¿Qué es una marca de agua en un documento PDF y para qué se utiliza?',
-          a: 'Una marca de agua es un texto, logotipo o sello superpuesto de forma semitransparente sobre las páginas de un documento. Se utiliza para indicar el estado legal de un archivo (por ejemplo, «CONFIDENCIAL», «BORRADOR», «COPIA NO CONTROLADA»), salvaguardar la propiedad intelectual de informes o proyectos creativos y prevenir el uso no autorizado o la filtración de información reservada.',
+          q: 'Qu’est-ce qu’un filigrane dans un document PDF et à quoi sert-il ?',
+          a: 'Un filigrane est un texte, logo ou tampon superposé de manière semi-transparente sur les pages d’un document. Il permet d’indiquer le statut légal d’un fichier (ex. « CONFIDENTIEL », « BROUILLON »), de protéger la propriété intellectuelle de rapports ou créations et de prévenir les fuites de données.',
         },
         {
-          q: '¿Qué ventaja ofrece el modo de «Mosaico Repetido» (Tiled Pattern) frente al sello único?',
-          a: 'Un sello único colocado en el centro o en una esquina puede ser recortado o eliminado fácilmente mediante herramientas de edición visual. El patrón en mosaico repetido estampa una matriz diagonal que cubre la totalidad de cada hoja, haciendo prácticamente imposible recortar el documento o fotografiar fragmentos de pantalla sin que el sello de seguridad quede patente.',
+          q: 'Quel est l’avantage du mode « Mosaïque Répétée » (Tiled Pattern) face au tampon unique ?',
+          a: 'Un tampon unique au centre ou dans un coin peut être facilement recadré ou effacé. Le motif en mosaïque répétée applique une matrice diagonale couvrant l’intégralité de chaque page, rendant le recadrage ou la capture d’écran partielle inopérants sans afficher le filigrane.',
         },
         {
-          q: '¿Cómo resuelve PDFBlack la rotación de páginas horizontales o apaisadas?',
-          a: 'Los expedientes y planos a menudo contienen páginas con rotación nativa a 90°, 180° o 270°. Nuestro motor empresarial inspecciona el diccionario geométrico de cada hoja individualmente y compensa matemáticamente las coordenadas y el ángulo del sello, garantizando que aparezca en la orientación y esquina visualmente correctas.',
+          q: 'Comment PDFBlack gère-t-il la rotation des pages horizontales ?',
+          a: 'Les dossiers et plans contiennent souvent des pages avec une rotation native à 90°, 180° ou 270°. Notre moteur analyse la géométrie de chaque feuille et compense les coordonnées et l’angle du tampon pour une orientation toujours parfaite.',
         },
         {
-          q: '¿Puedo insertar un logotipo con fondo transparente (PNG)?',
-          a: 'Sí. El motor admite imágenes en formatos PNG y JPG con canal alfa transparente. Puedes ajustar la escala porcentual del logo, su nivel de opacidad (de 5% a 100%) y el ángulo de rotación para adaptarlo a la identidad visual de tu empresa o estudio.',
+          q: 'Puis-je insérer un logo avec fond transparent (PNG) ?',
+          a: 'Oui. Le moteur accepte les formats PNG et JPG avec canal alpha transparent. Vous pouvez régler l’échelle, le niveau d’opacité (de 5% à 100%) et l’angle de rotation pour correspondre à votre identité visuelle.',
         },
         {
-          q: '¿Se degradan los textos, imágenes o vectores del PDF original al estampar el sello?',
-          a: 'En absoluto. PDFBlack realiza una inyección vectorial limpia sobre el flujo de contenido nativo (`page.drawText` o `page.drawImage`) sin recomprimir imágenes existentes, sin rasterizar fuentes tipográficas ni modificar la resolución del documento original.',
+          q: 'Les textes ou images d’origine sont-ils altérés lors de l’estampillage ?',
+          a: 'Absolument pas. PDFBlack applique une injection vectorielle propre dans le flux de contenu natif sans recompresser les images, sans rasteriser les polices et sans dégrader la résolution originale.',
         },
         {
-          q: '¿Puedo elegir en qué páginas colocar la marca de agua o saltarme la portada?',
-          a: 'Sí. Dispones de selectores de alcance rápido: «Todas las páginas», «Solo páginas impares», «Solo páginas pares» o «Rango personalizado» (ejemplo: 1-10, 15). Además, cuentas con una casilla específica para omitir la carátula o portada con un solo clic.',
+          q: 'Puis-je choisir sur quelles pages insérer le filigrane ou ignorer la page de garde ?',
+          a: 'Oui. Vous disposez de sélecteurs rapides : « Toutes les pages », « Pages impaires », « Pages paires » ou « Intervalle personnalisé » (ex. 1-10, 15), avec une option pour exclure la couverture en un clic.',
         },
         {
-          q: '¿Es seguro poner marcas de agua a contratos confidenciales, balances o auditorías?',
-          a: '100% seguro. PDFBlack implementa una arquitectura Zero-Knowledge estricta: todo el procesamiento, estampado y cálculo vectorial se ejecuta en la memoria RAM de tu navegador web mediante Web Workers aislados. Ningún byte se envía a servidores remotos ni se guarda en la nube, garantizando el cumplimiento del RGPD, LOPD e HIPAA.',
-        },
-        {
-          q: '¿El sello de agua permanece visible al imprimir el PDF en papel físico?',
-          a: 'Sí. Al integrarse como capa vectorial conforme al estándar internacional ISO 32000-1, la marca de agua se renderiza fielmente tanto en pantallas de alta resolución como en impresoras láser, fotocopiadoras y visores estándar como Adobe Acrobat, Edge o Chrome.',
-        },
-        {
-          q: '¿Puedo desbloquear un PDF protegido antes de estampar la marca de agua?',
-          a: 'Sí. Si tu documento requiere contraseña de apertura, el visor incluye un widget local para ingresar la clave en memoria y desbloquear las páginas directamente en tu dispositivo sin transferir tus credenciales a terceros.',
+          q: 'Est-il sécurisé d’ajouter des filigranes à des contrats confidentiels ?',
+          a: '100% sécurisé. PDFBlack fonctionne en mémoire RAM locale via Web Workers. Aucun octet n’est transmis à des serveurs distants ni stocké dans le cloud, garantissant le strict respect du RGPD.',
         },
       ]
-    : [
-        {
-          q: 'What is a PDF watermark and what is it used for?',
-          a: 'A watermark is a semi-transparent text, logo, or stamp superimposed across the pages of a document. It is used to declare legal status (e.g., "CONFIDENTIAL", "DRAFT", "DO NOT COPY"), protect intellectual property in technical reports or creative assets, and deter unauthorized leaks or disclosure.',
-        },
-        {
-          q: 'What are the benefits of the "Repeating Mosaic" (Tiled) pattern over a single stamp?',
-          a: 'A single corner or center stamp can easily be cropped or masked out. The repeating diagonal mosaic stamps a matrix pattern across the entire sheet surface, making it practically impossible to take screenshots or photocopy document excerpts without displaying the security watermark.',
-        },
-        {
-          q: 'How does PDFBlack handle landscape or rotated sheets?',
-          a: 'Documents frequently contain mixed portrait contracts alongside landscape tables or blueprints (90°, 180°, 270°). Our enterprise engine reads each page rotation dictionary and compensates coordinates and rotation angles so watermarks stay visually upright in the intended visual area.',
-        },
-        {
-          q: 'Can I upload a transparent PNG logo?',
-          a: 'Yes. The engine fully supports PNG with alpha channel transparency as well as JPG images. You can adjust logo scaling (10% to 100%), opacity levels, and rotation angle to align with your corporate branding standards.',
-        },
-        {
-          q: 'Does stamping watermarks degrade text, vector sharpness, or embedded images?',
-          a: 'Not at all. PDFBlack applies non-destructive vector injections directly into the PDF content stream without recompressing existing images, rasterizing fonts, or altering native document resolution.',
-        },
-        {
-          q: 'Can I stamp specific pages or exclude the document cover sheet?',
-          a: 'Yes. You can use quick scope selectors: "All Pages", "Odd Pages Only", "Even Pages Only", or "Custom Page Range" (e.g., 1-10, 15), with a dedicated toggle to automatically skip the first cover page.',
-        },
-        {
-          q: 'Is it private and safe to watermark sensitive contracts and financial audits?',
-          a: '100% private and secure. PDFBlack runs on a Zero-Knowledge local architecture: all file processing and vector rendering take place inside your browser RAM via Web Workers. Not a single byte is uploaded to cloud servers, complying with GDPR, HIPAA, and corporate confidentiality policies.',
-        },
-        {
-          q: 'Will the watermark remain intact when physically printed?',
-          a: 'Yes. Because watermarks are embedded following the ISO 32000-1 PDF standard, they print consistently on physical paper and render properly in Adobe Acrobat, Chrome, Edge, and mobile readers.',
-        },
-        {
-          q: 'Can I unlock password-protected PDF files before watermarking?',
-          a: 'Yes. If your document requires a password to open, an in-memory unlocking prompt allows you to supply credentials locally without transmitting keys to external servers.',
-        },
-      ];
+    : isEs
+      ? [
+          {
+            q: '¿Qué es una marca de agua en un documento PDF y para qué se utiliza?',
+            a: 'Una marca de agua es un texto, logotipo o sello superpuesto de forma semitransparente sobre las páginas de un documento. Se utiliza para indicar el estado legal de un archivo (por ejemplo, «CONFIDENCIAL», «BORRADOR», «COPIA NO CONTROLADA»), salvaguardar la propiedad intelectual de informes o proyectos creativos y prevenir el uso no autorizado o la filtración de información reservada.',
+          },
+          {
+            q: '¿Qué ventaja ofrece el modo de «Mosaico Repetido» (Tiled Pattern) frente al sello único?',
+            a: 'Un sello único colocado en el centro o en una esquina puede ser recortado o eliminado fácilmente mediante herramientas de edición visual. El patrón en mosaico repetido estampa una matriz diagonal que cubre la totalidad de cada hoja, haciendo prácticamente imposible recortar el documento o fotografiar fragmentos de pantalla sin que el sello de seguridad quede patente.',
+          },
+          {
+            q: '¿Cómo resuelve PDFBlack la rotación de páginas horizontales o apaisadas?',
+            a: 'Los expedientes y planos a menudo contienen páginas con rotación nativa a 90°, 180° o 270°. Nuestro motor empresarial inspecciona el diccionario geométrico de cada hoja individualmente y compensa matemáticamente las coordenadas y el ángulo del sello, garantizando que aparezca en la orientación y esquina visualmente correctas.',
+          },
+          {
+            q: '¿Puedo insertar un logotipo con fondo transparente (PNG)?',
+            a: 'Sí. El motor admite imágenes en formatos PNG y JPG con canal alfa transparente. Puedes ajustar la escala porcentual del logo, su nivel de opacidad (de 5% a 100%) y el ángulo de rotación para adaptarlo a la identidad visual de tu empresa o estudio.',
+          },
+          {
+            q: '¿Se degradan los textos, imágenes o vectores del PDF original al estampar el sello?',
+            a: 'En absoluto. PDFBlack realiza una inyección vectorial limpia sobre el flujo de contenido nativo (`page.drawText` o `page.drawImage`) sin recomprimir imágenes existentes, sin rasterizar fuentes tipográficas ni modificar la resolución del documento original.',
+          },
+          {
+            q: '¿Puedo elegir en qué páginas colocar la marca de agua o saltarme la portada?',
+            a: 'Sí. Dispones de selectores de alcance rápido: «Todas las páginas», «Solo páginas impares», «Solo páginas pares» o «Rango personalizado» (ejemplo: 1-10, 15). Además, cuentas con una casilla específica para omitir la carátula o portada con un solo clic.',
+          },
+          {
+            q: '¿Es seguro poner marcas de agua a contratos confidenciales, balances o auditorías?',
+            a: '100% seguro. PDFBlack implementa una arquitectura Zero-Knowledge estricta: todo el procesamiento, estampado y cálculo vectorial se ejecuta en la memoria RAM de tu navegador web mediante Web Workers aislados. Ningún byte se envía a servidores remotos ni se guarda en la nube, garantizando el cumplimiento del RGPD, LOPD e HIPAA.',
+          },
+          {
+            q: '¿El sello de agua permanece visible al imprimir el PDF en papel físico?',
+            a: 'Sí. Al integrarse como capa vectorial conforme al estándar internacional ISO 32000-1, la marca de agua se renderiza fielmente tanto en pantallas de alta resolución como en impresoras láser, fotocopiadoras y visores estándar como Adobe Acrobat, Edge o Chrome.',
+          },
+          {
+            q: '¿Puedo desbloquear un PDF protegido antes de estampar la marca de agua?',
+            a: 'Sí. Si tu documento requiere contraseña de apertura, el visor incluye un widget local para ingresar la clave en memoria y desbloquear las páginas directamente en tu dispositivo sin transferir tus credenciales a terceros.',
+          },
+        ]
+      : [
+          {
+            q: 'What is a PDF watermark and what is it used for?',
+            a: 'A watermark is a semi-transparent text, logo, or stamp superimposed across the pages of a document. It is used to declare legal status (e.g., "CONFIDENTIAL", "DRAFT", "DO NOT COPY"), protect intellectual property in technical reports or creative assets, and deter unauthorized leaks or disclosure.',
+          },
+          {
+            q: 'What are the benefits of the "Repeating Mosaic" (Tiled) pattern over a single stamp?',
+            a: 'A single corner or center stamp can easily be cropped or masked out. The repeating diagonal mosaic stamps a matrix pattern across the entire sheet surface, making it practically impossible to take screenshots or photocopy document excerpts without displaying the security watermark.',
+          },
+          {
+            q: 'How does PDFBlack handle landscape or rotated sheets?',
+            a: 'Documents frequently contain mixed portrait contracts alongside landscape tables or blueprints (90°, 180°, 270°). Our enterprise engine reads each page rotation dictionary and compensates coordinates and rotation angles so watermarks stay visually upright in the intended visual area.',
+          },
+          {
+            q: 'Can I upload a transparent PNG logo?',
+            a: 'Yes. The engine fully supports PNG with alpha channel transparency as well as JPG images. You can adjust logo scaling (10% to 100%), opacity levels, and rotation angle to align with your corporate branding standards.',
+          },
+          {
+            q: 'Does stamping watermarks degrade text, vector sharpness, or embedded images?',
+            a: 'Not at all. PDFBlack applies non-destructive vector injections directly into the PDF content stream without recompressing existing images, rasterizing fonts, or altering native document resolution.',
+          },
+          {
+            q: 'Can I stamp specific pages or exclude the document cover sheet?',
+            a: 'Yes. You can use quick scope selectors: "All Pages", "Odd Pages Only", "Even Pages Only", or "Custom Page Range" (e.g., 1-10, 15), with a dedicated toggle to automatically skip the first cover page.',
+          },
+          {
+            q: 'Is it private and safe to watermark sensitive contracts and financial audits?',
+            a: '100% private and secure. PDFBlack runs on a Zero-Knowledge local architecture: all file processing and vector rendering take place inside your browser RAM via Web Workers. Not a single byte is uploaded to cloud servers, complying with GDPR, HIPAA, and corporate confidentiality policies.',
+          },
+          {
+            q: 'Will the watermark remain intact when physically printed?',
+            a: 'Yes. Because watermarks are embedded following the ISO 32000-1 PDF standard, they print consistently on physical paper and render properly in Adobe Acrobat, Chrome, Edge, and mobile readers.',
+          },
+          {
+            q: 'Can I unlock password-protected PDF files before watermarking?',
+            a: 'Yes. If your document requires a password to open, an in-memory unlocking prompt allows you to supply credentials locally without transmitting keys to external servers.',
+          },
+        ];
 
   const jsonLdWebApp = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: isEs
-      ? 'Poner Marca de Agua en PDF Gratis Online — Sello de Agua | PDFBlack'
-      : 'Add Watermark to PDF Online Free — Stamp & Logo | PDFBlack',
-    url: isEs ? `${SITE_URL}/editar/marca-agua` : `${SITE_URL}/en/watermark-pdf`,
-    description: isEs
-      ? 'Herramienta profesional para poner marcas de agua y sellos de texto o imagen en PDF. Modo mosaico anti-fugas, logotipos transparentes, compensación de rotación y privacidad 100% en RAM.'
-      : 'Professional web tool to add text or image watermarks to PDF files. Anti-leak repeating mosaic, transparent logos, page rotation compensation, and 100% in-browser RAM privacy.',
+    name: isFr
+      ? 'Ajouter un Filigrane à un PDF en Ligne Gratuit — Tampon et Logo | PDFBlack'
+      : isEs
+        ? 'Poner Marca de Agua en PDF Gratis Online — Sello de Agua | PDFBlack'
+        : 'Add Watermark to PDF Online Free — Stamp & Logo | PDFBlack',
+    url: isFr
+      ? `${SITE_URL}/fr/ajouter-filigrane-pdf`
+      : isEs
+        ? `${SITE_URL}/editar/marca-agua`
+        : `${SITE_URL}/en/watermark-pdf`,
+    description: isFr
+      ? 'Outil professionnel pour ajouter des filigranes, textes ou logos sur vos PDF. Motif mosaïque anti-fuite, logos transparents, compensation d’orientation et confidentialité 100% en RAM.'
+      : isEs
+        ? 'Herramienta profesional para poner marcas de agua y sellos de texto o imagen en PDF. Modo mosaico anti-fugas, logotipos transparentes, compensación de rotación y privacidad 100% en RAM.'
+        : 'Professional web tool to add text or image watermarks to PDF files. Anti-leak repeating mosaic, transparent logos, page rotation compensation, and 100% in-browser RAM privacy.',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',
@@ -154,15 +194,25 @@ export default function MarcaAguaPage() {
       price: '0',
       priceCurrency: 'USD',
     },
-    featureList: [
-      'Estampado de sellos prediseñados: CONFIDENCIAL, BORRADOR, COPIA, RESERVADO',
-      'Modo Mosaico Repetido diagonal (DLP anti-filtraciones y fotocopias)',
-      'Inserción de logotipos corporativos transparentes PNG / JPG',
-      'Compensación automática de rotación en páginas de 90°, 180° y 270°',
-      'Control de opacidad milimétrica (5% a 100%) y ángulo de -90° a +90°',
-      'Tipografías corporativas incrustadas (Helvetica, Times Roman, Courier)',
-      'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
-    ],
+    featureList: isFr
+      ? [
+          'Tampons prédéfinis : CONFIDENTIEL, BROUILLON, COPIE, PRIVÉ',
+          'Mode Mosaïque Répétée diagonale anti-fuites et captures d’écran',
+          'Insertion de logos d’entreprise transparents PNG / JPG',
+          'Compensation automatique d’orientation pour pages à 90°, 180° et 270°',
+          'Réglage précis de l’opacité (5% à 100%) et de l’angle (-90° à +90°)',
+          'Polices intégrées professionnelles (Helvetica, Times Roman, Courier)',
+          'Traitement 100% privé en mémoire RAM locale via Web Workers',
+        ]
+      : [
+          'Estampado de sellos prediseñados: CONFIDENCIAL, BORRADOR, COPIA, RESERVADO',
+          'Modo Mosaico Repetido diagonal (DLP anti-filtraciones y fotocopias)',
+          'Inserción de logotipos corporativos transparentes PNG / JPG',
+          'Compensación automática de rotación en páginas de 90°, 180° y 270°',
+          'Control de opacidad milimétrica (5% a 100%) y ángulo de -90° a +90°',
+          'Tipografías corporativas incrustadas (Helvetica, Times Roman, Courier)',
+          'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
+        ],
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: '4.94',
@@ -192,20 +242,24 @@ export default function MarcaAguaPage() {
       {
         '@type': 'ListItem',
         position: 1,
-        name: isEs ? 'Inicio' : 'Home',
-        item: isEs ? SITE_URL : `${SITE_URL}/en`,
+        name: isFr ? 'Accueil' : isEs ? 'Inicio' : 'Home',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
-        name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
+        name: isFr ? 'Modifier PDF' : isEs ? 'Editar PDF' : 'Edit PDF',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
-        name: isEs ? 'Marca de Agua' : 'Watermark',
-        item: isEs ? `${SITE_URL}/editar/marca-agua` : `${SITE_URL}/en/watermark-pdf`,
+        name: isFr ? 'Filigrane PDF' : isEs ? 'Marca de Agua' : 'Watermark',
+        item: isFr
+          ? `${SITE_URL}/fr/ajouter-filigrane-pdf`
+          : isEs
+            ? `${SITE_URL}/editar/marca-agua`
+            : `${SITE_URL}/en/watermark-pdf`,
       },
     ],
   };
@@ -213,36 +267,54 @@ export default function MarcaAguaPage() {
   const jsonLdHowTo = {
     '@context': 'https://schema.org',
     '@type': 'HowTo',
-    name: isEs
-      ? 'Cómo Poner Marca de Agua a un Documento PDF Online'
-      : 'How to Add Watermark to a PDF Document Online',
-    description: isEs
-      ? 'Guía paso a paso para añadir marcas de agua confidenciales, sellos o logotipos a tus archivos PDF en tu navegador.'
-      : 'Step-by-step tutorial to add confidential watermarks, stamps, or logos to PDF files in your browser.',
+    name: isFr
+      ? 'Comment Ajouter un Filigrane à un Document PDF en Ligne'
+      : isEs
+        ? 'Cómo Poner Marca de Agua a un Documento PDF Online'
+        : 'How to Add Watermark to a PDF Document Online',
+    description: isFr
+      ? 'Guide pas à pas pour ajouter des filigranes confidentiels, tampons ou logos à vos fichiers PDF dans votre navigateur.'
+      : isEs
+        ? 'Guía paso a paso para añadir marcas de agua confidenciales, sellos o logotipos a tus archivos PDF en tu navegador.'
+        : 'Step-by-step tutorial to add confidential watermarks, stamps, or logos to PDF files in your browser.',
     step: [
       {
         '@type': 'HowToStep',
         position: 1,
-        name: isEs ? 'Cargar el archivo PDF' : 'Upload PDF file',
-        text: isEs
-          ? 'Arrastra o selecciona el documento PDF que deseas proteger en la zona de trabajo.'
-          : 'Drag and drop or select the PDF document you want to protect in the workspace.',
+        name: isFr ? 'Charger le fichier PDF' : isEs ? 'Cargar el archivo PDF' : 'Upload PDF file',
+        text: isFr
+          ? 'Glissez-déposez ou sélectionnez le document PDF à protéger dans l’espace de travail.'
+          : isEs
+            ? 'Arrastra o selecciona el documento PDF que deseas proteger en la zona de trabajo.'
+            : 'Drag and drop or select the PDF document you want to protect in the workspace.',
       },
       {
         '@type': 'HowToStep',
         position: 2,
-        name: isEs ? 'Configurar texto o logo y formato' : 'Configure text or logo and format',
-        text: isEs
-          ? 'Elige texto (ej. CONFIDENCIAL) o sube tu logo, ajusta posición, ángulo, opacidad o activa el modo mosaico repetido.'
-          : 'Pick text (e.g. CONFIDENTIAL) or upload your logo, adjust position, angle, opacity, or enable tiled mosaic mode.',
+        name: isFr
+          ? 'Configurer le texte ou logo et le format'
+          : isEs
+            ? 'Configurar texto o logo y formato'
+            : 'Configure text or logo and format',
+        text: isFr
+          ? 'Saisissez le texte (ex. CONFIDENTIEL) ou chargez votre logo, ajustez la position, l’opacité ou activez le mode mosaïque répétée.'
+          : isEs
+            ? 'Elige texto (ej. CONFIDENCIAL) o sube tu logo, ajusta posición, ángulo, opacidad o activa el modo mosaico repetido.'
+            : 'Pick text (e.g. CONFIDENTIAL) or upload your logo, adjust position, angle, opacity, or enable tiled mosaic mode.',
       },
       {
         '@type': 'HowToStep',
         position: 3,
-        name: isEs ? 'Estampar y Descargar' : 'Stamp and Download',
-        text: isEs
-          ? 'Haz clic en «Estampar Sello de Agua» y descarga tu archivo protegido al instante.'
-          : 'Click "Apply Watermark Stamp" and immediately download your protected document.',
+        name: isFr
+          ? 'Appliquer et Télécharger'
+          : isEs
+            ? 'Estampar y Descargar'
+            : 'Stamp and Download',
+        text: isFr
+          ? 'Cliquez sur « Appliquer le Filigrane » et téléchargez instantanément votre document protégé.'
+          : isEs
+            ? 'Haz clic en «Estampar Sello de Agua» y descarga tu archivo protegido al instante.'
+            : 'Click "Apply Watermark Stamp" and immediately download your protected document.',
       },
     ],
   };

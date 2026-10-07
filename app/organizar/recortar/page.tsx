@@ -41,153 +41,185 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 export default function RecortarPdfPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isFr = lang === 'fr';
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const faqs = isEs
+  const faqs = isFr
     ? [
         {
-          q: '¿Cómo recortar los márgenes de un documento PDF de forma interactiva?',
-          a: 'Carga tu archivo PDF en la zona de trabajo; verás la vista previa de alta definición de la página con un recuadro de recorte delimitador. Puedes arrastrar los 8 manejadores en vivo para encuadrar la zona deseada o introducir márgenes exactos en milímetros (Superior, Inferior, Izquierdo, Derecho). Una vez configurado, selecciona si deseas aplicarlo a todas las hojas o a páginas específicas y pulsa «Recortar Márgenes del PDF».',
+          q: 'Comment recadrer les marges d’un document PDF en ligne de manière interactive ?',
+          a: 'Chargez votre fichier PDF dans l’espace de travail ; vous verrez l’aperçu haute définition de la page avec un cadre de recadrage ajustable. Déplacez les 8 poignées interactives pour délimiter la zone souhaitée ou saisissez les marges exactes en millimètres. Choisissez si vous souhaitez appliquer le rognage à toutes les pages ou à une sélection précise, puis cliquez sur « Recadrer les Marges du PDF ».',
         },
         {
-          q: '¿Cómo recortar un PDF a un tamaño de página específico (A4, Carta o dimensiones personalizadas)?',
-          a: 'En PDFBlack puedes ingresar las medidas exactas en milímetros en los campos de margen para encuadrar tu documento a formatos estándar internacionales como ISO A4 (210 × 297 mm), Carta US (215.9 × 279.4 mm), Oficio o proporciones a medida. El lienzo calcula en tiempo real las dimensiones resultantes y ajusta el CropBox paramétrico sin alterar la escala vectorial interna.',
+          q: 'Comment rogner un PDF à un format de page spécifique (A4, Lettre ou dimensions sur mesure) ?',
+          a: 'Sur PDFBlack, vous pouvez renseigner les dimensions exactes en millimètres pour adapter vos documents aux normes internationales comme ISO A4 (210 × 297 mm), Lettre US (215.9 × 279.4 mm) ou ratios personnalisés. Le moteur ajuste le CropBox paramétrique en temps réel sans dégrader les vecteurs.',
         },
         {
-          q: '¿Se pueden recortar automáticamente los márgenes blancos sobrantes de un PDF (Auto Crop)?',
-          a: 'Sí. Utiliza los preajustes rápidos de 5 mm y 10 mm en el panel de control o ajusta los 8 manejadores interactivos pegados a los límites del texto y tablas. Esto elimina bordes blancos excesivos, marcas de corte de imprenta y sombras de escáner en todo el documento a la vez, aprovechando el 100% de la pantalla en tablets y e-readers Kindle.',
+          q: 'Peut-on supprimer automatiquement les marges blanches d’un PDF (Auto-Crop) ?',
+          a: 'Oui. Utilisez les préréglages rapides ou ajustez les poignées aux bords du texte. Cela élimine les bordures blanches excessives, traits de coupe et ombres de numérisation, optimisant l’affichage sur tablettes et liseuses.',
         },
         {
-          q: '¿Por qué elegir PDFBlack frente a Sejda, iLovePDF o Adobe Acrobat para recortar PDFs?',
-          a: 'A diferencia de Sejda (que restringe a 3 tareas gratis por hora y 50 MB) e iLovePDF (que sube tus documentos confidenciales a servidores en la nube), PDFBlack es 100% ilimitado, gratuito para siempre y procesa tus archivos exclusivamente en la memoria RAM de tu navegador mediante Web Workers. Ningún dato se transfiere a internet, garantizando total cumplimiento de privacidad (RGPD e HIPAA) sin costosas licencias de Adobe.',
+          q: 'Les textes vectoriels, liens et signets du PDF original sont-ils préservés ?',
+          a: 'Parfaitement. Comme il s’agit d’un ajustement géométrique du CropBox dans le dictionnaire de la page conforme ISO 32000-1, tous les textes sélectionnables, hyperliens et polices restent 100% intacts.',
         },
         {
-          q: '¿Esta herramienta para recortar PDF es totalmente gratuita y sin marcas de agua?',
-          a: 'Totalmente gratuita. No estampamos marcas de agua publicitarias, no solicitamos correos electrónicos ni tarjetas de crédito, y no hay límite en el tamaño de archivo ni en el número de páginas que puedes recortar. El rendimiento depende únicamente de la potencia de tu equipo local.',
-        },
-        {
-          q: '¿Puedo recortar un PDF desde el móvil o tablet (Android, iPhone, iPad)?',
-          a: 'Sí. La mesa de trabajo está diseñada para responder al tacto en pantallas de smartphones y tablets. Puedes arrastrar los manejadores con los dedos o ingresar márgenes numéricos en Safari, Chrome o Firefox móvil sin instalar aplicaciones externas.',
-        },
-        {
-          q: '¿Qué diferencia existe entre modificar el CropBox y recortar imágenes rasterizadas?',
-          a: 'En el estándar internacional PDF ISO 32000-1, cada página cuenta con cajas de delimitación geométricas (MediaBox, CropBox, TrimBox). Modificar el CropBox ajusta las coordenadas del área visible e imprimible del documento sin recomprimir ni rasterizar textos ni vectores. Esto garantiza que la nitidez de tipografías, planos y tablas permanezca al 100% idéntica al archivo original.',
-        },
-        {
-          q: '¿Puedo aplicar el recorte a todas las páginas, solo pares/impares o a un rango personalizado?',
-          a: 'Sí. En el panel de control inferior dispones del selector de alcance: «Todas» (aplica los mismos márgenes a cada hoja), «Pares» o «Impares» (ideal para libros o documentos encuadernados que requieren márgenes interiores alternados) o «Rango Personalizado» (para especificar intervalos como 1-5, 8, 12).',
-        },
-        {
-          q: '¿Cómo eliminar los bordes negros o sombras producidas por escáneres?',
-          a: 'Los escaneos de libros o folios sueltos suelen presentar sombras oscuras en los bordes. Utiliza los preajustes rápidos de 5 mm o 10 mm en el panel de control o ajusta libremente los bordes con los manejadores interactivos para cortar las imperfecciones periféricas sin tocar el texto útil.',
-        },
-        {
-          q: '¿Es compatible con planos CAD y documentos en formatos grandes (A0, A1, A2, A3)?',
-          a: 'Sí. El motor de cálculo procesa proporciones vectoriales nativas calculando la relación de aspecto real de cada plano o lámina técnica, permitiendo recortar cajas de rotulación o márgenes de impresión en documentos de cualquier escala.',
-        },
-        {
-          q: '¿Se conservan los textos seleccionables, enlaces y marcadores del PDF original?',
-          a: 'Totalmente. Al tratarse de un ajuste paramétrico en el diccionario de la página, todo el árbol de contenido interno (texto OCR seleccionable, hipervínculos, capas vectoriales y fuentes incrustadas) se mantiene intacto dentro del área conservada.',
-        },
-        {
-          q: '¿Es seguro recortar documentos confidenciales, contratos o estados financieros?',
-          a: '100% seguro y confidencial. PDFBlack implementa una arquitectura Zero-Knowledge estricta: todo el procesamiento matemático y renderizado ocurre en la memoria RAM de tu navegador mediante Web Workers. Ningún byte se envía a servidores externos ni se almacena en la nube, cumpliendo plenamente con el RGPD e HIPAA.',
-        },
-        {
-          q: '¿Puedo recortar un archivo PDF protegido con contraseña de apertura?',
-          a: 'Sí. Si tu documento está cifrado, el sistema te solicitará la contraseña en un campo seguro en memoria local para desbloquear los diccionarios de página antes de renderizar y aplicar los nuevos márgenes, sin transferir tus credenciales a terceros.',
-        },
-        {
-          q: '¿El recorte se respeta al imprimir en papel o abrirlo en Adobe Acrobat y navegadores?',
-          a: 'Sí. Tanto los visores de escritorio (Adobe Acrobat, Foxit, Nitro) como los motores de visualización de navegadores (Chrome, Edge, Safari) y los controladores de impresión respetan de forma estricta las directivas del CropBox grabado.',
-        },
-        {
-          q: '¿Cómo recortar todas las páginas de un PDF a la vez gratis?',
-          a: 'Para recortar todas las hojas a la vez: 1. Carga tu PDF en PDFBlack. 2. Ajusta los márgenes deseados con los manejadores interactivos o en milímetros. 3. En el selector de alcance, mantén seleccionada la opción «Todas» y pulsa «Recortar Márgenes del PDF». El recorte se aplicará uniformemente a todo el documento en memoria RAM en segundos.',
-        },
-        {
-          q: '¿Se puede recortar un PDF online sin pagar Adobe Acrobat?',
-          a: 'Sí. PDFBlack permite recortar documentos PDF de forma 100% gratuita y sin suscripciones. Modifica el diccionario geométrico CropBox oficial de cada página en tu navegador con fidelidad vectorial nativa sin requerir licencias de Adobe.',
+          q: 'Est-il sécurisé de recadrer des documents confidentiels ou des contrats ?',
+          a: '100% privé et sécurisé. PDFBlack fonctionne en mémoire RAM locale sans aucun téléversement de fichier vers des serveurs distants, en totale conformité avec le RGPD.',
         },
       ]
-    : [
-        {
-          q: 'How do I crop PDF margins interactively?',
-          a: 'Upload your PDF into the work area; an HD preview with an active crop bounding box will appear immediately. You can drag the 8 live handles to frame the desired area or enter exact margins in millimeters (Top, Bottom, Left, Right). Choose whether to apply it to all pages or specific sheets, then click "Crop PDF Margins".',
-        },
-        {
-          q: 'How do I crop a PDF to a specific page size (A4, Letter, Custom Dimensions)?',
-          a: 'In PDFBlack, you can adjust visual crop handles or type millimeter margins into the Top, Bottom, Left, and Right fields to frame pages into standard international formats like ISO A4 (210 × 297 mm), US Letter (8.5 × 11 in), Legal, or custom dimensions. The live viewport updates the CropBox coordinates in real time without rasterizing text or vectors.',
-        },
-        {
-          q: 'Can I automatically crop white margins from a PDF document (Auto Crop)?',
-          a: 'Yes. PDFBlack allows you to auto-crop unwanted white borders, margins, and scanner edges using our instant margin presets (5mm, 10mm) or by snapping the 8 boundary handles tightly around the text and image content. This maximizes readability on iPads, tablets, and Kindle e-readers by utilizing 100% of the display area.',
-        },
-        {
-          q: 'Why choose PDFBlack over Sejda, iLovePDF, or Adobe Acrobat to crop PDFs?',
-          a: 'Unlike Sejda (which caps free users to 3 tasks per hour and 50MB files) and iLovePDF (which uploads your private documents to third-party cloud servers), PDFBlack is 100% unlimited, free forever, and processes everything client-side in your browser RAM via Web Workers. Your sensitive files never leave your device, ensuring full GDPR and HIPAA compliance without paying for Adobe Acrobat Pro.',
-        },
-        {
-          q: 'Is this PDF crop tool truly free with no watermarks, paywalls, or file limits?',
-          a: 'Yes, 100% free with no watermarks, no registration, and no hidden subscriptions. Because all processing executes locally on your device hardware using WebAssembly and Web Workers, you can crop multi-gigabyte or hundreds-of-pages PDF files without restrictions.',
-        },
-        {
-          q: 'Can you crop a PDF on mobile or tablet (Android, iPhone, iPad)?',
-          a: 'Yes. The interactive canvas is fully touch-optimized. You can drag boundary handles with your fingertips or type millimeter offsets directly on any modern mobile browser (Safari, Chrome) without installing third-party apps.',
-        },
-        {
-          q: 'What is the difference between adjusting CropBox and rasterizing images?',
-          a: 'Under the PDF ISO 32000-1 standard, pages define geometric bounding boxes (MediaBox, CropBox, TrimBox). Modifying the CropBox changes the visible and printable viewport coordinates without recompressing text or vectors. This ensures fonts, CAD drawings, and charts remain 100% sharp with zero quality loss.',
-        },
-        {
-          q: 'Can I crop all pages, odd/even pages, or specific ranges in batch?',
-          a: 'Yes. The bottom control panel includes quick scope selectors: "All" (applies uniform margins across every sheet), "Evens" or "Odds" (ideal for binding or alternating book margins), or "Custom Range" (to specify intervals like 1-5, 8, 12).',
-        },
-        {
-          q: 'How can I remove black scanner edges or binding shadows?',
-          a: 'Scanned books and sheets often have dark shadows along the perimeter. Use our quick presets (5mm or 10mm) or drag the visual handles inward to eliminate scan artifacts without clipping essential content.',
-        },
-        {
-          q: 'Is it compatible with large CAD blueprints and engineering formats (A0, A1, A2)?',
-          a: 'Yes. The engine processes native vector coordinates based on actual aspect ratios, allowing you to crop border frames, title blocks, and plot margins on technical sheets of any dimensions.',
-        },
-        {
-          q: 'Are selectable text, hyperlinks, and bookmarks preserved?',
-          a: 'Completely. Because it performs a parametric dictionary adjustment, all internal page structures (OCR text, bookmarks, hyperlinks, embedded fonts) remain fully functional within the preserved area.',
-        },
-        {
-          q: 'Is it safe to crop sensitive corporate, legal, or medical documents?',
-          a: '100% private and secure. PDFBlack runs on a Zero-Knowledge architecture: all processing executes within your browser memory via Web Workers. Not a single byte leaves your device or touches cloud servers, adhering to GDPR and HIPAA compliance.',
-        },
-        {
-          q: 'Can I crop password-protected PDF files?',
-          a: 'Yes. If your document is encrypted, the system provides a local password prompt to unlock page dictionaries directly in browser memory before applying margins, without exposing credentials.',
-        },
-        {
-          q: 'Will the crop be respected when printed or opened in Adobe Acrobat and browsers?',
-          a: 'Yes. Desktop readers (Adobe Acrobat, Foxit), web browsers (Chrome, Edge, Safari), and physical printer drivers strictly follow the ISO CropBox specifications.',
-        },
-        {
-          q: 'Can I crop all pages in a PDF at once for free?',
-          a: 'Yes. To crop all pages simultaneously: 1. Upload your PDF into PDFBlack. 2. Adjust margins with the 8 interactive handles or millimeter inputs. 3. Keep the scope selector set to "All" and click "Crop PDF Margins". The engine synchronizes identical CropBox coordinates across every sheet in seconds.',
-        },
-        {
-          q: 'Can you crop a PDF without Adobe Acrobat?',
-          a: 'Yes. PDFBlack offers professional, millimeter-accurate PDF margin trimming completely free without Adobe subscriptions. It modifies standard ISO CropBox page bounding boxes directly in your browser memory with zero quality loss.',
-        },
-      ];
+    : isEs
+      ? [
+          {
+            q: '¿Cómo recortar los márgenes de un documento PDF de forma interactiva?',
+            a: 'Carga tu archivo PDF en la zona de trabajo; verás la vista previa de alta definición de la página con un recuadro de recorte delimitador. Puedes arrastrar los 8 manejadores en vivo para encuadrar la zona deseada o introducir márgenes exactos en milímetros (Superior, Inferior, Izquierdo, Derecho). Una vez configurado, selecciona si deseas aplicarlo a todas las hojas o a páginas específicas y pulsa «Recortar Márgenes del PDF».',
+          },
+          {
+            q: '¿Cómo recortar un PDF a un tamaño de página específico (A4, Carta o dimensiones personalizadas)?',
+            a: 'En PDFBlack puedes ingresar las medidas exactas en milímetros en los campos de margen para encuadrar tu documento a formatos estándar internacionales como ISO A4 (210 × 297 mm), Carta US (215.9 × 279.4 mm), Oficio o proporciones a medida. El lienzo calcula en tiempo real las dimensiones resultantes y ajusta el CropBox paramétrico sin alterar la escala vectorial interna.',
+          },
+          {
+            q: '¿Se pueden recortar automáticamente los márgenes blancos sobrantes de un PDF (Auto Crop)?',
+            a: 'Sí. Utiliza los preajustes rápidos de 5 mm y 10 mm en el panel de control o ajusta los 8 manejadores interactivos pegados a los límites del texto y tablas. Esto elimina bordes blancos excesivos, marcas de corte de imprenta y sombras de escáner en todo el documento a la vez, aprovechando el 100% de la pantalla en tablets y e-readers Kindle.',
+          },
+          {
+            q: '¿Por qué elegir PDFBlack frente a Sejda, iLovePDF o Adobe Acrobat para recortar PDFs?',
+            a: 'A diferencia de Sejda (que restringe a 3 tareas gratis por hora y 50 MB) e iLovePDF (que sube tus documentos confidenciales a servidores en la nube), PDFBlack es 100% ilimitado, gratuito para siempre y procesa tus archivos exclusivamente en la memoria RAM de tu navegador mediante Web Workers. Ningún dato se transfiere a internet, garantizando total cumplimiento de privacidad (RGPD e HIPAA) sin costosas licencias de Adobe.',
+          },
+          {
+            q: '¿Esta herramienta para recortar PDF es totalmente gratuita y sin marcas de agua?',
+            a: 'Totalmente gratuita. No estampamos marcas de agua publicitarias, no solicitamos correos electrónicos ni tarjetas de crédito, y no hay límite en el tamaño de archivo ni en el número de páginas que puedes recortar. El rendimiento depende únicamente de la potencia de tu equipo local.',
+          },
+          {
+            q: '¿Puedo recortar un PDF desde el móvil o tablet (Android, iPhone, iPad)?',
+            a: 'Sí. La mesa de trabajo está diseñada para responder al tacto en pantallas de smartphones y tablets. Puedes arrastrar los manejadores con los dedos o ingresar márgenes numéricos en Safari, Chrome o Firefox móvil sin instalar aplicaciones externas.',
+          },
+          {
+            q: '¿Qué diferencia existe entre modificar el CropBox y recortar imágenes rasterizadas?',
+            a: 'En el estándar internacional PDF ISO 32000-1, cada página cuenta con cajas de delimitación geométricas (MediaBox, CropBox, TrimBox). Modificar el CropBox ajusta las coordenadas del área visible e imprimible del documento sin recomprimir ni rasterizar textos ni vectores. Esto garantiza que la nitidez de tipografías, planos y tablas permanezca al 100% idéntica al archivo original.',
+          },
+          {
+            q: '¿Puedo aplicar el recorte a todas las páginas, solo pares/impares o a un rango personalizado?',
+            a: 'Sí. En el panel de control inferior dispones del selector de alcance: «Todas» (aplica los mismos márgenes a cada hoja), «Pares» o «Impares» (ideal para libros o documentos encuadernados que requieren márgenes interiores alternados) o «Rango Personalizado» (para especificar intervalos como 1-5, 8, 12).',
+          },
+          {
+            q: '¿Cómo eliminar los bordes negros o sombras producidas por escáneres?',
+            a: 'Los escaneos de libros o folios sueltos suelen presentar sombras oscuras en los bordes. Utiliza los preajustes rápidos de 5 mm o 10 mm en el panel de control o ajusta libremente los bordes con los manejadores interactivos para cortar las imperfecciones periféricas sin tocar el texto útil.',
+          },
+          {
+            q: '¿Es compatible con planos CAD y documentos en formatos grandes (A0, A1, A2, A3)?',
+            a: 'Sí. El motor de cálculo procesa proporciones vectoriales nativas calculando la relación de aspecto real de cada plano o lámina técnica, permitiendo recortar cajas de rotulación o márgenes de impresión en documentos de cualquier escala.',
+          },
+          {
+            q: '¿Se conservan los textos seleccionables, enlaces y marcadores del PDF original?',
+            a: 'Totalmente. Al tratarse de un ajuste paramétrico en el diccionario de la página, todo el árbol de contenido interno (texto OCR seleccionable, hipervínculos, capas vectoriales y fuentes incrustadas) se mantiene intacto dentro del área conservada.',
+          },
+          {
+            q: '¿Es seguro recortar documentos confidenciales, contratos o estados financieros?',
+            a: '100% seguro y confidencial. PDFBlack implementa una arquitectura Zero-Knowledge estricta: todo el procesamiento matemático y renderizado ocurre en la memoria RAM de tu navegador mediante Web Workers. Ningún byte se envía a servidores externos ni se almacena en la nube, cumpliendo plenamente con el RGPD e HIPAA.',
+          },
+          {
+            q: '¿Puedo recortar un archivo PDF protegido con contraseña de apertura?',
+            a: 'Sí. Si tu documento está cifrado, el sistema te solicitará la contraseña en un campo seguro en memoria local para desbloquear los diccionarios de página antes de renderizar y aplicar los nuevos márgenes, sin transferir tus credenciales a terceros.',
+          },
+          {
+            q: '¿El recorte se respeta al imprimir en papel o abrirlo en Adobe Acrobat y navegadores?',
+            a: 'Sí. Tanto los visores de escritorio (Adobe Acrobat, Foxit, Nitro) como los motores de visualización de navegadores (Chrome, Edge, Safari) y los controladores de impresión respetan de forma estricta las directivas del CropBox grabado.',
+          },
+          {
+            q: '¿Cómo recortar todas las páginas de un PDF a la vez gratis?',
+            a: 'Para recortar todas las hojas a la vez: 1. Carga tu PDF en PDFBlack. 2. Ajusta los márgenes deseados con los manejadores interactivos o en milímetros. 3. En el selector de alcance, mantén seleccionada la opción «Todas» y pulsa «Recortar Márgenes del PDF». El recorte se aplicará uniformemente a todo el documento en memoria RAM en segundos.',
+          },
+          {
+            q: '¿Se puede recortar un PDF online sin pagar Adobe Acrobat?',
+            a: 'Sí. PDFBlack permite recortar documentos PDF de forma 100% gratuita y sin suscripciones. Modifica el diccionario geométrico CropBox oficial de cada página en tu navegador con fidelidad vectorial nativa sin requerir licencias de Adobe.',
+          },
+        ]
+      : [
+          {
+            q: 'How do I crop PDF margins interactively?',
+            a: 'Upload your PDF into the work area; an HD preview with an active crop bounding box will appear immediately. You can drag the 8 live handles to frame the desired area or enter exact margins in millimeters (Top, Bottom, Left, Right). Choose whether to apply it to all pages or specific sheets, then click "Crop PDF Margins".',
+          },
+          {
+            q: 'How do I crop a PDF to a specific page size (A4, Letter, Custom Dimensions)?',
+            a: 'In PDFBlack, you can adjust visual crop handles or type millimeter margins into the Top, Bottom, Left, and Right fields to frame pages into standard international formats like ISO A4 (210 × 297 mm), US Letter (8.5 × 11 in), Legal, or custom dimensions. The live viewport updates the CropBox coordinates in real time without rasterizing text or vectors.',
+          },
+          {
+            q: 'Can I automatically crop white margins from a PDF document (Auto Crop)?',
+            a: 'Yes. PDFBlack allows you to auto-crop unwanted white borders, margins, and scanner edges using our instant margin presets (5mm, 10mm) or by snapping the 8 boundary handles tightly around the text and image content. This maximizes readability on iPads, tablets, and Kindle e-readers by utilizing 100% of the display area.',
+          },
+          {
+            q: 'Why choose PDFBlack over Sejda, iLovePDF, or Adobe Acrobat to crop PDFs?',
+            a: 'Unlike Sejda (which caps free users to 3 tasks per hour and 50MB files) and iLovePDF (which uploads your private documents to third-party cloud servers), PDFBlack is 100% unlimited, free forever, and processes everything client-side in your browser RAM via Web Workers. Your sensitive files never leave your device, ensuring full GDPR and HIPAA compliance without paying for Adobe Acrobat Pro.',
+          },
+          {
+            q: 'Is this PDF crop tool truly free with no watermarks, paywalls, or file limits?',
+            a: 'Yes, 100% free with no watermarks, no registration, and no hidden subscriptions. Because all processing executes locally on your device hardware using WebAssembly and Web Workers, you can crop multi-gigabyte or hundreds-of-pages PDF files without restrictions.',
+          },
+          {
+            q: 'Can you crop a PDF on mobile or tablet (Android, iPhone, iPad)?',
+            a: 'Yes. The interactive canvas is fully touch-optimized. You can drag boundary handles with your fingertips or type millimeter offsets directly on any modern mobile browser (Safari, Chrome) without installing third-party apps.',
+          },
+          {
+            q: 'What is the difference between adjusting CropBox and rasterizing images?',
+            a: 'Under the PDF ISO 32000-1 standard, pages define geometric bounding boxes (MediaBox, CropBox, TrimBox). Modifying the CropBox changes the visible and printable viewport coordinates without recompressing text or vectors. This ensures fonts, CAD drawings, and charts remain 100% sharp with zero quality loss.',
+          },
+          {
+            q: 'Can I crop all pages, odd/even pages, or specific ranges in batch?',
+            a: 'Yes. The bottom control panel includes quick scope selectors: "All" (applies uniform margins across every sheet), "Evens" or "Odds" (ideal for binding or alternating book margins), or "Custom Range" (to specify intervals like 1-5, 8, 12).',
+          },
+          {
+            q: 'How can I remove black scanner edges or binding shadows?',
+            a: 'Scanned books and sheets often have dark shadows along the perimeter. Use our quick presets (5mm or 10mm) or drag the visual handles inward to eliminate scan artifacts without clipping essential content.',
+          },
+          {
+            q: 'Is it compatible with large CAD blueprints and engineering formats (A0, A1, A2)?',
+            a: 'Yes. The engine processes native vector coordinates based on actual aspect ratios, allowing you to crop border frames, title blocks, and plot margins on technical sheets of any dimensions.',
+          },
+          {
+            q: 'Are selectable text, hyperlinks, and bookmarks preserved?',
+            a: 'Completely. Because it performs a parametric dictionary adjustment, all internal page structures (OCR text, bookmarks, hyperlinks, embedded fonts) remain fully functional within the preserved area.',
+          },
+          {
+            q: 'Is it safe to crop sensitive corporate, legal, or medical documents?',
+            a: '100% private and secure. PDFBlack runs on a Zero-Knowledge architecture: all processing executes within your browser memory via Web Workers. Not a single byte leaves your device or touches cloud servers, adhering to GDPR and HIPAA compliance.',
+          },
+          {
+            q: 'Can I crop password-protected PDF files?',
+            a: 'Yes. If your document is encrypted, the system provides a local password prompt to unlock page dictionaries directly in browser memory before applying margins, without exposing credentials.',
+          },
+          {
+            q: 'Will the crop be respected when printed or opened in Adobe Acrobat and browsers?',
+            a: 'Yes. Desktop readers (Adobe Acrobat, Foxit), web browsers (Chrome, Edge, Safari), and physical printer drivers strictly follow the ISO CropBox specifications.',
+          },
+          {
+            q: 'Can I crop all pages in a PDF at once for free?',
+            a: 'Yes. To crop all pages simultaneously: 1. Upload your PDF into PDFBlack. 2. Adjust margins with the 8 interactive handles or millimeter inputs. 3. Keep the scope selector set to "All" and click "Crop PDF Margins". The engine synchronizes identical CropBox coordinates across every sheet in seconds.',
+          },
+          {
+            q: 'Can you crop a PDF without Adobe Acrobat?',
+            a: 'Yes. PDFBlack offers professional, millimeter-accurate PDF margin trimming completely free without Adobe subscriptions. It modifies standard ISO CropBox page bounding boxes directly in your browser memory with zero quality loss.',
+          },
+        ];
 
   const jsonLdWebApp = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: isEs
-      ? 'Recortar PDF Gratis Online — PDFBlack'
-      : 'Crop PDF Online Free — Trim Margins & Page Size | PDFBlack',
-    url: isEs ? `${SITE_URL}/organizar/recortar` : `${SITE_URL}/en/crop-pdf`,
-    description: isEs
-      ? 'Herramienta profesional para recortar márgenes de documentos PDF de forma visual o milimétrica con conservación vectorial, ajuste de tamaño de página y privacidad total en memoria local.'
-      : 'Crop PDF online free. Interactive visual tool to trim white margins, auto-crop, adjust page sizes (A4, Letter), or crop specific pages. 100% private client-side processing, no uploads.',
+    name: isFr
+      ? 'Recadrer un PDF en Ligne Gratuit — Rogner les Marges | PDFBlack'
+      : isEs
+        ? 'Recortar PDF Gratis Online — PDFBlack'
+        : 'Crop PDF Online Free — Trim Margins & Page Size | PDFBlack',
+    url: isFr
+      ? `${SITE_URL}/fr/recadrer-pdf`
+      : isEs
+        ? `${SITE_URL}/organizar/recortar`
+        : `${SITE_URL}/en/crop-pdf`,
+    description: isFr
+      ? 'Outil professionnel pour recadrer les marges d’un document PDF en ligne de façon visuelle ou millimétrique avec préservation vectorielle et confidentialité totale en mémoire locale.'
+      : isEs
+        ? 'Herramienta profesional para recortar márgenes de documentos PDF de forma visual o milimétrica con conservación vectorial, ajuste de tamaño de página y privacidad total en memoria local.'
+        : 'Crop PDF online free. Interactive visual tool to trim white margins, auto-crop, adjust page sizes (A4, Letter), or crop specific pages. 100% private client-side processing, no uploads.',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',
@@ -196,16 +228,26 @@ export default function RecortarPdfPage() {
       price: '0',
       priceCurrency: 'USD',
     },
-    featureList: [
-      'Recorte interactivo visual con 8 manejadores CropBox en tiempo real',
-      'Ajuste milimétrico numérico para márgenes Superior, Inferior, Izquierdo y Derecho',
-      'Ajuste a tamaños estándar de hoja (A4, Carta US, dimensiones personalizadas)',
-      'Recorte automático de márgenes blancos (Auto-crop) y sombras de escáner',
-      'Alcance flexible: Todas las páginas, solo pares, impares o rangos personalizados',
-      'Preservación 100% vectorial sin recompresión ni rasterizado (ISO 32000-1)',
-      'Preajustes rápidos para limpieza de escaneos y encuadernación',
-      'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
-    ],
+    featureList: isFr
+      ? [
+          'Recadrage interactif visuel avec 8 poignées CropBox en direct',
+          'Ajustement millimétrique numérique pour marges Haut, Bas, Gauche et Droite',
+          'Adaptation aux formats standard (A4, Lettre US, dimensions sur mesure)',
+          'Suppression automatique des marges blanches (Auto-crop) et ombres de scanner',
+          'Portée flexible : Toutes les pages, paires/impaires ou sélection personnalisée',
+          'Préservation 100% vectorielle sans recompression ni pixellisation (ISO 32000-1)',
+          'Traitement 100% privé en mémoire RAM locale via Web Workers',
+        ]
+      : [
+          'Recorte interactivo visual con 8 manejadores CropBox en tiempo real',
+          'Ajuste milimétrico numérico para márgenes Superior, Inferior, Izquierdo y Derecho',
+          'Ajuste a tamaños estándar de hoja (A4, Carta US, dimensiones personalizadas)',
+          'Recorte automático de márgenes blancos (Auto-crop) y sombras de escáner',
+          'Alcance flexible: Todas las páginas, solo pares, impares o rangos personalizados',
+          'Preservación 100% vectorial sin recompresión ni rasterizado (ISO 32000-1)',
+          'Preajustes rápidos para limpieza de escaneos y encuadernación',
+          'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
+        ],
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: '4.9',
@@ -235,20 +277,24 @@ export default function RecortarPdfPage() {
       {
         '@type': 'ListItem',
         position: 1,
-        name: isEs ? 'Inicio' : 'Home',
-        item: isEs ? SITE_URL : `${SITE_URL}/en`,
+        name: isFr ? 'Accueil' : isEs ? 'Inicio' : 'Home',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
-        name: isEs ? 'Organizar PDF' : 'Organize PDF',
-        item: isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
+        name: isFr ? 'Organiser PDF' : isEs ? 'Organizar PDF' : 'Organize PDF',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? `${SITE_URL}/organizar` : `${SITE_URL}/en/organize`,
       },
       {
         '@type': 'ListItem',
         position: 3,
-        name: isEs ? 'Recortar PDF' : 'Crop PDF',
-        item: isEs ? `${SITE_URL}/organizar/recortar` : `${SITE_URL}/en/crop-pdf`,
+        name: isFr ? 'Recadrer PDF' : isEs ? 'Recortar PDF' : 'Crop PDF',
+        item: isFr
+          ? `${SITE_URL}/fr/recadrer-pdf`
+          : isEs
+            ? `${SITE_URL}/organizar/recortar`
+            : `${SITE_URL}/en/crop-pdf`,
       },
     ],
   };

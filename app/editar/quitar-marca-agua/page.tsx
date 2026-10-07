@@ -54,97 +54,129 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 export default function QuitarMarcaAguaPage() {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isFr = lang === 'fr';
 
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const faqs = isEs
+  const faqs = isFr
     ? [
         {
-          q: '¿Cómo quitar marcas de agua de un PDF gratis online sin programas?',
-          a: 'Para quitar una marca de agua de un PDF online: 1. Arrastra tu documento PDF al visor de PDFBlack. 2. Elige el modo Inteligente o escribe el texto del sello (ej. Confidencial, Borrador, CamScanner). 3. Pulsa «Remover Sello de Agua» y descarga tu archivo limpio en segundos con fidelidad vectorial 100% intacta.',
+          q: 'Comment supprimer les filigranes d’un PDF en ligne gratuitement sans logiciel ?',
+          a: 'Pour supprimer un filigrane : 1. Glissez votre fichier PDF dans l’espace PDFBlack. 2. Choisissez le mode Intelligent ou indiquez le texte du tampon (ex. Confidentiel, Brouillon, CamScanner). 3. Cliquez sur « Supprimer le Filigrane » et téléchargez votre fichier nettoyé en quelques secondes avec une qualité vectorielle préservée.',
         },
         {
-          q: '¿Cómo borrar marcas de agua de CamScanner o sellos de versión de prueba?',
-          a: 'El motor de PDFBlack incluye heurísticas forenses para identificar y eliminar sellos de aplicaciones móviles como CamScanner, Apryse, SmallPDF, Sejda, Wondershare y banners de prueba «TRIAL/DEMO». También puedes ingresar palabras clave personalizadas para forzar su supresión inmediata.',
+          q: 'Comment effacer les tampons CamScanner ou bannières de version d’essai ?',
+          a: 'Le moteur de PDFBlack intègre des filtres d’analyse pour détecter et éliminer les tampons d’applications mobiles telles que CamScanner, Apryse, SmallPDF, Sejda, Wondershare ainsi que les mentions « TRIAL/DEMO ». Vous pouvez également renseigner des mots-clés personnalisés.',
         },
         {
-          q: '¿Qué diferencia hay entre el modo «Inteligente» y el modo «Forense Profundo»?',
-          a: 'El modo Inteligente elimina sellos de texto habituales (Confidencial, Borrador, etc.) con mínima intervención. El modo Forense Profundo realiza una purga exhaustiva de capas OCG (Optional Content Groups), vacía XObjects de marcas gráficas (/WM, /FM), elimina transparencias residuales y limpia diccionarios PieceInfo.',
+          q: 'Quelle est la différence entre le mode « Intelligent » et le mode « Nettoyage Approfondi » ?',
+          a: 'Le mode Intelligent supprime les tampons textuels standards avec un impact minimal sur la structure. Le mode Approfondi purge les calques OCG (Optional Content Groups), vide les XObjects graphiques de filigrane (/WM, /FM) et nettoie les métadonnées résiduelles.',
         },
         {
-          q: '¿Se borran las firmas digitales, textos útiles o imágenes del documento?',
-          a: 'No. El algoritmo de depuración está calibrado quirúrgicamente para suprimir únicamente los bloques de instrucciones que coinciden con sellos de agua y metadatos de marcas. El texto del documento, gráficos vectoriales y fotografías se mantienen íntegros con su resolución original.',
+          q: 'Les signatures numériques ou textes utiles du document sont-ils effacés ?',
+          a: 'Non. L’algorithme de nettoyage supprime uniquement les blocs d’instructions associés aux filigranes et tampons. Le texte original, les tableaux et les images restent 100% intacts.',
         },
         {
-          q: '¿Es legal quitar una marca de agua de un documento PDF?',
-          a: 'La eliminación de marcas de agua es legítima cuando eres el autor, propietario de los derechos o partes autorizadas del documento (por ejemplo, para remover la marca de «BORRADOR» al emitir una versión contractual final, eliminar marcas de prueba de un software tras adquirir la licencia, o limpiar sellos de archivo obsoletos en expedientes corporativos). Asegúrate de respetar la propiedad intelectual y los términos de uso correspondientes.',
-        },
-        {
-          q: '¿Puedo procesar únicamente páginas específicas o saltarme la carátula?',
-          a: 'Sí. Puedes seleccionar procesar todo el documento, solo páginas impares, solo páginas pares o especificar un rango numérico personalizado (ejemplo: 2-15, 20), con un interruptor para omitir la portada.',
-        },
-        {
-          q: '¿Es seguro limpiar documentos confidenciales, estados financieros o contratos?',
-          a: '100% privado y seguro. PDFBlack opera bajo una arquitectura Zero-Knowledge estricta: todo el análisis de diccionarios PDF y la depuración de bytes ocurren en la memoria RAM de tu navegador web mediante Web Workers locales. Ningún archivo se transmite a la nube ni se guarda en servidores externos, cumpliendo con el RGPD, LOPD e HIPAA.',
-        },
-        {
-          q: '¿Qué hago si el PDF está protegido con contraseña de apertura?',
-          a: 'Si el archivo cuenta con cifrado estándar, el visor cuenta con un campo seguro para desbloquear el documento en la memoria de tu dispositivo antes de iniciar la depuración, sin almacenar ni transferir tu contraseña.',
-        },
-        {
-          q: '¿El documento resultante es aceptado en juzgados, notarías y plataformas oficiales?',
-          a: 'Sí. El archivo resultante cumple estrictamente con el estándar internacional ISO 32000-1 de Adobe/PDF, siendo 100% compatible con lectores oficiales como Adobe Acrobat Reader, visores de navegadores modernos y mesas de partes electrónicas (LexNET, PJF, etc.).',
+          q: 'Est-il sécurisé de nettoyer des documents confidentiels ou des contrats ?',
+          a: '100% privé et sécurisé. PDFBlack fonctionne selon une stricte architecture Zero-Knowledge : l’analyse s’exécute dans la mémoire RAM de votre navigateur via Web Workers sans téléversement vers des serveurs distants, en totale conformité avec le RGPD.',
         },
       ]
-    : [
-        {
-          q: 'How to remove watermark from PDF free online without software?',
-          a: 'To remove watermarks from a PDF online: 1. Drag your PDF document into the PDFBlack workspace. 2. Select Smart mode or type the stamp text (e.g. Confidential, Draft, CamScanner). 3. Click "Remove Watermark" and download your pristine PDF with 100% intact native vector quality.',
-        },
-        {
-          q: 'Can it remove mobile scanner watermarks like CamScanner or software trial banners?',
-          a: 'Yes. PDFBlack includes forensic heuristics to detect and strip commercial stamps from apps like CamScanner, Apryse, SmallPDF, Sejda, Wondershare, and "TRIAL/DEMO" banners. You can also specify custom keywords to target unique background watermarks.',
-        },
-        {
-          q: 'What is the difference between "Smart" and "Deep Forensic" cleaning modes?',
-          a: 'Smart mode targets common text stamps (Confidential, Draft, etc.) with minimal dictionary impact. Deep Forensic mode aggressively purges OCG layers (Optional Content Groups), empties graphic watermark XObjects (/WM, /FM), removes residual transparency states, and clears PieceInfo metadata.',
-        },
-        {
-          q: 'Does it erase legitimate text, signatures, or embedded images?',
-          a: 'No. The filtering algorithm is surgically tuned to isolate and remove watermark instructions and metadata objects. Body text, charts, diagrams, and photos retain 100% of their original native resolution.',
-        },
-        {
-          q: 'Is it legal to remove watermarks from PDF files?',
-          a: 'Watermark removal is completely legitimate when performed by document owners, authors, or authorized parties (e.g., removing "DRAFT" stamps before finalizing agreements, clearing evaluation stamps after purchasing commercial licenses, or preparing clean archives). Always verify intellectual property rights and permissions.',
-        },
-        {
-          q: 'Can I clean specific pages or exclude the first cover page?',
-          a: 'Yes. You can target all pages, odd pages only, even pages only, or enter a custom range (e.g., 2-15, 20), with a dedicated toggle to automatically skip the cover page.',
-        },
-        {
-          q: 'Is it safe to clean confidential legal briefs, financial records, or contracts?',
-          a: '100% private and secure. PDFBlack runs strictly on a Zero-Knowledge local architecture: all PDF stream manipulations and byte cleanups execute in your browser RAM via Web Workers. Not a single byte touches cloud servers, complying with GDPR and HIPAA.',
-        },
-        {
-          q: 'Can I process password-protected PDF files?',
-          a: 'Yes. If your document requires a password to open, our in-memory unlocking prompt lets you enter credentials locally to access page streams without sending keys over the internet.',
-        },
-        {
-          q: 'Is the output PDF compatible with court filing and official e-signature portals?',
-          a: 'Yes. The cleaned PDF adheres strictly to the ISO 32000-1 PDF standard and is fully compatible with Adobe Acrobat Reader, modern web browsers, and electronic filing portals.',
-        },
-      ];
+    : isEs
+      ? [
+          {
+            q: '¿Cómo quitar marcas de agua de un PDF gratis online sin programas?',
+            a: 'Para quitar una marca de agua de un PDF online: 1. Arrastra tu documento PDF al visor de PDFBlack. 2. Elige el modo Inteligente o escribe el texto del sello (ej. Confidencial, Borrador, CamScanner). 3. Pulsa «Remover Sello de Agua» y descarga tu archivo limpio en segundos con fidelidad vectorial 100% intacta.',
+          },
+          {
+            q: '¿Cómo borrar marcas de agua de CamScanner o sellos de versión de prueba?',
+            a: 'El motor de PDFBlack incluye heurísticas forenses para identificar y eliminar sellos de aplicaciones móviles como CamScanner, Apryse, SmallPDF, Sejda, Wondershare y banners de prueba «TRIAL/DEMO». También puedes ingresar palabras clave personalizadas para forzar su supresión inmediata.',
+          },
+          {
+            q: '¿Qué diferencia hay entre el modo «Inteligente» y el modo «Forense Profundo»?',
+            a: 'El modo Inteligente elimina sellos de texto habituales (Confidencial, Borrador, etc.) con mínima intervención. El modo Forense Profundo realiza una purga exhaustiva de capas OCG (Optional Content Groups), vacía XObjects de marcas gráficas (/WM, /FM), elimina transparencias residuales y limpia diccionarios PieceInfo.',
+          },
+          {
+            q: '¿Se borran las firmas digitales, textos útiles o imágenes del documento?',
+            a: 'No. El algoritmo de depuración está calibrado quirúrgicamente para suprimir únicamente los bloques de instrucciones que coinciden con sellos de agua y metadatos de marcas. El texto del documento, gráficos vectoriales y fotografías se mantienen íntegros con su resolución original.',
+          },
+          {
+            q: '¿Es legal quitar una marca de agua de un documento PDF?',
+            a: 'La eliminación de marcas de agua es legítima cuando eres el autor, propietario de los derechos o partes autorizadas del documento (por ejemplo, para remover la marca de «BORRADOR» al emitir una versión contractual final, eliminar marcas de prueba de un software tras adquirir la licencia, o limpiar sellos de archivo obsoletos en expedientes corporativos). Asegúrate de respetar la propiedad intelectual y los términos de uso correspondientes.',
+          },
+          {
+            q: '¿Puedo procesar únicamente páginas específicas o saltarme la carátula?',
+            a: 'Sí. Puedes seleccionar procesar todo el documento, solo páginas impares, solo páginas pares o especificar un rango numérico personalizado (ejemplo: 2-15, 20), con un interruptor para omitir la portada.',
+          },
+          {
+            q: '¿Es seguro limpiar documentos confidenciales, estados financieros o contratos?',
+            a: '100% privado y seguro. PDFBlack opera bajo una arquitectura Zero-Knowledge estricta: todo el análisis de diccionarios PDF y la depuración de bytes ocurren en la memoria RAM de tu navegador web mediante Web Workers locales. Ningún archivo se transmite a la nube ni se guarda en servidores externos, cumpliendo con el RGPD, LOPD e HIPAA.',
+          },
+          {
+            q: '¿Qué hago si el PDF está protegido con contraseña de apertura?',
+            a: 'Si el archivo cuenta con cifrado estándar, el visor cuenta con un campo seguro para desbloquear el documento en la memoria de tu dispositivo antes de iniciar la depuración, sin almacenar ni transferir tu contraseña.',
+          },
+          {
+            q: '¿El documento resultante es aceptado en juzgados, notarías y plataformas oficiales?',
+            a: 'Sí. El archivo resultante cumple estrictamente con el estándar internacional ISO 32000-1 de Adobe/PDF, siendo 100% compatible con lectores oficiales como Adobe Acrobat Reader, visores de navegadores modernos y mesas de partes electrónicas (LexNET, PJF, etc.).',
+          },
+        ]
+      : [
+          {
+            q: 'How to remove watermark from PDF free online without software?',
+            a: 'To remove watermarks from a PDF online: 1. Drag your PDF document into the PDFBlack workspace. 2. Select Smart mode or type the stamp text (e.g. Confidential, Draft, CamScanner). 3. Click "Remove Watermark" and download your pristine PDF with 100% intact native vector quality.',
+          },
+          {
+            q: 'Can it remove mobile scanner watermarks like CamScanner or software trial banners?',
+            a: 'Yes. PDFBlack includes forensic heuristics to detect and strip commercial stamps from apps like CamScanner, Apryse, SmallPDF, Sejda, Wondershare, and "TRIAL/DEMO" banners. You can also specify custom keywords to target unique background watermarks.',
+          },
+          {
+            q: 'What is the difference between "Smart" and "Deep Forensic" cleaning modes?',
+            a: 'Smart mode targets common text stamps (Confidential, Draft, etc.) with minimal dictionary impact. Deep Forensic mode aggressively purges OCG layers (Optional Content Groups), empties graphic watermark XObjects (/WM, /FM), removes residual transparency states, and clears PieceInfo metadata.',
+          },
+          {
+            q: 'Does it erase legitimate text, signatures, or embedded images?',
+            a: 'No. The filtering algorithm is surgically tuned to isolate and remove watermark instructions and metadata objects. Body text, charts, diagrams, and photos retain 100% of their original native resolution.',
+          },
+          {
+            q: 'Is it legal to remove watermarks from PDF files?',
+            a: 'Watermark removal is completely legitimate when performed by document owners, authors, or authorized parties (e.g., removing "DRAFT" stamps before finalizing agreements, clearing evaluation stamps after purchasing commercial licenses, or preparing clean archives). Always verify intellectual property rights and permissions.',
+          },
+          {
+            q: 'Can I clean specific pages or exclude the first cover page?',
+            a: 'Yes. You can target all pages, odd pages only, even pages only, or enter a custom range (e.g., 2-15, 20), with a dedicated toggle to automatically skip the cover page.',
+          },
+          {
+            q: 'Is it safe to clean confidential legal briefs, financial records, or contracts?',
+            a: '100% private and secure. PDFBlack runs strictly on a Zero-Knowledge local architecture: all PDF stream manipulations and byte cleanups execute in your browser RAM via Web Workers. Not a single byte touches cloud servers, complying with GDPR and HIPAA.',
+          },
+          {
+            q: 'Can I process password-protected PDF files?',
+            a: 'Yes. If your document requires a password to open, our in-memory unlocking prompt lets you enter credentials locally to access page streams without sending keys over the internet.',
+          },
+          {
+            q: 'Is the output PDF compatible with court filing and official e-signature portals?',
+            a: 'Yes. The cleaned PDF adheres strictly to the ISO 32000-1 PDF standard and is fully compatible with Adobe Acrobat Reader, modern web browsers, and electronic filing portals.',
+          },
+        ];
 
   const jsonLdWebApp = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: isEs
-      ? 'Quitar Marca de Agua de PDF Gratis Online — Eliminar Sellos | PDFBlack'
-      : 'Remove Watermark from PDF Online Free — Clean Stamps | PDFBlack',
-    url: isEs ? `${SITE_URL}/editar/quitar-marca-agua` : `${SITE_URL}/en/remove-watermark`,
-    description: isEs
-      ? 'Herramienta profesional para eliminar marcas de agua y sellos de fondo en documentos PDF online sin perder calidad vectorial ni subir archivos a la nube.'
-      : 'Professional tool to remove watermarks and background stamps from PDF files online without vector quality loss or cloud uploads.',
+    name: isFr
+      ? 'Supprimer le Filigrane d’un PDF en Ligne Gratuit — Effacer les Tampons | PDFBlack'
+      : isEs
+        ? 'Quitar Marca de Agua de PDF Gratis Online — Eliminar Sellos | PDFBlack'
+        : 'Remove Watermark from PDF Online Free — Clean Stamps | PDFBlack',
+    url: isFr
+      ? `${SITE_URL}/fr/supprimer-filigrane-pdf`
+      : isEs
+        ? `${SITE_URL}/editar/quitar-marca-agua`
+        : `${SITE_URL}/en/remove-watermark`,
+    description: isFr
+      ? 'Outil professionnel pour supprimer les filigranes et tampons d’arrière-plan dans vos documents PDF en ligne sans perte de qualité ni téléversement.'
+      : isEs
+        ? 'Herramienta profesional para eliminar marcas de agua y sellos de fondo en documentos PDF online sin perder calidad vectorial ni subir archivos a la nube.'
+        : 'Professional tool to remove watermarks and background stamps from PDF files online without vector quality loss or cloud uploads.',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'All',
     browserRequirements: 'Requires JavaScript. Requires HTML5.',
@@ -153,14 +185,22 @@ export default function QuitarMarcaAguaPage() {
       price: '0',
       priceCurrency: 'USD',
     },
-    featureList: [
-      'Depuración vectorial limpia sin rasterización ni degradación tipográfica',
-      'Modo Forense Profundo para capas OCG, PieceInfo y transparencias residuales',
-      'Eliminación de sellos de software (Apryse, CamScanner, iLovePDF, SmallPDF, Sejda)',
-      'Búsqueda y supresión de palabras clave personalizadas (CONFIDENCIAL, BORRADOR)',
-      'Purgado de anotaciones de sellos flotantes (/Annots) y XObjects gráficos',
-      'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
-    ],
+    featureList: isFr
+      ? [
+          'Nettoyage vectoriel propre sans rastérisation ni dégradation',
+          'Mode Approfondi pour calques OCG, PieceInfo et transparences résiduelles',
+          'Suppression des tampons d’applications (CamScanner, Apryse, SmallPDF, Sejda)',
+          'Recherche et suppression de mots-clés personnalisés (CONFIDENTIEL, BROUILLON)',
+          'Traitement 100% privé en mémoire RAM locale via Web Workers',
+        ]
+      : [
+          'Depuración vectorial limpia sin rasterización ni degradación tipográfica',
+          'Modo Forense Profundo para capas OCG, PieceInfo y transparencias residuales',
+          'Eliminación de sellos de software (Apryse, CamScanner, iLovePDF, SmallPDF, Sejda)',
+          'Búsqueda y supresión de palabras clave personalizadas (CONFIDENCIAL, BORRADOR)',
+          'Purgado de anotaciones de sellos flotantes (/Annots) y XObjects gráficos',
+          'Procesamiento 100% privado en memoria RAM local mediante Web Workers',
+        ],
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: '4.92',
@@ -190,20 +230,24 @@ export default function QuitarMarcaAguaPage() {
       {
         '@type': 'ListItem',
         position: 1,
-        name: isEs ? 'Inicio' : 'Home',
-        item: isEs ? SITE_URL : `${SITE_URL}/en`,
+        name: isFr ? 'Accueil' : isEs ? 'Inicio' : 'Home',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? SITE_URL : `${SITE_URL}/en`,
       },
       {
         '@type': 'ListItem',
         position: 2,
-        name: isEs ? 'Editar PDF' : 'Edit PDF',
-        item: isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
+        name: isFr ? 'Modifier PDF' : isEs ? 'Editar PDF' : 'Edit PDF',
+        item: isFr ? `${SITE_URL}/fr` : isEs ? `${SITE_URL}/editar` : `${SITE_URL}/en/edit`,
       },
       {
         '@type': 'ListItem',
         position: 3,
-        name: isEs ? 'Quitar Marca de Agua' : 'Remove Watermark',
-        item: isEs ? `${SITE_URL}/editar/quitar-marca-agua` : `${SITE_URL}/en/remove-watermark`,
+        name: isFr ? 'Supprimer Filigrane' : isEs ? 'Quitar Marca de Agua' : 'Remove Watermark',
+        item: isFr
+          ? `${SITE_URL}/fr/supprimer-filigrane-pdf`
+          : isEs
+            ? `${SITE_URL}/editar/quitar-marca-agua`
+            : `${SITE_URL}/en/remove-watermark`,
       },
     ],
   };

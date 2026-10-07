@@ -2755,7 +2755,7 @@ export const LONG_TAIL_SOLUTIONS_PT: Record<string, LongTailSolution> = {
     h1: 'Converter Word (DOCX) para PDF sem alterar fontes ou margens — Grátis Online',
     subtitle:
       'Preserva a posição exata de tabelas, quebras de página e fontes personalizadas ao converter documentos do Microsoft Word para PDF, sem a necessidade de ter o Office instalado.',
-    metaTitle: 'Convertir Word a PDF Sin Desconfigurar Online Gratis | PDFBlack',
+    metaTitle: 'Converter Word para PDF sem Desconfigurar Online Grátis | PDFBlack',
     metaDescription:
       "Converta arquivos Word DOCX para PDF mantendo o layout original. 100% privado no seu navegador, sem limites ou marcas d'água.",
     keywords: [

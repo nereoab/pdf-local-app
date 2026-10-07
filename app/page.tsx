@@ -909,7 +909,10 @@ export default function DashboardPage() {
                   aria-hidden="true"
                 />
               </motion.div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 text-center tracking-tight font-sans">
+              <p
+                role="status"
+                className="text-3xl md:text-4xl font-bold text-white mb-3 text-center tracking-tight font-sans"
+              >
                 {isFr
                   ? 'Déposez votre PDF n’importe où'
                   : isPt
@@ -917,7 +920,7 @@ export default function DashboardPage() {
                     : isEs
                       ? 'Suelta tu PDF en cualquier lugar'
                       : 'Drop your PDF anywhere'}
-              </h2>
+              </p>
               <p className="text-zinc-400 text-sm font-mono flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-zinc-300" aria-hidden="true" />
                 {isFr
@@ -1389,7 +1392,7 @@ export default function DashboardPage() {
                           ? 'GUÍA TÉCNICA Y DE SEGURIDAD'
                           : 'TECHNICAL & SECURITY GUIDE'}
                   </div>
-                  <h3 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-3">
+                  <h2 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-3">
                     {isFr
                       ? 'Que se passe-t-il avec votre fichier PDF dans chaque groupe d’outils ?'
                       : isPt
@@ -1397,7 +1400,7 @@ export default function DashboardPage() {
                         : isEs
                           ? '¿Qué le sucede a tu archivo PDF en cada grupo de herramientas?'
                           : 'What happens to your PDF in each tool group?'}
-                  </h3>
+                  </h2>
                   <p className="text-zinc-300 text-xs sm:text-sm font-mono leading-relaxed">
                     {isFr
                       ? 'Transparence absolue. Découvrez en détail ce qui se passe dans votre navigateur lors du traitement de vos documents.'
@@ -1435,7 +1438,7 @@ export default function DashboardPage() {
                                     ? 'EDICIÓN DIRECTA'
                                     : 'DIRECT EDITING'}
                             </span>
-                            <h4
+                            <h3
                               id="group-edit-title"
                               className="text-xl font-bold text-white tracking-tight"
                             >
@@ -1446,7 +1449,7 @@ export default function DashboardPage() {
                                   : isEs
                                     ? 'Grupo EDITAR PDF'
                                     : 'EDIT PDF Group'}
-                            </h4>
+                            </h3>
                           </div>
                         </div>
                         <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
@@ -1657,7 +1660,7 @@ export default function DashboardPage() {
                                     ? 'ESTRUCTURA'
                                     : 'STRUCTURE'}
                             </span>
-                            <h4
+                            <h3
                               id="group-organize-title"
                               className="text-xl font-bold text-white tracking-tight"
                             >
@@ -1668,7 +1671,7 @@ export default function DashboardPage() {
                                   : isEs
                                     ? 'Grupo ORGANIZAR PDF'
                                     : 'ORGANIZE PDF Group'}
-                            </h4>
+                            </h3>
                           </div>
                         </div>
                         <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
@@ -1879,7 +1882,7 @@ export default function DashboardPage() {
                                     ? 'CONVERSIÓN'
                                     : 'CONVERSION'}
                             </span>
-                            <h4
+                            <h3
                               id="group-convert-title"
                               className="text-xl font-bold text-white tracking-tight"
                             >
@@ -1890,7 +1893,7 @@ export default function DashboardPage() {
                                   : isEs
                                     ? 'Grupo CONVERTIR PDF'
                                     : 'CONVERT PDF Group'}
-                            </h4>
+                            </h3>
                           </div>
                         </div>
                         <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">
@@ -2069,7 +2072,7 @@ export default function DashboardPage() {
                                     ? 'OPTIMIZACIÓN'
                                     : 'OPTIMIZATION'}
                             </span>
-                            <h4
+                            <h3
                               id="group-optimize-title"
                               className="text-xl font-bold text-white tracking-tight"
                             >
@@ -2080,7 +2083,7 @@ export default function DashboardPage() {
                                   : isEs
                                     ? 'Grupo OPTIMIZAR PDF'
                                     : 'OPTIMIZE PDF Group'}
-                            </h4>
+                            </h3>
                           </div>
                         </div>
                         <span className="text-[10px] font-mono px-2.5 py-1 bg-zinc-800 border border-zinc-600 text-white rounded-full font-bold">

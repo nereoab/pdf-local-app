@@ -120,9 +120,9 @@ export default function PrivacidadPage() {
             >
               <Cpu className="w-6 h-6 text-white" />
             </div>
-            <h3 id="pillar-1-title" className="text-sm font-bold text-white mb-2 font-sans">
+            <p id="pillar-1-title" className="text-sm font-bold text-white mb-2 font-sans">
               {isEs ? 'Procesamiento en RAM' : 'RAM-Only Processing'}
-            </h3>
+            </p>
             <p className="text-xs text-zinc-400 font-sans leading-relaxed">
               {isEs
                 ? 'Los PDF se procesan exclusivamente en memoria RAM del navegador con bibliotecas locales (PDF.js, WebAssembly). Ningún dato se persiste en disco ni se transmite.'
@@ -140,9 +140,9 @@ export default function PrivacidadPage() {
             >
               <EyeOff className="w-6 h-6 text-emerald-400" />
             </div>
-            <h3 id="pillar-2-title" className="text-sm font-bold text-white mb-2 font-sans">
+            <p id="pillar-2-title" className="text-sm font-bold text-white mb-2 font-sans">
               {isEs ? 'Cero Retención de Archivos' : 'Zero File Retention'}
-            </h3>
+            </p>
             <p className="text-xs text-zinc-400 font-sans leading-relaxed">
               {isEs
                 ? 'No operamos servidores de almacenamiento. Los archivos PDF se destruyen de la RAM al cerrar la pestaña del navegador. No mantenemos copias.'
@@ -160,9 +160,9 @@ export default function PrivacidadPage() {
             >
               <Fingerprint className="w-6 h-6 text-white" />
             </div>
-            <h3 id="pillar-3-title" className="text-sm font-bold text-white mb-2 font-sans">
+            <p id="pillar-3-title" className="text-sm font-bold text-white mb-2 font-sans">
               {isEs ? 'Identidad del Responsable' : 'Data Controller Identity'}
-            </h3>
+            </p>
             <p className="text-xs text-zinc-400 font-sans leading-relaxed">
               {isEs
                 ? 'El responsable del tratamiento es PDFBlack. Para ejercer tus derechos ARCO (acceso, rectificación, cancelación, oposición), contacta a contacto@pdf-black.com.'

@@ -354,11 +354,11 @@ export default function OcrPage() {
               <Crop className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white font-sans">
+              <p className="text-sm font-bold text-white font-sans">
                 {isEs
                   ? '¿Tus escaneos tienen sombras oscuras o bordes negros?'
                   : 'Do your scanned pages have dark borders or scanner shadows?'}
-              </h3>
+              </p>
               <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                 {isEs
                   ? 'Recorta los bordes periféricos antes del OCR para evitar caracteres erróneos y maximizar la precisión del motor de reconocimiento.'

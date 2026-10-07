@@ -382,11 +382,11 @@ export default function FoliarPage() {
                 <Link2 className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white font-sans">
+                <p className="text-sm font-bold text-white font-sans">
                   {isEs
                     ? '¿Tienes múltiples documentos sueltos que componen un expediente?'
                     : 'Do you have multiple separate files for a single dossier?'}
-                </h3>
+                </p>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                   {isEs
                     ? 'Para una foliación correlativa perfecta sin saltos, recomendamos consolidar primero tus anexos en un solo archivo continuo con nuestra herramienta gratuita sin límites.'
@@ -416,11 +416,11 @@ export default function FoliarPage() {
                 <Crop className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white font-sans">
+                <p className="text-sm font-bold text-white font-sans">
                   {isEs
                     ? '¿Tus documentos escaneados tienen sombras o márgenes desalineados?'
                     : 'Do your scanned documents have black edges or uneven margins?'}
-                </h3>
+                </p>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                   {isEs
                     ? 'Limpia bordes negros y estandariza los márgenes perimetrales de tus expedientes antes de aplicar el foliado oficial o sello Bates.'

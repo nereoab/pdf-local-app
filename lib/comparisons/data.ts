@@ -6,7 +6,7 @@ export const COMPARISONS_ES: Record<string, ComparisonPageData> = {
     slugEn: 'pdfblack-vs-ilovepdf',
     type: 'comparativa',
     competitorName: 'iLovePDF',
-    metaTitle: 'PDFBlack vs iLovePDF — Comparativa de Privacidad, Límites y Rendimiento (2026)',
+    metaTitle: 'PDFBlack vs iLovePDF — Comparativa de Privacidad | PDFBlack',
     metaDescription:
       'Compara PDFBlack vs iLovePDF. Descubre por qué el procesamiento 100% local en tu navegador supera a iLovePDF en privacidad RGPD, velocidad y sin límites.',
     keywords: [
@@ -188,7 +188,7 @@ export const COMPARISONS_ES: Record<string, ComparisonPageData> = {
     slugEn: 'pdfblack-vs-smallpdf',
     type: 'comparativa',
     competitorName: 'Smallpdf',
-    metaTitle: 'PDFBlack vs Smallpdf — Comparativa de Privacidad, Precios y Funcionalidades (2026)',
+    metaTitle: 'PDFBlack vs Smallpdf — Comparativa y Privacidad | PDFBlack',
     metaDescription:
       'Comparativa PDFBlack vs Smallpdf. Descubre por qué PDFBlack es la mejor alternativa gratis, sin registro, sin límite diario de tareas y con privacidad local.',
     keywords: [
@@ -641,7 +641,7 @@ export const COMPARISONS_EN: Record<string, ComparisonPageData> = {
     slugEn: 'pdfblack-vs-ilovepdf',
     type: 'comparativa',
     competitorName: 'iLovePDF',
-    metaTitle: 'PDFBlack vs iLovePDF — Privacy, Limits & Performance Comparison (2026)',
+    metaTitle: 'PDFBlack vs iLovePDF — Privacy & Speed Comparison | PDFBlack',
     metaDescription:
       'PDFBlack vs iLovePDF comparison. Discover why 100% in-browser processing beats iLovePDF in privacy, GDPR compliance, zero file size limits, and speed.',
     keywords: [
@@ -814,7 +814,7 @@ export const COMPARISONS_EN: Record<string, ComparisonPageData> = {
     slugEn: 'pdfblack-vs-smallpdf',
     type: 'comparativa',
     competitorName: 'Smallpdf',
-    metaTitle: 'PDFBlack vs Smallpdf — Direct Comparison on Privacy, Limits & Cost (2026)',
+    metaTitle: 'PDFBlack vs Smallpdf — Privacy & Daily Limits | PDFBlack',
     metaDescription:
       'Compare PDFBlack vs Smallpdf. Learn why PDFBlack is the best free alternative with zero sign-ups, no 2-task daily limits, and 100% local privacy.',
     keywords: [

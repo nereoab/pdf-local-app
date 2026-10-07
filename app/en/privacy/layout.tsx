@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Privacy Policy — 100% Client-Side Private Processing | PDFBlack',
+    absolute: 'Privacy Policy — Zero-Knowledge Browser Security | PDFBlack',
   },
   description:
     'Learn about our zero-knowledge, zero-upload privacy architecture. PDFBlack processes all documents locally in your browser memory without cloud servers.',

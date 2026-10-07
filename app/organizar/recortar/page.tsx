@@ -402,11 +402,11 @@ export default function RecortarPdfPage() {
                 <Link2 className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white font-sans">
+                <p className="text-sm font-bold text-white font-sans">
                   {isEs
                     ? '¿Necesitas reducir el peso de tu PDF después de recortarlo?'
                     : 'Need to reduce your PDF file size after cropping?'}
-                </h3>
+                </p>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                   {isEs
                     ? 'Optimiza los megabytes de tu documento recortado con compresión Deflate Nivel 9 sin perder nitidez vectorial ni calidad de texto.'

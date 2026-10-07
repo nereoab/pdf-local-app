@@ -4,12 +4,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    default:
-      'PDFBlack — Ferramentas de PDF Online Grátis | Editar, Converter, Comprimir e Juntar PDF',
+    default: 'PDFBlack — Ferramentas PDF Online Grátis e Privadas',
     template: '%s | PDFBlack',
   },
   description:
-    'Ferramentas de PDF 100% gratuitas e privadas que rodam no seu navegador. Edite texto, comprima, junte, divida, assine e converta PDF para Word e Excel sem enviar arquivos para a nuvem. Em conformidade com a LGPD.',
+    'Ferramentas de PDF 100% gratuitas no seu navegador. Edite, comprima, junte, divida e converta PDF sem envio a servidores. Conforme a LGPD.',
   keywords: [
     'ferramentas pdf gratis',
     'juntar pdf',

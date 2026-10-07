@@ -597,11 +597,14 @@ export const STATIC_ROUTES_FR_MAP: Record<string, string> = {
   '/editar': '/fr',
   '/convertir': '/fr',
   '/faq': '/fr/faq',
-  '/privacidad': '/fr/confidentialite',
-  '/terminos': '/fr/conditions',
+  '/privacidad': '/fr/privacy',
+  '/terminos': '/fr/terms',
   '/contacto': '/fr/contact',
-  '/aviso-legal': '/fr/mentions-legales',
-  '/dpa': '/fr/dpa',
+  '/aviso-legal': '/fr/legal-notice',
+  '/industrias': '/fr/industries',
+  '/glosario': '/fr/glossary',
+  '/soluciones': '/fr/solutions',
+  '/dpa': '/en/dpa',
 };
 
 const ES_TO_FR_MAP = new Map<string, string>();

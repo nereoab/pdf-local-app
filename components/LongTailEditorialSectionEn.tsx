@@ -125,9 +125,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
                 <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center font-bold text-neutral-900 dark:text-neutral-100 mb-4 border border-neutral-200 dark:border-neutral-700">
                   {s.step}
                 </div>
-                <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+                <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
                   {s.title}
-                </h4>
+                </h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
                   {s.desc}
                 </p>

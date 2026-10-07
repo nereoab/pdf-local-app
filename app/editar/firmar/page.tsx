@@ -269,11 +269,11 @@ export default function FirmarPdfPage() {
               <Crop className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white font-sans">
+              <p className="text-sm font-bold text-white font-sans">
                 {isEs
                   ? '¿Necesitas recortar o ajustar el encuadre de la hoja antes de firmar?'
                   : 'Need to crop margins or adjust page alignment before signing?'}
-              </h3>
+              </p>
               <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                 {isEs
                   ? 'Elimina bordes excesivos y encuadra contratos o actas con precisión milimétrica sin perder validez vectorial.'

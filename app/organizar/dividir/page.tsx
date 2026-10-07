@@ -286,11 +286,11 @@ export default function DividirPdfPage() {
               <Link2 className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white font-sans">
+              <p className="text-sm font-bold text-white font-sans">
                 {isEs
                   ? '¿Quieres reorganizar o juntar de nuevo tus páginas extraídas?'
                   : 'Need to combine or reorder your extracted pages?'}
-              </h3>
+              </p>
               <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                 {isEs
                   ? 'Utiliza nuestra herramienta de Unir PDF para fusionar múltiples archivos, añadir un Índice Corporativo automático y ordenar páginas sin límites.'

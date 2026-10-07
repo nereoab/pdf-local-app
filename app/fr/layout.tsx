@@ -4,12 +4,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    default:
-      'PDFBlack — Outils PDF en Ligne Gratuits | Modifier, Convertir, Compresser et Fusionner PDF',
+    default: 'PDFBlack — Outils PDF en Ligne Gratuits et Privés',
     template: '%s | PDFBlack',
   },
   description:
-    'Outils PDF 100% gratuits, locaux et privés exécutés dans votre navigateur. Modifiez, compressez, fusionnez, divisez, signez et convertissez vos PDF en Word et Excel sans aucun téléversement. Conforme RGPD et CNIL.',
+    'Outils PDF 100% gratuits et privés dans votre navigateur. Modifiez, compressez, fusionnez et convertissez vos PDF sans téléversement. Conforme RGPD.',
   keywords: [
     'outils pdf gratuits',
     'fusionner pdf',

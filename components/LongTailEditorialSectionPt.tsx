@@ -125,9 +125,9 @@ export default function LongTailEditorialSectionPt({ solution }: Props) {
                 <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center font-bold text-neutral-900 dark:text-neutral-100 mb-4 border border-neutral-200 dark:border-neutral-700">
                   {s.step}
                 </div>
-                <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+                <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
                   {s.title}
-                </h4>
+                </h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
                   {s.desc}
                 </p>
@@ -223,9 +223,9 @@ export default function LongTailEditorialSectionPt({ solution }: Props) {
       {/* ─── CALL TO ACTION BOTTOM ─── */}
       <div className="p-8 rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-center flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
         <div className="text-center sm:text-left">
-          <h4 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 mb-1">
             Pronto para usar a ferramenta?
-          </h4>
+          </h2>
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Gratuito, instantâneo e sem necessidade de criar conta ou instalar programas.
           </p>

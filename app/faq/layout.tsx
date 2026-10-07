@@ -4,10 +4,10 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Preguntas Frecuentes (FAQ) — Seguridad, Privacidad y Uso | PDFBlack',
+    absolute: 'Preguntas Frecuentes — Seguridad y Privacidad | PDFBlack',
   },
   description:
-    'Resuelve todas tus dudas sobre PDFBlack: cómo funciona el procesamiento local en memoria RAM, por qué es 100% gratuito, cumplimiento con RGPD e HIPAA, y compatibilidad de navegadores.',
+    'Resuelve tus dudas sobre PDFBlack: procesamiento 100% en RAM local, sin límites de tamaño, gratis y con estricto cumplimiento RGPD e HIPAA.',
   keywords: [
     'faq pdfblack',
     'preguntas frecuentes pdf',

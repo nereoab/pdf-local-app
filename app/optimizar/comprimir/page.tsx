@@ -191,11 +191,11 @@ export default function ComprimirPdfPage() {
               <Link2 className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white font-sans">
+              <p className="text-sm font-bold text-white font-sans">
                 {isEs
                   ? '¿Necesitas juntar varios archivos PDF antes de reducirlos?'
                   : 'Need to combine multiple PDF files before compressing?'}
-              </h3>
+              </p>
               <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                 {isEs
                   ? 'Combina todos tus documentos en un único archivo continuo sin límites de tamaño ni registro, y luego optimiza su peso aquí.'
@@ -225,11 +225,11 @@ export default function ComprimirPdfPage() {
               <Crop className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white font-sans">
+              <p className="text-sm font-bold text-white font-sans">
                 {isEs
                   ? '¿Tienes márgenes blancos sobrantes o páginas desproporcionadas?'
                   : 'Do you have excess white margins or unevenly framed pages?'}
-              </h3>
+              </p>
               <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                 {isEs
                   ? 'Recorta bordes innecesarios con ajuste milimétrico para maximizar el área útil antes de reducir el peso del documento.'

@@ -291,11 +291,11 @@ export default function UnirPdfPage() {
               <Crop className="w-5 h-5" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white font-sans">
+              <p className="text-sm font-bold text-white font-sans">
                 {isEs
                   ? '¿Tus documentos tienen márgenes desalineados o bordes blancos desiguales?'
                   : 'Do your documents have uneven margins or excess white borders?'}
-              </h3>
+              </p>
               <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                 {isEs
                   ? 'Estandariza las dimensiones de página y recorta márgenes sobrantes con precisión milimétrica antes de fusionarlos en un archivo único.'

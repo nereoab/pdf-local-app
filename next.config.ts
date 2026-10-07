@@ -210,10 +210,9 @@ const nextConfig: NextConfig = {
       { source: '/en/terminos', destination: '/en/terms', permanent: true },
       { source: '/en/contacto', destination: '/en/contact', permanent: true },
       { source: '/en/aviso-legal', destination: '/en/legal-notice', permanent: true },
-
-      // Soluciones Hubs fallback
-      { source: '/soluciones', destination: '/', permanent: true },
-      { source: '/en/solutions', destination: '/en', permanent: true },
+      { source: '/fr/confidentialite', destination: '/fr/privacy', permanent: true },
+      { source: '/fr/conditions', destination: '/fr/terms', permanent: true },
+      { source: '/fr/mentions-legales', destination: '/fr/legal-notice', permanent: true },
     ];
   },
 };

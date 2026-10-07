@@ -4,10 +4,10 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Política de Privacidad — Arquitectura Zero-Knowledge en RAM | PDFBlack',
+    absolute: 'Política de Privacidad — Seguridad Zero-Knowledge | PDFBlack',
   },
   description:
-    'Conoce la política de privacidad estricta de PDFBlack. Procesamiento 100% en el navegador del usuario: cero almacenamiento en discos, cero servidores de terceros y cumplimiento estricto del RGPD.',
+    'Conoce la privacidad de PDFBlack: procesamiento 100% en tu navegador, cero almacenamiento en disco, cero servidores y cumplimiento estricto del RGPD.',
   keywords: [
     'politica de privacidad pdf',
     'privacidad pdf local',

@@ -289,11 +289,11 @@ export default function EditarTextoPage() {
                 <Crop className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-white font-sans">
+                <p className="text-sm font-bold text-white font-sans">
                   {isEs
                     ? '¿Necesitas recortar márgenes o reencuadrar páginas antes de editarlas?'
                     : 'Need to crop margins or adjust page dimensions before editing?'}
-                </h3>
+                </p>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                   {isEs
                     ? 'Ajusta los bordes blancos sobrantes o estandariza a tamaño A4 con precisión milimétrica de forma 100% privada.'

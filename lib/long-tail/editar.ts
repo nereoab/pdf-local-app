@@ -275,7 +275,7 @@ export const EDITAR_SOLUTIONS_ES: Record<string, LongTailSolution> = {
     h1: 'Foliar Expediente Judicial en PDF — Foliación Electrónica Correlativa',
     subtitle:
       'Numera escritos, demandas y anexos para mesas de partes del Poder Judicial y fiscalías. Foliado en esquina superior derecha con formato regulado (Fs. 001) y orden correlativo o inverso.',
-    metaTitle: 'Foliar Expediente Judicial en PDF Online Gratis — Foliación Procesal | PDFBlack',
+    metaTitle: 'Foliación Electrónica de Expedientes Judiciales en PDF | PDFBlack',
     metaDescription:
       'Foliación electrónica de expedientes judiciales en PDF conforme a directivas procesales. Numera fojas correlativas con total privacidad y secreto profesional.',
     keywords: [

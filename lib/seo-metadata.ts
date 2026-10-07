@@ -1102,7 +1102,7 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
     categoryPt: 'editar',
     titleEs: 'Editar PDF Gratis Online — Texto, Firma y OCR | PDFBlack',
     titleEn: 'Edit PDF Files Online Free — Text, Sign & OCR | PDFBlack',
-    titlePt: 'Editar PDF Grátis Online — Texto, Assinatura e OCR | PDFBlack',
+    titlePt: 'Editar PDF Grátis Online — Texto e Assinatura | PDFBlack',
     descEs:
       'Edita documentos PDF en tu navegador: modifica texto, añade firmas digitales, numera folios y aplica OCR. 100% privado en memoria RAM y sin límites.',
     descEn:
@@ -1568,14 +1568,14 @@ export function buildDefinedTermSchema({
 export function buildGlossaryIndexMetadata(lang: 'es' | 'en' = 'es'): Metadata {
   const isEs = lang === 'es';
   const rawTitle = isEs
-    ? 'Glosario Técnico de PDF — Conceptos, Estándares ISO y Seguridad | PDFBlack'
-    : 'Technical PDF Glossary — Specifications, ISO Standards & Security | PDFBlack';
+    ? 'Glosario Técnico de PDF — Estándares y Conceptos | PDFBlack'
+    : 'Technical PDF Glossary — Standards & Terms | PDFBlack';
   const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
   const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
 
   const description = isEs
-    ? 'Centro de recursos técnicos sobre PDF: conoce qué es la numeración Bates, diferencias entre PDF/A y PDF estándar, cifrado militar AES-256, censura binaria y arquitectura Zero-Knowledge.'
-    : 'Comprehensive technical PDF knowledge hub: discover Bates numbering, PDF/A versus standard PDF, AES-256 military encryption, forensic redaction, and client-side zero-knowledge architecture.';
+    ? 'Glosario técnico de PDF: aprende sobre numeración Bates, estándares PDF/A, cifrado AES-256, censura forense y procesamiento local sin servidores.'
+    : 'Technical PDF glossary: learn about Bates numbering, PDF/A standards, AES-256 encryption, forensic redaction, and local zero-knowledge processing.';
   const canonicalUrl = isEs ? `${SITE_URL}/glosario` : `${SITE_URL}/en/glossary`;
   const esUrl = `${SITE_URL}/glosario`;
   const enUrl = `${SITE_URL}/en/glossary`;

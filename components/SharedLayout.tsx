@@ -202,68 +202,88 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             >
               <DropdownMenu
                 title={
-                  isZh ? '01 / 编辑' : isPt ? '01 / EDITAR' : isEs ? '01 / EDITAR' : '01 / EDIT'
+                  isZh
+                    ? '01 / 编辑'
+                    : isFr
+                      ? '01 / ÉDITER'
+                      : isPt
+                        ? '01 / EDITAR'
+                        : isEs
+                          ? '01 / EDITAR'
+                          : '01 / EDIT'
                 }
                 basePath="/editar"
                 items={[
                   {
                     label: isZh
                       ? '编辑文本与图片'
-                      : isPt
-                        ? 'Editar Texto e Imagens'
-                        : isEs
-                          ? 'Editar Texto e Imágenes'
-                          : 'Edit Text & Images',
+                      : isFr
+                        ? 'Modifier Texte & Images'
+                        : isPt
+                          ? 'Editar Texto e Imagens'
+                          : isEs
+                            ? 'Editar Texto e Imágenes'
+                            : 'Edit Text & Images',
                     path: '/editar/texto',
                   },
                   {
                     label: isZh
                       ? '添加页码'
-                      : isPt
-                        ? 'Numerar Páginas (Foliação)'
-                        : isEs
-                          ? 'Poner Números a Páginas (Foliado)'
-                          : 'Add Page Numbers',
+                      : isFr
+                        ? 'Numéroter les Pages'
+                        : isPt
+                          ? 'Numerar Páginas (Foliação)'
+                          : isEs
+                            ? 'Poner Números a Páginas (Foliado)'
+                            : 'Add Page Numbers',
                     path: '/editar/foliar',
                   },
                   {
                     label: isZh
                       ? '添加水印'
-                      : isPt
-                        ? 'Marca-d’água no PDF'
-                        : isEs
-                          ? 'Poner Sello de Agua'
-                          : 'Add Watermark',
+                      : isFr
+                        ? 'Ajouter Filigrane'
+                        : isPt
+                          ? 'Marca-d’água no PDF'
+                          : isEs
+                            ? 'Poner Sello de Agua'
+                            : 'Add Watermark',
                     path: '/editar/marca-agua',
                   },
                   {
                     label: isZh
                       ? '移除水印'
-                      : isPt
-                        ? 'Remover Marca-d’água'
-                        : isEs
-                          ? 'Quitar Sello de Agua'
-                          : 'Remove Watermark',
+                      : isFr
+                        ? 'Supprimer Filigrane'
+                        : isPt
+                          ? 'Remover Marca-d’água'
+                          : isEs
+                            ? 'Quitar Sello de Agua'
+                            : 'Remove Watermark',
                     path: '/editar/quitar-marca-agua',
                   },
                   {
                     label: isZh
                       ? 'PDF 签名'
-                      : isPt
-                        ? 'Assinar PDF Online'
-                        : isEs
-                          ? 'Firmar PDF'
-                          : 'Sign PDF',
+                      : isFr
+                        ? 'Signer un PDF'
+                        : isPt
+                          ? 'Assinar PDF Online'
+                          : isEs
+                            ? 'Firmar PDF'
+                            : 'Sign PDF',
                     path: '/editar/firmar',
                   },
                   {
                     label: isZh
                       ? 'OCR 文字识别'
-                      : isPt
-                        ? 'OCR PDF (Texto Pesquisável)'
-                        : isEs
-                          ? 'OCR PDF (Texto Seleccionable)'
-                          : 'OCR PDF (Searchable Text)',
+                      : isFr
+                        ? 'OCR PDF (Texte Recherchable)'
+                        : isPt
+                          ? 'OCR PDF (Texto Pesquisável)'
+                          : isEs
+                            ? 'OCR PDF (Texto Seleccionable)'
+                            : 'OCR PDF (Searchable Text)',
                     path: '/editar/ocr',
                   },
                 ]}
@@ -272,72 +292,86 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 title={
                   isZh
                     ? '02 / 排列'
-                    : isPt
-                      ? '02 / ORGANIZAR'
-                      : isEs
+                    : isFr
+                      ? '02 / ORGANISER'
+                      : isPt
                         ? '02 / ORGANIZAR'
-                        : '02 / ORGANIZE'
+                        : isEs
+                          ? '02 / ORGANIZAR'
+                          : '02 / ORGANIZE'
                 }
                 basePath="/organizar"
                 items={[
                   {
                     label: isZh
                       ? '合并 PDF'
-                      : isPt
-                        ? 'Juntar PDF'
-                        : isEs
-                          ? 'Unir PDF'
-                          : 'Merge PDF',
+                      : isFr
+                        ? 'Fusionner PDF'
+                        : isPt
+                          ? 'Juntar PDF'
+                          : isEs
+                            ? 'Unir PDF'
+                            : 'Merge PDF',
                     path: '/organizar/unir',
                   },
                   {
                     label: isZh
                       ? '拆分 PDF'
-                      : isPt
-                        ? 'Dividir PDF'
-                        : isEs
+                      : isFr
+                        ? 'Diviser PDF'
+                        : isPt
                           ? 'Dividir PDF'
-                          : 'Split PDF',
+                          : isEs
+                            ? 'Dividir PDF'
+                            : 'Split PDF',
                     path: '/organizar/dividir',
                   },
                   {
                     label: isZh
                       ? '删除页面'
-                      : isPt
-                        ? 'Excluir Páginas'
-                        : isEs
-                          ? 'Eliminar Páginas'
-                          : 'Delete Pages',
+                      : isFr
+                        ? 'Supprimer des Pages'
+                        : isPt
+                          ? 'Excluir Páginas'
+                          : isEs
+                            ? 'Eliminar Páginas'
+                            : 'Delete Pages',
                     path: '/organizar/eliminar',
                   },
                   {
                     label: isZh
                       ? '重新排序'
-                      : isPt
-                        ? 'Organizar Páginas'
-                        : isEs
-                          ? 'Ordenar PDF'
-                          : 'Reorder PDF',
+                      : isFr
+                        ? 'Organiser les Pages'
+                        : isPt
+                          ? 'Organizar Páginas'
+                          : isEs
+                            ? 'Ordenar PDF'
+                            : 'Reorder PDF',
                     path: '/organizar/reordenar',
                   },
                   {
                     label: isZh
                       ? '旋转 PDF'
-                      : isPt
-                        ? 'Girar PDF'
-                        : isEs
-                          ? 'Rotar PDF'
-                          : 'Rotate PDF',
+                      : isFr
+                        ? 'Pivoter PDF'
+                        : isPt
+                          ? 'Girar PDF'
+                          : isEs
+                            ? 'Rotar PDF'
+                            : 'Rotate PDF',
                     path: '/organizar/rotar',
                   },
                   {
                     label: isZh
                       ? '裁剪 PDF'
-                      : isPt
-                        ? 'Recortar PDF'
-                        : isEs
+                      : isFr
+                        ? 'Recadrer PDF'
+                        : isPt
                           ? 'Recortar PDF'
-                          : 'Crop PDF',
+                          : isEs
+                            ? 'Recortar PDF'
+                            : 'Crop PDF',
                     path: '/organizar/recortar',
                   },
                 ]}
@@ -346,11 +380,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 title={
                   isZh
                     ? '03 / 转换'
-                    : isPt
-                      ? '03 / CONVERTER'
-                      : isEs
-                        ? '03 / CONVERTIR'
-                        : '03 / CONVERT'
+                    : isFr
+                      ? '03 / CONVERTIR'
+                      : isPt
+                        ? '03 / CONVERTER'
+                        : isEs
+                          ? '03 / CONVERTIR'
+                          : '03 / CONVERT'
                 }
                 basePath="/convertir"
                 items={[
@@ -360,31 +396,37 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   {
                     label: isZh
                       ? 'PDF ↔ JPG / 图片'
-                      : isPt
-                        ? 'PDF ↔ JPG / Imagem'
-                        : isEs
-                          ? 'PDF ↔ JPG / Imagen'
-                          : 'PDF ↔ JPG / Image',
+                      : isFr
+                        ? 'PDF ↔ JPG / Image'
+                        : isPt
+                          ? 'PDF ↔ JPG / Imagem'
+                          : isEs
+                            ? 'PDF ↔ JPG / Imagen'
+                            : 'PDF ↔ JPG / Image',
                     path: '/convertir/pdf-jpg',
                   },
                   {
                     label: isZh
                       ? 'PDF ↔ 黑白 / 灰度'
-                      : isPt
-                        ? 'PDF ↔ Preto e Branco'
-                        : isEs
-                          ? 'PDF ↔ Blanco y Negro'
-                          : 'PDF ↔ Black & White',
+                      : isFr
+                        ? 'PDF ↔ Noir et Blanc'
+                        : isPt
+                          ? 'PDF ↔ Preto e Branco'
+                          : isEs
+                            ? 'PDF ↔ Blanco y Negro'
+                            : 'PDF ↔ Black & White',
                     path: '/convertir/pdf-blanco-negro',
                   },
                   {
                     label: isZh
                       ? 'PDF ↔ 纯文本'
-                      : isPt
-                        ? 'PDF ↔ Texto'
-                        : isEs
+                      : isFr
+                        ? 'PDF ↔ Texte'
+                        : isPt
                           ? 'PDF ↔ Texto'
-                          : 'PDF ↔ Text',
+                          : isEs
+                            ? 'PDF ↔ Texto'
+                            : 'PDF ↔ Text',
                     path: '/convertir/pdf-texto',
                   },
                 ]}
@@ -393,72 +435,86 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 title={
                   isZh
                     ? '04 / 优化'
-                    : isPt
-                      ? '04 / OTIMIZAR'
-                      : isEs
-                        ? '04 / OPTIMIZAR'
-                        : '04 / OPTIMIZE'
+                    : isFr
+                      ? '04 / OPTIMISER'
+                      : isPt
+                        ? '04 / OTIMIZAR'
+                        : isEs
+                          ? '04 / OPTIMIZAR'
+                          : '04 / OPTIMIZE'
                 }
                 basePath="/optimizar"
                 items={[
                   {
                     label: isZh
                       ? '压缩 PDF'
-                      : isPt
-                        ? 'Comprimir PDF'
-                        : isEs
+                      : isFr
+                        ? 'Compresser PDF'
+                        : isPt
                           ? 'Comprimir PDF'
-                          : 'Compress PDF',
+                          : isEs
+                            ? 'Comprimir PDF'
+                            : 'Compress PDF',
                     path: '/optimizar/comprimir',
                   },
                   {
                     label: isZh
                       ? '修复 PDF'
-                      : isPt
-                        ? 'Reparar PDF'
-                        : isEs
+                      : isFr
+                        ? 'Réparer PDF'
+                        : isPt
                           ? 'Reparar PDF'
-                          : 'Repair PDF',
+                          : isEs
+                            ? 'Reparar PDF'
+                            : 'Repair PDF',
                     path: '/optimizar/reparar',
                   },
                   {
                     label: isZh
                       ? '解密 PDF'
-                      : isPt
-                        ? 'Desbloquear PDF'
-                        : isEs
+                      : isFr
+                        ? 'Déverrouiller PDF'
+                        : isPt
                           ? 'Desbloquear PDF'
-                          : 'Unlock PDF',
+                          : isEs
+                            ? 'Desbloquear PDF'
+                            : 'Unlock PDF',
                     path: '/optimizar/desbloquear',
                   },
                   {
                     label: isZh
                       ? '加密 PDF'
-                      : isPt
-                        ? 'Proteger PDF'
-                        : isEs
+                      : isFr
+                        ? 'Protéger PDF'
+                        : isPt
                           ? 'Proteger PDF'
-                          : 'Protect PDF',
+                          : isEs
+                            ? 'Proteger PDF'
+                            : 'Protect PDF',
                     path: '/optimizar/proteger',
                   },
                   {
                     label: isZh
                       ? '涂黑遮蔽'
-                      : isPt
-                        ? 'Ocultar Texto / Censurar'
-                        : isEs
-                          ? 'Censurar PDF'
-                          : 'Redact PDF',
+                      : isFr
+                        ? 'Censurer PDF'
+                        : isPt
+                          ? 'Ocultar Texto / Censurar'
+                          : isEs
+                            ? 'Censurar PDF'
+                            : 'Redact PDF',
                     path: '/optimizar/censurar',
                   },
                   {
                     label: isZh
                       ? '对比 PDF'
-                      : isPt
-                        ? 'Comparar PDFs'
-                        : isEs
-                          ? 'Comparar PDF'
-                          : 'Compare PDF',
+                      : isFr
+                        ? 'Comparer PDF'
+                        : isPt
+                          ? 'Comparar PDFs'
+                          : isEs
+                            ? 'Comparar PDF'
+                            : 'Compare PDF',
                     path: '/optimizar/comparar',
                   },
                 ]}
@@ -469,7 +525,15 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div
               className="flex items-center gap-3 font-mono"
               role="toolbar"
-              aria-label={isEs ? 'Acciones de usuario' : 'User actions'}
+              aria-label={
+                isFr
+                  ? 'Actions utilisateur'
+                  : isPt
+                    ? 'Ações do usuário'
+                    : isEs
+                      ? 'Acciones de usuario'
+                      : 'User actions'
+              }
             >
               <AnimatePresence mode="wait">
                 {!isHome && (
@@ -600,17 +664,25 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   <button
                     onClick={() => {
                       const confirmed = confirm(
-                        isEs
-                          ? `¿Cerrar sesión de ${currentUser.email}?`
-                          : `Log out from ${currentUser.email}?`,
+                        isFr
+                          ? `Se déconnecter de ${currentUser.email} ?`
+                          : isPt
+                            ? `Sair de ${currentUser.email}?`
+                            : isEs
+                              ? `¿Cerrar sesión de ${currentUser.email}?`
+                              : `Log out from ${currentUser.email}?`,
                       );
                       if (confirmed) logout();
                     }}
                     className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 px-3.5 py-1.5 rounded-full text-xs font-mono transition-all group"
                     aria-label={
-                      isEs
-                        ? `Cerrar sesión de ${currentUser.email}`
-                        : `Log out from ${currentUser.email}`
+                      isFr
+                        ? `Se déconnecter de ${currentUser.email}`
+                        : isPt
+                          ? `Sair de ${currentUser.email}`
+                          : isEs
+                            ? `Cerrar sesión de ${currentUser.email}`
+                            : `Log out from ${currentUser.email}`
                     }
                   >
                     <div
@@ -634,10 +706,18 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsAuthModalOpen(true)}
                   className="flex items-center gap-2 bg-white text-black hover:bg-zinc-200 px-4 py-1.5 rounded-full font-sans font-bold text-xs transition-all shadow-md whitespace-nowrap flex-shrink-0 cursor-pointer"
-                  aria-label={isEs ? 'Abrir formulario de registro' : 'Open sign up form'}
+                  aria-label={
+                    isFr
+                      ? 'Ouvrir le formulaire d’inscription'
+                      : isPt
+                        ? 'Abrir formulário de cadastro'
+                        : isEs
+                          ? 'Abrir formulario de registro'
+                          : 'Open sign up form'
+                  }
                 >
                   <User className="w-3.5 h-3.5 text-black" aria-hidden="true" />
-                  {isEs ? 'REGISTRO' : 'SIGN UP'}
+                  {isFr ? 'INSCRIPTION' : isPt ? 'CADASTRO' : isEs ? 'REGISTRO' : 'SIGN UP'}
                 </motion.button>
               )}
             </div>
@@ -680,7 +760,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div>
               <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                {isEs ? 'Editar PDF' : 'Edit PDF'}
+                {isFr ? 'Modifier PDF' : isPt ? 'Editar PDF' : isEs ? 'Editar PDF' : 'Edit PDF'}
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
@@ -688,7 +768,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/editar/texto')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Editar Texto e Imágenes' : 'Edit Text & Images'}
+                    {isFr
+                      ? 'Modifier Texte et Images'
+                      : isPt
+                        ? 'Editar Texto e Imagens'
+                        : isEs
+                          ? 'Editar Texto e Imágenes'
+                          : 'Edit Text & Images'}
                   </Link>
                 </li>
                 <li>
@@ -696,7 +782,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/editar/foliar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Foliar PDF (Páginas)' : 'Add Page Numbers'}
+                    {isFr
+                      ? 'Numéroter les Pages'
+                      : isPt
+                        ? 'Numerar Páginas (Foliação)'
+                        : isEs
+                          ? 'Foliar PDF (Páginas)'
+                          : 'Add Page Numbers'}
                   </Link>
                 </li>
                 <li>
@@ -704,7 +796,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/editar/marca-agua')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Poner Marca de Agua' : 'Add Watermark'}
+                    {isFr
+                      ? 'Ajouter Filigrane'
+                      : isPt
+                        ? 'Adicionar Marca-d’água'
+                        : isEs
+                          ? 'Poner Marca de Agua'
+                          : 'Add Watermark'}
                   </Link>
                 </li>
                 <li>
@@ -712,7 +810,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/editar/quitar-marca-agua')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Quitar Marca de Agua' : 'Remove Watermark'}
+                    {isFr
+                      ? 'Supprimer Filigrane'
+                      : isPt
+                        ? 'Remover Marca-d’água'
+                        : isEs
+                          ? 'Quitar Marca de Agua'
+                          : 'Remove Watermark'}
                   </Link>
                 </li>
                 <li>
@@ -720,7 +824,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/editar/firmar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Firmar PDF' : 'Sign PDF'}
+                    {isFr ? 'Signer PDF' : isPt ? 'Assinar PDF' : isEs ? 'Firmar PDF' : 'Sign PDF'}
                   </Link>
                 </li>
                 <li>
@@ -728,7 +832,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/editar/ocr')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'OCR (Reconocer Texto)' : 'OCR Searchable PDF'}
+                    {isFr
+                      ? 'OCR (Reconnaissance de Texte)'
+                      : isPt
+                        ? 'OCR (Texto Pesquisável)'
+                        : isEs
+                          ? 'OCR (Reconocer Texto)'
+                          : 'OCR Searchable PDF'}
                   </Link>
                 </li>
               </ul>
@@ -738,7 +848,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div>
               <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                {isEs ? 'Organizar PDF' : 'Organize PDF'}
+                {isFr
+                  ? 'Organiser PDF'
+                  : isPt
+                    ? 'Organizar PDF'
+                    : isEs
+                      ? 'Organizar PDF'
+                      : 'Organize PDF'}
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
@@ -746,7 +862,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/organizar/unir')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Unir PDF' : 'Merge PDF'}
+                    {isFr ? 'Fusionner PDF' : isPt ? 'Juntar PDF' : isEs ? 'Unir PDF' : 'Merge PDF'}
                   </Link>
                 </li>
                 <li>
@@ -754,7 +870,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/organizar/dividir')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Dividir PDF' : 'Split PDF'}
+                    {isFr
+                      ? 'Diviser PDF'
+                      : isPt
+                        ? 'Dividir PDF'
+                        : isEs
+                          ? 'Dividir PDF'
+                          : 'Split PDF'}
                   </Link>
                 </li>
                 <li>
@@ -762,7 +884,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/organizar/eliminar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Eliminar Páginas' : 'Delete Pages'}
+                    {isFr
+                      ? 'Supprimer des Pages'
+                      : isPt
+                        ? 'Excluir Páginas'
+                        : isEs
+                          ? 'Eliminar Páginas'
+                          : 'Delete Pages'}
                   </Link>
                 </li>
                 <li>
@@ -770,7 +898,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/organizar/reordenar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Ordenar Páginas' : 'Reorder Pages'}
+                    {isFr
+                      ? 'Réorganiser les Pages'
+                      : isPt
+                        ? 'Organizar Páginas'
+                        : isEs
+                          ? 'Ordenar Páginas'
+                          : 'Reorder Pages'}
                   </Link>
                 </li>
                 <li>
@@ -778,7 +912,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/organizar/rotar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Rotar PDF' : 'Rotate PDF'}
+                    {isFr ? 'Pivoter PDF' : isPt ? 'Girar PDF' : isEs ? 'Rotar PDF' : 'Rotate PDF'}
                   </Link>
                 </li>
                 <li>
@@ -786,7 +920,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/organizar/recortar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Recortar PDF' : 'Crop PDF'}
+                    {isFr
+                      ? 'Rogner PDF'
+                      : isPt
+                        ? 'Recortar PDF'
+                        : isEs
+                          ? 'Recortar PDF'
+                          : 'Crop PDF'}
                   </Link>
                 </li>
               </ul>
@@ -796,7 +936,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div>
               <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                {isEs ? 'Optimizar PDF' : 'Optimize PDF'}
+                {isFr
+                  ? 'Optimiser PDF'
+                  : isPt
+                    ? 'Otimizar PDF'
+                    : isEs
+                      ? 'Optimizar PDF'
+                      : 'Optimize PDF'}
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
@@ -804,7 +950,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/optimizar/comprimir')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Comprimir PDF' : 'Compress PDF'}
+                    {isFr
+                      ? 'Compresser PDF'
+                      : isPt
+                        ? 'Comprimir PDF'
+                        : isEs
+                          ? 'Comprimir PDF'
+                          : 'Compress PDF'}
                   </Link>
                 </li>
                 <li>
@@ -812,7 +964,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/optimizar/reparar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Reparar PDF' : 'Repair PDF'}
+                    {isFr
+                      ? 'Réparer PDF'
+                      : isPt
+                        ? 'Reparar PDF'
+                        : isEs
+                          ? 'Reparar PDF'
+                          : 'Repair PDF'}
                   </Link>
                 </li>
                 <li>
@@ -820,7 +978,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/optimizar/proteger')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Proteger PDF' : 'Protect PDF'}
+                    {isFr
+                      ? 'Protéger PDF'
+                      : isPt
+                        ? 'Proteger PDF'
+                        : isEs
+                          ? 'Proteger PDF'
+                          : 'Protect PDF'}
                   </Link>
                 </li>
                 <li>
@@ -828,7 +992,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/optimizar/desbloquear')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Desbloquear PDF' : 'Unlock PDF'}
+                    {isFr
+                      ? 'Déverrouiller PDF'
+                      : isPt
+                        ? 'Desbloquear PDF'
+                        : isEs
+                          ? 'Desbloquear PDF'
+                          : 'Unlock PDF'}
                   </Link>
                 </li>
                 <li>
@@ -836,7 +1006,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/optimizar/censurar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Censurar PDF' : 'Redact PDF'}
+                    {isFr
+                      ? 'Censurer PDF'
+                      : isPt
+                        ? 'Ocultar Texto / Tarjar'
+                        : isEs
+                          ? 'Censurar PDF'
+                          : 'Redact PDF'}
                   </Link>
                 </li>
                 <li>
@@ -844,7 +1020,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/optimizar/comparar')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Comparar PDFs' : 'Compare PDFs'}
+                    {isFr
+                      ? 'Comparer PDFs'
+                      : isPt
+                        ? 'Comparar PDFs'
+                        : isEs
+                          ? 'Comparar PDFs'
+                          : 'Compare PDFs'}
                   </Link>
                 </li>
               </ul>
@@ -854,7 +1036,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div>
               <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                {isEs ? 'Convertir a PDF' : 'Convert to PDF'}
+                {isFr
+                  ? 'Convertir en PDF'
+                  : isPt
+                    ? 'Converter para PDF'
+                    : isEs
+                      ? 'Convertir a PDF'
+                      : 'Convert to PDF'}
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
@@ -862,7 +1050,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/word-pdf')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Word a PDF' : 'Word to PDF'}
+                    {isFr
+                      ? 'Word en PDF'
+                      : isPt
+                        ? 'Word para PDF'
+                        : isEs
+                          ? 'Word a PDF'
+                          : 'Word to PDF'}
                   </Link>
                 </li>
                 <li>
@@ -870,7 +1064,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/excel-pdf')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Excel a PDF' : 'Excel to PDF'}
+                    {isFr
+                      ? 'Excel en PDF'
+                      : isPt
+                        ? 'Excel para PDF'
+                        : isEs
+                          ? 'Excel a PDF'
+                          : 'Excel to PDF'}
                   </Link>
                 </li>
                 <li>
@@ -878,7 +1078,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/powerpoint-pdf')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'PowerPoint a PDF' : 'PowerPoint to PDF'}
+                    {isFr
+                      ? 'PowerPoint en PDF'
+                      : isPt
+                        ? 'PowerPoint para PDF'
+                        : isEs
+                          ? 'PowerPoint a PDF'
+                          : 'PowerPoint to PDF'}
                   </Link>
                 </li>
                 <li>
@@ -886,7 +1092,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/jpg-pdf')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'JPG / Imagen a PDF' : 'JPG to PDF'}
+                    {isFr
+                      ? 'JPG / Image en PDF'
+                      : isPt
+                        ? 'JPG / Imagem para PDF'
+                        : isEs
+                          ? 'JPG / Imagen a PDF'
+                          : 'JPG to PDF'}
                   </Link>
                 </li>
                 <li>
@@ -894,7 +1106,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/html-pdf')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'HTML a PDF' : 'HTML to PDF'}
+                    {isFr
+                      ? 'HTML en PDF'
+                      : isPt
+                        ? 'HTML para PDF'
+                        : isEs
+                          ? 'HTML a PDF'
+                          : 'HTML to PDF'}
                   </Link>
                 </li>
                 <li>
@@ -902,7 +1120,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/texto-pdf')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'Texto TXT a PDF' : 'Text to PDF'}
+                    {isFr
+                      ? 'Texte TXT en PDF'
+                      : isPt
+                        ? 'Texto TXT para PDF'
+                        : isEs
+                          ? 'Texto TXT a PDF'
+                          : 'Text to PDF'}
                   </Link>
                 </li>
               </ul>
@@ -912,7 +1136,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div>
               <div className="font-mono font-bold text-white tracking-wider uppercase mb-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                {isEs ? 'Desde PDF' : 'From PDF'}
+                {isFr ? 'Depuis PDF' : isPt ? 'A partir do PDF' : isEs ? 'Desde PDF' : 'From PDF'}
               </div>
               <ul className="space-y-2 text-zinc-400 font-sans">
                 <li>
@@ -920,7 +1144,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/pdf-word')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'PDF a Word (DOCX)' : 'PDF to Word'}
+                    {isFr
+                      ? 'PDF en Word (DOCX)'
+                      : isPt
+                        ? 'PDF para Word (DOCX)'
+                        : isEs
+                          ? 'PDF a Word (DOCX)'
+                          : 'PDF to Word'}
                   </Link>
                 </li>
                 <li>
@@ -928,7 +1158,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/pdf-excel')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'PDF a Excel (XLSX)' : 'PDF to Excel'}
+                    {isFr
+                      ? 'PDF en Excel (XLSX)'
+                      : isPt
+                        ? 'PDF para Excel (XLSX)'
+                        : isEs
+                          ? 'PDF a Excel (XLSX)'
+                          : 'PDF to Excel'}
                   </Link>
                 </li>
                 <li>
@@ -936,7 +1172,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/pdf-powerpoint')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'PDF a PowerPoint' : 'PDF to PowerPoint'}
+                    {isFr
+                      ? 'PDF en PowerPoint'
+                      : isPt
+                        ? 'PDF para PowerPoint'
+                        : isEs
+                          ? 'PDF a PowerPoint'
+                          : 'PDF to PowerPoint'}
                   </Link>
                 </li>
                 <li>
@@ -944,7 +1186,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/pdf-jpg')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'PDF a JPG / PNG' : 'PDF to JPG'}
+                    {isFr
+                      ? 'PDF en JPG / PNG'
+                      : isPt
+                        ? 'PDF para JPG / PNG'
+                        : isEs
+                          ? 'PDF a JPG / PNG'
+                          : 'PDF to JPG'}
                   </Link>
                 </li>
                 <li>
@@ -952,7 +1200,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/pdf-blanco-negro')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'PDF a Blanco y Negro' : 'PDF to Black & White'}
+                    {isFr
+                      ? 'PDF en Noir et Blanc'
+                      : isPt
+                        ? 'PDF para Preto e Branco'
+                        : isEs
+                          ? 'PDF a Blanco y Negro'
+                          : 'PDF to Black & White'}
                   </Link>
                 </li>
                 <li>
@@ -960,7 +1214,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     href={getNavUrl('/convertir/pdf-texto')}
                     className="hover:text-white transition-colors"
                   >
-                    {isEs ? 'PDF a Texto Plano' : 'PDF to Text'}
+                    {isFr
+                      ? 'PDF en Texte Brut'
+                      : isPt
+                        ? 'PDF para Texto Puro'
+                        : isEs
+                          ? 'PDF a Texto Plano'
+                          : 'PDF to Text'}
                   </Link>
                 </li>
               </ul>
@@ -1005,11 +1265,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <nav
               className="flex flex-wrap items-center gap-4 sm:gap-5 text-zinc-400"
               aria-label={
-                isPt
-                  ? 'Links legais e comparativas'
-                  : isEs
-                    ? 'Enlaces legales y comparativas'
-                    : 'Legal and comparison links'
+                isFr
+                  ? 'Liens légaux et comparatifs'
+                  : isPt
+                    ? 'Links legais e comparativas'
+                    : isEs
+                      ? 'Enlaces legales y comparativas'
+                      : 'Legal and comparison links'
               }
             >
               <Link
@@ -1027,16 +1289,22 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 {isFr ? 'Solutions' : isPt ? 'Soluções' : isEs ? 'Soluciones' : 'Solutions'}
               </Link>
               <Link
-                href={isEnRoute ? '/en/industries' : '/industrias'}
+                href={isFrRoute ? '/fr/industries' : isEnRoute ? '/en/industries' : '/industrias'}
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isPt ? 'Indústrias' : isEs ? 'Industrias' : 'Industries'}
+                {isFr ? 'Industries' : isPt ? 'Indústrias' : isEs ? 'Industrias' : 'Industries'}
               </Link>
               <Link
-                href={isEnRoute ? '/en/glossary' : '/glosario'}
+                href={isFrRoute ? '/fr/glossary' : isEnRoute ? '/en/glossary' : '/glosario'}
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isPt ? 'Glossário Técnico' : isEs ? 'Glosario Técnico' : 'Technical Glossary'}
+                {isFr
+                  ? 'Glossaire Technique'
+                  : isPt
+                    ? 'Glossário Técnico'
+                    : isEs
+                      ? 'Glosario Técnico'
+                      : 'Technical Glossary'}
               </Link>
               <Link
                 href={
@@ -1044,7 +1312,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isPt ? 'vs iLovePDF' : isEs ? 'vs iLovePDF' : 'vs iLovePDF'}
+                vs iLovePDF
               </Link>
               <Link
                 href={
@@ -1052,7 +1320,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isPt ? 'vs Smallpdf' : isEs ? 'vs Smallpdf' : 'vs Smallpdf'}
+                vs Smallpdf
               </Link>
               <Link
                 href={
@@ -1062,7 +1330,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isPt ? 'Alt. iLovePDF' : isEs ? 'Alt. iLovePDF' : 'Alt. iLovePDF'}
+                Alt. iLovePDF
               </Link>
               <Link
                 href={
@@ -1072,19 +1340,19 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isPt ? 'Alt. Smallpdf' : isEs ? 'Alt. Smallpdf' : 'Alt. Smallpdf'}
+                Alt. Smallpdf
               </Link>
               <Link
-                href={isEnRoute ? '/en/privacy' : '/privacidad'}
+                href={isFrRoute ? '/fr/privacy' : isEnRoute ? '/en/privacy' : '/privacidad'}
                 className="hover:text-white transition-colors"
               >
-                {isPt ? 'Privacidade' : isEs ? 'Privacidad' : 'Privacy'}
+                {isFr ? 'Confidentialité' : isPt ? 'Privacidade' : isEs ? 'Privacidad' : 'Privacy'}
               </Link>
               <Link
-                href={isEnRoute ? '/en/terms' : '/terminos'}
+                href={isFrRoute ? '/fr/terms' : isEnRoute ? '/en/terms' : '/terminos'}
                 className="hover:text-white transition-colors"
               >
-                {isPt ? 'Termos' : isEs ? 'Términos' : 'Terms'}
+                {isFr ? 'Conditions' : isPt ? 'Termos' : isEs ? 'Términos' : 'Terms'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/dpa' : '/dpa'}
@@ -1093,22 +1361,30 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 DPA (GDPR)
               </Link>
               <Link
-                href={isEnRoute ? '/en/faq' : '/faq'}
+                href={isFrRoute ? '/fr/faq' : isEnRoute ? '/en/faq' : '/faq'}
                 className="hover:text-white transition-colors"
               >
-                {isPt ? 'FAQ' : isEs ? 'FAQ' : 'FAQ'}
+                FAQ
               </Link>
               <Link
-                href={isEnRoute ? '/en/contact' : '/contacto'}
+                href={isFrRoute ? '/fr/contact' : isEnRoute ? '/en/contact' : '/contacto'}
                 className="hover:text-white transition-colors"
               >
-                {isPt ? 'Contato' : isEs ? 'Contacto' : 'Contact'}
+                {isFr ? 'Contact' : isPt ? 'Contato' : isEs ? 'Contacto' : 'Contact'}
               </Link>
               <Link
-                href={isEnRoute ? '/en/legal-notice' : '/aviso-legal'}
+                href={
+                  isFrRoute ? '/fr/legal-notice' : isEnRoute ? '/en/legal-notice' : '/aviso-legal'
+                }
                 className="hover:text-white transition-colors"
               >
-                {isPt ? 'Aviso Legal' : isEs ? 'Aviso Legal' : 'Legal Notice'}
+                {isFr
+                  ? 'Mentions Légales'
+                  : isPt
+                    ? 'Aviso Legal'
+                    : isEs
+                      ? 'Aviso Legal'
+                      : 'Legal Notice'}
               </Link>
             </nav>
           </div>
@@ -1135,11 +1411,14 @@ function DropdownMenu({
   const pathname = usePathname();
   const isEn = pathname?.startsWith('/en');
   const isPt = pathname?.startsWith('/pt');
-  const resolvedBasePath = isPt
-    ? getPortugueseUrlForSpanish(basePath)
-    : isEn
-      ? getEnglishUrlForSpanish(basePath)
-      : basePath;
+  const isFr = pathname?.startsWith('/fr');
+  const resolvedBasePath = isFr
+    ? getFrenchUrlForSpanish(basePath)
+    : isPt
+      ? getPortugueseUrlForSpanish(basePath)
+      : isEn
+        ? getEnglishUrlForSpanish(basePath)
+        : basePath;
   const isActive = pathname.startsWith(resolvedBasePath) || pathname.startsWith(basePath);
 
   return (
@@ -1171,11 +1450,13 @@ function DropdownMenu({
       >
         <div className="bg-[#0d0d12] border border-zinc-700 rounded-2xl p-2 flex flex-col gap-1 shadow-2xl backdrop-blur-xl">
           {items.map((item, idx) => {
-            const resolvedPath = isPt
-              ? getPortugueseUrlForSpanish(item.path)
-              : isEn
-                ? getEnglishUrlForSpanish(item.path)
-                : item.path;
+            const resolvedPath = isFr
+              ? getFrenchUrlForSpanish(item.path)
+              : isPt
+                ? getPortugueseUrlForSpanish(item.path)
+                : isEn
+                  ? getEnglishUrlForSpanish(item.path)
+                  : item.path;
             const isItemActive = pathname === resolvedPath;
             return (
               <Link

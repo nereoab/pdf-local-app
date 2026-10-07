@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Merge, Scissors, Sliders, ArrowRightLeft, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { getUrlForLanguage } from '@/lib/routes-config';
 
 interface CategoryQuickToolsProps {
   className?: string;
@@ -16,38 +17,44 @@ export default function CategoryQuickTools({
 }: CategoryQuickToolsProps) {
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isPt = lang === 'pt';
+  const isFr = lang === 'fr';
 
   const quickTools = [
     {
       id: 'unir',
-      nameEs: 'Unir PDF',
-      nameEn: 'Merge PDF',
-      hrefEs: '/organizar/unir',
-      hrefEn: '/en/merge-pdf',
+      name: isFr ? 'Fusionner PDF' : isPt ? 'Juntar PDF' : isEs ? 'Unir PDF' : 'Merge PDF',
+      path: '/organizar/unir',
       icon: Merge,
     },
     {
       id: 'dividir',
-      nameEs: 'Dividir PDF',
-      nameEn: 'Split PDF',
-      hrefEs: '/organizar/dividir',
-      hrefEn: '/en/split-pdf',
+      name: isFr ? 'Diviser PDF' : isPt ? 'Dividir PDF' : isEs ? 'Dividir PDF' : 'Split PDF',
+      path: '/organizar/dividir',
       icon: Scissors,
     },
     {
       id: 'comprimir',
-      nameEs: 'Comprimir PDF',
-      nameEn: 'Compress PDF',
-      hrefEs: '/optimizar/comprimir',
-      hrefEn: '/en/compress-pdf',
+      name: isFr
+        ? 'Compresser PDF'
+        : isPt
+          ? 'Comprimir PDF'
+          : isEs
+            ? 'Comprimir PDF'
+            : 'Compress PDF',
+      path: '/optimizar/comprimir',
       icon: Sliders,
     },
     {
       id: 'convertir',
-      nameEs: 'Convertir PDF',
-      nameEn: 'Convert PDF',
-      hrefEs: '/convertir',
-      hrefEn: '/en/convert',
+      name: isFr
+        ? 'Convertir PDF'
+        : isPt
+          ? 'Converter PDF'
+          : isEs
+            ? 'Convertir PDF'
+            : 'Convert PDF',
+      path: '/convertir',
       icon: ArrowRightLeft,
     },
   ];
@@ -70,8 +77,7 @@ export default function CategoryQuickTools({
       <div className={gridClass}>
         {quickTools.map((tool) => {
           const Icon = tool.icon;
-          const name = isEs ? tool.nameEs : tool.nameEn;
-          const href = isEs ? tool.hrefEs : tool.hrefEn;
+          const href = getUrlForLanguage(tool.path, lang);
 
           return (
             <Link
@@ -84,7 +90,7 @@ export default function CategoryQuickTools({
                   <Icon className="w-3.5 h-3.5 text-zinc-200 group-hover/item:text-white group-hover/item:scale-110 transition-transform duration-200" />
                 </div>
                 <span className="text-xs font-bold text-zinc-200 group-hover/item:text-white tracking-tight whitespace-nowrap font-sans">
-                  {name}
+                  {tool.name}
                 </span>
               </div>
 

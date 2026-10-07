@@ -300,7 +300,7 @@ export default function GlossaryIndexView({ lang = 'es' }: GlossaryIndexViewProp
         </p>
         <div className="pt-2">
           <Link
-            href={isEs ? '/convertir/pdf-word' : '/en/convert/pdf-to-word'}
+            href={isEs ? '/convertir/pdf-word' : '/en/pdf-to-word'}
             className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-6 py-3 rounded-full text-sm transition-colors shadow-lg shadow-emerald-500/20"
           >
             {isEs ? 'Probar Conversor de Documentos' : 'Try Document Engine'}

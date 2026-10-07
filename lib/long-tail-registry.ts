@@ -67,9 +67,9 @@ const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
     h1: 'Comprimir PDF a 200 KB o menos — Gratis y 100% Privado',
     subtitle:
       'Reduce el tamaño de tu archivo PDF a menos de 200 KB para cumplir con los requisitos de mesas de partes, juzgados, convocatorias públicas (CAS) y trámites gubernamentales sin perder nitidez de texto ni firmas.',
-    metaTitle: 'Comprimir PDF a 200 KB — Bajarle el Peso al Máximo Gratis Online | PDFBlack',
+    metaTitle: 'Comprimir PDF a 200KB Gratis Online sin Límites | PDFBlack',
     metaDescription:
-      'Bájale el peso a tu PDF a 200 KB o menos para juzgados, SUNAT, visas y convocatorias públicas. 100% privado en memoria de tu navegador, sin límites ni registro.',
+      'Bájale el peso a tu PDF a 200 KB para juzgados, visas y convocatorias públicas. 100% privado en memoria de tu navegador, sin límites ni registro.',
     keywords: [
       'como bajarle el peso a un pdf',
       'bajar peso pdf a 200kb',
@@ -164,9 +164,9 @@ const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
     h1: 'Cómo Bajarle el Peso a un PDF a 1 MB o Menos — Mantener Calidad',
     subtitle:
       'Reduce archivos PDF voluminosos (tesis, portafolios, contratos extensos) a menos de 1 MB para enviarlos por correo electrónico, plataformas universitarias y portales de empleo sin degradar la nitidez.',
-    metaTitle: 'Comprimir PDF a 1 MB — Bajarle el Peso a un PDF Gratis Online | PDFBlack',
+    metaTitle: 'Bajarle el Peso a un PDF a 1MB Gratis Online | PDFBlack',
     metaDescription:
-      'Aprende cómo bajarle el peso a un PDF a 1 MB o menos online gratis sin perder calidad. Reduce megabytes 100% privado en tu navegador, sin subir archivos a la nube.',
+      'Descubre cómo bajarle el peso a un PDF a 1 MB gratis sin perder calidad. Comprime megabytes 100% privado en tu navegador sin subir archivos.',
     keywords: [
       'como bajarle el peso a un pdf',
       'bajar peso a un pdf',
@@ -324,7 +324,7 @@ const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
     h1: 'Quitar Marca de Agua de CamScanner en PDF Gratis Online',
     subtitle:
       'Elimina el sello inferior "Scanned with CamScanner" de tus documentos digitalizados de forma limpia, sin alterar el texto ni pagar suscripciones premium.',
-    metaTitle: 'Quitar Marca de Agua CamScanner en PDF Gratis Online | PDFBlack',
+    metaTitle: 'Quitar Marca de Agua CamScanner en PDF Gratis | PDFBlack',
     metaDescription:
       'Elimina fácilmente la marca de agua de CamScanner de tus PDFs escaneados. Limpio, gratuito y 100% privado sin subir archivos a servidores.',
     keywords: [
@@ -825,9 +825,9 @@ const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
     h1: 'Convertir PDF a Word Editable — Sin Mover el Formato',
     subtitle:
       'Transforma tus documentos PDF en archivos Microsoft Word (.docx) 100% editables conservando tablas, columnas, viñetas, estilos tipográficos e imágenes incrustadas.',
-    metaTitle: 'Convertir PDF a Word Editable sin Mover Formato | PDFBlack',
+    metaTitle: 'Pasar de PDF a Word Editable sin Mover Formato | PDFBlack',
     metaDescription:
-      'Pasa tus PDFs a Word DOCX editable manteniendo tablas, columnas y fuentes. Rápido, gratis y sin registro en tu navegador.',
+      'Pasa de PDF a Word DOCX editable manteniendo tablas, columnas y fuentes. Conversión 100% gratis y privada sin registro en tu navegador.',
     keywords: [
       'convertir pdf a word editable',
       'pasar pdf a word sin que se mueva el formato',
@@ -888,7 +888,7 @@ const INITIAL_LONG_TAIL_SOLUTIONS: Record<string, LongTailSolution> = {
     h1: 'Extraer Tablas de PDF a Excel (.xlsx) en Celdas Limpias',
     subtitle:
       'Convierte estados de cuenta, facturas, balances y listados numéricos en PDF a hojas de cálculo de Excel con columnas separadas y números listos para calcular con fórmulas.',
-    metaTitle: 'Extraer Tablas de PDF a Excel (.xlsx) Online Gratis | PDFBlack',
+    metaTitle: 'Extraer Tablas de PDF a Excel XLSX Online | PDFBlack',
     metaDescription:
       'Convierte tablas y datos numéricos de PDF a Excel en celdas limpias y ordenadas. Ideal para contadores y balances financieros. 100% privado.',
     keywords: [
@@ -1462,9 +1462,9 @@ const INITIAL_LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     h1: 'Reverse Bates Numbering & Page Numbering for PDF — Back to Front',
     subtitle:
       'Number PDF pages in descending order (from last page back to first page), specifically required for inverted court records, chronological evidence dossiers, medical history binders, and archival files.',
-    metaTitle: 'Reverse Bates Numbering & Page Numbering for PDF Online | PDFBlack',
+    metaTitle: 'Reverse Bates Numbering for PDF Files Online | PDFBlack',
     metaDescription:
-      'Number PDF pages in reverse order from back to front online free. Ideal for reverse chronological legal files, archival binders, and exhibits. 100% private.',
+      'Number PDF pages in reverse order from back to front free. Ideal for reverse chronological legal files, archival binders, and exhibits. Private.',
     keywords: [
       'reverse page numbering pdf',
       'reverse bates numbering pdf',
@@ -1554,7 +1554,7 @@ const INITIAL_LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     h1: 'Redact PDF Online Free — Permanently Black Out Sensitive Text',
     subtitle:
       'Permanently sanitize Social Security Numbers (SSN), credit cards, medical records, and confidential business data. Destroys underlying text vectors and OCR layers—not just a cosmetic black rectangle.',
-    metaTitle: 'Redact PDF Free Online Permanently (True Blackout) | PDFBlack',
+    metaTitle: 'Redact PDF Free Online Permanently (Blackout) | PDFBlack',
     metaDescription:
       'Permanently redact PDF files online free. True irreversible redaction removes hidden text layers and metadata. HIPAA, GDPR compliant local WebAssembly.',
     keywords: [
@@ -1740,7 +1740,7 @@ const INITIAL_LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     h1: 'Edit PDF Text Online Without Losing Formatting or Fonts',
     subtitle:
       'Correct typos, update dates, edit pricing, and replace sentences in existing PDF documents while preserving original font styles, kerning, line spacing, and document layout.',
-    metaTitle: 'Edit PDF Text Without Losing Formatting Online Free | PDFBlack',
+    metaTitle: 'Edit PDF Text Without Losing Formatting Free | PDFBlack',
     metaDescription:
       'Edit existing text in PDF files directly online free. Keep original fonts, alignment, and formatting intact. 100% private in-browser editing.',
     keywords: [
@@ -2018,7 +2018,7 @@ const INITIAL_LONG_TAIL_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     h1: 'Extract Tables from PDF to Excel (XLSX) Online Free',
     subtitle:
       'Convert PDF tables, bank statements, invoice schedules, balance sheets, and audit reports into clean Microsoft Excel (.xlsx) spreadsheets with distinct cells, numbers formatted for math, and zero manual copy-pasting.',
-    metaTitle: 'Extract Tables from PDF to Excel (XLSX) Online Free | PDFBlack',
+    metaTitle: 'Extract Tables from PDF to Excel XLSX Free | PDFBlack',
     metaDescription:
       'Extract tables from PDF to Excel spreadsheets online free. Convert bank statements and financial reports into clean XLSX with separate cells. 100% private.',
     keywords: [

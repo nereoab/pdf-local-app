@@ -7,44 +7,100 @@ import { CONVERTER_SEO_DATA } from '@/lib/converter-seo-data';
 
 const WordPdfConverter = dynamic(() => import('@/components/WordPdfConverter'), {
   ssr: false,
-  loading: () => <LoadingSpinner text="Loading Word ↔ PDF Converter..." />,
+  loading: () => (
+    <LoadingSpinner
+      text="Loading Word ↔ PDF Converter..."
+      code="001 / MICROSOFT WORD & PDF DOCUMENT CONVERSION"
+      title="CONVERT PDF TO WORD / WORD TO PDF"
+    />
+  ),
 });
 
 const ExcelPdfConverter = dynamic(() => import('@/components/ExcelPdfConverter'), {
   ssr: false,
-  loading: () => <LoadingSpinner text="Loading Excel ↔ PDF Converter..." />,
+  loading: () => (
+    <LoadingSpinner
+      text="Loading Excel ↔ PDF Converter..."
+      code="002 / MICROSOFT EXCEL & PDF SPREADSHEET CONVERSION"
+      title="CONVERT PDF TO EXCEL / EXCEL TO PDF"
+    />
+  ),
 });
 
 const PowerPointPdfConverter = dynamic(() => import('@/components/PowerPointPdfConverter'), {
   ssr: false,
-  loading: () => <LoadingSpinner text="Loading PowerPoint ↔ PDF Converter..." />,
+  loading: () => (
+    <LoadingSpinner
+      text="Loading PowerPoint ↔ PDF Converter..."
+      code="003 / POWERPOINT & PDF PRESENTATION CONVERSION"
+      title="CONVERT PDF TO POWERPOINT / POWERPOINT TO PDF"
+    />
+  ),
 });
 
 const JpgPdfConverter = dynamic(() => import('@/components/JpgPdfConverter'), {
   ssr: false,
-  loading: () => <LoadingSpinner text="Loading JPG ↔ PDF Converter..." />,
+  loading: () => (
+    <LoadingSpinner
+      text="Loading JPG ↔ PDF Converter..."
+      code="007 / JPG & PDF IMAGE CONVERSION"
+      title="CONVERT PDF TO JPG / JPG TO PDF"
+    />
+  ),
 });
 
 const HtmlPdfConverter = dynamic(() => import('@/components/HtmlPdfConverter'), {
   ssr: false,
-  loading: () => <LoadingSpinner text="Loading HTML ↔ PDF Converter..." />,
+  loading: () => (
+    <LoadingSpinner
+      text="Loading HTML ↔ PDF Converter..."
+      code="005 / HTML & PDF WEB CONVERSION"
+      title="CONVERT HTML TO PDF / PDF TO HTML"
+    />
+  ),
 });
 
 const TextPdfConverter = dynamic(() => import('@/components/TextPdfConverter'), {
   ssr: false,
-  loading: () => <LoadingSpinner text="Loading Text ↔ PDF Converter..." />,
+  loading: () => (
+    <LoadingSpinner
+      text="Loading Text ↔ PDF Converter..."
+      code="004 / PLAIN TEXT EXTRACTION & CONVERSION"
+      title="CONVERT PDF TO TEXT / TEXT TO PDF"
+    />
+  ),
 });
 
 const PdfBlackWhiteConverter = dynamic(() => import('@/components/PdfBlackWhiteConverter'), {
   ssr: false,
-  loading: () => <LoadingSpinner text="Loading Black & White PDF Converter..." />,
+  loading: () => (
+    <LoadingSpinner
+      text="Loading Black & White PDF Converter..."
+      code="006 / BLACK & WHITE DOCUMENT CONVERSION"
+      title="CONVERT PDF TO BLACK & WHITE / GRAYSCALE"
+    />
+  ),
 });
 
-function LoadingSpinner({ text }: { text: string }) {
+function LoadingSpinner({ text, code, title }: { text: string; code?: string; title?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] gap-4 font-mono">
-      <Loader2 className="w-10 h-10 animate-spin text-white" />
-      <p className="text-zinc-400 font-mono text-xs">{text}</p>
+    <div className="w-full flex flex-col items-center">
+      {title && (
+        <div className="w-full max-w-7xl py-6 flex flex-col gap-2">
+          {code && (
+            <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider block">
+              {code}
+            </span>
+          )}
+          <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
+            <span>{title}</span>
+          </h1>
+        </div>
+      )}
+      <div className="flex flex-col items-center justify-center min-h-[460px] w-full border border-zinc-800 rounded-2xl bg-zinc-950/40 gap-4 font-mono">
+        <Loader2 className="w-10 h-10 animate-spin text-white" />
+        <p className="text-zinc-400 font-mono text-xs">{text}</p>
+      </div>
     </div>
   );
 }

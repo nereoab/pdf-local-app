@@ -180,9 +180,9 @@ export default function ConverterSeoSection({
             <Sparkles className="w-3.5 h-3.5 text-blue-400" />
             <span>PDFBlack Suite • Enterprise Edition</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-white">
+          <h2 className="text-2xl sm:text-3xl font-bold font-sans tracking-tight text-white">
             {title}
-          </h1>
+          </h2>
           <p className="text-sm sm:text-base text-zinc-400 max-w-3xl mx-auto font-sans leading-relaxed">
             {description}
           </p>
@@ -192,9 +192,9 @@ export default function ConverterSeoSection({
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-white/10 pb-3">
             <Layers className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
+            <h3 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
               {isEs ? '¿Cómo funciona en 3 pasos?' : 'How does it work in 3 steps?'}
-            </h2>
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -209,7 +209,7 @@ export default function ConverterSeoSection({
                 <div className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-sm font-bold text-white mb-4 group-hover:scale-110 transition-transform">
                   {idx + 1}
                 </div>
-                <h3 className="text-base font-bold font-sans text-white mb-2">{step.title}</h3>
+                <h4 className="text-base font-bold font-sans text-white mb-2">{step.title}</h4>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">{step.desc}</p>
               </div>
             ))}
@@ -220,9 +220,9 @@ export default function ConverterSeoSection({
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-white/10 pb-3">
             <Zap className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
+            <h3 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
               {isEs ? 'Ventajas y Calidad de Conversión' : 'Features & Conversion Quality'}
-            </h2>
+            </h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -233,7 +233,7 @@ export default function ConverterSeoSection({
               >
                 <div className="flex items-center gap-2">
                   <FileCheck2 className="w-4 h-4 text-blue-400 shrink-0" />
-                  <h3 className="text-sm font-bold font-sans text-zinc-100">{feat.title}</h3>
+                  <h4 className="text-sm font-bold font-sans text-zinc-100">{feat.title}</h4>
                 </div>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">{feat.desc}</p>
               </div>
@@ -245,9 +245,9 @@ export default function ConverterSeoSection({
         <div className="space-y-6">
           <div className="flex items-center gap-3 border-b border-white/10 pb-3">
             <HelpCircle className="w-5 h-5 text-purple-400" />
-            <h2 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
+            <h3 className="text-lg font-bold font-sans uppercase tracking-wider text-zinc-200">
               {isEs ? 'Preguntas Frecuentes' : 'Frequently Asked Questions'}
-            </h2>
+            </h3>
           </div>
 
           <div className="space-y-3">

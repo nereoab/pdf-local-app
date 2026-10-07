@@ -1,7 +1,6 @@
 'use client';
 
-import { Suspense, useRef, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useRef, useEffect } from 'react';
 import { motion, animate } from 'framer-motion';
 import Link from 'next/link';
 import { useLanguage } from '../../context/LanguageContext';
@@ -28,8 +27,14 @@ import { getEnglishUrlForSpanish } from '@/lib/routes-config';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 function OrganizarContent() {
-  const searchParams = useSearchParams();
-  const selectedToolParam = searchParams.get('tool');
+  const [selectedToolParam, setSelectedToolParam] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setSelectedToolParam(params.get('tool'));
+    }
+  }, []);
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
@@ -520,9 +525,5 @@ function OrganizarContent() {
 }
 
 export default function OrganizarPage() {
-  return (
-    <Suspense fallback={null}>
-      <OrganizarContent />
-    </Suspense>
-  );
+  return <OrganizarContent />;
 }

@@ -22,7 +22,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
-import { getEnglishUrlForSpanish } from '@/lib/routes-config';
+import { getUrlForLanguage } from '@/lib/routes-config';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
@@ -38,6 +38,7 @@ function OrganizarContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isPt = lang === 'pt';
 
   const organizingTools = [
     {
@@ -121,28 +122,36 @@ function OrganizarContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/organizar' : '/en/organize'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/organizar' : '/en/organize'}`,
-                name: isEs
-                  ? 'Organizar PDF Gratis Online — Unir, Dividir, Rotar, Eliminar | PDFBlack'
-                  : 'Organize PDF Online Free — Merge, Split, Rotate, Delete | PDFBlack',
-                description: isEs
-                  ? 'Organiza y gestiona páginas de archivos PDF: une múltiples documentos, extrae páginas, elimina hojas innecesarias, reordena y rota páginas 100% en tu navegador.'
-                  : 'Organize and manage PDF file pages: merge multiple documents, extract pages, delete unwanted sheets, reorder and rotate pages 100% inside your browser.',
+                '@id': `${SITE_URL}${isPt ? '/pt/organizar' : isEs ? '/organizar' : '/en/organize'}#webpage`,
+                url: `${SITE_URL}${isPt ? '/pt/organizar' : isEs ? '/organizar' : '/en/organize'}`,
+                name: isPt
+                  ? 'Organizar PDF Grátis Online — Juntar, Dividir, Girar, Excluir | PDFBlack'
+                  : isEs
+                    ? 'Organizar PDF Gratis Online — Unir, Dividir, Rotar, Eliminar | PDFBlack'
+                    : 'Organize PDF Online Free — Merge, Split, Rotate, Delete | PDFBlack',
+                description: isPt
+                  ? 'Organize e gerencie páginas de arquivos PDF: junte múltiplos documentos, extraia páginas, exclua folhas desnecessárias, reordene e gire páginas 100% no seu navegador.'
+                  : isEs
+                    ? 'Organiza y gestiona páginas de archivos PDF: une múltiples documentos, extrae páginas, elimina hojas innecesarias, reordena y rota páginas 100% en tu navegador.'
+                    : 'Organize and manage PDF file pages: merge multiple documents, extract pages, delete unwanted sheets, reorder and rotate pages 100% inside your browser.',
                 isPartOf: {
                   '@type': 'WebSite',
                   '@id': `${SITE_URL}/#website`,
                 },
                 mainEntity: {
                   '@type': 'ItemList',
-                  name: isEs ? 'Herramientas para Organizar PDF' : 'PDF Organizing Tools',
+                  name: isPt
+                    ? 'Ferramentas para Organizar PDF'
+                    : isEs
+                      ? 'Herramientas para Organizar PDF'
+                      : 'PDF Organizing Tools',
                   numberOfItems: organizingTools.length,
                   itemListElement: organizingTools.map((t, idx) => ({
                     '@type': 'ListItem',
                     position: idx + 1,
                     name: isEs ? t.titleEs : t.titleEn,
                     description: isEs ? t.descEs : t.descEn,
-                    url: `${SITE_URL}${isEs ? t.path : getEnglishUrlForSpanish(t.path)}`,
+                    url: `${SITE_URL}${getUrlForLanguage(t.path, lang)}`,
                   })),
                 },
               },
@@ -152,14 +161,14 @@ function OrganizarContent() {
                   {
                     '@type': 'ListItem',
                     position: 1,
-                    name: isEs ? 'Inicio' : 'Home',
-                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                    name: isPt ? 'Início' : isEs ? 'Inicio' : 'Home',
+                    item: isPt ? `${SITE_URL}/pt` : isEs ? SITE_URL : `${SITE_URL}/en`,
                   },
                   {
                     '@type': 'ListItem',
                     position: 2,
-                    name: isEs ? 'Organizar PDF' : 'Organize PDF',
-                    item: `${SITE_URL}${isEs ? '/organizar' : '/en/organize'}`,
+                    name: isPt ? 'Organizar PDF' : isEs ? 'Organizar PDF' : 'Organize PDF',
+                    item: `${SITE_URL}${isPt ? '/pt/organizar' : isEs ? '/organizar' : '/en/organize'}`,
                   },
                 ],
               },
@@ -211,7 +220,7 @@ function OrganizarContent() {
               return (
                 <Link
                   key={tool.id}
-                  href={isEs ? tool.path : getEnglishUrlForSpanish(tool.path)}
+                  href={getUrlForLanguage(tool.path, lang)}
                   className="outline-none group/card block h-full"
                 >
                   <SpotlightCard

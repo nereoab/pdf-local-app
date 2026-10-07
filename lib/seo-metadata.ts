@@ -968,12 +968,16 @@ export function buildToolMetadata(
 export interface CategoryHubInfo {
   categoryEs: string;
   categoryEn: string;
+  categoryPt?: string;
   titleEs: string;
   titleEn: string;
+  titlePt?: string;
   descEs: string;
   descEn: string;
+  descPt?: string;
   keywordsEs: string[];
   keywordsEn: string[];
+  keywordsPt?: string[];
   badge: string;
 }
 
@@ -981,12 +985,16 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
   organizar: {
     categoryEs: 'organizar',
     categoryEn: 'organize',
+    categoryPt: 'organizar',
     titleEs: 'Organizar PDF Gratis — Unir, Dividir, Rotar | PDFBlack',
     titleEn: 'Organize PDF Files Free — Merge, Split, Rotate | PDFBlack',
+    titlePt: 'Organizar PDF Grátis — Juntar, Dividir, Girar | PDFBlack',
     descEs:
       'Reestructura y organiza tus documentos PDF al instante: une, divide, rota y recorta páginas. 100% privado en tu navegador, gratis y sin registro.',
     descEn:
       'Free client-side tools to organize your PDF documents. Merge, split, delete, rotate, and crop pages 100% privately in your browser without file limits.',
+    descPt:
+      'Reestruture e organize documentos PDF no navegador: junte, divida, gire e corte páginas. 100% privado, grátis e sem limites diários.',
     keywordsEs: [
       'organizar pdf gratis',
       'unir pdf',
@@ -1007,17 +1015,30 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
       'crop pdf',
       'private pdf tools',
     ],
+    keywordsPt: [
+      'organizar pdf',
+      'juntar pdf gratis',
+      'dividir pdf online',
+      'excluir paginas pdf',
+      'girar pdf',
+      'reordenar paginas pdf',
+      'cortar pdf',
+    ],
     badge: 'ORGANIZAR',
   },
   optimizar: {
     categoryEs: 'optimizar',
     categoryEn: 'optimize',
+    categoryPt: 'otimizar',
     titleEs: 'Optimizar PDF Gratis — Comprimir y Proteger | PDFBlack',
     titleEn: 'Optimize PDF Files Free — Compress & Protect | PDFBlack',
+    titlePt: 'Otimizar PDF Grátis — Comprimir e Proteger | PDFBlack',
     descEs:
       'Suite para optimizar PDF gratis: reduce tamaño, desbloquea permisos, protege con contraseña AES-256 y repara daños. 100% local con privacidad total.',
     descEn:
       'Compress, protect, unlock, redact, and repair PDF files locally in your browser with zero file uploads and complete privacy.',
+    descPt:
+      'Suite para otimizar PDF grátis: reduza tamanho em MB, desbloqueie permissões, proteja com senha AES-256 e repare arquivos. 100% local com privacidade total.',
     keywordsEs: [
       'optimizar pdf gratis',
       'comprimir pdf',
@@ -1038,17 +1059,30 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
       'repair pdf',
       'zero upload pdf optimizer',
     ],
+    keywordsPt: [
+      'otimizar pdf gratis',
+      'comprimir pdf',
+      'desbloquear pdf',
+      'proteger pdf',
+      'tarjar pdf',
+      'reparar pdf',
+      'comparar pdf',
+    ],
     badge: 'OPTIMIZAR',
   },
   editar: {
     categoryEs: 'editar',
     categoryEn: 'edit',
+    categoryPt: 'editar',
     titleEs: 'Editar PDF Gratis Online — Texto, Firma y OCR | PDFBlack',
     titleEn: 'Edit PDF Files Online Free — Text, Sign & OCR | PDFBlack',
+    titlePt: 'Editar PDF Grátis Online — Texto, Assinatura e OCR | PDFBlack',
     descEs:
       'Edita documentos PDF en tu navegador: modifica texto, añade firmas digitales, numera folios y aplica OCR. 100% privado en memoria RAM y sin límites.',
     descEn:
       'Edit text, sign documents, apply OCR, number pages, and add watermarks to PDF files 100% privately in your browser without file uploads.',
+    descPt:
+      'Edite documentos PDF no seu navegador: altere texto, assine digitalmente, numere páginas e aplique OCR. 100% privado na memória RAM e sem limites.',
     keywordsEs: [
       'editar pdf gratis',
       'editor pdf online',
@@ -1068,17 +1102,30 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
       'watermark pdf',
       'edit pdf in browser',
     ],
+    keywordsPt: [
+      'editar pdf gratis',
+      'editor pdf online',
+      'assinar pdf gratis',
+      'ocr pdf',
+      'numerar paginas pdf',
+      'marca dagua pdf',
+      'modificar texto pdf',
+    ],
     badge: 'EDITAR',
   },
   convertir: {
     categoryEs: 'convertir',
     categoryEn: 'convert',
+    categoryPt: 'converter',
     titleEs: 'Convertir PDF Gratis Online — Word, Excel, JPG | PDFBlack',
     titleEn: 'Convert PDF Free Online — Word, Excel, PPT, JPG | PDFBlack',
+    titlePt: 'Converter PDF Grátis Online — Word, Excel, JPG | PDFBlack',
     descEs:
       'Convierte archivos PDF a Word, Excel, PowerPoint, imágenes JPG y Texto gratis. Motor de alta fidelidad sin registros ni marcas de agua.',
     descEn:
       'Convert PDF files to and from Word, Excel, PowerPoint, JPG and Text online for free. Fast, secure, formatting-preserving conversion in your browser.',
+    descPt:
+      "Converta arquivos PDF para Word, Excel, PowerPoint, imagens JPG e Texto grátis. Motor de alta fidelidade sem registros nem marcas d'água.",
     keywordsEs: [
       'convertir pdf gratis',
       'convertir pdf a word',
@@ -1105,6 +1152,15 @@ export const CATEGORY_HUBS_METADATA: Record<string, CategoryHubInfo> = {
       'excel to pdf',
       'free pdf converter',
     ],
+    keywordsPt: [
+      'converter pdf gratis',
+      'converter pdf para word',
+      'word para pdf',
+      'converter pdf para excel',
+      'pdf para jpg',
+      'jpg para pdf',
+      'converter pdf para txt',
+    ],
     badge: 'CONVERTIR',
   },
 };
@@ -1121,41 +1177,55 @@ export function buildCategoryHubMetadata(
     | 'organize'
     | 'optimize'
     | 'edit'
-    | 'convert',
-  lang: 'es' | 'en' = 'es',
+    | 'convert'
+    | 'otimizar'
+    | 'converter',
+  lang: 'es' | 'en' | 'pt' = 'es',
 ): Metadata {
   const normalizedCat =
     category === 'organize'
       ? 'organizar'
-      : category === 'optimize'
+      : category === 'optimize' || category === 'otimizar'
         ? 'optimizar'
         : category === 'edit'
           ? 'editar'
-          : category === 'convert'
+          : category === 'convert' || category === 'converter'
             ? 'convertir'
             : category;
 
   const info = CATEGORY_HUBS_METADATA[normalizedCat];
   const isEs = lang === 'es';
+  const isPt = lang === 'pt';
 
   const rawTitle = info
-    ? isEs
-      ? info.titleEs
-      : info.titleEn
+    ? isPt && info.titlePt
+      ? info.titlePt
+      : isEs
+        ? info.titleEs
+        : info.titleEn
     : `${normalizedCat.toUpperCase()} — PDFBlack`;
   const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
   const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
 
   const description = info
-    ? isEs
-      ? info.descEs
-      : info.descEn
+    ? isPt && info.descPt
+      ? info.descPt
+      : isEs
+        ? info.descEs
+        : info.descEn
     : 'Herramientas PDF gratuitas, rápidas y 100% privadas en tu navegador.';
-  const keywords = info ? (isEs ? info.keywordsEs : info.keywordsEn) : ['pdf gratis', 'pdf tools'];
+  const keywords = info
+    ? isPt && info.keywordsPt
+      ? info.keywordsPt
+      : isEs
+        ? info.keywordsEs
+        : info.keywordsEn
+    : ['pdf gratis', 'pdf tools'];
 
   const esUrl = `${SITE_URL}/${info?.categoryEs || normalizedCat}`;
   const enUrl = `${SITE_URL}/en/${info?.categoryEn || normalizedCat}`;
-  const canonicalUrl = isEs ? esUrl : enUrl;
+  const ptUrl = `${SITE_URL}/pt/${info?.categoryPt || normalizedCat}`;
+  const canonicalUrl = isPt ? ptUrl : isEs ? esUrl : enUrl;
 
   const ogImageUrl = `${SITE_URL}/api/og?title=${encodeURIComponent(
     cleanTitle.split('—')[0].trim(),
@@ -1176,6 +1246,7 @@ export function buildCategoryHubMetadata(
       languages: {
         es: esUrl,
         en: enUrl,
+        pt: ptUrl,
         'x-default': esUrl,
       },
     },
@@ -1184,7 +1255,7 @@ export function buildCategoryHubMetadata(
       description,
       url: canonicalUrl,
       siteName: 'PDFBlack',
-      locale: isEs ? 'es_ES' : 'en_US',
+      locale: isPt ? 'pt_BR' : isEs ? 'es_ES' : 'en_US',
       type: 'website',
       images: [
         {

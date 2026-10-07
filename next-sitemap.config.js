@@ -148,6 +148,10 @@ module.exports = {
 
     const ptRoutes = [
       '/pt',
+      '/pt/organizar',
+      '/pt/otimizar',
+      '/pt/editar',
+      '/pt/converter',
       '/pt/juntar-pdf',
       '/pt/dividir-pdf',
       '/pt/excluir-paginas-pdf',
@@ -359,6 +363,10 @@ module.exports = {
 
     const ROUTE_PAIRS_PT = {
       '/': '/pt',
+      '/organizar': '/pt/organizar',
+      '/optimizar': '/pt/otimizar',
+      '/editar': '/pt/editar',
+      '/convertir': '/pt/converter',
       '/organizar/unir': '/pt/juntar-pdf',
       '/organizar/dividir': '/pt/dividir-pdf',
       '/organizar/eliminar': '/pt/excluir-paginas-pdf',

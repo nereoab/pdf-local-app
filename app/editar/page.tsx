@@ -22,7 +22,7 @@ import {
   Stamp,
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
-import { getEnglishUrlForSpanish } from '@/lib/routes-config';
+import { getUrlForLanguage } from '@/lib/routes-config';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
@@ -38,6 +38,7 @@ function EditarContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isPt = lang === 'pt';
 
   const editingTools = [
     {
@@ -124,28 +125,36 @@ function EditarContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/editar' : '/en/edit'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/editar' : '/en/edit'}`,
-                name: isEs
-                  ? 'Editar PDF Gratis Online — Texto, Firmas, Marcas de Agua, OCR | PDFBlack'
-                  : 'Edit PDF Online Free — Text, Signatures, Watermarks, OCR | PDFBlack',
-                description: isEs
-                  ? 'Edita documentos PDF directamente en tu navegador: modifica texto, añade firmas digitales, coloca marcas de agua, numera páginas y aplica OCR.'
-                  : 'Edit PDF documents directly in your browser: modify text, add digital signatures, insert watermarks, number pages, and apply OCR.',
+                '@id': `${SITE_URL}${isPt ? '/pt/editar' : isEs ? '/editar' : '/en/edit'}#webpage`,
+                url: `${SITE_URL}${isPt ? '/pt/editar' : isEs ? '/editar' : '/en/edit'}`,
+                name: isPt
+                  ? "Editar PDF Grátis Online — Texto, Assinaturas, Marca d'Água, OCR | PDFBlack"
+                  : isEs
+                    ? 'Editar PDF Gratis Online — Texto, Firmas, Marcas de Agua, OCR | PDFBlack'
+                    : 'Edit PDF Online Free — Text, Signatures, Watermarks, OCR | PDFBlack',
+                description: isPt
+                  ? "Edite documentos PDF diretamente no seu navegador: altere texto, assine digitalmente, insira marcas d'água, numere páginas e aplique OCR."
+                  : isEs
+                    ? 'Edita documentos PDF directamente en tu navegador: modifica texto, añade firmas digitales, coloca marcas de agua, numera páginas y aplica OCR.'
+                    : 'Edit PDF documents directly in your browser: modify text, add digital signatures, insert watermarks, number pages, and apply OCR.',
                 isPartOf: {
                   '@type': 'WebSite',
                   '@id': `${SITE_URL}/#website`,
                 },
                 mainEntity: {
                   '@type': 'ItemList',
-                  name: isEs ? 'Herramientas de Edición PDF' : 'PDF Editing Tools',
+                  name: isPt
+                    ? 'Ferramentas de Edição PDF'
+                    : isEs
+                      ? 'Herramientas de Edición PDF'
+                      : 'PDF Editing Tools',
                   numberOfItems: editingTools.length,
                   itemListElement: editingTools.map((t, idx) => ({
                     '@type': 'ListItem',
                     position: idx + 1,
                     name: isEs ? t.titleEs : t.titleEn,
                     description: isEs ? t.descEs : t.descEn,
-                    url: `${SITE_URL}${isEs ? t.path : getEnglishUrlForSpanish(t.path)}`,
+                    url: `${SITE_URL}${getUrlForLanguage(t.path, lang)}`,
                   })),
                 },
               },
@@ -155,14 +164,14 @@ function EditarContent() {
                   {
                     '@type': 'ListItem',
                     position: 1,
-                    name: isEs ? 'Inicio' : 'Home',
-                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                    name: isPt ? 'Início' : isEs ? 'Inicio' : 'Home',
+                    item: isPt ? `${SITE_URL}/pt` : isEs ? SITE_URL : `${SITE_URL}/en`,
                   },
                   {
                     '@type': 'ListItem',
                     position: 2,
-                    name: isEs ? 'Editar PDF' : 'Edit PDF',
-                    item: `${SITE_URL}${isEs ? '/editar' : '/en/edit'}`,
+                    name: isPt ? 'Editar PDF' : isEs ? 'Editar PDF' : 'Edit PDF',
+                    item: `${SITE_URL}${isPt ? '/pt/editar' : isEs ? '/editar' : '/en/edit'}`,
                   },
                 ],
               },
@@ -214,7 +223,7 @@ function EditarContent() {
               return (
                 <Link
                   key={tool.id}
-                  href={isEs ? tool.path : getEnglishUrlForSpanish(tool.path)}
+                  href={getUrlForLanguage(tool.path, lang)}
                   className="outline-none group/card block h-full"
                 >
                   <SpotlightCard

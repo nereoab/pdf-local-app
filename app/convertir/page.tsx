@@ -23,7 +23,7 @@ import {
   JpgIcon,
   TextIcon,
 } from '../../components/ProgramIcons';
-import { getEnglishUrlForSpanish } from '@/lib/routes-config';
+import { getUrlForLanguage } from '@/lib/routes-config';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
@@ -39,6 +39,7 @@ function ConvertirContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isPt = lang === 'pt';
 
   const conversionTools = [
     {
@@ -122,28 +123,36 @@ function ConvertirContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/convertir' : '/en/convert'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/convertir' : '/en/convert'}`,
-                name: isEs
-                  ? 'Convertir PDF Gratis Online — Word, Excel, PowerPoint, JPG | PDFBlack'
-                  : 'Convert PDF Online Free — Word, Excel, PowerPoint, JPG | PDFBlack',
-                description: isEs
-                  ? 'Convierte archivos PDF a Word, Excel, PowerPoint, JPG y viceversa de forma 100% gratuita y privada en tu navegador.'
-                  : 'Convert PDF files to Word, Excel, PowerPoint, JPG and vice versa 100% free and privately in your browser.',
+                '@id': `${SITE_URL}${isPt ? '/pt/converter' : isEs ? '/convertir' : '/en/convert'}#webpage`,
+                url: `${SITE_URL}${isPt ? '/pt/converter' : isEs ? '/convertir' : '/en/convert'}`,
+                name: isPt
+                  ? 'Converter PDF Grátis Online — Word, Excel, PowerPoint, JPG | PDFBlack'
+                  : isEs
+                    ? 'Convertir PDF Gratis Online — Word, Excel, PowerPoint, JPG | PDFBlack'
+                    : 'Convert PDF Online Free — Word, Excel, PowerPoint, JPG | PDFBlack',
+                description: isPt
+                  ? 'Converta arquivos PDF para Word, Excel, PowerPoint, JPG e vice-versa de forma 100% gratuita e privada no seu navegador.'
+                  : isEs
+                    ? 'Convierte archivos PDF a Word, Excel, PowerPoint, JPG y viceversa de forma 100% gratuita y privada en tu navegador.'
+                    : 'Convert PDF files to Word, Excel, PowerPoint, JPG and vice versa 100% free and privately in your browser.',
                 isPartOf: {
                   '@type': 'WebSite',
                   '@id': `${SITE_URL}/#website`,
                 },
                 mainEntity: {
                   '@type': 'ItemList',
-                  name: isEs ? 'Herramientas de Conversión PDF' : 'PDF Conversion Tools',
+                  name: isPt
+                    ? 'Ferramentas de Conversão PDF'
+                    : isEs
+                      ? 'Herramientas de Conversión PDF'
+                      : 'PDF Conversion Tools',
                   numberOfItems: conversionTools.length,
                   itemListElement: conversionTools.map((t, idx) => ({
                     '@type': 'ListItem',
                     position: idx + 1,
                     name: isEs ? t.titleEs : t.titleEn,
                     description: isEs ? t.descEs : t.descEn,
-                    url: `${SITE_URL}${isEs ? t.path : getEnglishUrlForSpanish(t.path)}`,
+                    url: `${SITE_URL}${getUrlForLanguage(t.path, lang)}`,
                   })),
                 },
               },
@@ -153,14 +162,14 @@ function ConvertirContent() {
                   {
                     '@type': 'ListItem',
                     position: 1,
-                    name: isEs ? 'Inicio' : 'Home',
-                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                    name: isPt ? 'Início' : isEs ? 'Inicio' : 'Home',
+                    item: isPt ? `${SITE_URL}/pt` : isEs ? SITE_URL : `${SITE_URL}/en`,
                   },
                   {
                     '@type': 'ListItem',
                     position: 2,
-                    name: isEs ? 'Convertir PDF' : 'Convert PDF',
-                    item: `${SITE_URL}${isEs ? '/convertir' : '/en/convert'}`,
+                    name: isPt ? 'Converter PDF' : isEs ? 'Convertir PDF' : 'Convert PDF',
+                    item: `${SITE_URL}${isPt ? '/pt/converter' : isEs ? '/convertir' : '/en/convert'}`,
                   },
                 ],
               },
@@ -212,7 +221,7 @@ function ConvertirContent() {
               return (
                 <Link
                   key={tool.id}
-                  href={isEs ? tool.path : getEnglishUrlForSpanish(tool.path)}
+                  href={getUrlForLanguage(tool.path, lang)}
                   className="outline-none group/card block h-full"
                 >
                   <SpotlightCard

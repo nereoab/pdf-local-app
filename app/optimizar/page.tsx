@@ -21,7 +21,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import SpotlightCard from '@/components/SpotlightCard';
-import { getEnglishUrlForSpanish } from '@/lib/routes-config';
+import { getUrlForLanguage } from '@/lib/routes-config';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
@@ -37,6 +37,7 @@ function OptimizarContent() {
 
   const { lang } = useLanguage();
   const isEs = lang === 'es';
+  const isPt = lang === 'pt';
 
   const optimizationTools = [
     {
@@ -121,28 +122,36 @@ function OptimizarContent() {
             '@graph': [
               {
                 '@type': 'CollectionPage',
-                '@id': `${SITE_URL}${isEs ? '/optimizar' : '/en/optimize'}#webpage`,
-                url: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimize'}`,
-                name: isEs
-                  ? 'Optimizar PDF Gratis Online — Comprimir, Proteger, Reparar | PDFBlack'
-                  : 'Optimize PDF Online Free — Compress, Protect, Repair | PDFBlack',
-                description: isEs
-                  ? 'Optimiza tus archivos PDF localmente: comprime el tamaño sin pérdida visual, cifra con contraseña AES-256, desbloquea permisos, repara documentos corruptos y censura datos confidenciales.'
-                  : 'Optimize your PDF files locally: compress size without visual loss, encrypt with AES-256 password, unlock permissions, repair corrupted documents, and redact sensitive data.',
+                '@id': `${SITE_URL}${isPt ? '/pt/otimizar' : isEs ? '/optimizar' : '/en/optimize'}#webpage`,
+                url: `${SITE_URL}${isPt ? '/pt/otimizar' : isEs ? '/optimizar' : '/en/optimize'}`,
+                name: isPt
+                  ? 'Otimizar PDF Grátis Online — Comprimir, Proteger, Reparar | PDFBlack'
+                  : isEs
+                    ? 'Optimizar PDF Gratis Online — Comprimir, Proteger, Reparar | PDFBlack'
+                    : 'Optimize PDF Online Free — Compress, Protect, Repair | PDFBlack',
+                description: isPt
+                  ? 'Otimize seus arquivos PDF localmente: comprima o tamanho sem perda visual, criptografe com senha AES-256, desbloqueie permissões, repare documentos corrompidos e tarje dados confidenciais.'
+                  : isEs
+                    ? 'Optimiza tus archivos PDF localmente: comprime el tamaño sin pérdida visual, cifra con contraseña AES-256, desbloquea permisos, repara documentos corruptos y censura datos confidenciales.'
+                    : 'Optimize your PDF files locally: compress size without visual loss, encrypt with AES-256 password, unlock permissions, repair corrupted documents, and redact sensitive data.',
                 isPartOf: {
                   '@type': 'WebSite',
                   '@id': `${SITE_URL}/#website`,
                 },
                 mainEntity: {
                   '@type': 'ItemList',
-                  name: isEs ? 'Herramientas de Optimización PDF' : 'PDF Optimization Tools',
+                  name: isPt
+                    ? 'Ferramentas de Otimização PDF'
+                    : isEs
+                      ? 'Herramientas de Optimización PDF'
+                      : 'PDF Optimization Tools',
                   numberOfItems: optimizationTools.length,
                   itemListElement: optimizationTools.map((t, idx) => ({
                     '@type': 'ListItem',
                     position: idx + 1,
                     name: isEs ? t.titleEs : t.titleEn,
                     description: isEs ? t.descEs : t.descEn,
-                    url: `${SITE_URL}${isEs ? t.path : getEnglishUrlForSpanish(t.path)}`,
+                    url: `${SITE_URL}${getUrlForLanguage(t.path, lang)}`,
                   })),
                 },
               },
@@ -152,14 +161,14 @@ function OptimizarContent() {
                   {
                     '@type': 'ListItem',
                     position: 1,
-                    name: isEs ? 'Inicio' : 'Home',
-                    item: isEs ? SITE_URL : `${SITE_URL}/en`,
+                    name: isPt ? 'Início' : isEs ? 'Inicio' : 'Home',
+                    item: isPt ? `${SITE_URL}/pt` : isEs ? SITE_URL : `${SITE_URL}/en`,
                   },
                   {
                     '@type': 'ListItem',
                     position: 2,
-                    name: isEs ? 'Optimizar PDF' : 'Optimize PDF',
-                    item: `${SITE_URL}${isEs ? '/optimizar' : '/en/optimize'}`,
+                    name: isPt ? 'Otimizar PDF' : isEs ? 'Optimizar PDF' : 'Optimize PDF',
+                    item: `${SITE_URL}${isPt ? '/pt/otimizar' : isEs ? '/optimizar' : '/en/optimize'}`,
                   },
                 ],
               },
@@ -211,7 +220,7 @@ function OptimizarContent() {
               return (
                 <Link
                   key={tool.id}
-                  href={isEs ? tool.path : getEnglishUrlForSpanish(tool.path)}
+                  href={getUrlForLanguage(tool.path, lang)}
                   className="outline-none group/card block h-full"
                 >
                   <SpotlightCard

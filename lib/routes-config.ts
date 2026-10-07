@@ -710,9 +710,13 @@ export function getPortugueseUrlForSpanish(esPath: string): string {
 /**
  * Obtiene la URL equivalente según el idioma.
  */
-export function getUrlForLanguage(esPath: string, lang: 'es' | 'en' | 'pt' | 'zh' = 'es'): string {
+export function getUrlForLanguage(
+  esPath: string,
+  lang: 'es' | 'en' | 'pt' | 'zh' | 'fr' = 'es',
+): string {
   if (lang === 'en') return getEnglishUrlForSpanish(esPath);
   if (lang === 'pt') return getPortugueseUrlForSpanish(esPath);
+  if (lang === 'fr') return getFrenchUrlForSpanish(esPath);
   return esPath;
 }
 

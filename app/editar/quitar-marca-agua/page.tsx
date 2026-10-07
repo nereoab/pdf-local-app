@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfWatermarkRemover = dynamic(() => import('@/components/PdfWatermarkRemover'), {
   ssr: false,
@@ -780,6 +781,7 @@ export default function QuitarMarcaAguaPage() {
               })}
             </div>
           </section>
+          <RelatedLongTailSolutions toolKey="quitar-marca-agua" />
         </div>
       </main>
     </>

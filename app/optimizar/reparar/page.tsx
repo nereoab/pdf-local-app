@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfRepairer = dynamic(() => import('@/components/PdfRepairer'), {
   ssr: false,
@@ -291,6 +292,7 @@ export default function RepararPdfPage() {
             })}
           </div>
         </section>
+        <RelatedLongTailSolutions toolKey="reparar" />
       </div>
     </main>
   );

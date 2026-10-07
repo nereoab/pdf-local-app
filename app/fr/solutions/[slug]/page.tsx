@@ -5,6 +5,7 @@ import {
   getSolutionBySlugFr,
   getEquivalentSlug,
 } from '@/lib/long-tail-registry';
+import { formatMetaTitle, formatMetaDescription } from '@/lib/seo-metadata';
 import OptimizarToolClient from '@/components/OptimizarToolClient';
 import EditarToolClient from '@/components/EditarToolClient';
 import ConverterToolClient from '@/components/ConverterToolClient';
@@ -39,14 +40,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const ptSlug = getEquivalentSlug(solution.slug, 'fr', 'pt');
   const portugueseUrl = ptSlug ? `${SITE_URL}/pt/solutions/${ptSlug}` : undefined;
 
-  const cleanTitle = solution.metaTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | PDFBlack`;
+  const absoluteTitle = formatMetaTitle(solution.metaTitle);
+  const safeDescription = formatMetaDescription(solution.metaDescription);
 
   return {
     title: {
       absolute: absoluteTitle,
     },
-    description: solution.metaDescription,
+    description: safeDescription,
     keywords: solution.keywords,
     alternates: {
       canonical: canonicalUrl,
@@ -60,7 +61,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     openGraph: {
       title: absoluteTitle,
-      description: solution.metaDescription,
+      description: safeDescription,
       url: canonicalUrl,
       siteName: 'PDFBlack',
       locale: 'fr_FR',
@@ -68,7 +69,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images: [
         {
           url: `${SITE_URL}/api/og?title=${encodeURIComponent(
-            cleanTitle.split('—')[0].trim(),
+            absoluteTitle.split('—')[0].trim(),
           )}&badge=${encodeURIComponent(solution.badge)}&category=${solution.category}&lang=fr`,
           width: 1200,
           height: 630,
@@ -79,10 +80,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     twitter: {
       card: 'summary_large_image',
       title: absoluteTitle,
-      description: solution.metaDescription,
+      description: safeDescription,
       images: [
         `${SITE_URL}/api/og?title=${encodeURIComponent(
-          cleanTitle.split('—')[0].trim(),
+          absoluteTitle.split('—')[0].trim(),
         )}&badge=${encodeURIComponent(solution.badge)}&category=${solution.category}&lang=fr`,
       ],
     },

@@ -6,6 +6,7 @@ import OrganizarToolClient from '@/components/OrganizarToolClient';
 import OptimizarToolClient from '@/components/OptimizarToolClient';
 import EditarToolClient from '@/components/EditarToolClient';
 import ConverterToolClient from '@/components/ConverterToolClient';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 interface PageProps {
   params: Promise<{ tool: string }>;
@@ -32,16 +33,25 @@ export default async function PortugueseToolPage({ params }: PageProps) {
     notFound();
   }
 
-  switch (config.clientType) {
-    case 'organizar':
-      return <OrganizarToolClient toolKey={config.toolKey} />;
-    case 'optimizar':
-      return <OptimizarToolClient toolKey={config.toolKey} />;
-    case 'editar':
-      return <EditarToolClient toolKey={config.toolKey} />;
-    case 'convertir':
-      return <ConverterToolClient toolKey={config.toolKey} />;
-    default:
-      notFound();
-  }
+  const renderToolComponent = () => {
+    switch (config.clientType) {
+      case 'organizar':
+        return <OrganizarToolClient toolKey={config.toolKey} />;
+      case 'optimizar':
+        return <OptimizarToolClient toolKey={config.toolKey} />;
+      case 'editar':
+        return <EditarToolClient toolKey={config.toolKey} />;
+      case 'convertir':
+        return <ConverterToolClient toolKey={config.toolKey} />;
+      default:
+        notFound();
+    }
+  };
+
+  return (
+    <>
+      {renderToolComponent()}
+      <RelatedLongTailSolutions toolKey={config.toolKey} lang="pt" />
+    </>
+  );
 }

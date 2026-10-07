@@ -937,7 +937,7 @@ export default function RecortarPdfPage() {
           </section>
 
           {/* Soluciones Long-Tail Relacionadas */}
-          <RelatedLongTailSolutions toolKey="recortar" lang={isEs ? 'es' : 'en'} />
+          <RelatedLongTailSolutions toolKey="recortar" />
         </div>
       </main>
     </>

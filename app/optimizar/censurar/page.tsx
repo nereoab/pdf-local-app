@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfRedacter = dynamic(() => import('@/components/PdfRedacter'), {
   ssr: false,
@@ -317,6 +318,7 @@ export default function CensurarPdfPage() {
             })}
           </div>
         </section>
+        <RelatedLongTailSolutions toolKey="censurar" />
       </div>
     </main>
   );

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfOrganizer = dynamic(() => import('@/components/PdfOrganizer'), {
   ssr: false,
@@ -680,6 +681,7 @@ export default function ReordenarPdfPage() {
               })}
             </div>
           </section>
+          <RelatedLongTailSolutions toolKey="reordenar" />
         </div>
       </main>
     </>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfUnlocker = dynamic(() => import('@/components/PdfUnlocker'), {
   ssr: false,
@@ -316,6 +317,7 @@ export default function DesbloquearPdfPage() {
             })}
           </div>
         </section>
+        <RelatedLongTailSolutions toolKey="desbloquear" />
       </div>
     </main>
   );

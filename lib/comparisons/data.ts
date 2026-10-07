@@ -8,7 +8,7 @@ export const COMPARISONS_ES: Record<string, ComparisonPageData> = {
     competitorName: 'iLovePDF',
     metaTitle: 'PDFBlack vs iLovePDF — Comparativa de Privacidad, Límites y Rendimiento (2026)',
     metaDescription:
-      'Compara PDFBlack vs iLovePDF. Descubre por qué el procesamiento 100% local en navegador de PDFBlack supera a iLovePDF en privacidad, seguridad RGPD, ausencia de límites y gratuidad real.',
+      'Compara PDFBlack vs iLovePDF. Descubre por qué el procesamiento 100% local en tu navegador supera a iLovePDF en privacidad RGPD, velocidad y sin límites.',
     keywords: [
       'pdfblack vs ilovepdf',
       'comparativa ilovepdf',
@@ -190,7 +190,7 @@ export const COMPARISONS_ES: Record<string, ComparisonPageData> = {
     competitorName: 'Smallpdf',
     metaTitle: 'PDFBlack vs Smallpdf — Comparativa de Privacidad, Precios y Funcionalidades (2026)',
     metaDescription:
-      'Comparativa técnica directa entre PDFBlack y Smallpdf. Descubre por qué PDFBlack es la mejor alternativa gratuita sin registro, sin límite de 2 tareas diarias y con privacidad local.',
+      'Comparativa PDFBlack vs Smallpdf. Descubre por qué PDFBlack es la mejor alternativa gratis, sin registro, sin límite diario de tareas y con privacidad local.',
     keywords: [
       'pdfblack vs smallpdf',
       'comparativa smallpdf',
@@ -643,7 +643,7 @@ export const COMPARISONS_EN: Record<string, ComparisonPageData> = {
     competitorName: 'iLovePDF',
     metaTitle: 'PDFBlack vs iLovePDF — Privacy, Limits & Performance Comparison (2026)',
     metaDescription:
-      'PDFBlack vs iLovePDF direct technical comparison. See why PDFBlack 100% in-browser local processing beats iLovePDF in privacy, GDPR compliance, zero size limits, and true free usage.',
+      'PDFBlack vs iLovePDF comparison. Discover why 100% in-browser processing beats iLovePDF in privacy, GDPR compliance, zero file size limits, and speed.',
     keywords: [
       'pdfblack vs ilovepdf',
       'ilovepdf comparison',
@@ -816,7 +816,7 @@ export const COMPARISONS_EN: Record<string, ComparisonPageData> = {
     competitorName: 'Smallpdf',
     metaTitle: 'PDFBlack vs Smallpdf — Direct Comparison on Privacy, Limits & Cost (2026)',
     metaDescription:
-      'Compare PDFBlack vs Smallpdf. Learn why PDFBlack is the premier free alternative without account sign-ups, without a 2-task daily limit, and with local privacy.',
+      'Compare PDFBlack vs Smallpdf. Learn why PDFBlack is the best free alternative with zero sign-ups, no 2-task daily limits, and 100% local privacy.',
     keywords: [
       'pdfblack vs smallpdf',
       'smallpdf comparison',

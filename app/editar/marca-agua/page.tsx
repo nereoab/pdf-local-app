@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfWatermark = dynamic(() => import('@/components/PdfWatermark'), {
   ssr: false,
@@ -839,6 +840,7 @@ export default function MarcaAguaPage() {
               })}
             </div>
           </section>
+          <RelatedLongTailSolutions toolKey="marca-agua" />
         </div>
       </main>
     </>

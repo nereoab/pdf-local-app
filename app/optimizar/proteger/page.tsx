@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfProtector = dynamic(() => import('@/components/PdfProtector'), {
   ssr: false,
@@ -296,6 +297,7 @@ export default function ProtegerPdfPage() {
             })}
           </div>
         </section>
+        <RelatedLongTailSolutions toolKey="proteger" />
       </div>
     </main>
   );

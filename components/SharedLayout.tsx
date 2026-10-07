@@ -17,6 +17,7 @@ import {
   getSpanishUrlForEnglish,
   getPortugueseUrlForSpanish,
   getSpanishUrlForPortuguese,
+  getFrenchUrlForSpanish,
   getLanguageSwitchUrl,
   getUrlForLanguage,
 } from '@/lib/routes-config';
@@ -27,11 +28,19 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const isEnRoute = pathname?.startsWith('/en');
   const isPtRoute = pathname?.startsWith('/pt');
-  const isEs = !isEnRoute && !isPtRoute && lang === 'es';
+  const isFrRoute = pathname?.startsWith('/fr');
+  const isEs = !isEnRoute && !isPtRoute && !isFrRoute && lang === 'es';
   const isPt = isPtRoute || lang === 'pt';
+  const isFr = isFrRoute || lang === 'fr';
   const isZh = lang === 'zh';
-  const isHome = pathname === '/' || pathname === '/en' || pathname === '/es' || pathname === '/pt';
+  const isHome =
+    pathname === '/' ||
+    pathname === '/en' ||
+    pathname === '/es' ||
+    pathname === '/pt' ||
+    pathname === '/fr';
   const getNavUrl = (path: string) => {
+    if (isFrRoute || lang === 'fr') return getFrenchUrlForSpanish(path);
     if (isPtRoute || lang === 'pt') return getPortugueseUrlForSpanish(path);
     if (isEnRoute || lang === 'en') return getEnglishUrlForSpanish(path);
     return path;
@@ -82,15 +91,17 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 relative z-10">
             {/* LOGO TECHNICAL - AS DE ESPADAS */}
             <Link
-              href={isPtRoute ? '/pt' : isEnRoute ? '/en' : '/es'}
+              href={isPtRoute ? '/pt' : isFrRoute ? '/fr' : isEnRoute ? '/en' : '/es'}
               onClick={handleLogoClick}
               className="flex-shrink-0"
               aria-label={
-                isPt
-                  ? 'PDFBlack — Ir para o início'
-                  : isEs
-                    ? 'PDFBlack — Ir al inicio'
-                    : 'PDFBlack — Go to homepage'
+                isFr
+                  ? 'PDFBlack — Accueil'
+                  : isPt
+                    ? 'PDFBlack — Ir para o início'
+                    : isEs
+                      ? 'PDFBlack — Ir al inicio'
+                      : 'PDFBlack — Go to homepage'
               }
             >
               <motion.div
@@ -398,29 +409,44 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             >
               <AnimatePresence mode="wait">
                 {!isHome && (
-                  <Link key="home-nav-link" href={isPtRoute ? '/pt' : isEnRoute ? '/en' : '/'}>
+                  <Link
+                    key="home-nav-link"
+                    href={isPtRoute ? '/pt' : isFrRoute ? '/fr' : isEnRoute ? '/en' : '/'}
+                  >
                     <motion.button
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       className="hidden sm:flex items-center gap-2 text-xs font-semibold text-zinc-200 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer"
                       aria-label={
-                        isPt ? 'Voltar ao início' : isEs ? 'Volver al inicio' : 'Back to home'
+                        isFr
+                          ? 'Accueil'
+                          : isPt
+                            ? 'Voltar ao início'
+                            : isEs
+                              ? 'Volver al inicio'
+                              : 'Back to home'
                       }
                     >
                       <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />{' '}
-                      {isPt ? 'INÍCIO' : isEs ? 'INICIO' : 'HOME'}
+                      {isFr ? 'ACCUEIL' : isPt ? 'INÍCIO' : isEs ? 'INICIO' : 'HOME'}
                     </motion.button>
                   </Link>
                 )}
               </AnimatePresence>
 
-              {/* SELECTOR DE IDIOMA — SEGMENTED PILL [ ES | EN | PT ] */}
+              {/* SELECTOR DE IDIOMA — SEGMENTED PILL [ ES | EN | PT | FR ] */}
               <div
                 className="flex items-center bg-zinc-900 border border-zinc-700 p-0.5 rounded-full font-mono text-xs flex-shrink-0 shadow-inner"
                 role="group"
                 aria-label={
-                  isPt ? 'Selecionar idioma' : isEs ? 'Seleccionar idioma' : 'Select language'
+                  isFr
+                    ? 'Sélectionner la langue'
+                    : isPt
+                      ? 'Selecionar idioma'
+                      : isEs
+                        ? 'Seleccionar idioma'
+                        : 'Select language'
                 }
               >
                 <button
@@ -429,12 +455,12 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     const target = getLanguageSwitchUrl(pathname || '/', 'es');
                     router.push(target);
                   }}
-                  className={`px-2.5 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
-                    !isEnRoute && !isPtRoute && lang === 'es'
+                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
+                    !isEnRoute && !isPtRoute && !isFrRoute && lang === 'es'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-300 hover:text-white'
                   }`}
-                  aria-pressed={!isEnRoute && !isPtRoute && lang === 'es'}
+                  aria-pressed={!isEnRoute && !isPtRoute && !isFrRoute && lang === 'es'}
                   title="Español"
                 >
                   ES
@@ -445,7 +471,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     const target = getLanguageSwitchUrl(pathname || '/', 'en');
                     router.push(target);
                   }}
-                  className={`px-2.5 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
+                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
                     isEnRoute || lang === 'en'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-300 hover:text-white'
@@ -461,7 +487,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     const target = getLanguageSwitchUrl(pathname || '/', 'pt');
                     router.push(target);
                   }}
-                  className={`px-2.5 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
+                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
                     isPtRoute || lang === 'pt'
                       ? 'bg-white text-black shadow-md'
                       : 'text-zinc-300 hover:text-white'
@@ -470,6 +496,22 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                   title="Português (Brasil)"
                 >
                   PT
+                </button>
+                <button
+                  onClick={() => {
+                    setLang('fr');
+                    const target = getLanguageSwitchUrl(pathname || '/', 'fr');
+                    router.push(target);
+                  }}
+                  className={`px-2 py-1 rounded-full transition-all text-xs font-bold cursor-pointer ${
+                    isFrRoute || lang === 'fr'
+                      ? 'bg-white text-black shadow-md'
+                      : 'text-zinc-300 hover:text-white'
+                  }`}
+                  aria-pressed={isFrRoute || lang === 'fr'}
+                  title="Français"
+                >
+                  FR
                 </button>
               </div>
 
@@ -849,15 +891,17 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
           {/* BARRA INFERIOR DE LEGALIDAD & COPYRIGHT */}
           <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs">
             <Link
-              href={isPtRoute ? '/pt' : isEnRoute ? '/en' : '/'}
+              href={isPtRoute ? '/pt' : isFrRoute ? '/fr' : isEnRoute ? '/en' : '/'}
               onClick={handleLogoClick}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
               aria-label={
-                isPt
-                  ? 'PDFBlack — Ir para o início'
-                  : isEs
-                    ? 'PDFBlack — Ir al inicio'
-                    : 'PDFBlack — Go to homepage'
+                isFr
+                  ? 'PDFBlack — Accueil'
+                  : isPt
+                    ? 'PDFBlack — Ir para o início'
+                    : isEs
+                      ? 'PDFBlack — Ir al inicio'
+                      : 'PDFBlack — Go to homepage'
               }
             >
               <Spade className="w-4 h-4 text-white" fill="currentColor" aria-hidden="true" />
@@ -869,11 +913,13 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-[11px]">
               <ShieldCheck className="w-3.5 h-3.5 text-white" aria-hidden="true" />
               <span>
-                {isPt
-                  ? 'MOTOR: PROCESSAMENTO 100% LOCAL NO NAVEGADOR (LGPD)'
-                  : isEs
-                    ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR'
-                    : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}
+                {isFr
+                  ? 'MOTEUR : TRAITEMENT 100% LOCAL DANS LE NAVIGATEUR (RGPD)'
+                  : isPt
+                    ? 'MOTOR: PROCESSAMENTO 100% LOCAL NO NAVEGADOR (LGPD)'
+                    : isEs
+                      ? 'MOTOR: PROCESAMIENTO 100% LOCAL EN NAVEGADOR'
+                      : 'ENGINE: 100% LOCAL BROWSER PROCESSING'}
               </span>
             </div>
 
@@ -887,6 +933,20 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                     : 'Legal and comparison links'
               }
             >
+              <Link
+                href={
+                  isFrRoute
+                    ? '/fr/solutions'
+                    : isPtRoute
+                      ? '/pt/solutions'
+                      : isEnRoute
+                        ? '/en/solutions'
+                        : '/soluciones'
+                }
+                className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
+              >
+                {isFr ? 'Solutions' : isPt ? 'Soluções' : isEs ? 'Soluciones' : 'Solutions'}
+              </Link>
               <Link
                 href={isEnRoute ? '/en/industries' : '/industrias'}
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
@@ -923,11 +983,17 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 }
                 className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
               >
-                {isPt
-                  ? 'Alternativa Privada'
-                  : isEs
-                    ? 'Alternativa Privada'
-                    : 'Private Alternative'}
+                {isPt ? 'Alt. iLovePDF' : isEs ? 'Alt. iLovePDF' : 'Alt. iLovePDF'}
+              </Link>
+              <Link
+                href={
+                  isEnRoute
+                    ? '/en/alternatives/private-smallpdf-alternative'
+                    : '/alternativas/alternativa-privada-a-smallpdf'
+                }
+                className="hover:text-emerald-400 text-zinc-300 font-medium transition-colors"
+              >
+                {isPt ? 'Alt. Smallpdf' : isEs ? 'Alt. Smallpdf' : 'Alt. Smallpdf'}
               </Link>
               <Link
                 href={isEnRoute ? '/en/privacy' : '/privacidad'}
@@ -940,6 +1006,12 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
                 className="hover:text-white transition-colors"
               >
                 {isPt ? 'Termos' : isEs ? 'Términos' : 'Terms'}
+              </Link>
+              <Link
+                href={isEnRoute ? '/en/dpa' : '/dpa'}
+                className="hover:text-white transition-colors"
+              >
+                DPA (GDPR)
               </Link>
               <Link
                 href={isEnRoute ? '/en/faq' : '/faq'}

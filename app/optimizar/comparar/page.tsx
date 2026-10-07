@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfComparator = dynamic(() => import('@/components/PdfComparator'), {
   ssr: false,
@@ -322,6 +323,7 @@ export default function CompararPdfPage() {
             })}
           </div>
         </section>
+        <RelatedLongTailSolutions toolKey="comparar" />
       </div>
     </main>
   );

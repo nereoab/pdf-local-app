@@ -843,6 +843,31 @@ export const FRENCH_TOOL_METADATA: Record<
   { title: string; desc: string; keywords: string[] }
 > = frenchToolMetadataJson as any;
 
+export function formatMetaTitle(rawTitle: string, brand = 'PDFBlack'): string {
+  let clean = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
+  if (clean.length > 58) {
+    const sep = clean.match(/\s+([—–:-])\s+/);
+    if (sep && sep.index && sep.index >= 20 && sep.index <= 55) {
+      clean = clean.slice(0, sep.index).trim();
+    } else {
+      const trimmed = clean.slice(0, 58);
+      const lastSpace = trimmed.lastIndexOf(' ');
+      clean = (lastSpace > 35 ? trimmed.slice(0, lastSpace) : trimmed).trim();
+    }
+  }
+  if (clean.length + brand.length + 3 <= 60) return `${clean} | ${brand}`;
+  return clean;
+}
+
+export function formatMetaDescription(desc: string, maxLen = 158): string {
+  if (!desc || desc.length <= maxLen) return desc;
+  const trimmed = desc.slice(0, maxLen);
+  const lastSpace = trimmed.lastIndexOf(' ');
+  const cutoff = lastSpace > 110 ? lastSpace : maxLen;
+  const res = trimmed.slice(0, cutoff).trim();
+  return res.endsWith('.') || res.endsWith('!') || res.endsWith('?') ? res : `${res}.`;
+}
+
 /**
  * Genera la metadata completa de Next.js para una herramienta en un idioma dado.
  */
@@ -876,8 +901,9 @@ export function buildToolMetadata(
     keywords = isEs ? info.keywordsEs : info.keywordsEn;
   }
 
+  const absoluteTitle = formatMetaTitle(rawTitle, SITE_NAME);
   const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+  const safeDescription = formatMetaDescription(description);
 
   const matchingTool = TOOLS_ROUTES.find(
     (t) =>
@@ -915,7 +941,7 @@ export function buildToolMetadata(
     title: {
       absolute: absoluteTitle,
     },
-    description,
+    description: safeDescription,
     keywords,
     authors: [{ name: 'PDFBlack Team' }],
     metadataBase: new URL(SITE_URL),
@@ -1734,10 +1760,8 @@ export function buildGlossaryBreadcrumbSchema(term: GlossaryTerm, lang: 'es' | '
 export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' = 'es'): Metadata {
   const isEs = lang === 'es';
   const rawTitle = term.metaTitle;
-  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
-
-  const description = term.metaDescription;
+  const absoluteTitle = formatMetaTitle(rawTitle, SITE_NAME);
+  const safeDescription = formatMetaDescription(term.metaDescription);
   const canonicalUrl = isEs
     ? `${SITE_URL}/glosario/${term.slug}`
     : `${SITE_URL}/en/glossary/${term.slugEn}`;
@@ -1751,7 +1775,7 @@ export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' 
     title: {
       absolute: absoluteTitle,
     },
-    description,
+    description: safeDescription,
     keywords: term.keywords,
     metadataBase: new URL(SITE_URL),
     alternates: {
@@ -1764,7 +1788,7 @@ export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' 
     },
     openGraph: {
       title: absoluteTitle,
-      description,
+      description: safeDescription,
       url: canonicalUrl,
       siteName: 'PDFBlack',
       locale: isEs ? 'es_ES' : 'en_US',
@@ -1781,7 +1805,7 @@ export function buildGlossaryTermMetadata(term: GlossaryTerm, lang: 'es' | 'en' 
     twitter: {
       card: 'summary_large_image',
       title: absoluteTitle,
-      description,
+      description: safeDescription,
       images: [ogImageUrl],
     },
     robots: {
@@ -1806,12 +1830,12 @@ export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
   const rawTitle = isEs
     ? 'Soluciones PDF por Industria: Cumplimiento Legal, Salud y Finanzas | PDFBlack'
     : 'Industry PDF Solutions: Legal, Healthcare & Finance Compliance | PDFBlack';
-  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+  const absoluteTitle = formatMetaTitle(rawTitle, SITE_NAME);
 
   const description = isEs
     ? 'Descubre cómo despachos de abogados, hospitales, firmas de auditoría y administraciones públicas procesan documentos PDF con 100% privacidad local sin subir archivos a la nube.'
     : 'Discover how law firms, hospitals, accounting firms, and government agencies process sensitive PDF documents with 100% client-side zero-knowledge privacy.';
+  const safeDescription = formatMetaDescription(description);
   const canonicalUrl = isEs ? `${SITE_URL}/industrias` : `${SITE_URL}/en/industries`;
   const esUrl = `${SITE_URL}/industrias`;
   const enUrl = `${SITE_URL}/en/industries`;
@@ -1823,7 +1847,7 @@ export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
     title: {
       absolute: absoluteTitle,
     },
-    description,
+    description: safeDescription,
     keywords: isEs
       ? [
           'pdf para empresas',
@@ -1852,7 +1876,7 @@ export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
     },
     openGraph: {
       title: absoluteTitle,
-      description,
+      description: safeDescription,
       url: canonicalUrl,
       siteName: 'PDFBlack',
       locale: isEs ? 'es_ES' : 'en_US',
@@ -1869,7 +1893,7 @@ export function buildIndustryHubMetadata(lang: 'es' | 'en' = 'es'): Metadata {
     twitter: {
       card: 'summary_large_image',
       title: absoluteTitle,
-      description,
+      description: safeDescription,
       images: [ogImageUrl],
     },
     robots: {
@@ -1895,10 +1919,10 @@ export function buildIndustryMetadata(
 ): Metadata {
   const isEs = lang === 'es';
   const rawTitle = isEs ? industry.metaTitle : industry.metaTitleEn;
-  const cleanTitle = rawTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | ${SITE_NAME}`;
+  const absoluteTitle = formatMetaTitle(rawTitle, SITE_NAME);
 
   const description = isEs ? industry.metaDescription : industry.metaDescriptionEn;
+  const safeDescription = formatMetaDescription(description);
   const canonicalUrl = isEs
     ? `${SITE_URL}/industrias/${industry.slug}`
     : `${SITE_URL}/en/industries/${industry.slugEn}`;
@@ -1912,7 +1936,7 @@ export function buildIndustryMetadata(
     title: {
       absolute: absoluteTitle,
     },
-    description,
+    description: safeDescription,
     keywords: isEs ? industry.keywords : industry.keywordsEn,
     metadataBase: new URL(SITE_URL),
     alternates: {
@@ -1925,7 +1949,7 @@ export function buildIndustryMetadata(
     },
     openGraph: {
       title: absoluteTitle,
-      description,
+      description: safeDescription,
       url: canonicalUrl,
       siteName: 'PDFBlack',
       locale: isEs ? 'es_ES' : 'en_US',
@@ -1942,7 +1966,7 @@ export function buildIndustryMetadata(
     twitter: {
       card: 'summary_large_image',
       title: absoluteTitle,
-      description,
+      description: safeDescription,
       images: [ogImageUrl],
     },
     robots: {

@@ -11,7 +11,7 @@ import {
   Sparkles,
   Cpu,
 } from 'lucide-react';
-import { LongTailSolution } from '@/lib/long-tail-registry';
+import { LongTailSolution, LONG_TAIL_SOLUTIONS_PT } from '@/lib/long-tail-registry';
 
 interface Props {
   solution: LongTailSolution;
@@ -238,6 +238,35 @@ export default function LongTailEditorialSectionPt({ solution }: Props) {
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
+
+      {/* ─── TOPIC CLUSTER: SOLUÇÕES RELACIONADAS ─── */}
+      {solution.relatedSolutions && solution.relatedSolutions.length > 0 && (
+        <div className="border-t border-neutral-200 dark:border-neutral-800 pt-8 mt-12">
+          <p className="text-xs uppercase font-bold tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
+            Outras soluções e procedimentos frequentes:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {solution.relatedSolutions.map((relSlug) => {
+              const rel = LONG_TAIL_SOLUTIONS_PT[relSlug];
+              if (!rel) return null;
+              return (
+                <Link
+                  key={relSlug}
+                  href={`/pt/solutions/${relSlug}`}
+                  className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/40 hover:border-emerald-500/50 transition-colors block text-left group"
+                >
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mb-1 truncate">
+                    {rel.badge}
+                  </div>
+                  <div className="text-xs font-medium text-neutral-800 dark:text-neutral-200 line-clamp-2 group-hover:text-emerald-400 transition-colors">
+                    {rel.h1.split('—')[0].trim()}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

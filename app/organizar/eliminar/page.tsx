@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfPageDeleter = dynamic(() => import('@/components/PdfPageDeleter'), {
   ssr: false,
@@ -617,6 +618,7 @@ export default function EliminarPdfPage() {
               })}
             </div>
           </section>
+          <RelatedLongTailSolutions toolKey="eliminar" />
         </div>
       </main>
     </>

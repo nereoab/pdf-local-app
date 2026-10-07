@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ALL_LONG_TAIL_SLUGS_PT, getSolutionBySlugPt } from '@/lib/long-tail-registry';
+import { formatMetaTitle, formatMetaDescription } from '@/lib/seo-metadata';
 import OptimizarToolClient from '@/components/OptimizarToolClient';
 import EditarToolClient from '@/components/EditarToolClient';
 import ConverterToolClient from '@/components/ConverterToolClient';
@@ -33,14 +34,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? `${SITE_URL}/en/solutions/${solution.enEquivalentSlug}`
     : undefined;
 
-  const cleanTitle = solution.metaTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | PDFBlack`;
+  const absoluteTitle = formatMetaTitle(solution.metaTitle);
+  const safeDescription = formatMetaDescription(solution.metaDescription);
 
   return {
     title: {
       absolute: absoluteTitle,
     },
-    description: solution.metaDescription,
+    description: safeDescription,
     keywords: solution.keywords,
     alternates: {
       canonical: canonicalUrl,

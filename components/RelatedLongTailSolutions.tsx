@@ -8,13 +8,17 @@ import { getSolutionsByToolKey } from '@/lib/long-tail-registry';
 
 interface Props {
   toolKey: string;
-  lang?: 'es' | 'en';
+  lang?: 'es' | 'en' | 'pt' | 'fr';
 }
 
 export default function RelatedLongTailSolutions({ toolKey, lang: propLang }: Props) {
   const { lang: ctxLang } = useLanguage();
-  const activeLang: 'es' | 'en' = propLang || (ctxLang === 'en' ? 'en' : 'es');
+  const activeLang: 'es' | 'en' | 'pt' | 'fr' =
+    propLang ||
+    (ctxLang === 'fr' ? 'fr' : ctxLang === 'pt' ? 'pt' : ctxLang === 'en' ? 'en' : 'es');
   const isEs = activeLang === 'es';
+  const isFr = activeLang === 'fr';
+  const isPt = activeLang === 'pt';
 
   const solutions = getSolutionsByToolKey(toolKey, activeLang);
 
@@ -22,7 +26,14 @@ export default function RelatedLongTailSolutions({ toolKey, lang: propLang }: Pr
     return null;
   }
 
-  const prefix = isEs ? '/soluciones' : '/en/solutions';
+  const prefix =
+    activeLang === 'fr'
+      ? '/fr/solutions'
+      : activeLang === 'pt'
+        ? '/pt/solutions'
+        : activeLang === 'es'
+          ? '/soluciones'
+          : '/en/solutions';
 
   return (
     <section className="w-full max-w-7xl mx-auto mt-16 pt-12 border-t border-zinc-800/80 px-4 sm:px-6 lg:px-8">
@@ -31,23 +42,45 @@ export default function RelatedLongTailSolutions({ toolKey, lang: propLang }: Pr
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 mb-3">
             <Sparkles className="w-3 h-3 text-emerald-400" />
             <span>
-              {isEs ? 'CASOS DE USO Y SOLUCIONES FRECUENTES' : 'SPECIALIZED USE CASES & SOLUTIONS'}
+              {isFr
+                ? 'CAS D’USAGE ET SOLUTIONS FRÉQUENTES'
+                : isPt
+                  ? 'CASOS DE USO E SOLUÇÕES FREQUENTES'
+                  : isEs
+                    ? 'CASOS DE USO Y SOLUCIONES FRECUENTES'
+                    : 'SPECIALIZED USE CASES & SOLUTIONS'}
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase font-sans">
-            {isEs ? 'Soluciones y Trámites Específicos' : 'Targeted Solutions & Official Workflows'}
+            {isFr
+              ? 'Solutions et Démarches Spécifiques'
+              : isPt
+                ? 'Soluções e Processos Específicos'
+                : isEs
+                  ? 'Soluciones y Trámites Específicos'
+                  : 'Targeted Solutions & Official Workflows'}
           </h2>
           <p className="text-zinc-400 text-xs sm:text-sm font-mono mt-1 max-w-2xl">
-            {isEs
-              ? 'Flujos preconfigurados para cumplir requisitos de portales oficiales, juzgados, empresas y universidades con privacidad 100% local.'
-              : 'Pre-configured workflows tailored for strict court filings, government portals, universities, and enterprise compliance.'}
+            {isFr
+              ? 'Flux préconfigurés pour répondre aux exigences des portails officiels, tribunaux, entreprises et universités avec confidentialité 100% locale.'
+              : isPt
+                ? 'Fluxos pré-configurados para atender requisitos de portais oficiais, tribunais, empresas e universidades com privacidade 100% local.'
+                : isEs
+                  ? 'Flujos preconfigurados para cumplir requisitos de portales oficiales, juzgados, empresas y universidades con privacidad 100% local.'
+                  : 'Pre-configured workflows tailored for strict court filings, government portals, universities, and enterprise compliance.'}
           </p>
         </div>
 
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-zinc-400 text-xs font-mono">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span>
-            {isEs ? 'Procesamiento 100% en tu Navegador' : '100% In-Browser RAM Processing'}
+            {isFr
+              ? 'Traitement 100% dans votre Navigateur'
+              : isPt
+                ? 'Processamento 100% no seu Navegador'
+                : isEs
+                  ? 'Procesamiento 100% en tu Navegador'
+                  : '100% In-Browser RAM Processing'}
           </span>
         </div>
       </div>
@@ -78,7 +111,13 @@ export default function RelatedLongTailSolutions({ toolKey, lang: propLang }: Pr
 
             <div className="mt-4 pt-3 border-t border-zinc-800/60 flex items-center justify-between text-[11px] font-mono text-zinc-400">
               <span className="text-emerald-400 font-semibold group-hover:underline">
-                {isEs ? 'Abrir solución gratuita →' : 'Launch free solution →'}
+                {isFr
+                  ? 'Ouvrir la solution gratuite →'
+                  : isPt
+                    ? 'Abrir solução gratuita →'
+                    : isEs
+                      ? 'Abrir solución gratuita →'
+                      : 'Launch free solution →'}
               </span>
               <span className="text-zinc-400">ISO 32000</span>
             </div>

@@ -33,6 +33,7 @@ import {
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
 
 const PdfSigner = dynamic(() => import('@/components/PdfSigner'), {
   ssr: false,
@@ -711,6 +712,7 @@ export default function FirmarPdfPage() {
               })}
             </div>
           </section>
+          <RelatedLongTailSolutions toolKey="firmar" />
         </div>
       </main>
     </>

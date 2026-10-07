@@ -5,6 +5,7 @@ import {
   getSolutionBySlug,
   getEquivalentSlug,
 } from '@/lib/long-tail-registry';
+import { formatMetaTitle, formatMetaDescription } from '@/lib/seo-metadata';
 import OptimizarToolClient from '@/components/OptimizarToolClient';
 import EditarToolClient from '@/components/EditarToolClient';
 import ConverterToolClient from '@/components/ConverterToolClient';
@@ -39,14 +40,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     solution.category,
   )}&lang=es`;
 
-  const cleanTitle = solution.metaTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | PDFBlack`;
+  const absoluteTitle = formatMetaTitle(solution.metaTitle);
+  const safeDescription = formatMetaDescription(solution.metaDescription);
 
   return {
     title: {
       absolute: absoluteTitle,
     },
-    description: solution.metaDescription,
+    description: safeDescription,
     keywords: solution.keywords,
     alternates: {
       canonical: canonicalUrl,
@@ -58,7 +59,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     openGraph: {
       title: absoluteTitle,
-      description: solution.metaDescription,
+      description: safeDescription,
       url: canonicalUrl,
       siteName: 'PDFBlack',
       locale: 'es_ES',
@@ -68,14 +69,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: solution.metaTitle,
+          alt: absoluteTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: solution.metaTitle,
-      description: solution.metaDescription,
+      title: absoluteTitle,
+      description: safeDescription,
       images: [ogImageUrl],
     },
   };

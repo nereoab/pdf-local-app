@@ -5,6 +5,7 @@ import {
   getComparisonData,
   getEquivalentComparisonSlug,
 } from '@/lib/comparisons/data';
+import { formatMetaTitle, formatMetaDescription } from '@/lib/seo-metadata';
 import ComparisonEditorialSection from '@/components/ComparisonEditorialSection';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
@@ -33,14 +34,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     data.h1.split(':')[0].trim(),
   )}&badge=${encodeURIComponent(data.badge)}&category=optimizar&lang=es`;
 
-  const cleanTitle = data.metaTitle.replace(/\s*\|\s*PDFBlack\s*$/i, '').trim();
-  const absoluteTitle = `${cleanTitle} | PDFBlack`;
+  const absoluteTitle = formatMetaTitle(data.metaTitle);
+  const safeDescription = formatMetaDescription(data.metaDescription);
 
   return {
     title: {
       absolute: absoluteTitle,
     },
-    description: data.metaDescription,
+    description: safeDescription,
     keywords: data.keywords,
     metadataBase: new URL(SITE_URL),
     alternates: {

@@ -6,7 +6,7 @@ import { LONG_TAIL_SOLUTIONS_FR } from '@/lib/long-tail-registry';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Solutions et Démarches PDF Spécifiques | PDFBlack',
+  title: 'Solutions et Démarches PDF Spécifiques',
   description:
     'Catalogue de flux et guides PDF adaptés aux exigences des tribunaux, concours et entreprises. 100% privé sans envoi de fichiers sur le cloud.',
   alternates: {

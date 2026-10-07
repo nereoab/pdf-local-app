@@ -576,7 +576,7 @@ export const GLOSSARY_TERMS_EN: Record<string, GlossaryTerm> = {
     category: 'seguridad',
     categoryLabel: 'Cryptography & Cybersecurity',
     badge: 'MILITARY GRADE & ISO 32000-2',
-    metaTitle: 'AES-256 PDF Encryption: How It Works & Protects Your Files | PDFBlack',
+    metaTitle: 'AES-256 PDF Encryption: How It Protects Files | PDFBlack',
     metaDescription:
       'Discover how 256-bit AES encryption protects PDF documents. Understand the vulnerabilities of legacy RC4 ciphers, key derivation, and ISO 32000-2 security.',
     keywords: [

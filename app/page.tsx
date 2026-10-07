@@ -434,9 +434,9 @@ function CategoryCard({
         </div>
 
         <Link href={getUrlForLanguage(cat.path, lang)} className="group/title block">
-          <h3 className="text-2xl font-black text-white tracking-tight mb-2 group-hover/title:text-zinc-200 transition-colors flex items-center gap-2">
+          <h2 className="text-2xl font-black text-white tracking-tight mb-2 group-hover/title:text-zinc-200 transition-colors flex items-center gap-2">
             <span>{getLocalizedTitle()}</span>
-          </h3>
+          </h2>
         </Link>
 
         <p className="text-xs text-zinc-300 mb-5 font-normal leading-relaxed">
@@ -1189,7 +1189,7 @@ export default function DashboardPage() {
                 aria-live="polite"
               >
                 <Zap className="w-4 h-4 text-white" aria-hidden="true" />
-                <h2 className="text-xs font-bold uppercase tracking-wider">
+                <p className="text-xs font-bold uppercase tracking-wider">
                   {isFr
                     ? 'DOCUMENT CHARGÉ. SÉLECTIONNEZ LE MODULE À EXÉCUTER :'
                     : isPt
@@ -1197,7 +1197,7 @@ export default function DashboardPage() {
                       : isEs
                         ? 'DOCUMENTO CARREGADO. SELECCIONA EL MÓDULO A EJECUTAR:'
                         : 'DOCUMENT LOADED. SELECT MODULE TO EXECUTE:'}
-                </h2>
+                </p>
               </div>
             )}
 

@@ -476,7 +476,7 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
   editar: {
     texto: {
       titleEs: 'Editar Texto de PDF Gratis Online — Modificar PDF | PDFBlack',
-      titleEn: 'Edit PDF Text Free Online — Modify Text & Images | PDFBlack',
+      titleEn: 'Edit PDF Text Free Online — Modify Text | PDFBlack',
       descEs:
         'Edita texto de tu PDF online gratis: cambia fechas, corrige nombres y añade firmas respetando tipografías originales. 100% privado sin marcas de agua.',
       descEn:

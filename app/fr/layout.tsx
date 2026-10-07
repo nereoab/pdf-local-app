@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    default: 'PDFBlack — Outils PDF en Ligne Gratuits et Privés',
+    default: 'Outils PDF en Ligne Gratuits et Privés',
     template: '%s | PDFBlack',
   },
   description:

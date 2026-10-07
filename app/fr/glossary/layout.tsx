@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Glossaire Technique PDF — Normes ISO & Concepts | PDFBlack',
+    absolute: 'Glossaire Technique PDF et Normes ISO | PDFBlack',
   },
   description:
     'Glossaire technique PDF : numérotation Bates, norme PDF/A, chiffrement AES-256, caviardage forensique et sécurité 100% locale sans serveur.',

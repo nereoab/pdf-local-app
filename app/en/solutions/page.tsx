@@ -6,7 +6,7 @@ import { LONG_TAIL_SOLUTIONS_EN } from '@/lib/long-tail-registry';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Specialized PDF Solutions Directory & Workflows | PDFBlack',
+  title: 'Specialized PDF Solutions and Workflows',
   description:
     'Complete index of specialized PDF workflows for court filings, admissions, government portals, and compliance. 100% in-browser RAM security.',
   alternates: {

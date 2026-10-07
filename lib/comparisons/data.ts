@@ -641,7 +641,7 @@ export const COMPARISONS_EN: Record<string, ComparisonPageData> = {
     slugEn: 'pdfblack-vs-ilovepdf',
     type: 'comparativa',
     competitorName: 'iLovePDF',
-    metaTitle: 'PDFBlack vs iLovePDF — Privacy & Speed Comparison | PDFBlack',
+    metaTitle: 'PDFBlack vs iLovePDF — Privacy and Speed | PDFBlack',
     metaDescription:
       'PDFBlack vs iLovePDF comparison. Discover why 100% in-browser processing beats iLovePDF in privacy, GDPR compliance, zero file size limits, and speed.',
     keywords: [

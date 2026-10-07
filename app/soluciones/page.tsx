@@ -6,7 +6,7 @@ import { LONG_TAIL_SOLUTIONS } from '@/lib/long-tail-registry';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
-  title: 'Directorio de Soluciones y Trámites PDF Especializados | PDFBlack',
+  title: 'Soluciones y Trámites PDF Especializados',
   description:
     'Catálogo completo de soluciones paso a paso para trámites oficiales, juzgados, universidades y empresas. 100% privado en memoria sin subir archivos.',
   alternates: {

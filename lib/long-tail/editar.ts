@@ -455,7 +455,7 @@ export const EDITAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
     h1: 'Add «CONFIDENTIAL» or «DRAFT» Watermark to PDF — Fully Customizable',
     subtitle:
       'Stamp translucent diagonal text such as «CONFIDENTIAL», «DRAFT», «PRELIMINARY», or your custom corporate company logo across every page of your PDF documents.',
-    metaTitle: 'Add Watermark to PDF Online Free & Customizable | PDFBlack',
+    metaTitle: 'Add Watermark to PDF Online Free and Private | PDFBlack',
     metaDescription:
       'Add custom text or image watermarks to any PDF document. Control font, opacity, rotation, and position with 100% in-browser privacy.',
     keywords: [

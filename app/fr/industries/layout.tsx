@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Solutions PDF par Secteur : Juridique, Santé & Finance | PDFBlack',
+    absolute: 'Solutions PDF par Secteur Professionnel | PDFBlack',
   },
   description:
     'Découvrez comment les cabinets d’avocats, hôpitaux et experts-comptables traitent leurs PDF avec une confidentialité locale 100% sans téléversement.',

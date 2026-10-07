@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Foire Aux Questions (FAQ) — Sécurité & Confidentialité | PDFBlack',
+    absolute: 'Questions Fréquentes (FAQ) et Sécurité | PDFBlack',
   },
   description:
     'Réponses aux questions sur PDFBlack : traitement 100% local en mémoire RAM, gratuit sans limite, conforme RGPD et sans téléversement sur serveur.',

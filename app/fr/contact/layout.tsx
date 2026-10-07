@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Contact & Support Technique | PDFBlack',
+    absolute: 'Contact et Support Technique | PDFBlack',
   },
   description:
     'Contactez l’équipe PDFBlack. Demandes d’assistance, suggestions, signalement de bugs et partenariats professionnels.',

@@ -14,7 +14,7 @@ export const INDUSTRIES_DATA: Record<string, IndustryPageData> = {
     subtitleEn:
       'Uphold attorney-client privilege and evidentiary chain of custody with 100% local in-browser processing. Bates stamping, permanent forensic redaction, and trial binder merging without cloud uploads.',
     metaTitle: 'PDF para Abogados y Litigios: Secreto Profesional y Cero Nube | PDFBlack',
-    metaTitleEn: 'PDF for Law Firms & Litigation: Zero Cloud & Privilege Compliance | PDFBlack',
+    metaTitleEn: 'PDF for Law Firms: Legal Privilege and Zero Cloud | PDFBlack',
     metaDescription:
       'Herramientas PDF especializadas para el sector legal. Aplica numeración Bates judicial, censura forense irreversible y une pruebas probatorias con cumplimiento estricto del Secreto Profesional.',
     metaDescriptionEn:
@@ -415,7 +415,7 @@ export const INDUSTRIES_DATA: Record<string, IndustryPageData> = {
     subtitleEn:
       'Process non-public financial reports, general ledgers, and M&A due diligence without data leak risks. Extract pristine Excel tables, compare contract revisions, and encrypt sensitive filings locally.',
     metaTitle: 'PDF para Finanzas y Auditoría: Cumplimiento SOX y Cero Nube | PDFBlack',
-    metaTitleEn: 'PDF for Finance & Accounting: SOX Compliance & Zero Cloud | PDFBlack',
+    metaTitleEn: 'PDF for Finance: SOX Compliance and Zero Cloud | PDFBlack',
     metaDescription:
       'Herramientas PDF confidenciales para firmas de auditoría y directores financieros. Extrae tablas a Excel, cifra con AES-256 y compara versiones de contratos con 100% privacidad local.',
     metaDescriptionEn:
@@ -618,7 +618,7 @@ export const INDUSTRIES_DATA: Record<string, IndustryPageData> = {
     subtitleEn:
       'Ensure data sovereignty across public records and procurement files. Process tenders, official gazettes, and classified documents without dependency on foreign cloud servers.',
     metaTitle: 'PDF para el Sector Público y Gobierno: Soberanía de Datos | PDFBlack',
-    metaTitleEn: 'Government & Public Sector PDF Software: Data Sovereignty | PDFBlack',
+    metaTitleEn: 'Government PDF Software: Local Data Sovereignty | PDFBlack',
     metaDescription:
       'Soluciones PDF para la administración pública y organismos estatales. Sanitización de información clasificada, foliado de expedientes y preservación PDF/A con 100% soberanía local.',
     metaDescriptionEn:

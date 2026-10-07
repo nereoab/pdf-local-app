@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Mentions Légales & Propriété Intellectuelle | PDFBlack',
+    absolute: 'Mentions Légales et Propriété | PDFBlack',
   },
   description:
     'Mentions légales, informations sur l’éditeur, limitation de responsabilité et politique de propriété intellectuelle de PDFBlack.',

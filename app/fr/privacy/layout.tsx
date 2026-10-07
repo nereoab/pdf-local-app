@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://pdf-black.com';
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Politique de Confidentialité — Sécurité RGPD & Client-Side | PDFBlack',
+    absolute: 'Politique de Confidentialité et RGPD | PDFBlack',
   },
   description:
     'Découvrez notre politique de confidentialité : zéro téléversement, traitement 100% local en mémoire RAM dans votre navigateur et conformité stricte RGPD.',

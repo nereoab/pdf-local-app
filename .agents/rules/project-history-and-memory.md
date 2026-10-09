@@ -16,6 +16,8 @@ Esta regla persistente documenta el estado operativo, registros externos, infrae
 | 6 | **Devpost (Perfil)** | **DA 82** | Perfil de desarrollador con enlace a Website | `https://devpost.com/markusarcangel` | 🟢 Activo |
 | 7 | **Uneed.best** | **DR 75** | Ficha de producto (ID: `53901`). Apelación de categoría técnica enviada a Thomas (`contact@uneed.best`) | `https://www.uneed.best/tool/pdfblack` | 🟡 Apelación enviada |
 | 8 | **Reddit (`r/SideProject`)** | **DA 99** | Post oficial (ID: `1wsyg1k`, Autor: `u/NereoAB`). Solicitud de aprobación manual enviada vía ModMail | 🟡 En revisión de mods |
+| 9 | **GitHub (`awesome-pdf`)** | **DA 96** | Pull Request oficial (#78) para inclusión en lista mundial de herramientas PDF | `https://github.com/karllhughes/awesome-pdf/pull/78` | 🟢 Enviado / En revisión |
+| 10 | **GitHub (`awesome-wasm`)** | **DA 96** | Pull Request oficial (#333) en escaparate mundial de WebAssembly (Data Processing) | `https://github.com/mbasso/awesome-wasm/pull/333` | 🟢 Enviado / En revisión |
 
 ---
 

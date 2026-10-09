@@ -18,6 +18,7 @@ Esta regla persistente documenta el estado operativo, registros externos, infrae
 | 8 | **Reddit (`r/SideProject`)** | **DA 99** | Post oficial (ID: `1wsyg1k`, Autor: `u/NereoAB`). Solicitud de aprobación manual enviada vía ModMail | 🟡 En revisión de mods |
 | 9 | **GitHub (`awesome-pdf`)** | **DA 96** | Pull Request oficial (#78) para inclusión en lista mundial de herramientas PDF | `https://github.com/karllhughes/awesome-pdf/pull/78` | 🟢 Enviado / En revisión |
 | 10 | **GitHub (`awesome-wasm`)** | **DA 96** | Pull Request oficial (#333) en escaparate mundial de WebAssembly (Data Processing) | `https://github.com/mbasso/awesome-wasm/pull/333` | 🟢 Enviado / En revisión |
+| 11 | **GitHub (`awesome-privacy`)** | **DA 96** | Pull Request oficial (#1177) en lista global de privacidad y alternativas (Office) | `https://github.com/pluja/awesome-privacy/pull/1177` | 🟢 Enviado / En revisión |
 
 ---
 

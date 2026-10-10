@@ -754,13 +754,6 @@ export default function DashboardPage() {
                 operatingSystem: 'All',
                 offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
                 author: { '@type': 'Organization', name: 'PDFBlack', url: SITE_URL },
-                aggregateRating: {
-                  '@type': 'AggregateRating',
-                  ratingValue: '4.9',
-                  ratingCount: '1540',
-                  bestRating: '5',
-                  worstRating: '1',
-                },
                 browserRequirements:
                   'Requires modern browser with WebAssembly and Web Workers support',
                 featureList: isFr

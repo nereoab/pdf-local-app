@@ -899,66 +899,112 @@ export const ORGANIZAR_SOLUTIONS_ES: Record<string, LongTailSolution> = {
       'quitar margenes pdf para leer mejor',
       'crop pdf for ipad ereader',
       'agrandar texto pdf quitando margenes',
+      'recortar pdf para kindle paperwhite',
+      'send to kindle pdf sin margenes',
     ],
     parentPath: '/organizar/recortar',
     parentName: 'Recortar PDF',
     specifications: [
       {
-        feature: 'Optimización',
-        value: 'Aprovechamiento de pantalla',
-        note: 'Incremento del 30% al 50% en tamaño relativo de texto',
+        feature: 'Optimización de Pantalla',
+        value: 'Aprovechamiento del 95% al 100% del viewport',
+        note: 'Incremento del 35% al 60% en tamaño relativo de texto y fórmulas',
       },
       {
-        feature: 'Compatibilidad',
-        value: 'Kindle, Kobo, iPad, Android',
-        note: 'Apto para visores de tinta electrónica y pantallas retina',
+        feature: 'Compatibilidad Universal',
+        value: 'Kindle Paperwhite, Scribe, Oasis, iPad, Kobo, Android',
+        note: 'Apto para visores de tinta electrónica (E-Ink) y pantallas Retina',
       },
       {
-        feature: 'Integridad',
+        feature: 'Calidad Vectorial Intacta',
+        value: 'Ajuste nativo de CropBox ISO 32000-1',
+        note: 'Sin rasterizar fuentes ni pixelar esquemas o figuras científicas',
+      },
+      {
+        feature: 'Eficiencia de Batería E-Ink',
+        value: 'Cero redibujados innecesarios',
+        note: 'Evita el consumo excesivo de batería por zoom y desplazamiento continuo',
+      },
+      {
+        feature: 'Procesamiento 100% Local',
+        value: 'Web Workers y WebAssembly en navegador',
+        note: 'Libros y documentos confidenciales nunca se suben a ningún servidor',
+      },
+      {
+        feature: 'Conservación Estructural',
         value: 'Hipervínculos e índices conservados',
-        note: 'La navegación interna por capítulos permanece intacta',
-      },
-      {
-        feature: 'Velocidad',
-        value: 'Sin recompresión de imágenes',
-        note: 'La batería del e-reader no se resiente al pasar página',
+        note: 'La navegación interna por capítulos, notas al pie e índices permanece intacta',
       },
     ],
     steps: [
       {
         step: 1,
-        title: 'Sube tu libro, paper o documento',
-        desc: 'Abre tu archivo PDF en PDFBlack directamente desde tu dispositivo.',
+        title: 'Carga tu libro, manual o paper científico',
+        desc: 'Arrastra el documento PDF a la mesa de trabajo de PDFBlack. Se cargará de inmediato en la memoria RAM local.',
       },
       {
         step: 2,
-        title: 'Corta los bordes periféricos vacíos',
-        desc: 'Ajusta los manejadores lo más cerca posible del bloque de texto útil.',
+        title: 'Ajusta los manejadores de recorte perimetral',
+        desc: 'Acerca los bordes superior, inferior y laterales al bloque útil de texto, eliminando los márgenes en blanco.',
       },
       {
         step: 3,
-        title: 'Guarda y transfiere a tu e-reader',
-        desc: 'Descarga tu documento recortado listo para disfrutar sin necesidad de hacer zoom.',
+        title: 'Aplica a todas las páginas con un clic',
+        desc: 'Selecciona la opción «Todas las Páginas» para aplicar los mismos márgenes a todo el volumen en segundos.',
+      },
+      {
+        step: 4,
+        title: 'Descarga tu PDF optimizado al instante',
+        desc: 'Obtén el archivo final sin marcas de agua ni degradación tipográfica en tu almacenamiento local.',
+      },
+      {
+        step: 5,
+        title: 'Transfiérelo a tu lector o tablet',
+        desc: 'Envía el PDF mediante Send to Kindle (email / web de Amazon), sincronización USB, AirDrop o tu app de lectura.',
       },
     ],
     benefits: [
       {
-        title: 'Fin a los Textos Diminutos',
-        desc: 'Al eliminar el espacio en blanco perimetral, el lector ajusta automáticamente el texto llenando la pantalla.',
+        title: 'Lectura Natural sin Zoom ni Scroll Torpe',
+        desc: 'En pantallas de 6 a 10 pulgadas, los márgenes tradicionales de hoja A4 empequeñecen la letra. Al recortar los bordes vacíos, el texto llena la pantalla con tipografía grande y descansada.',
       },
       {
-        title: 'Lectura Fluida sin Zoom Manual',
-        desc: 'Despídete de tener que pellizcar y desplazar la pantalla en cada página de tus artículos científicos.',
+        title: 'Máxima Autonomía para Lectores de Tinta Electrónica',
+        desc: 'Hacer pan & zoom en pantallas de tinta electrónica provoca parpadeos continuos y agota la batería. Con un PDF pre-recortado, cada cambio de página es fluido con un solo refresco.',
+      },
+      {
+        title: 'Papers Científicos a Doble Columna Legibles',
+        desc: 'Los artículos en formato IEEE, ACM o Springer con márgenes anchos pasan a ser cómodamente legibles en tablets compactas y lectores e-reader.',
+      },
+      {
+        title: 'Preservación de Metadatos, Enlaces e Índice',
+        desc: 'A diferencia de conversores destructivos a imagen, PDFBlack solo recalibra las dimensiones visibles (CropBox), preservando hipervínculos y navegación.',
       },
     ],
     faqs: [
       {
-        q: '¿Por qué conviene recortar un PDF antes de pasarlo a un Kindle o iPad?',
-        a: 'Los libros y papers suelen maquetarse para papel A4 con márgenes de 3 a 5 cm. En pantallas de 6 o 10 pulgadas, ese margen hace que el texto se vea minúsculo. Al recortar los bordes, el texto se expande hasta un 40% en pantalla.',
+        q: '¿Por qué conviene recortar los márgenes de un PDF antes de pasarlo a un Kindle, Kobo o iPad?',
+        a: 'Los libros, tesis y papers académicos suelen estar diseñados para impresión física en tamaño A4 o Carta con márgenes blancos de 3 a 5 cm por lado. Al abrir ese archivo en una pantalla de 6, 7 o 10 pulgadas, el dispositivo reduce toda la hoja para que quepa en pantalla, volviendo la letra diminuta. Al recortar los bordes perimetrales, el lector expande el área de texto útil hasta un 50%, permitiendo leer cómodamente sin forzar la vista.',
       },
       {
-        q: '¿Se pierden las notas al pie o números de página?',
-        a: 'Tú decides el límite exacto del encuadre. Puedes incluir notas al pie y encabezados simplemente ajustando los controles superior e inferior.',
+        q: '¿Cómo puedo transferir el archivo PDF recortado a mi Amazon Kindle?',
+        a: 'Puedes enviarlo directamente usando la función oficial «Send to Kindle» (a través del correo electrónico asociado a tu dispositivo Kindle o la web amazon.com/sendtokindle). También puedes conectar tu Kindle a tu ordenador mediante cable USB y copiar el archivo PDF dentro de la carpeta «documents».',
+      },
+      {
+        q: '¿Se pierden las notas al pie de página, encabezados o números de hoja?',
+        a: 'No. El marco de recorte es 100% personalizable por ti. Puedes ajustar el límite inferior y superior para mantener los números de página y notas al pie, o recortarlos si prefieres ganar aún más tamaño para el cuerpo de texto principal.',
+      },
+      {
+        q: '¿Se desconfiguran las fuentes tipográficas o las fórmulas matemáticas al recortar?',
+        a: 'No. PDFBlack modifica la caja de visualización delimitadora (CropBox y TrimBox) según el estándar internacional ISO 32000-1 sin rasterizar el documento. Las fuentes tipográficas, fórmulas LaTeX, tablas y vectores originales permanecen intactos con máxima nitidez digital.',
+      },
+      {
+        q: '¿Es posible aplicar el mismo recorte a un libro de 300 o 500 páginas de forma automática?',
+        a: 'Sí. En la interfaz de PDFBlack puedes seleccionar la opción «Todas las páginas». El algoritmo aplicará las coordenadas de corte en milímetros exactos a cada una de las hojas del documento en cuestión de segundos mediante Web Workers en paralelo.',
+      },
+      {
+        q: '¿Mis libros o documentos confidenciales se suben a algún servidor externo?',
+        a: 'No. Todo el procesamiento se ejecuta 100% en local dentro de la memoria RAM de tu propio navegador web mediante WebAssembly. Tus libros, papers, tesis o documentos privados jamás salen de tu dispositivo ni se transfieren a ningún servidor en la nube.',
       },
     ],
     relatedSolutions: [
@@ -1870,66 +1916,112 @@ export const ORGANIZAR_SOLUTIONS_EN: Record<string, LongTailSolution> = {
       'read pdf on ereader without margins',
       'trim white margins pdf tablet',
       'expand pdf text for kindle reading',
+      'crop pdf for kindle paperwhite',
+      'send to kindle pdf margin crop',
     ],
     parentPath: '/en/crop-pdf',
     parentName: 'Crop PDF',
     specifications: [
       {
-        feature: 'Screen Gain',
-        value: 'Maximized viewing viewport',
-        note: '30% to 50% increase in relative font size',
+        feature: 'Screen Viewport Gain',
+        value: '95% to 100% display utilization',
+        note: '35% to 60% boost in relative font and formula size',
       },
       {
-        feature: 'Compatibility',
-        value: 'Kindle, Kobo, iPad, Android',
-        note: 'Optimized for E-Ink refresh and high-DPI displays',
+        feature: 'Universal Compatibility',
+        value: 'Kindle Paperwhite, Scribe, Oasis, iPad, Kobo, Android',
+        note: 'Engineered for E-Ink Carta/Kaleido displays and Retina screens',
       },
       {
-        feature: 'Integrity',
-        value: 'Hyperlinks & bookmarks preserved',
-        note: 'Internal document navigation remains completely functional',
+        feature: 'Vector Quality Preserved',
+        value: 'Native ISO 32000-1 CropBox recalibration',
+        note: 'Zero bitmap rasterization; text, math symbols, and figures stay laser-sharp',
       },
       {
-        feature: 'Smoothness',
-        value: 'No heavy bitmap recompression',
-        note: 'E-reader battery and page-turn speeds remain snappy',
+        feature: 'E-Ink Battery Efficiency',
+        value: 'Zero unnecessary full-page refreshes',
+        note: 'Prevents massive battery drain caused by constant pinch-to-zoom and panning',
+      },
+      {
+        feature: '100% Client-Side Privacy',
+        value: 'In-browser WebAssembly & Web Workers',
+        note: 'Confidential research papers and private books never upload to any server',
+      },
+      {
+        feature: 'Structural Integrity',
+        value: 'Hyperlinks, bookmarks & TOC preserved',
+        note: 'Chapter navigation, internal cross-references, and footnotes remain intact',
       },
     ],
     steps: [
       {
         step: 1,
-        title: 'Drop your book or research paper',
-        desc: 'Open your PDF document directly inside your local browser memory.',
+        title: 'Open your book or academic paper',
+        desc: 'Drag and drop your PDF into PDFBlack. It loads immediately in your device RAM without cloud upload.',
       },
       {
         step: 2,
-        title: 'Clip empty peripheral margins',
-        desc: 'Bring the boundary handles inward close to the useful text body.',
+        title: 'Adjust perimeter crop handles',
+        desc: 'Pull top, bottom, and lateral borders tightly against the useful reading body, eliminating blank padding.',
       },
       {
         step: 3,
-        title: 'Download and send to your device',
-        desc: 'Enjoy comfortable, zoom-free reading on any handheld screen.',
+        title: 'Apply across all pages in one click',
+        desc: 'Select «All Pages» to uniformly replicate the exact crop coordinates throughout 100+ pages instantly.',
+      },
+      {
+        step: 4,
+        title: 'Download your optimized PDF',
+        desc: 'Save your cleanly trimmed PDF without watermarks or image compression in seconds.',
+      },
+      {
+        step: 5,
+        title: 'Send to your Kindle or tablet',
+        desc: 'Deliver the file via Send to Kindle (email / Amazon web portal), USB cable, or your favorite reading app.',
       },
     ],
     benefits: [
       {
         title: 'No More Tiny Unreadable Fonts',
-        desc: 'Removing unused white padding forces your e-reader to scale the core text to the full display width.',
+        desc: 'Removing unused white padding forces your e-reader to scale the core text to the full display width, eliminating eye strain.',
       },
       {
         title: 'Effortless Reading Without Pinch-Zoom',
-        desc: 'Eliminates repetitive panning and horizontal scrolling on multi-column academic papers.',
+        desc: 'Eliminates repetitive panning and horizontal scrolling on multi-column research papers and technical guides.',
+      },
+      {
+        title: 'Snappy E-Ink Performance & Long Battery Life',
+        desc: 'Avoiding frequent zooms stops display flashing and preserves weeks of battery charge on E-Ink readers.',
+      },
+      {
+        title: 'Complete Table of Contents & Link Retention',
+        desc: 'Unlike crude converters that flatten PDFs into images, PDFBlack preserves structural bookmarks and links.',
       },
     ],
     faqs: [
       {
-        q: 'Why should I crop PDF margins before reading on a Kindle or iPad?',
-        a: 'Standard PDFs are laid out for physical A4 printing with wide 3-5 cm margins. On a 6-inch or 10-inch screen, those margins shrink the text drastically. Cropping borders expands text size by up to 40%.',
+        q: 'Why should I crop PDF margins before reading on a Kindle, Kobo, or iPad?',
+        a: 'Standard PDFs are laid out for physical A4 or Letter printing with wide 3-5 cm margins. On a 6-inch to 10-inch screen, those borders force the device to shrink the entire page, resulting in tiny, unreadable text. Cropping empty margins expands the useful text area by up to 50% without altering original pagination.',
       },
       {
-        q: 'Does it erase footnotes or page numbers?',
-        a: 'You retain full control over the crop frame. You can easily keep page headers and footnotes by adjusting the top and bottom offsets.',
+        q: 'How do I transfer the cropped PDF to my Kindle?',
+        a: 'You can use Amazon’s official «Send to Kindle» service via email or amazon.com/sendtokindle. Alternatively, connect your Kindle to your computer with a USB cable and copy the PDF into the «documents» directory.',
+      },
+      {
+        q: 'Does cropping delete footnotes, headers, or page numbers?',
+        a: 'No. The crop boundary is completely custom. You can choose whether to keep or trim page numbers and footnotes by simply moving the bottom and top boundaries.',
+      },
+      {
+        q: 'Will equations or vector figures get blurry after cropping?',
+        a: 'No. PDFBlack adjusts the ISO CropBox header rather than rasterizing pages into images. Math symbols, vectors, charts, and embedded fonts retain native vector clarity.',
+      },
+      {
+        q: 'Can I crop a 400-page book at once?',
+        a: 'Yes. With the «All Pages» option, PDFBlack applies the identical millimetric bounding box across hundreds of pages in just seconds using client-side Web Workers.',
+      },
+      {
+        q: 'Is my document private when using PDFBlack?',
+        a: '100% private. All processing takes place strictly inside your browser memory using WebAssembly. No files, text, or metadata are ever transmitted across the internet.',
       },
     ],
     relatedSolutions: [

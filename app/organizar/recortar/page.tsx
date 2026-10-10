@@ -851,9 +851,32 @@ export default function RecortarPdfPage() {
                   </div>
                 </div>
                 <p className="text-xs text-zinc-400 font-mono leading-relaxed">
-                  {isEs
-                    ? 'Elimina márgenes blancos excesivos en papers a doble columna para aprovechar al máximo la pantalla de iPads, tablets y lectores Kindle.'
-                    : 'Remove wide white margins in double-column research papers to maximize screen real estate on iPads, tablets, and Kindle devices.'}
+                  {isEs ? (
+                    <>
+                      Elimina márgenes blancos excesivos en papers a doble columna para aprovechar
+                      al máximo la pantalla de iPads, tablets y lectores electrónicos con nuestra
+                      solución especializada para{' '}
+                      <Link
+                        href="/soluciones/recortar-pdf-para-kindle-y-tablet"
+                        className="text-cyan-400 hover:text-cyan-300 underline font-semibold transition-colors"
+                      >
+                        recortar PDF para Kindle y tablet
+                      </Link>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      Remove wide white margins in double-column research papers to maximize screen
+                      real estate on tablets with our dedicated tool to{' '}
+                      <Link
+                        href="/en/solutions/crop-pdf-for-kindle-and-tablet"
+                        className="text-cyan-400 hover:text-cyan-300 underline font-semibold transition-colors"
+                      >
+                        crop PDF for Kindle and tablet
+                      </Link>
+                      .
+                    </>
+                  )}
                 </p>
               </div>
 

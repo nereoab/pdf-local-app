@@ -53,9 +53,9 @@ export default function LongTailEditorialSectionEn({ solution }: Props) {
           <Sparkles className="w-3.5 h-3.5" />
           <span>{solution.badge}</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-3">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-3">
           {solution.h1}
-        </h2>
+        </h1>
         <p className="text-base sm:text-lg text-neutral-600 dark:text-neutral-400 leading-relaxed max-w-3xl">
           {solution.subtitle}
         </p>

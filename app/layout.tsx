@@ -157,19 +157,6 @@ const globalJsonLd = {
       applicationCategory: 'UtilitiesApplication, BusinessApplication',
       operatingSystem: 'All (Windows, macOS, Linux, Android, iOS)',
       browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas, WebAssembly & Web Workers.',
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock',
-      },
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: '4.9',
-        ratingCount: '1540',
-        bestRating: '5',
-        worstRating: '1',
-      },
       description:
         'Edita, organiza, convierte, firma, aplica OCR y optimiza archivos PDF 100% gratis y sin registro. Procesamiento local en memoria RAM sin servidores.',
       softwareVersion: '5.0',

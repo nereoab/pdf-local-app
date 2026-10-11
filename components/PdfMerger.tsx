@@ -1167,6 +1167,54 @@ export default function PdfMerger() {
                       );
                     })}
                   </AnimatePresence>
+
+                  {/* TARJETA INTERACTIVA '+' PARA AÑADIR EL SIGUIENTE DOCUMENTO DE INMEDIATO */}
+                  <button
+                    type="button"
+                    onClick={() => addMoreInputRef.current?.click()}
+                    disabled={isProcessing}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        const selected = Array.from(e.dataTransfer.files).filter(
+                          (f) => f.type === 'application/pdf',
+                        );
+                        if (selected.length > 0) {
+                          toast.info(isEs ? 'Analizando páginas...' : 'Analyzing pages...');
+                          await processAndAddFileList(selected);
+                          toast.success(
+                            isEs
+                              ? `${selected.length} archivo(s) añadido(s)`
+                              : `${selected.length} file(s) added`,
+                          );
+                        }
+                      }
+                    }}
+                    className="relative group border-2 border-dashed border-zinc-700 hover:border-white bg-zinc-950/40 hover:bg-zinc-900/80 rounded-2xl p-4 flex flex-col items-center justify-center text-center transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] cursor-pointer min-h-[220px]"
+                    title={
+                      isEs
+                        ? 'Hacer clic para añadir el siguiente documento PDF'
+                        : 'Click to add next PDF document'
+                    }
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-700 group-hover:border-white group-hover:bg-white text-zinc-300 group-hover:text-black flex items-center justify-center transition-all duration-300 shadow-lg group-hover:scale-110 mb-3">
+                      <Plus className="w-7 h-7 transition-transform group-hover:rotate-90 duration-300" />
+                    </div>
+                    <span className="text-white font-bold text-xs font-sans group-hover:text-white transition-colors">
+                      {isEs ? 'Añadir siguiente PDF' : 'Add next PDF'}
+                    </span>
+                    <span className="text-zinc-500 group-hover:text-zinc-400 text-[10px] font-mono mt-1 leading-tight">
+                      {isEs ? 'Clic o arrastra aquí' : 'Click or drop here'}
+                    </span>
+                    <div className="mt-3 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-400 group-hover:text-zinc-200 border border-zinc-800 text-[9px] font-mono">
+                      <Plus className="w-2.5 h-2.5" />
+                      <span>PDF</span>
+                    </div>
+                  </button>
                 </div>
               ) : (
                 /* ── MODO 2: LISTA COMPACTA CON FILAS REORDENABLES ── */
@@ -1303,6 +1351,42 @@ export default function PdfMerger() {
                       );
                     })}
                   </AnimatePresence>
+
+                  {/* BOTÓN / FILA '+' PARA AÑADIR EL SIGUIENTE DOCUMENTO EN VISTA LISTA */}
+                  <button
+                    type="button"
+                    onClick={() => addMoreInputRef.current?.click()}
+                    disabled={isProcessing}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        const selected = Array.from(e.dataTransfer.files).filter(
+                          (f) => f.type === 'application/pdf',
+                        );
+                        if (selected.length > 0) {
+                          toast.info(isEs ? 'Analizando páginas...' : 'Analyzing pages...');
+                          await processAndAddFileList(selected);
+                          toast.success(
+                            isEs
+                              ? `${selected.length} archivo(s) añadido(s)`
+                              : `${selected.length} file(s) added`,
+                          );
+                        }
+                      }
+                    }}
+                    className="w-full border-2 border-dashed border-zinc-800 hover:border-zinc-500 bg-zinc-950/30 hover:bg-zinc-900/60 rounded-xl p-3 flex items-center justify-center gap-2.5 text-zinc-400 hover:text-white transition-all cursor-pointer font-mono text-xs group"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-700 group-hover:bg-white group-hover:text-black flex items-center justify-center transition-all">
+                      <Plus className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="font-bold">
+                      {isEs ? 'Añadir siguiente documento PDF' : 'Add next PDF document'}
+                    </span>
+                  </button>
                 </div>
               )}
             </div>

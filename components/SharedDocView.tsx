@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -131,6 +131,49 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
     };
   }, [docData?.shareId, docData?.originalName]);
 
+  const trafficSourceRef = useRef<string>('direct');
+  const isInAppTelegramRef = useRef<boolean>(false);
+
+  // ── DETECCIÓN Y ATRIBUCIÓN EXACTA DE TRÁFICO (TELEGRAM, WHATSAPP, ETC.) ──
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const utmSource = urlParams.get('utm_source')?.toLowerCase();
+      const ua = navigator.userAgent || '';
+      const ref = document.referrer || '';
+
+      const isTg = utmSource === 'telegram' || ua.includes('Telegram') || ref.includes('t.me');
+
+      const isWa = utmSource === 'whatsapp' || ua.includes('WhatsApp') || ref.includes('whatsapp');
+
+      const isFb = utmSource === 'facebook' || ref.includes('facebook.com');
+
+      const detectedSource = isTg
+        ? 'telegram'
+        : isWa
+          ? 'whatsapp'
+          : isFb
+            ? 'facebook'
+            : utmSource || (ref ? 'referral' : 'direct');
+
+      const inAppTg = ua.includes('Telegram');
+      trafficSourceRef.current = detectedSource;
+      isInAppTelegramRef.current = inAppTg;
+
+      // Si llegó desde canal social (especialmente Telegram o WhatsApp sin UTM por In-App Browser)
+      if (isTg || isWa) {
+        trackToolEvent('share_viewer', 'file_loaded', {
+          source_platform: detectedSource,
+          in_app: inAppTg || ua.includes('WhatsApp'),
+          share_id: shareId,
+        });
+      }
+    } catch {
+      // Silencioso
+    }
+  }, [shareId]);
+
   const handleDownload = () => {
     if (!docData?.shareId) return;
     // Descarga directa a través de nuestro endpoint con cabeceras de adjunto y nombre original
@@ -143,7 +186,11 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
     document.body.removeChild(link);
 
     setDownloaded(true);
-    trackToolEvent('share_viewer', 'file_downloaded', { shareId: docData.shareId });
+    trackToolEvent('share_viewer', 'file_downloaded', {
+      shareId: docData.shareId,
+      traffic_source: trafficSourceRef.current,
+      in_app: isInAppTelegramRef.current,
+    });
     try {
       triggerLuxuryConfetti();
     } catch {
@@ -153,7 +200,11 @@ export default function SharedDocView({ shareId }: SharedDocViewProps) {
   };
 
   const handleOpenInTool = (toolPath: string, toolLabel: string) => {
-    trackToolEvent('share_viewer', 'opened_in_tool', { tool: toolLabel, shareId });
+    trackToolEvent('share_viewer', 'opened_in_tool', {
+      tool: toolLabel,
+      shareId,
+      traffic_source: trafficSourceRef.current,
+    });
     if (pdfFile) {
       setGlobalFile(pdfFile);
       toast.success(`Abriendo ${docData?.originalName || 'archivo'} en ${toolLabel}...`);

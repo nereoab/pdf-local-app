@@ -112,6 +112,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Falta el parámetro id' }, { status: 400 });
     }
 
+    const ua = req.headers.get('user-agent') || '';
+    if (ua.toLowerCase().includes('telegrambot')) {
+      console.log(`[TelegramBot Crawler] Previsualización solicitada para shareId: ${shareId}`);
+    }
+
     const fileRef = ref(storage, `temp-shares/${shareId}`);
     const downloadUrl = await getDownloadURL(fileRef);
     const meta = await getMetadata(fileRef);

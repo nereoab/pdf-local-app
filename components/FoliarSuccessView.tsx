@@ -307,13 +307,18 @@ export default function FoliarSuccessView({
 
   const handleLaunchWhatsAppWeb = async () => {
     try {
-      const link = await getOrCreateShareLink('WhatsApp');
+      const baseLink = await getOrCreateShareLink('WhatsApp');
+      const link = `${baseLink}?utm_source=whatsapp&utm_medium=social_share&utm_campaign=document_p2p`;
       const subject = shareSubject || (isEs ? 'documento' : 'document');
       const text = encodeURIComponent(
         isEs
           ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
           : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
       );
+      trackToolEvent(toolName || 'pdf_tool', 'file_shared', {
+        method: 'whatsapp_web',
+        tool: toolName,
+      });
       window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
       setShowWhatsAppModal(false);
       toast.success(
@@ -329,13 +334,18 @@ export default function FoliarSuccessView({
 
   const handleLaunchWhatsAppDesktop = async () => {
     try {
-      const link = await getOrCreateShareLink('WhatsApp');
+      const baseLink = await getOrCreateShareLink('WhatsApp');
+      const link = `${baseLink}?utm_source=whatsapp&utm_medium=social_share&utm_campaign=document_p2p`;
       const subject = shareSubject || (isEs ? 'documento' : 'document');
       const text = encodeURIComponent(
         isEs
           ? `📄 Hola, te comparto el ${subject}: *${activeFilename}*\n\n🔗 Puedes descargarlo o verlo aquí:\n${link}\n\n✨ Procesado con PDFBlack: https://pdf-black.com`
           : `📄 Hi, sharing the ${subject}: *${activeFilename}*\n\n🔗 View and download it here:\n${link}\n\n✨ Processed with PDFBlack: https://pdf-black.com`,
       );
+      trackToolEvent(toolName || 'pdf_tool', 'file_shared', {
+        method: 'whatsapp_desktop',
+        tool: toolName,
+      });
       window.location.href = `whatsapp://send?text=${text}`;
       setShowWhatsAppModal(false);
       toast.success(
@@ -351,7 +361,8 @@ export default function FoliarSuccessView({
 
   const handleDirectMobileShareWhatsApp = async () => {
     try {
-      const link = await getOrCreateShareLink('WhatsApp');
+      const baseLink = await getOrCreateShareLink('WhatsApp');
+      const link = `${baseLink}?utm_source=whatsapp&utm_medium=social_share&utm_campaign=document_p2p`;
       const subject = shareSubject || (isEs ? 'documento' : 'document');
       if (completedResult.rawBlob && typeof navigator !== 'undefined' && navigator.canShare) {
         const file = new File([completedResult.rawBlob], activeFilename, {
@@ -367,6 +378,10 @@ export default function FoliarSuccessView({
                 ? `Te comparto el ${subject}: ${activeFilename} (${link})`
                 : `Sharing ${subject}: ${activeFilename} (${link})`,
             });
+            trackToolEvent(toolName || 'pdf_tool', 'file_shared', {
+              method: 'whatsapp_native',
+              tool: toolName,
+            });
             setShowWhatsAppModal(false);
             toast.success(isEs ? '¡Archivo enviado a WhatsApp!' : 'File sent to WhatsApp!');
             return;
@@ -381,10 +396,11 @@ export default function FoliarSuccessView({
     }
   };
 
-  // 4. Compartir en Telegram
+  // 4. Compartir en Telegram (con atribución exacta de analítica)
   const handleShareTelegram = async () => {
     try {
-      const link = await getOrCreateShareLink('Telegram');
+      const baseLink = await getOrCreateShareLink('Telegram');
+      const link = `${baseLink}?utm_source=telegram&utm_medium=social_share&utm_campaign=document_p2p`;
       const sizeStr = completedResult.fileSize ? ` (${completedResult.fileSize})` : '';
       const text = encodeURIComponent(
         isEs
@@ -392,6 +408,7 @@ export default function FoliarSuccessView({
           : `📁 *${activeFilename}*${sizeStr}\n⚡ Document processed with PDFBlack\n🔗 Download or view it here:`,
       );
       const url = encodeURIComponent(link);
+      trackToolEvent(toolName || 'pdf_tool', 'file_shared', { method: 'telegram', tool: toolName });
       window.open(
         `https://t.me/share/url?url=${url}&text=${text}`,
         '_blank',
@@ -474,8 +491,10 @@ export default function FoliarSuccessView({
   // 6. Compartir en Facebook
   const handleShareFacebook = async () => {
     try {
-      const link = await getOrCreateShareLink('Facebook');
+      const baseLink = await getOrCreateShareLink('Facebook');
+      const link = `${baseLink}?utm_source=facebook&utm_medium=social_share&utm_campaign=document_p2p`;
       const url = encodeURIComponent(link);
+      trackToolEvent(toolName || 'pdf_tool', 'file_shared', { method: 'facebook', tool: toolName });
       window.open(
         `https://www.facebook.com/sharer/sharer.php?u=${url}`,
         '_blank',
@@ -489,7 +508,8 @@ export default function FoliarSuccessView({
   // 7. Enviar por Correo / Gmail
   const handleShareEmail = async () => {
     try {
-      const link = await getOrCreateShareLink(isEs ? 'correo' : 'email');
+      const baseLink = await getOrCreateShareLink(isEs ? 'correo' : 'email');
+      const link = `${baseLink}?utm_source=email&utm_medium=share_email&utm_campaign=document_p2p`;
       const subjectTitle = shareSubject || (isEs ? 'documento procesado' : 'processed document');
       const capitalizedSubject = subjectTitle.charAt(0).toUpperCase() + subjectTitle.slice(1);
       const subject = encodeURIComponent(`${capitalizedSubject}: ${activeFilename} - PDFBlack`);
@@ -498,6 +518,7 @@ export default function FoliarSuccessView({
           ? `Hola,\n\nTe comparto el ${subjectTitle} "${activeFilename}" procesado de forma segura mediante PDFBlack.\n\nPuedes previsualizarlo o descargarlo directamente aquí:\n${link}\n\nSaludos,\nPDFBlack Suite`
           : `Hi,\n\nSharing the ${subjectTitle} "${activeFilename}" processed securely via PDFBlack.\n\nYou can preview or download it directly here:\n${link}\n\nRegards,\nPDFBlack Suite`,
       );
+      trackToolEvent(toolName || 'pdf_tool', 'file_shared', { method: 'email', tool: toolName });
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank', 'noopener,noreferrer');
       toast.success(isEs ? 'Abriendo Gmail...' : 'Opening Gmail...');

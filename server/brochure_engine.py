@@ -42,9 +42,10 @@ def clean_font_name(font_name: str, default_font: str = "Segoe UI") -> str:
 
 def is_brochure_archetype(pdf_path: str, sample_pages: int = 4) -> bool:
     """
-    Detector heurístico ultrarrápido (<50ms) de arquetipo Brochure / Folleto / Catálogo:
+    Detector heurístico de arquetipo Brochure / Folleto / Catálogo:
     Identifica documentos gráficos con dimensiones personalizadas, alta densidad
     vectorial (polígonos, banners, iconos) o dispersión multi-columna.
+    Calibrado para excluir estrictamente documentos con tablas de datos, presupuestos S10 o balances.
     """
     doc = None
     try:
@@ -54,20 +55,35 @@ def is_brochure_archetype(pdf_path: str, sample_pages: int = 4) -> bool:
         if pages_to_check == 0:
             return False
 
+        has_any_table = False
+
         for i in range(pages_to_check):
             page = doc[i]
             w, h = round(page.rect.width), round(page.rect.height)
             
-            # 1. Tamaño personalizado no estándar (Ej. 680.3 x 765.4 pt)
+            # Si contiene tablas estructuradas (lattice o stream), NO es un brochure publicitario
+            if hasattr(page, 'find_tables'):
+                try:
+                    tables = page.find_tables().tables
+                    if len(tables) > 0:
+                        has_any_table = True
+                        score -= 6.0
+                except Exception:
+                    pass
+
+            # 1. Tamaño personalizado no estándar (Ej. tríptico / díptico comercial)
             is_standard = any(abs(w - sw) <= 12 and abs(h - sh) <= 12 for sw, sh in STANDARD_SIZES)
             if not is_standard:
                 score += 2.5
                 
-            # 2. Densidad de elementos gráficos y vectoriales
+            # 2. Densidad de elementos vectoriales decorativos (curvas bezier, polígonos rellenos)
             drawings = page.get_drawings()
-            if len(drawings) >= 80:
+            curve_drawings = [d for d in drawings if any(item[0] in ('c', 'v', 'y') for item in d.get('items', []))]
+            filled_drawings = [d for d in drawings if d.get('fill') is not None]
+
+            if len(curve_drawings) >= 20 or len(filled_drawings) >= 30:
                 score += 3.0
-            elif len(drawings) >= 30:
+            elif len(drawings) >= 80 and not has_any_table:
                 score += 1.5
 
             images = page.get_images()
@@ -78,11 +94,14 @@ def is_brochure_archetype(pdf_path: str, sample_pages: int = 4) -> bool:
             blocks = page.get_text("blocks")
             text_blocks = [b for b in blocks if b[6] == 0]
             x0_coords = [round(b[0], -1) for b in text_blocks]
-            if len(set(x0_coords)) >= 4:
-                score += 2.0
+            if len(set(x0_coords)) >= 5 and not has_any_table:
+                score += 1.5
+
+        if has_any_table:
+            return False
 
         avg_score = score / pages_to_check
-        return avg_score >= 3.0
+        return avg_score >= 4.5
     except Exception as e:
         print(f"Warning in is_brochure_archetype: {e}")
         return False

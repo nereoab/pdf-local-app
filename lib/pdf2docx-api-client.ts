@@ -17,14 +17,14 @@ export async function convertPdfToWordWithApi(
 ): Promise<Blob> {
   const onProgress = options?.onProgress;
   const initialMsg =
-    options?.engine === 'gemini'
-      ? 'Iniciando reconstrucción semántica con Gemini AI...'
-      : options?.engine === 'adobe'
-        ? 'Enviando a Adobe Acrobat Services...'
-        : options?.engine === 'cloudconvert'
-          ? 'Enviando a CloudConvert API v2 (Nube Privada)...'
+    options?.engine === 'adobe'
+      ? 'Enviando a Adobe Acrobat Services...'
+      : options?.engine === 'cloudconvert'
+        ? 'Enviando a CloudConvert API v2 (Nube Privada)...'
+        : options?.engine === 'local'
+          ? 'Compilando documento con Motor Local PyMuPDF...'
           : options?.engine === 'pdf2docx'
-            ? 'Iniciando motor pdf2docx (análisis de tablas y columnas)...'
+            ? 'Iniciando PDFBlack Ultra Engine (análisis geométrico y tablas Pro)...'
             : 'Enviando documento al motor de conversión...';
   onProgress?.(10, initialMsg);
 

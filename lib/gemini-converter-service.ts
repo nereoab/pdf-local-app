@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import * as XLSX from 'xlsx';
 import {
   Document,
@@ -105,72 +108,129 @@ function extractJsonFromText(rawText: string): string {
   return cleaned;
 }
 
+let cachedAgentPlatformToken: { token: string; expiresAt: number } | null = null;
+
 /**
- * Llama a la API de Google Gemini con prioridad en Gemini 3.7 Flash y fallback inteligente
+ * Obtiene token OAuth2 para Agent Platform / Vertex AI usando la cuenta de servicio local
+ * Esto consume directamente los créditos de Google Cloud / Firebase del proyecto.
+ */
+async function getAgentPlatformAccessToken(): Promise<string | null> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    if (cachedAgentPlatformToken && cachedAgentPlatformToken.expiresAt > now + 60) {
+      return cachedAgentPlatformToken.token;
+    }
+
+    const credentialsPath = path.join(process.cwd(), 'gsc-credentials.json');
+    if (!fs.existsSync(credentialsPath)) {
+      return null;
+    }
+
+    const creds = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    if (!creds.client_email || !creds.private_key) {
+      return null;
+    }
+
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const payload = {
+      iss: creds.client_email,
+      scope: 'https://www.googleapis.com/auth/cloud-platform',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: now + 3600,
+      iat: now,
+    };
+
+    const b64 = (obj: any) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+    const unsignedToken = `${b64(header)}.${b64(payload)}`;
+    const sign = crypto.createSign('RSA-SHA256');
+    sign.update(unsignedToken);
+    const signature = sign.sign(creds.private_key, 'base64url');
+    const assertion = `${unsignedToken}.${signature}`;
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion,
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn('[Agent Platform] OAuth token request failed:', await res.text());
+      return null;
+    }
+
+    const tokenData = await res.json();
+    if (tokenData.access_token) {
+      cachedAgentPlatformToken = {
+        token: tokenData.access_token,
+        expiresAt: now + (tokenData.expires_in || 3600),
+      };
+      return tokenData.access_token;
+    }
+  } catch (err: any) {
+    console.warn('[Agent Platform] Error acquiring OAuth access token:', err?.message);
+  }
+  return null;
+}
+
+/**
+ * Llama a la API de Gemini priorizando Gemini 4 Argon en Agent Platform (Google Cloud)
+ * y con fallback en cascada a Gemini Pro / Flash y AI Studio.
  */
 export async function callGeminiApi(
   prompt: string,
   base64File?: { data: string; mimeType: string },
 ): Promise<string> {
-  const apiKey = getGeminiApiKey();
-
-  if (!apiKey) {
-    throw new Error(
-      'GEMINI_API_KEY no está configurada. Agrega tu clave gratuita de Google AI Studio en .env.local o variables de entorno.',
-    );
-  }
-
-  // Modelos preferidos: Gemini 3.7 Flash como principal
-  const models = [
-    'gemini-3.7-flash',
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-latest',
-    'gemini-pro-latest',
+  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
+    { text: prompt },
   ];
 
-  const apiVersions = ['v1', 'v1beta'];
-  let lastError: Error | null = null;
+  if (base64File) {
+    parts.push({
+      inlineData: {
+        mimeType: base64File.mimeType,
+        data: base64File.data,
+      },
+    });
+  }
 
-  for (const version of apiVersions) {
-    for (const model of models) {
+  const requestPayload = JSON.stringify({
+    contents: [
+      {
+        role: 'user',
+        parts,
+      },
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      topK: 32,
+      topP: 0.95,
+      maxOutputTokens: 65536,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  // 1. Prioridad: Google Agent Platform con Gemini 4 Argon (utiliza saldo de Google Cloud/Firebase)
+  const token = await getAgentPlatformAccessToken();
+  if (token) {
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'pdfblack-proy';
+    const agentPlatformEndpoints = [
+      `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/global/publishers/google/models/gemini-4-argon:generateContent`,
+      `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent`,
+      `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`,
+    ];
+
+    for (const url of agentPlatformEndpoints) {
       try {
-        const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`;
-
-        const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
-          { text: prompt },
-        ];
-
-        if (base64File) {
-          parts.push({
-            inlineData: {
-              mimeType: base64File.mimeType,
-              data: base64File.data,
-            },
-          });
-        }
-
         const response = await fetch(url, {
           method: 'POST',
           headers: {
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts,
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              topK: 32,
-              topP: 0.95,
-              maxOutputTokens: 65536,
-              responseMimeType: 'application/json',
-            },
-          }),
+          body: requestPayload,
         });
 
         if (response.ok) {
@@ -178,23 +238,74 @@ export async function callGeminiApi(
           const textOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
           if (textOutput && textOutput.trim().length > 0) {
+            console.log(`[Agent Platform Engine] Respuesta exitosa con: ${url.split('/').pop()}`);
             return textOutput;
           }
         } else {
           const errorText = await response.text();
           console.warn(
-            `[Gemini Engine] [${version}/${model}] returned ${response.status}:`,
+            `[Agent Platform Engine] ${url.split('/').pop()} returned ${response.status}:`,
             errorText.substring(0, 150),
           );
         }
       } catch (err: any) {
-        lastError = err;
-        console.warn(`[Gemini Engine] Error en [${version}/${model}]:`, err?.message);
+        console.warn(`[Agent Platform Engine] Error en ${url}:`, err?.message);
       }
     }
   }
 
-  throw lastError || new Error('No se pudo obtener respuesta del motor Gemini AI.');
+  // 2. Fallback: Google AI Studio vía GEMINI_API_KEY
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    const models = [
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+      'gemini-3.7-flash',
+      'gemini-flash-latest',
+      'gemini-pro-latest',
+    ];
+    const apiVersions = ['v1beta', 'v1'];
+    let lastError: Error | null = null;
+
+    for (const version of apiVersions) {
+      for (const model of models) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${apiKey}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: requestPayload,
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const textOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (textOutput && textOutput.trim().length > 0) {
+              return textOutput;
+            }
+          } else {
+            const errorText = await response.text();
+            console.warn(
+              `[Gemini AI Studio] [${version}/${model}] returned ${response.status}:`,
+              errorText.substring(0, 150),
+            );
+          }
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[Gemini AI Studio] Error en [${version}/${model}]:`, err?.message);
+        }
+      }
+    }
+
+    if (lastError && !token) {
+      throw lastError;
+    }
+  }
+
+  throw new Error('No se pudo obtener respuesta ni de Agent Platform ni de Google AI Studio.');
 }
 
 /**
@@ -406,14 +517,6 @@ export async function convertPdfToWordWithGemini(
   fileName = 'document.pdf',
   options?: GeminiConversionOptions,
 ): Promise<Buffer> {
-  const apiKey = getGeminiApiKey();
-
-  if (!apiKey) {
-    throw new Error(
-      'GEMINI_API_KEY no está configurada en .env.local ni en las variables de entorno.',
-    );
-  }
-
   const prompt = `Eres un diseñador editorial y maquetador oficial de documentos de máxima precisión.
 Analiza este documento PDF (archivo: "${fileName}") y reconstruye su estructura completa en un modelo de bloques semántico en formato JSON puro.
 

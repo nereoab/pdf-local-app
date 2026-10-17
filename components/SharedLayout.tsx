@@ -30,6 +30,7 @@ import {
   getLanguageSwitchUrl,
   getUrlForLanguage,
 } from '@/lib/routes-config';
+import { PrivacyGuard } from '@/lib/security/privacy-guard';
 
 export default function SharedLayout({ children }: { children: React.ReactNode }) {
   const { lang, setLang } = useLanguage();
@@ -58,6 +59,10 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
   const { currentUser, logout, hydrate: hydrateAuth, isHydrated } = useAuthStore();
   const isHeaderHidden = useUIStore((s) => s.isHeaderHidden);
   const setHeaderHidden = useUIStore((s) => s.setHeaderHidden);
+
+  useEffect(() => {
+    PrivacyGuard.initialize();
+  }, []);
 
   useEffect(() => {
     setHeaderHidden(false);

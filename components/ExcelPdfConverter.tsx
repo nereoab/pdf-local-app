@@ -2299,10 +2299,10 @@ export default function ExcelPdfConverter({
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🤖 Gemini AI (Reconstructor de Cuadros)</span>
+                          <span>🤖 Gemini 4 Argon (Reconstructor de Cuadros)</span>
                         </span>
                         <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                          {isEs ? 'IA Reconstructora' : 'AI Reconstructor'}
+                          {isEs ? 'Gemini 4 Argon' : 'Gemini 4 Argon'}
                         </span>
                       </div>
                       <p className="text-[11px] text-zinc-400 leading-relaxed">
@@ -2465,7 +2465,7 @@ export default function ExcelPdfConverter({
                                 : '⚡ PDFBlack Local (Native Tables & Offline)'}
                             </option>
                             <option value="adobe">Adobe Acrobat Services</option>
-                            <option value="gemini">Gemini AI Structural Engine</option>
+                            <option value="gemini">Gemini 4 Argon (Google Enterprise AI)</option>
                             <option value="cloudconvert">CloudConvert API v2</option>
                           </select>
                         </div>

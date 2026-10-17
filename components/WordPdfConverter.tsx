@@ -189,7 +189,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const [includeImages, setIncludeImages] = useState<boolean>(true);
   const [conversionEngine, setConversionEngine] = useState<
     'adobe' | 'local' | 'pdf2docx' | 'cloudconvert'
-  >('adobe');
+  >('pdf2docx');
 
   // OPCIONES AVANZADAS WORD -> PDF (MEJORADAS)
   const [pageSize, setPageSize] = useState<PageSize>('a4');
@@ -232,13 +232,13 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     });
   }, [slots, activeSlotIndex, activeSlot]);
 
-  // AUTO-SELECCIÓN DE MOTOR SEGÚN NÚMERO DE PÁGINAS (>200 Motor Local / <=200 Adobe Acrobat)
+  // AUTO-SELECCIÓN DE MOTOR SEGÚN NÚMERO DE PÁGINAS (>200 Motor Local PyMuPDF / <=200 pdf2docx Ultra)
   useEffect(() => {
     queueMicrotask(() => {
       if (totalPages > 200) {
         setConversionEngine('local');
       } else if (totalPages > 0) {
-        setConversionEngine('adobe');
+        setConversionEngine('pdf2docx');
       }
     });
   }, [totalPages]);
@@ -2091,16 +2091,68 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                         <span className="text-[10px] text-zinc-400 font-mono">
                           {totalPages > 200
                             ? isEs
-                              ? '⚡ Auto: Motor Local (+200 págs)'
-                              : '⚡ Auto: Local Engine (200+ pgs)'
+                              ? '⚡ Auto: Motor Local PyMuPDF (+200 págs)'
+                              : '⚡ Auto: Local PyMuPDF Engine (200+ pgs)'
                             : isEs
-                              ? '🏆 Auto: Adobe Acrobat (≤200 págs)'
-                              : '🏆 Auto: Adobe Acrobat (≤200 pgs)'}
+                              ? '⚡ Auto: PDFBlack Ultra Engine (pdf2docx Pro)'
+                              : '⚡ Auto: PDFBlack Ultra Engine (pdf2docx Pro)'}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
+                        {/* OPCIÓN 1: MOTOR PDF2DOCX ULTRA HD (LOCAL EMPRESARIAL) */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('pdf2docx')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'pdf2docx'
+                              ? 'bg-purple-950/60 border-purple-400 ring-2 ring-purple-400/60 shadow-lg shadow-purple-950/50'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-purple-500/60 opacity-80 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>⚡ PDFBlack Ultra Engine (pdf2docx Pro)</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/25 text-purple-200 border border-purple-400/50">
+                              {isEs
+                                ? 'Recomendado • Nivel Adobe Acrobat'
+                                : 'Recommended • Adobe Level'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-300 leading-relaxed">
+                            {isEs
+                              ? 'Reconstrucción geométrica avanzada de cuadrículas, tablas sin bordes, presupuestos y columnas. 100% privado en tu servidor.'
+                              : 'Advanced geometric reconstruction for tables, columns & budgets. 100% private on your server.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 2: MOTOR LOCAL PYMUPDF (INSTANTÁNEO) */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('local')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
+                            conversionEngine === 'local'
+                              ? 'bg-blue-950/60 border-blue-400 ring-2 ring-blue-400/60 shadow-lg shadow-blue-950/50'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-blue-500/60 opacity-80 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <span>⚡ Motor Local PyMuPDF</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              {isEs ? 'Instantáneo (~0.5s)' : 'Instant (~0.5s)'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-300 leading-relaxed">
+                            {isEs
+                              ? 'Párrafos fluidos y limpios con desguionado inteligente. 100% privado en RAM, ideal para libros, novelas y contratos.'
+                              : 'Clean flowing paragraphs & smart de-hyphenation. 100% private in RAM, ideal for books & contracts.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 3: ADOBE ACROBAT SERVICES */}
                         <button
                           type="button"
                           onClick={() => {
@@ -2140,7 +2192,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                           </p>
                         </button>
 
-                        {/* OPCIÓN 2: CLOUDCONVERT API */}
+                        {/* OPCIÓN 4: CLOUDCONVERT API */}
                         <button
                           type="button"
                           onClick={() => setConversionEngine('cloudconvert')}
@@ -2162,56 +2214,6 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                             {isEs
                               ? 'Motor en la nube de alto rendimiento. Reconstruye el documento con maquetación fiel, estilos tipográficos e imágenes.'
                               : 'High-performance cloud processing engine. Faithful document layout with typography, styling and graphics.'}
-                          </p>
-                        </button>
-
-                        {/* OPCIÓN 3: MOTOR LOCAL ULTRA RÁPIDO */}
-                        <button
-                          type="button"
-                          onClick={() => setConversionEngine('local')}
-                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                            conversionEngine === 'local'
-                              ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
-                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                              <span>⚡ Motor Local PyMuPDF</span>
-                            </span>
-                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                              {isEs ? 'Instantáneo (~0.5s)' : 'Instant (~0.5s)'}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-zinc-400 leading-relaxed">
-                            {isEs
-                              ? 'Párrafos fluidos y limpios con desguionado inteligente. 100% privado en RAM, ideal para libros y novelas.'
-                              : 'Clean flowing paragraphs & smart de-hyphenation. 100% private in RAM, ideal for books.'}
-                          </p>
-                        </button>
-
-                        {/* OPCIÓN 4: MOTOR PDF2DOCX OFICIAL */}
-                        <button
-                          type="button"
-                          onClick={() => setConversionEngine('pdf2docx')}
-                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                            conversionEngine === 'pdf2docx'
-                              ? 'bg-purple-950/50 border-purple-400 ring-1 ring-purple-400/50 shadow-md'
-                              : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                              <span>📊 Motor pdf2docx (Python)</span>
-                            </span>
-                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                              {isEs ? 'Tablas & Columnas' : 'Tables & Columns'}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-zinc-400 leading-relaxed">
-                            {isEs
-                              ? 'Reconstrucción geométrica avanzada de cuadrículas, celdas combinadas y distribución multicolumna.'
-                              : 'Advanced geometric layout for complex tables, merged cells & multi-column text.'}
                           </p>
                         </button>
                       </div>

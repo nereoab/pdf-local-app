@@ -98,10 +98,10 @@ export async function POST(req: NextRequest) {
     const originalName = file.name.replace(/\.[^/.]+$/, '');
     const safeOutName = `${encodeURIComponent(originalName)}_Word.docx`;
 
-    // 1. Motor Gemini AI (Reconstrucción Semántica de Tablas y Párrafos desde Cero)
+    // 1. Motor Gemini 4 Argon AI (Reconstrucción Cognitiva y Semántica desde Cero)
     if (engine === 'gemini') {
       try {
-        console.log('[PDF-to-Word] Converting with Gemini AI Structural Engine...');
+        console.log('[PDF-to-Word] Converting with Gemini 4 Argon Structural Engine...');
         const geminiDocxBuffer = await convertPdfToWordWithGemini(activeBuffer, file.name, {
           pages: isSubSet ? undefined : pages || undefined,
         });
@@ -112,18 +112,16 @@ export async function POST(req: NextRequest) {
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': `attachment; filename="${safeOutName}"`,
             'Content-Length': geminiDocxBuffer.length.toString(),
+            'X-Conversion-Engine-Used': 'gemini-4-argon',
+            'X-Fallback-Triggered': 'false',
           },
         });
       } catch (geminiErr: any) {
-        console.error('[PDF-to-Word] Gemini AI error:', geminiErr);
-        return NextResponse.json(
-          {
-            error:
-              geminiErr?.message ||
-              'Error en el motor Gemini AI. Asegúrate de configurar GEMINI_API_KEY.',
-          },
-          { status: 400 },
+        console.warn(
+          '[PDF-to-Word] Gemini 4 Argon failover initiated:',
+          geminiErr?.message || geminiErr,
         );
+        // Continuar en cascada empresarial hacia Adobe / CloudConvert / Local
       }
     }
 
@@ -136,11 +134,8 @@ export async function POST(req: NextRequest) {
       process.env.PDF_SERVICES_CLIENT_ID && process.env.PDF_SERVICES_CLIENT_SECRET,
     );
 
-    // 2. Si el usuario seleccionó Adobe (o auto con <= 200 págs) y hay credenciales de Adobe
-    const preferAdobe =
-      (engine === 'adobe' ||
-        (engine === 'auto' && effectivePageCount > 0 && effectivePageCount <= 200)) &&
-      hasAdobeCredentials;
+    // 2. Si el usuario seleccionó explícitamente Adobe Acrobat y hay credenciales
+    const preferAdobe = engine === 'adobe' && hasAdobeCredentials;
 
     if (preferAdobe) {
       try {
@@ -153,6 +148,8 @@ export async function POST(req: NextRequest) {
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': `attachment; filename="${safeOutName}"`,
             'Content-Length': adobeDocxBuffer.length.toString(),
+            'X-Conversion-Engine-Used': 'adobe',
+            'X-Fallback-Triggered': engine !== 'adobe' ? 'true' : 'false',
           },
         });
       } catch (adobeErr) {
@@ -178,6 +175,8 @@ export async function POST(req: NextRequest) {
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': `attachment; filename="${safeOutName}"`,
             'Content-Length': cloudConvertDocxBuffer.length.toString(),
+            'X-Conversion-Engine-Used': 'cloudconvert',
+            'X-Fallback-Triggered': engine !== 'cloudconvert' ? 'true' : 'false',
           },
         });
       } catch (ccErr) {
@@ -260,6 +259,8 @@ export async function POST(req: NextRequest) {
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               'Content-Disposition': `attachment; filename="${safeOutName}"`,
               'Content-Length': docxBuffer.length.toString(),
+              'X-Conversion-Engine-Used': 'pdf2docx',
+              'X-Fallback-Triggered': engine !== 'pdf2docx' ? 'true' : 'false',
             },
           });
         } else {
@@ -338,6 +339,8 @@ export async function POST(req: NextRequest) {
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': `attachment; filename="${safeOutName}"`,
             'Content-Length': docxBuffer.length.toString(),
+            'X-Conversion-Engine-Used': 'local',
+            'X-Fallback-Triggered': engine !== 'local' ? 'true' : 'false',
           },
         });
       } else {
@@ -362,6 +365,8 @@ export async function POST(req: NextRequest) {
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'Content-Disposition': `attachment; filename="${safeOutName}"`,
             'Content-Length': adobeDocxBuffer.length.toString(),
+            'X-Conversion-Engine-Used': 'adobe',
+            'X-Fallback-Triggered': 'true',
           },
         });
       } catch (adobeErr) {
@@ -393,6 +398,8 @@ export async function POST(req: NextRequest) {
                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               'Content-Disposition': `attachment; filename="${safeOutName}"`,
               'Content-Length': docxArrayBuffer.byteLength.toString(),
+              'X-Conversion-Engine-Used': 'cloudrun',
+              'X-Fallback-Triggered': 'true',
             },
           });
         }

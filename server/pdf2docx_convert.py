@@ -695,7 +695,7 @@ def _do_convert(doc, output_docx_path, pages=None, layout_mode="flowing", includ
                         
                         for r_idx, row in enumerate(tbl_cells):
                             is_header_row = (r_idx == 0)
-                            tr_pr = "<w:tblHeader/>" if is_header_row else ""
+                            tr_pr = f"<w:cantSplit/>{'<w:tblHeader/>' if is_header_row else ''}"
                             
                             table_row_obj = tbl_rows[r_idx] if r_idx < len(tbl_rows) else None
                             row_cells_geom = table_row_obj.cells if (table_row_obj and hasattr(table_row_obj, 'cells')) else None
@@ -763,11 +763,12 @@ def _do_convert(doc, output_docx_path, pages=None, layout_mode="flowing", includ
                                             cell_bg_hex = bg_hex
                                             break
                                 
-                                if cell_bg_hex:
+                                if cell_bg_hex and cell_bg_hex.lower() not in ['000000', 'black']:
                                     tc_pr_parts.append(f'<w:shd w:val="clear" w:color="auto" w:fill="{cell_bg_hex}"/>')
                                 elif is_header_row and not is_borderless:
                                     tc_pr_parts.append('<w:shd w:val="clear" w:color="auto" w:fill="F2F4F7"/>')
                                 
+                                tc_pr_parts.append('<w:vAlign w:val="center"/>')
                                 tc_pr_parts.append('<w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="140" w:type="dxa"/><w:right w:w="140" w:type="dxa"/></w:tcMar>')
                                 
                                 paras_in_cell = []

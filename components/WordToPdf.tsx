@@ -16,7 +16,7 @@ import {
 import { WordIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '../context/LanguageContext';
-import JSZip from 'jszip';
+import { convertWordToPdfLocally } from '@/lib/high-fidelity-word2pdf-engine';
 
 type PageSize = 'a4' | 'letter' | 'legal';
 type PageOrientation = 'portrait' | 'landscape';
@@ -44,164 +44,19 @@ export default function WordToPdf() {
 
   const API_SECRET = process.env.NEXT_PUBLIC_CONVERTAPI_SECRET;
 
-  // Parsear .docx y pre-generar PDF local para vista previa
+  // Generador vectorial de alta fidelidad nivel Adobe Acrobat Enterprise
   const generarPdfLocal = useCallback(
     async (wordFile: File): Promise<Uint8Array> => {
-      const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
-      const pdfDoc = await PDFDocument.create();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-      // Configuración de dimensiones
-      let width = 595.28;
-      let height = 841.89;
-      if (pageSize === 'letter') {
-        width = orientation === 'landscape' ? 792 : 612;
-        height = orientation === 'landscape' ? 612 : 792;
-      } else if (pageSize === 'legal') {
-        width = orientation === 'landscape' ? 1008 : 612;
-        height = orientation === 'landscape' ? 612 : 1008;
-      } else {
-        width = orientation === 'landscape' ? 841.89 : 595.28;
-        height = orientation === 'landscape' ? 595.28 : 841.89;
-      }
-
-      const marginOffset = margin === 'narrow' ? 25 : margin === 'none' ? 10 : 45;
-
-      // Extraer texto de word/document.xml mediante JSZip
-      const extractedParagraphs: string[] = [];
-
-      try {
-        const zip = new JSZip();
-        const zipContent = await zip.loadAsync(await wordFile.arrayBuffer());
-        const documentXml = await zipContent.file('word/document.xml')?.async('text');
-
-        if (documentXml) {
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(documentXml, 'text/xml');
-          const pElements = xmlDoc.getElementsByTagName('w:p');
-
-          for (let i = 0; i < pElements.length; i++) {
-            const p = pElements[i];
-            const tElements = p.getElementsByTagName('w:t');
-            let pText = '';
-            for (let j = 0; j < tElements.length; j++) {
-              pText += tElements[j].textContent || '';
-            }
-            if (pText.trim().length > 0) {
-              extractedParagraphs.push(pText.trim());
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('No se pudo descomprimir el XML de Word, usando fallback básico:', e);
-      }
-
-      if (extractedParagraphs.length === 0) {
-        extractedParagraphs.push(`DOCUMENTO: ${wordFile.name.replace(/\.[^/.]+$/, '')}`);
-        extractedParagraphs.push('Contenido procesado y convertido desde el archivo Word.');
-      }
-
-      // Paginado y maquetación de texto en PDF
-      let currentPage = pdfDoc.addPage([width, height]);
-      let currentY = height - marginOffset - 20;
-
-      const drawWatermark = (p: any) => {
-        if (watermarkText.trim().length > 0) {
-          p.drawText(watermarkText.toUpperCase(), {
-            x: width / 5,
-            y: height / 2,
-            size: 36,
-            font: fontBold,
-            color: rgb(0.85, 0.15, 0.15),
-            opacity: 0.18,
-          });
-        }
-      };
-
-      drawWatermark(currentPage);
-
-      // Cabecera de documento
-      currentPage.drawText(wordFile.name.replace(/\.[^/.]+$/, '').toUpperCase(), {
-        x: marginOffset,
-        y: currentY,
-        size: 14,
-        font: fontBold,
-        color: rgb(0.1, 0.3, 0.7),
+      const pdfBlob = await convertWordToPdfLocally(wordFile, {
+        pageSize,
+        orientation,
+        margin,
+        watermarkText,
+        addPageNumbers: true,
+        includeWordDocHeader: false,
+        onProgress: (pct, msg) => setProgressMsg(msg),
       });
-      currentY -= 25;
-
-      const sanitizeText = (str: string) => {
-        return str
-          .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
-          .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
-          .replace(/[\u2013\u2014\u2015]/g, '-')
-          .replace(/\u2026/g, '...')
-          .replace(/\u00A0/g, ' ')
-          .replace(/[^\x00-\xFF]/g, (char) => {
-            const norm = char.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            return norm.length > 0 && norm.charCodeAt(0) <= 255 ? norm : '?';
-          });
-      };
-
-      const printableWidth = width - marginOffset * 2;
-      const fontSize = 10;
-      const lineHeight = 14;
-
-      for (const rawPara of extractedParagraphs) {
-        const para = sanitizeText(rawPara);
-        const words = para.split(' ');
-        let currentLine = '';
-
-        for (const word of words) {
-          const testLine = currentLine ? `${currentLine} ${word}` : word;
-          let testWidth = testLine.length * (fontSize * 0.52);
-          try {
-            testWidth = font.widthOfTextAtSize(testLine, fontSize);
-          } catch {}
-
-          if (testWidth > printableWidth) {
-            if (currentY < marginOffset + 30) {
-              currentPage = pdfDoc.addPage([width, height]);
-              drawWatermark(currentPage);
-              currentY = height - marginOffset - 20;
-            }
-            try {
-              currentPage.drawText(currentLine, {
-                x: marginOffset,
-                y: currentY,
-                size: fontSize,
-                font,
-                color: rgb(0.15, 0.15, 0.15),
-              });
-            } catch {}
-            currentY -= lineHeight;
-            currentLine = word;
-          } else {
-            currentLine = testLine;
-          }
-        }
-
-        if (currentLine) {
-          if (currentY < marginOffset + 30) {
-            currentPage = pdfDoc.addPage([width, height]);
-            drawWatermark(currentPage);
-            currentY = height - marginOffset - 20;
-          }
-          try {
-            currentPage.drawText(currentLine, {
-              x: marginOffset,
-              y: currentY,
-              size: fontSize,
-              font,
-              color: rgb(0.15, 0.15, 0.15),
-            });
-          } catch {}
-          currentY -= lineHeight + 6; // Espacio entre párrafos
-        }
-      }
-
-      return await pdfDoc.save();
+      return new Uint8Array(await pdfBlob.arrayBuffer());
     },
     [pageSize, orientation, margin, watermarkText],
   );

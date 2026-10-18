@@ -24,7 +24,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar código del servicio
-COPY main.py .
+COPY main.py brochure_engine.py .
 
 # Puerto para Google Cloud Run (inyección automática de PORT)
 ENV PORT=8080

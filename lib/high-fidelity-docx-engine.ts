@@ -185,9 +185,169 @@ function parseColorsFromDecodedStream(
   return colorMap;
 }
 
+interface DetectedGridCell {
+  colIndex: number;
+  colSpan: number;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  isBold: boolean;
+  isNumeric: boolean;
+  linkUrl?: string;
+}
+
+interface DetectedGridRow {
+  cells: DetectedGridCell[];
+  isHeader: boolean;
+}
+
+interface DetectedGridTable {
+  colWidthsDxa: number[];
+  rows: DetectedGridRow[];
+  items: Set<ExtractedTextItem>;
+}
+
+function detectTablesFromPageTexts(
+  texts: ExtractedTextItem[],
+  pageWidthPt: number,
+): {
+  tables: DetectedGridTable[];
+  tableItemSet: Set<ExtractedTextItem>;
+} {
+  const tableItemSet = new Set<ExtractedTextItem>();
+  const tables: DetectedGridTable[] = [];
+
+  if (texts.length < 4) return { tables, tableItemSet };
+
+  // 1. Agrupar por líneas horizontales con tolerancia de 4 pt
+  const lineMap = new Map<number, ExtractedTextItem[]>();
+  for (const t of texts) {
+    const roundedY = Math.round(t.y / 4) * 4;
+    if (!lineMap.has(roundedY)) lineMap.set(roundedY, []);
+    lineMap.get(roundedY)!.push(t);
+  }
+
+  const sortedYs = Array.from(lineMap.keys()).sort((a, b) => a - b);
+  const multiColRows: { y: number; items: ExtractedTextItem[] }[] = [];
+
+  for (const y of sortedYs) {
+    const rawItems = lineMap.get(y) || [];
+    const items = rawItems.sort((a, b) => a.x - b.x);
+    if (items.length >= 2) {
+      multiColRows.push({ y, items });
+    }
+  }
+
+  if (multiColRows.length < 2) return { tables, tableItemSet };
+
+  // 2. Agrupar filas consecutivas que formen bloques tabulares (distancia Y <= 32 pt)
+  const clusters: { y: number; items: ExtractedTextItem[] }[][] = [];
+  let currentCluster: { y: number; items: ExtractedTextItem[] }[] = [];
+
+  for (let i = 0; i < multiColRows.length; i++) {
+    const row = multiColRows[i];
+    if (currentCluster.length === 0) {
+      currentCluster.push(row);
+    } else {
+      const prevRow = currentCluster[currentCluster.length - 1];
+      if (row.y - prevRow.y <= 32 && row.y - prevRow.y >= 7) {
+        currentCluster.push(row);
+      } else {
+        if (currentCluster.length >= 2) clusters.push([...currentCluster]);
+        currentCluster = [row];
+      }
+    }
+  }
+  if (currentCluster.length >= 2) clusters.push(currentCluster);
+
+  // 3. Convertir clusters válidos en estructuras de tabla OpenXML
+  for (const cluster of clusters) {
+    const colStarts: number[] = [];
+    cluster.forEach((r) => {
+      r.items.forEach((it) => {
+        if (!colStarts.some((c) => Math.abs(c - it.x) <= 20)) {
+          colStarts.push(it.x);
+        }
+      });
+    });
+    colStarts.sort((a, b) => a - b);
+
+    if (colStarts.length < 2) continue;
+
+    // Anchos de columna en dxa
+    const colWidthsDxa: number[] = [];
+    const usableWPt = pageWidthPt - 80;
+    for (let c = 0; c < colStarts.length; c++) {
+      const nextX =
+        c < colStarts.length - 1 ? colStarts[c + 1] : Math.min(colStarts[c] + 160, usableWPt);
+      const wPt = Math.max(45, nextX - colStarts[c]);
+      colWidthsDxa.push(ptToDxa(wPt));
+    }
+
+    const tableItemsInCluster = new Set<ExtractedTextItem>();
+    const rows: DetectedGridRow[] = [];
+
+    cluster.forEach((r, rIdx) => {
+      const isHeader = rIdx === 0 && (r.items.some((it) => it.isBold) || cluster.length > 2);
+      const cells: DetectedGridCell[] = [];
+
+      for (let c = 0; c < colStarts.length; c++) {
+        const colX = colStarts[c];
+        const nextX = c < colStarts.length - 1 ? colStarts[c + 1] : 99999;
+
+        const matched = r.items.filter((it) => it.x >= colX - 15 && it.x < nextX - 10);
+        let cellText = '';
+        let fontSize = 10;
+        let fontFamily = 'Calibri';
+        let color = '1E293B';
+        let isBold = isHeader;
+        let linkUrl: string | undefined;
+
+        if (matched.length > 0) {
+          matched.forEach((m) => {
+            cellText += (cellText ? ' ' : '') + m.text;
+            tableItemsInCluster.add(m);
+            fontSize = m.fontSize;
+            fontFamily = m.fontFamily;
+            color = m.color;
+            if (m.isBold) isBold = true;
+            if (m.linkUrl) linkUrl = m.linkUrl;
+          });
+        }
+
+        const isNumeric = /^[\$€£S\/\.\s\-]*\d+([,\.]\d+)?%?$/.test(cellText.trim());
+
+        cells.push({
+          colIndex: c,
+          colSpan: 1,
+          text: cellText.trim(),
+          fontSize: Math.max(8, fontSize - 1),
+          fontFamily,
+          color,
+          isBold,
+          isNumeric,
+          linkUrl,
+        });
+      }
+
+      rows.push({ cells, isHeader });
+    });
+
+    tableItemsInCluster.forEach((it) => tableItemSet.add(it));
+    tables.push({
+      colWidthsDxa,
+      rows,
+      items: tableItemsInCluster,
+    });
+  }
+
+  return { tables, tableItemSet };
+}
+
 /**
  * Engine Ultra HD de Conversión de PDF a Word (.docx)
- * Produce resultados con fidelidad milimétrica visual idéntica o superior a iLovePDF
+ * Produce resultados con fidelidad milimétrica visual idéntica o superior a Adobe Acrobat
  */
 export async function convertPdfToUltraDocx(
   file: File,
@@ -827,40 +987,202 @@ export async function convertPdfToUltraDocx(
 </w:p>`;
       });
     } else {
-      // ─── MODO FLUIDO: PÁRRAFOS CONTINUOS Y TABLAS (ESTILO EDITORIAL) ───
-      page.texts.forEach((txt) => {
-        const halfSize = Math.round(txt.fontSize * 2);
-        const fontName = escapeXml(txt.fontFamily);
-        const textContentEsc = escapeXml(txt.text);
-        const linkRId = txt.linkUrl ? hyperlinkMap.get(txt.linkUrl) : undefined;
+      // ─── MODO FLUIDO DE NIVEL ADOBE ENTERPRISE: TABLAS ESTRUCTURADAS Y PÁRRAFOS CONTINUOS ───
+      const { tables, tableItemSet } =
+        options.detectTables !== false
+          ? detectTablesFromPageTexts(page.texts, page.widthPt)
+          : { tables: [], tableItemSet: new Set<ExtractedTextItem>() };
 
-        let runXml = `
-        <w:r>
-          <w:rPr>
-            <w:rFonts w:ascii="${fontName}" w:hAnsi="${fontName}"/>
-            <w:color w:val="${txt.linkUrl ? '0066CC' : txt.color}"/>
-            <w:sz w:val="${halfSize}"/>
-            ${txt.isBold ? '<w:b/>' : ''}
-            ${txt.isItalic ? '<w:i/>' : ''}
-            ${txt.linkUrl ? '<w:u w:val="single"/>' : ''}
-          </w:rPr>
-          <w:t xml:space="preserve">${textContentEsc}</w:t>
-        </w:r>`;
+      // 1. Emitir Tablas OpenXML Corporativas
+      for (const tbl of tables) {
+        let tableRowsXml = '';
+        for (let rIdx = 0; rIdx < tbl.rows.length; rIdx++) {
+          const row = tbl.rows[rIdx];
+          let cellsXml = '';
 
-        if (linkRId) {
-          runXml = `<w:hyperlink r:id="${linkRId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${runXml}</w:hyperlink>`;
+          for (const cell of row.cells) {
+            const fontName = escapeXml(cell.fontFamily || 'Calibri');
+            const colWidth = tbl.colWidthsDxa[cell.colIndex] || 1440;
+            const halfSize = Math.round(cell.fontSize * 2);
+            const linkRId = cell.linkUrl ? hyperlinkMap.get(cell.linkUrl) : undefined;
+            const isHdr = row.isHeader;
+            const bgFill = isHdr ? 'F1F5F9' : rIdx % 2 === 1 ? 'F8FAFC' : 'FFFFFF';
+
+            let runXml = `
+              <w:r>
+                <w:rPr>
+                  <w:rFonts w:ascii="${fontName}" w:hAnsi="${fontName}"/>
+                  <w:color w:val="${isHdr ? '1E3A8A' : cell.color}"/>
+                  <w:sz w:val="${halfSize}"/>
+                  ${cell.isBold || isHdr ? '<w:b/>' : ''}
+                </w:rPr>
+                <w:t xml:space="preserve">${escapeXml(cell.text)}</w:t>
+              </w:r>`;
+
+            if (linkRId) {
+              runXml = `<w:hyperlink r:id="${linkRId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${runXml}</w:hyperlink>`;
+            }
+
+            cellsXml += `
+            <w:tc>
+              <w:tcPr>
+                <w:tcW w:w="${colWidth}" w:type="dxa"/>
+                ${cell.colSpan > 1 ? `<w:gridSpan w:val="${cell.colSpan}"/>` : ''}
+                <w:vAlign w:val="center"/>
+                <w:tcMar>
+                  <w:top w:w="80" w:type="dxa"/>
+                  <w:bottom w:w="80" w:type="dxa"/>
+                  <w:left w:w="120" w:type="dxa"/>
+                  <w:right w:w="120" w:type="dxa"/>
+                </w:tcMar>
+                <w:shd w:val="clear" w:color="auto" w:fill="${bgFill}"/>
+              </w:tcPr>
+              <w:p>
+                <w:pPr>
+                  <w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>
+                  <w:jc w:val="${cell.isNumeric ? 'right' : 'left'}"/>
+                  ${cell.isNumeric ? '<w:ind w:right="80"/>' : ''}
+                </w:pPr>
+                ${runXml}
+              </w:p>
+            </w:tc>`;
+          }
+
+          tableRowsXml += `
+          <w:tr>
+            <w:trPr>
+              <w:cantSplit/>
+              ${row.isHeader ? '<w:tblHeader/>' : ''}
+            </w:trPr>
+            ${cellsXml}
+          </w:tr>`;
         }
+
+        docBodyXml += `
+<w:tbl>
+  <w:tblPr>
+    <w:tblW w:w="0" w:type="auto"/>
+    <w:jc w:val="center"/>
+    <w:tblBorders>
+      <w:top w:val="single" w:sz="6" w:space="0" w:color="CBD5E1"/>
+      <w:left w:val="none"/>
+      <w:bottom w:val="single" w:sz="8" w:space="0" w:color="94A3B8"/>
+      <w:right w:val="none"/>
+      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="E2E8F0"/>
+      <w:insideV w:val="none"/>
+    </w:tblBorders>
+  </w:tblPr>
+  <w:tblGrid>
+    ${tbl.colWidthsDxa.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}
+  </w:tblGrid>
+  ${tableRowsXml}
+</w:tbl>`;
+      }
+
+      // 2. Agrupar el texto restante fuera de tablas en Párrafos Continuos Reales
+      const nonTableTexts = page.texts.filter((t) => !tableItemSet.has(t));
+      const paragraphs: {
+        runs: ExtractedTextItem[];
+        isHeading: boolean;
+        headingLevel: number;
+        alignment: string;
+      }[] = [];
+
+      let currentParaRuns: ExtractedTextItem[] = [];
+      for (let i = 0; i < nonTableTexts.length; i++) {
+        const item = nonTableTexts[i];
+        if (currentParaRuns.length === 0) {
+          currentParaRuns.push(item);
+          continue;
+        }
+
+        const prev = currentParaRuns[currentParaRuns.length - 1];
+        const isPrevHeading = prev.fontSize >= 14 || (prev.isBold && prev.fontSize >= 13);
+        const isCurrentHeading = item.fontSize >= 14 || (item.isBold && item.fontSize >= 13);
+        const lineDeltaY = item.y - prev.y;
+
+        // Si la línea continúa el flujo natural del párrafo (misma sangría y salto interlineal normal)
+        if (
+          !isPrevHeading &&
+          !isCurrentHeading &&
+          lineDeltaY > 0 &&
+          lineDeltaY <= Math.max(14, prev.fontSize * 1.6) &&
+          Math.abs(item.x - prev.x) <= 24
+        ) {
+          currentParaRuns.push(item);
+        } else {
+          // Cerrar párrafo anterior
+          const pFontSize = currentParaRuns[0]?.fontSize || 11;
+          const pIsHeading = pFontSize >= 14 || (currentParaRuns[0]?.isBold && pFontSize >= 13);
+          const pHeadingLevel = pFontSize >= 17 ? 1 : pFontSize >= 14 ? 2 : 3;
+          paragraphs.push({
+            runs: currentParaRuns,
+            isHeading: pIsHeading,
+            headingLevel: pHeadingLevel,
+            alignment: pIsHeading ? 'left' : 'both',
+          });
+          currentParaRuns = [item];
+        }
+      }
+
+      if (currentParaRuns.length > 0) {
+        const pFontSize = currentParaRuns[0]?.fontSize || 11;
+        const pIsHeading = pFontSize >= 14 || (currentParaRuns[0]?.isBold && pFontSize >= 13);
+        const pHeadingLevel = pFontSize >= 17 ? 1 : pFontSize >= 14 ? 2 : 3;
+        paragraphs.push({
+          runs: currentParaRuns,
+          isHeading: pIsHeading,
+          headingLevel: pHeadingLevel,
+          alignment: pIsHeading ? 'left' : 'both',
+        });
+      }
+
+      // Emitir párrafos agrupados con tipografía y espaciado proporcional
+      for (const p of paragraphs) {
+        let pRunsXml = '';
+        for (let rIdx = 0; rIdx < p.runs.length; rIdx++) {
+          const run = p.runs[rIdx];
+          const halfSize = Math.round(run.fontSize * 2);
+          const fontName = escapeXml(run.fontFamily);
+          const textContentEsc = escapeXml(run.text);
+          const linkRId = run.linkUrl ? hyperlinkMap.get(run.linkUrl) : undefined;
+          const addSpace = rIdx > 0 && !run.text.startsWith(' ');
+
+          let rXml = `
+          <w:r>
+            <w:rPr>
+              <w:rFonts w:ascii="${fontName}" w:hAnsi="${fontName}"/>
+              <w:color w:val="${run.linkUrl ? '0066CC' : p.isHeading ? (p.headingLevel === 1 ? '1F4E79' : '2E75B6') : run.color}"/>
+              <w:sz w:val="${halfSize}"/>
+              ${run.isBold || p.isHeading ? '<w:b/>' : ''}
+              ${run.isItalic ? '<w:i/>' : ''}
+              ${run.linkUrl ? '<w:u w:val="single"/>' : ''}
+            </w:rPr>
+            <w:t xml:space="preserve">${addSpace ? ' ' : ''}${textContentEsc}</w:t>
+          </w:r>`;
+
+          if (linkRId) {
+            rXml = `<w:hyperlink r:id="${linkRId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${rXml}</w:hyperlink>`;
+          }
+
+          pRunsXml += rXml;
+        }
+
+        const spacingBefore = p.isHeading ? (p.headingLevel === 1 ? 160 : 120) : 40;
+        const spacingAfter = p.isHeading ? 60 : 70;
 
         docBodyXml += `
 <w:p>
   <w:pPr>
-    <w:spacing w:before="60" w:after="60" w:line="260" w:lineRule="auto"/>
-    <w:ind w:left="${Math.round(txt.x * 12)}"/>
+    <w:spacing w:before="${spacingBefore}" w:after="${spacingAfter}" w:line="276" w:lineRule="auto"/>
+    <w:jc w:val="${p.alignment}"/>
+    <w:ind w:left="${Math.round(p.runs[0]?.x * 8 || 0)}"/>
   </w:pPr>
-  ${runXml}
+  ${pRunsXml}
 </w:p>`;
-      });
+      }
 
+      // 3. Emitir imágenes inline con proporciones exactas
       page.images.forEach((img) => {
         const widthEmu = ptToEmu(img.width);
         const heightEmu = ptToEmu(img.height);

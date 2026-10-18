@@ -28,7 +28,7 @@ export default function PdfToWord({ onSuccess }: PdfToWordProps) {
   const isEs = lang === 'es';
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { globalFile, setGlobalFile } = useFileStore();
+  const { globalFile, setGlobalFile, clearGlobalFile } = useFileStore();
 
   const [file, setFile] = useState<File | null>(() => globalFile || null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -150,7 +150,7 @@ export default function PdfToWord({ onSuccess }: PdfToWordProps) {
     } catch (err) {
       console.warn('API error, fallback to local ultra engine:', err);
       return await convertPdfToUltraDocx(fileToConvert, {
-        layoutMode: 'exact',
+        layoutMode,
         includeImages,
         detectTables: true,
         onProgress: (pct, msg) => {
@@ -198,12 +198,14 @@ export default function PdfToWord({ onSuccess }: PdfToWordProps) {
   const resetConverter = () => {
     setFile(null);
     setGlobalFile(null);
+    clearGlobalFile();
     setDownloadUrl(null);
     setCompletedBlob(null);
     setPageDataUrls({});
     setTotalPages(0);
     setProgressPct(0);
     setProgressMsg('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (

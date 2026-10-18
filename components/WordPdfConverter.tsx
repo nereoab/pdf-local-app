@@ -33,9 +33,9 @@ import { motion } from 'framer-motion';
 import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
 import { convertPdfToUltraDocx } from '@/lib/high-fidelity-docx-engine';
+import { convertWordToPdfLocally } from '@/lib/high-fidelity-word2pdf-engine';
 import { convertPdfToWordWithApi } from '@/lib/pdf2docx-api-client';
 import { convertWithApi } from '@/lib/adobe-api-client';
-import mammoth from 'mammoth';
 
 type ConversionDirection = 'word-to-pdf' | 'pdf-to-word';
 type PageSize = 'a4' | 'letter' | 'legal';
@@ -110,7 +110,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const topHeaderRef = useRef<HTMLDivElement>(null);
   const successContainerRef = useRef<HTMLDivElement>(null);
   const cancelRenderRef = useRef<boolean>(false);
-  const { globalFile, setGlobalFile } = useFileStore();
+  const { globalFile, setGlobalFile, clearGlobalFile } = useFileStore();
 
   const [mode, setMode] = useState<ConversionDirection>(defaultMode);
 
@@ -388,11 +388,14 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     try {
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        typeof window !== 'undefined'
+          ? '/pdfjs/pdf.worker.min.mjs'
+          : `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
       const pdfDoc = await pdfjsLib.getDocument({
         data: arrayBuffer.slice(0),
-        cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
         cMapPacked: true,
       }).promise;
 
@@ -425,26 +428,50 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     });
   }, [file, parsePdfPageCount, prepararWordDocCompleto]);
 
-  const handleClearAllSlots = () => {
+  const handleFullReset = useCallback(() => {
+    cancelRenderRef.current = false;
+    initialGlobalFileLoadedRef.current = false;
+
+    // 1. Limpiar slots y previsualizaciones al estado inicial
     setSlots([
       { id: 'slot-1', file: null, pageDataUrls: {}, totalPages: 0 },
       { id: 'slot-2', file: null, pageDataUrls: {}, totalPages: 0 },
       { id: 'slot-3', file: null, pageDataUrls: {}, totalPages: 0 },
     ]);
     setActiveSlotIndex(0);
+
+    // 2. Limpiar estados de archivo y store global
     setFile(null);
+    setGlobalFile(null);
+    clearGlobalFile();
     setCompletedResult(null);
+    setDownloadUrl(null);
+    setDownloadFilename('');
+    setParsedWordDoc(null);
+    setTotalPages(0);
+    setActivePage(1);
+    setSelectedPageSet(new Set());
+
+    // 3. Limpiar estados de progreso y visibilidad de cabecera
+    setIsProcessing(false);
+    setProgressMsg('');
+    setProgressPercent(0);
+    setHeaderHidden(false);
+
+    // 4. Limpiar inputs nativos del DOM
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (inputRef0.current) inputRef0.current.value = '';
+    if (inputRef1.current) inputRef1.current.value = '';
+    if (inputRef2.current) inputRef2.current.value = '';
+  }, [clearGlobalFile, setGlobalFile, setHeaderHidden]);
+
+  const handleClearAllSlots = () => {
+    handleFullReset();
   };
 
   const handleSwitchMode = (newMode: ConversionDirection) => {
-    cancelRenderRef.current = true;
-    handleClearAllSlots();
+    handleFullReset();
     setMode(newMode);
-    setGlobalFile(null);
-    setDownloadUrl(null);
-    setCompletedResult(null);
-    setCompletedResult(null);
-    setHeaderHidden(false);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -476,10 +503,13 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
         try {
           const arrayBuffer = await newFile.arrayBuffer();
           const pdfjsLib = await import('pdfjs-dist');
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            typeof window !== 'undefined'
+              ? '/pdfjs/pdf.worker.min.mjs'
+              : `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
           const pdf = await pdfjsLib.getDocument({
             data: arrayBuffer.slice(0),
-            cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
             cMapPacked: true,
           }).promise;
 
@@ -518,15 +548,59 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
           console.warn('Error previsualizando PDF en slot', slotIdx, err);
         }
       } else {
-        // Archivo Word: procesar documento
+        // Archivo Word: procesar documento y generar previsualización gráfica vectorial
         try {
           const parsed = await parseDocxDetails(newFile);
+          let count = parsed.estPages || 1;
+          const pageUrls: Record<number, string> = {};
+
+          try {
+            const previewBlob = await convertWordToPdfLocally(newFile, {
+              pageSize,
+              orientation,
+              margin,
+              addPageNumbers: true,
+            });
+            const pdfjsLib = await import('pdfjs-dist');
+            pdfjsLib.GlobalWorkerOptions.workerSrc =
+              typeof window !== 'undefined'
+                ? '/pdfjs/pdf.worker.min.mjs'
+                : `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+            const arrayBuffer = await previewBlob.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({
+              data: arrayBuffer.slice(0),
+              cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
+              cMapPacked: true,
+            }).promise;
+
+            count = pdf.numPages;
+            const maxPages = Math.min(count, 5);
+            for (let p = 1; p <= maxPages; p++) {
+              const page = await pdf.getPage(p);
+              const vp = page.getViewport({ scale: 1.2 });
+              const canvas = document.createElement('canvas');
+              canvas.width = vp.width;
+              canvas.height = vp.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                await page.render({ canvasContext: ctx, viewport: vp } as unknown as Parameters<
+                  typeof page.render
+                >[0]).promise;
+                pageUrls[p] = canvas.toDataURL('image/png', 0.85);
+              }
+            }
+          } catch (prevErr) {
+            console.warn('Fallback a conteo estimado para Word:', prevErr);
+          }
+
           setSlots((prev) => {
             const next = [...prev];
             if (next[slotIdx]) {
               next[slotIdx] = {
                 ...next[slotIdx],
-                totalPages: parsed.estPages || 1,
+                pageDataUrls: pageUrls,
+                totalPages: count,
+                thumbnailUrl: pageUrls[1] || '',
               };
             }
             return next;
@@ -549,19 +623,19 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
 
   const handleRemoveSlot = (index: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setSlots((prev) => {
-      const next = [...prev];
-      next[index] = { id: `slot-${index + 1}`, file: null, pageDataUrls: {}, totalPages: 0 };
-      return next;
-    });
-    const remaining = slots
+    const nextSlots = [...slots];
+    nextSlots[index] = { id: `slot-${index + 1}`, file: null, pageDataUrls: {}, totalPages: 0 };
+    setSlots(nextSlots);
+
+    const remaining = nextSlots
       .map((s, idx) => ({ s, idx }))
-      .filter((item) => item.idx !== index && item.s.file !== null);
+      .filter((item) => item.s.file !== null);
+
     if (remaining.length > 0) {
       setActiveSlotIndex(remaining[0].idx);
+      setFile(remaining[0].s.file);
     } else {
-      setActiveSlotIndex(0);
-      setFile(null);
+      handleFullReset();
     }
   };
 
@@ -673,15 +747,68 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   }, [globalFile, defaultMode, loadFilesIntoSlots]);
 
   const handleRemoveFile = () => {
-    cancelRenderRef.current = true;
-    setFile(null);
-    setGlobalFile(null);
-    setDownloadUrl(null);
-    setParsedWordDoc(null);
-    setCompletedResult(null);
-    setHeaderHidden(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    handleFullReset();
   };
+
+  // RENDERIZADO DINÁMICO ON-DEMAND PARA EL VISOR (Garantiza que la página activa siempre se visualice sin cuelgues)
+  useEffect(() => {
+    if (!file || !file.name.toLowerCase().endsWith('.pdf') || totalPages <= 0) return;
+    if (activeSlot.pageDataUrls && activeSlot.pageDataUrls[activePage]) return;
+
+    let isCancelled = false;
+    const renderActivePage = async () => {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          typeof window !== 'undefined'
+            ? '/pdfjs/pdf.worker.min.mjs'
+            : `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+        const pdf = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/cmaps/',
+          cMapPacked: true,
+        }).promise;
+
+        if (isCancelled) return;
+        const page = await pdf.getPage(activePage);
+        const vp = page.getViewport({ scale: 1.2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(vp.width);
+        canvas.height = Math.ceil(vp.height);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          await page.render({ canvasContext: ctx, viewport: vp } as unknown as Parameters<
+            typeof page.render
+          >[0]).promise;
+          if (isCancelled) return;
+          const url = canvas.toDataURL('image/png', 0.85);
+          setSlots((prev) => {
+            const next = [...prev];
+            if (next[activeSlotIndex]) {
+              next[activeSlotIndex] = {
+                ...next[activeSlotIndex],
+                pageDataUrls: {
+                  ...next[activeSlotIndex].pageDataUrls,
+                  [activePage]: url,
+                },
+                thumbnailUrl: next[activeSlotIndex].thumbnailUrl || url,
+              };
+            }
+            return next;
+          });
+        }
+      } catch (err) {
+        console.warn('Error renderizando página activa en visor:', activePage, err);
+      }
+    };
+
+    renderActivePage();
+    return () => {
+      isCancelled = true;
+    };
+  }, [file, activePage, totalPages, activeSlot, activeSlotIndex]);
 
   const handleSelectAll = () => {
     if (totalPages > 0) {
@@ -703,32 +830,6 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
     }
     setSelectedPageSet(inverted);
     setPageSelectionMode('custom');
-  };
-
-  const getDimensions = (): [number, number] => {
-    let width = 595.28;
-    let height = 841.89;
-
-    if (pageSize === 'letter') {
-      width = 612;
-      height = 792;
-    } else if (pageSize === 'legal') {
-      width = 612;
-      height = 1008;
-    }
-
-    if (orientation === 'landscape') {
-      return [height, width];
-    }
-    return [width, height];
-  };
-
-  const getMarginOffset = (): number => {
-    if (margin === 'narrow') return 28;
-    if (margin === 'moderate') return 42;
-    if (margin === 'wide') return 70;
-    if (margin === 'none') return 15;
-    return 50; // Normal
   };
 
   const executeConversion = async () => {
@@ -761,160 +862,67 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               : 'Compiling vector PDF with Local Engine...',
         );
 
-        try {
-          resultBlob = await convertWithApi(
-            '/api/convert/word-to-pdf',
-            file,
-            {
-              engine: conversionEngine,
+        if (conversionEngine === 'local') {
+          setProgressPercent(25);
+          setProgressMsg(
+            isEs
+              ? 'Compilando documento Word con Motor Vectorial Local Enterprise...'
+              : 'Compiling Word document with Local Enterprise Vector Engine...',
+          );
+          resultBlob = await convertWordToPdfLocally(file, {
+            pageSize,
+            orientation,
+            margin,
+            pdfFontFamily,
+            pdfFontSize,
+            pdfLineSpacing,
+            addPageNumbers,
+            includeWordDocHeader,
+            watermarkText,
+            onProgress: (pct, msg) => {
+              setProgressPercent(pct);
+              setProgressMsg(msg);
+            },
+          });
+        } else {
+          try {
+            resultBlob = await convertWithApi(
+              '/api/convert/word-to-pdf',
+              file,
+              {
+                engine: conversionEngine,
+                pageSize,
+                orientation,
+                margin,
+                pdfFontFamily,
+                pdfFontSize: pdfFontSize.toString(),
+                pdfLineSpacing: pdfLineSpacing.toString(),
+                addPageNumbers: addPageNumbers ? 'true' : 'false',
+                includeWordDocHeader: includeWordDocHeader ? 'true' : 'false',
+              },
+              (pct, msg) => {
+                setProgressPercent(pct);
+                setProgressMsg(msg);
+              },
+            );
+          } catch (apiErr) {
+            console.warn('API error, falling back to local Enterprise Word renderer:', apiErr);
+            resultBlob = await convertWordToPdfLocally(file, {
               pageSize,
               orientation,
               margin,
               pdfFontFamily,
-              pdfFontSize: pdfFontSize.toString(),
-              pdfLineSpacing: pdfLineSpacing.toString(),
-              addPageNumbers: addPageNumbers ? 'true' : 'false',
-              includeWordDocHeader: includeWordDocHeader ? 'true' : 'false',
-            },
-            (pct, msg) => {
-              setProgressPercent(pct);
-              setProgressMsg(msg);
-            },
-          );
-        } catch (apiErr) {
-          console.warn('API error, falling back to local Word renderer:', apiErr);
-
-          // Extraer texto plano y estructura desde .docx con Mammoth
-          const arrayBuffer = await file.arrayBuffer();
-          const extractResult = await mammoth.extractRawText({ arrayBuffer });
-          const rawText = extractResult.value || '';
-
-          setProgressPercent(30);
-
-          const pdfDoc = await PDFDocument.create();
-
-          let selectedFont = StandardFonts.Helvetica;
-          let selectedBoldFont = StandardFonts.HelveticaBold;
-          if (pdfFontFamily === 'times') {
-            selectedFont = StandardFonts.TimesRoman;
-            selectedBoldFont = StandardFonts.TimesRomanBold;
-          } else if (pdfFontFamily === 'courier') {
-            selectedFont = StandardFonts.Courier;
-            selectedBoldFont = StandardFonts.CourierBold;
-          }
-
-          const font = await pdfDoc.embedFont(selectedFont);
-          const boldFont = await pdfDoc.embedFont(selectedBoldFont);
-
-          const [dimW, dimH] = getDimensions();
-          const sideMargin = getMarginOffset();
-          const usableWidth = dimW - sideMargin * 2;
-
-          let page = pdfDoc.addPage([dimW, dimH]);
-          const title = file.name.replace(/\.[^/.]+$/, '');
-
-          if (includeWordDocHeader) {
-            page.drawText(title, {
-              x: sideMargin,
-              y: dimH - 45,
-              size: pdfFontSize + 5,
-              font: boldFont,
-              color: rgb(0.08, 0.12, 0.2),
-            });
-            page.drawText(
-              isEs
-                ? 'Documento compilado con PDFBlack Suite'
-                : 'Document compiled with PDFBlack Suite',
-              {
-                x: sideMargin,
-                y: dimH - 60,
-                size: 9,
-                font,
-                color: rgb(0.4, 0.45, 0.55),
+              pdfFontSize,
+              pdfLineSpacing,
+              addPageNumbers,
+              includeWordDocHeader,
+              watermarkText,
+              onProgress: (pct, msg) => {
+                setProgressPercent(pct);
+                setProgressMsg(msg);
               },
-            );
-            page.drawLine({
-              start: { x: sideMargin, y: dimH - 70 },
-              end: { x: dimW - sideMargin, y: dimH - 70 },
-              thickness: 1,
-              color: rgb(0.8, 0.85, 0.9),
             });
           }
-
-          let currentY = dimH - (includeWordDocHeader ? 95 : sideMargin);
-          const lineHeight = pdfFontSize * 1.35;
-          const paragraphs = rawText.split('\n');
-
-          for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
-            const p = paragraphs[pIdx].trim();
-            if (!p) {
-              currentY -= lineHeight * 0.7;
-              continue;
-            }
-
-            const words = p.split(' ');
-            let line = '';
-
-            for (let i = 0; i < words.length; i++) {
-              const testLine = line + (line ? ' ' : '') + words[i];
-              const testWidth = font.widthOfTextAtSize(testLine, pdfFontSize);
-
-              if (testWidth > usableWidth && line !== '') {
-                if (currentY < sideMargin + 30) {
-                  page = pdfDoc.addPage([dimW, dimH]);
-                  currentY = dimH - sideMargin;
-                }
-
-                page.drawText(line, {
-                  x: sideMargin,
-                  y: currentY,
-                  size: pdfFontSize,
-                  font,
-                  color: rgb(0.12, 0.14, 0.18),
-                });
-
-                currentY -= lineHeight;
-                line = words[i];
-              } else {
-                line = testLine;
-              }
-            }
-
-            if (line) {
-              if (currentY < sideMargin + 30) {
-                page = pdfDoc.addPage([dimW, dimH]);
-                currentY = dimH - sideMargin;
-              }
-
-              page.drawText(line, {
-                x: sideMargin,
-                y: currentY,
-                size: pdfFontSize,
-                font,
-                color: rgb(0.12, 0.14, 0.18),
-              });
-
-              currentY -= lineHeight;
-            }
-            currentY -= 6;
-          }
-
-          if (addPageNumbers) {
-            const pages = pdfDoc.getPages();
-            pages.forEach((p, idx) => {
-              p.drawText(`Página ${idx + 1} de ${pages.length}`, {
-                x: dimW / 2 - 35,
-                y: 20,
-                size: 9,
-                font,
-                color: rgb(0.5, 0.5, 0.5),
-              });
-            });
-          }
-
-          setProgressPercent(85);
-          const pdfBytes = await pdfDoc.save();
-          resultBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
         }
 
         localUrl = URL.createObjectURL(resultBlob);
@@ -1075,7 +1083,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
               </span>
             </div>
             <button
-              onClick={completedResult ? handleRemoveFile : handleClearAllSlots}
+              onClick={handleFullReset}
               className="p-1.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 border border-zinc-700 rounded-xl transition-all cursor-pointer"
               title={isEs ? 'Limpiar archivos' : 'Clear files'}
             >
@@ -1160,7 +1168,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                 {isEs ? 'págs procesadas' : 'pages processed'}
               </span>
             }
-            onReset={handleRemoveFile}
+            onReset={handleFullReset}
           />
         </div>
       ) : (

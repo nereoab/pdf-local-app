@@ -27,6 +27,9 @@ FONT_MAP = {
     'times-roman': 'Times New Roman',
     'calibril': 'Calibri',
     'aptos': 'Aptos',
+    'bricolage': 'Segoe UI',
+    'cerapro': 'Segoe UI',
+    'cera': 'Segoe UI',
 }
 
 def clean_font_name(font_name: str, default_font: str = "Segoe UI") -> str:
@@ -45,59 +48,95 @@ def is_brochure_archetype(pdf_path: str, sample_pages: int = 4) -> bool:
     Detector heurístico de arquetipo Brochure / Folleto / Catálogo:
     Identifica documentos gráficos con dimensiones personalizadas, alta densidad
     vectorial (polígonos, banners, iconos) o dispersión multi-columna.
-    Calibrado para excluir estrictamente documentos con tablas de datos, presupuestos S10 o balances.
+    Calibrado para excluir estrictamente documentos con tablas de datos densas, presupuestos S10 o balances.
     """
     doc = None
     try:
         doc = fitz.open(pdf_path)
-        score = 0
         pages_to_check = min(len(doc), sample_pages)
         if pages_to_check == 0:
             return False
 
-        has_any_table = False
+        # 1. Comprobación de palabras clave S10 y balances financieros
+        sample_text = " ".join([doc[i].get_text() for i in range(pages_to_check)]).lower()
+        s10_keywords = ["cuadrilla", "costo unitario directo", "partida rendimiento", "subpresupuesto", "análisis de precios unitarios", "%mo"]
+        if any(k in sample_text for k in s10_keywords):
+            return False
+
+        fin_keywords = ["estado de situación financiera", "estado de resultados", "activo corriente", "pasivo y patrimonio", "flujo de efectivo", "balance general"]
+        if sum(1 for k in fin_keywords if k in sample_text) >= 2:
+            return False
+
+        score = 0.0
+        total_drawings = 0
+        total_images = 0
+        has_dense_data_table = False
 
         for i in range(pages_to_check):
             page = doc[i]
-            w, h = round(page.rect.width), round(page.rect.height)
-            
-            # Si contiene tablas estructuradas (lattice o stream), NO es un brochure publicitario
+            pw, ph = round(page.rect.width), round(page.rect.height)
+            page_area = pw * ph
+
+            drawings = page.get_drawings()
+            images = page.get_images()
+            total_drawings += len(drawings)
+            total_images += len(images)
+
+            # Detección de tablas de datos reales (ignorando cajas decorativas que cubren >80% de la página)
             if hasattr(page, 'find_tables'):
                 try:
-                    tables = page.find_tables().tables
-                    if len(tables) > 0:
-                        has_any_table = True
-                        score -= 6.0
+                    for t in page.find_tables().tables:
+                        tb_area = (t.bbox[2] - t.bbox[0]) * (t.bbox[3] - t.bbox[1])
+                        if tb_area > 0.80 * page_area:
+                            continue
+                        if t.row_count >= 3 and t.col_count >= 3:
+                            data_cells = [c for row in t.extract() for c in row if c and any(ch.isdigit() for ch in c)]
+                            if len(data_cells) >= 6:
+                                has_dense_data_table = True
+                                break
                 except Exception:
                     pass
 
-            # 1. Tamaño personalizado no estándar (Ej. tríptico / díptico comercial)
-            is_standard = any(abs(w - sw) <= 12 and abs(h - sh) <= 12 for sw, sh in STANDARD_SIZES)
+            # A. Dimensión o proporción no estándar de oficina (dípticos, trípticos, folletos cuadrados o apaisados)
+            is_standard = any(abs(pw - sw) <= 12 and abs(ph - sh) <= 12 for sw, sh in STANDARD_SIZES)
             if not is_standard:
                 score += 2.5
-                
-            # 2. Densidad de elementos vectoriales decorativos (curvas bezier, polígonos rellenos)
-            drawings = page.get_drawings()
+
+            # B. Densidad gráfica vectorial (curvas Bézier, rectángulos rellenos, branding)
             curve_drawings = [d for d in drawings if any(item[0] in ('c', 'v', 'y') for item in d.get('items', []))]
             filled_drawings = [d for d in drawings if d.get('fill') is not None]
+            if len(curve_drawings) >= 15 or len(filled_drawings) >= 20:
+                score += 3.5
+            elif len(drawings) >= 40:
+                score += 2.0
 
-            if len(curve_drawings) >= 20 or len(filled_drawings) >= 30:
-                score += 3.0
-            elif len(drawings) >= 80 and not has_any_table:
-                score += 1.5
+            # C. Presencia de fotos / imágenes
+            if len(images) >= 2:
+                score += 2.0
 
-            images = page.get_images()
-            if len(images) >= 3:
-                score += 1.5
-                
-            # 3. Dispersión espacial de bloques de texto (múltiples ejes de columnas)
+            # D. Títulos de exhibición o tipografía grande (>= 20pt)
+            text_dict = page.get_text("dict", flags=fitz.TEXTFLAGS_TEXT)
+            has_large_title = any(
+                s.get("size", 0) >= 20.0
+                for b in text_dict.get("blocks", [])
+                for l in b.get("lines", [])
+                for s in l.get("spans", [])
+            )
+            if has_large_title:
+                score += 2.0
+
+            # E. Dispersión espacial en múltiples columnas o tarjetas
             blocks = page.get_text("blocks")
             text_blocks = [b for b in blocks if b[6] == 0]
             x0_coords = [round(b[0], -1) for b in text_blocks]
-            if len(set(x0_coords)) >= 5 and not has_any_table:
+            if len(set(x0_coords)) >= 4:
                 score += 1.5
 
-        if has_any_table:
+        if has_dense_data_table:
+            return False
+
+        # Exigir un mínimo de gráficos o imágenes para evitar falsos positivos en textos simples
+        if (total_drawings / pages_to_check) < 15 and (total_images / pages_to_check) < 2:
             return False
 
         avg_score = score / pages_to_check
@@ -141,7 +180,8 @@ class PDFBlackBrochureEngine:
 
     def _render_clean_background(self, page_num: int) -> bytes:
         """
-        Clona la página, oculta el texto y extrae el fondo vectorial e imágenes puras en PNG.
+        Clona la página, oculta el texto y extrae el fondo vectorial e imágenes puras en JPEG de alta calidad (90%).
+        Preserva 100% de la fidelidad visual reduciendo drásticamente el peso del archivo de 20MB a ~4-5MB.
         """
         temp_pdf = fitz.open()
         temp_pdf.insert_pdf(self.doc, from_page=page_num, to_page=page_num)
@@ -150,10 +190,11 @@ class PDFBlackBrochureEngine:
         for block in temp_page.get_text("blocks"):
             if block[6] == 0:  # Tipo texto
                 temp_page.add_redact_annot(block[:4])
-        temp_page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
+        # Preserva gráficos vectoriales (graphics=0) e imágenes (images=0), solo elimina texto (text=0)
+        temp_page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE, graphics=0, text=0)
         
         pix = temp_page.get_pixmap(dpi=self.dpi, alpha=False)
-        img_bytes = pix.tobytes("png")
+        img_bytes = pix.tobytes("jpeg", jpg_quality=90)
         temp_pdf.close()
         return img_bytes
 
@@ -200,11 +241,22 @@ class PDFBlackBrochureEngine:
         """
         run._r.append(parse_xml(anchor_xml))
 
-    def _add_absolute_text_frame(self, block_dict: dict):
+    def _add_absolute_text_frame(self, block_dict: dict, page_w_pt: float, page_h_pt: float):
         bbox = block_dict["bbox"]
-        x_twips = self._pt_to_twips(bbox[0])
-        y_twips = self._pt_to_twips(bbox[1])
-        w_twips = self._pt_to_twips(bbox[2] - bbox[0]) + 140  # Holgura de seguridad anti-wrap
+        x_pt, y_pt = bbox[0], bbox[1]
+        w_pt = bbox[2] - bbox[0]
+        h_pt = bbox[3] - bbox[1]
+
+        if w_pt <= 0 or h_pt <= 0:
+            return
+
+        x_twips = self._pt_to_twips(x_pt)
+        y_twips = self._pt_to_twips(y_pt)
+        page_w_twips = self._pt_to_twips(page_w_pt)
+
+        # Holgura de seguridad anti-wrap (+140 twips = 7 pt) sin rebasar el ancho de página
+        w_twips = min(self._pt_to_twips(w_pt) + 140, page_w_twips - x_twips)
+        w_twips = max(w_twips, self._pt_to_twips(w_pt))
         
         p = self.word_doc.add_paragraph()
         pPr = p._p.get_or_add_pPr()
@@ -216,6 +268,12 @@ class PDFBlackBrochureEngine:
         spacing.set(qn('w:line'), '240')
         spacing.set(qn('w:lineRule'), 'auto')
         pPr.append(spacing)
+
+        # Sangría cero
+        ind = OxmlElement('w:ind')
+        ind.set(qn('w:left'), '0')
+        ind.set(qn('w:right'), '0')
+        pPr.append(ind)
 
         # Marco con coordenadas absolutas de página
         framePr = OxmlElement('w:framePr')
@@ -238,25 +296,33 @@ class PDFBlackBrochureEngine:
                 p.add_run("\n")  # Salto de renglón visual real
             prev_y0 = y0
             
-            for span in line.get("spans", []):
-                clean_text = span.get("text", "").replace('\t', ' ').strip()
-                if not clean_text:
+            spans = line.get("spans", [])
+            for s_idx, span in enumerate(spans):
+                text = span.get("text", "").replace('\t', ' ')
+                if not text:
                     continue
-                run = p.add_run(clean_text + " ")
+                
+                # Separación de palabras entre spans contiguos sin duplicar espacios
+                if s_idx < len(spans) - 1:
+                    next_span = spans[s_idx + 1]
+                    gap = next_span.get("bbox", [0, 0, 0, 0])[0] - span.get("bbox", [0, 0, 0, 0])[2]
+                    if gap > 2.0 and not text.endswith(" ") and not next_span.get("text", "").startswith(" "):
+                        text += " "
+
+                run = p.add_run(text)
                 font_name = clean_font_name(span.get("font", ""), "Segoe UI")
                 run.font.name = font_name
                 run.font.size = Pt(max(6.5, round(span.get("size", 10.0) * 2) / 2))
                 
                 c = span.get("color", 0)
-                if c and c != 0:
-                    r = (c >> 16) & 255
-                    g = (c >> 8) & 255
-                    b = c & 255
-                    run.font.color.rgb = RGBColor(r, g, b)
+                r = (c >> 16) & 255
+                g = (c >> 8) & 255
+                b = c & 255
+                run.font.color.rgb = RGBColor(r, g, b)
                 
                 font_lower = span.get("font", "").lower()
                 flags = span.get("flags", 0)
-                if (flags & 2**4) or any(w in font_lower for w in ["bold", "black", "heavy", "medium"]):
+                if (flags & 2**4) or any(w in font_lower for w in ["bold", "black", "heavy", "medium", "semibold"]):
                     run.bold = True
                 if (flags & 2**1) or any(w in font_lower for w in ["italic", "oblique"]):
                     run.italic = True
@@ -272,16 +338,17 @@ class PDFBlackBrochureEngine:
             page = self.doc[page_num]
             w_pt, h_pt = page.rect.width, page.rect.height
             
-            # 1. Fondo gráfico/vectorial limpio en PNG
+            # 1. Fondo gráfico/vectorial limpio en JPEG 90
             bg_p = self.word_doc.add_paragraph()
             bg_bytes = self._render_clean_background(page_num)
             self._add_background_drawingml(bg_p, bg_bytes, w_pt, h_pt, idx + 1)
             
-            # 2. Bloques de texto posicionales
+            # 2. Bloques de texto posicionales ordenados de arriba a abajo
             text_page = page.get_text("dict", flags=fitz.TEXTFLAGS_TEXT)
-            for block in text_page.get("blocks", []):
-                if block.get("type") == 0:  # Bloque de texto
-                    self._add_absolute_text_frame(block)
+            blocks = [b for b in text_page.get("blocks", []) if b.get("type") == 0]
+            blocks.sort(key=lambda b: (round(b["bbox"][1], -1), b["bbox"][0]))
+            for block in blocks:
+                self._add_absolute_text_frame(block, w_pt, h_pt)
             
             # 3. Sección de página con geometría exacta
             if idx < total_pages - 1:

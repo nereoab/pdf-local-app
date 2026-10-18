@@ -80,16 +80,30 @@ async def convert_pdf_to_docx(
 
         output_docx_path = None
 
-        if engine == "libreoffice":
-            try:
-                output_docx_path = convert_with_libreoffice(input_pdf_path, temp_dir)
-            except Exception as lo_err:
-                print(f"LibreOffice failed ({lo_err}), trying pdf2docx fallback...", file=sys.stderr)
-                fallback_path = os.path.join(temp_dir, "fallback_out.docx")
+        # Detección de arquetipo BROCHURE / CATÁLOGO (Arquitectura Gemini 4 Argon)
+        try:
+            from brochure_engine import is_brochure_archetype, PDFBlackBrochureEngine
+            if is_brochure_archetype(input_pdf_path):
+                print("[CloudRun Engine] Arquetipo BROCHURE detectado. Activando Motor OpenXML Absoluto...", file=sys.stderr)
+                brochure_out = os.path.join(temp_dir, "brochure_out.docx")
+                b_engine = PDFBlackBrochureEngine(input_pdf_path, brochure_out, dpi=150)
+                b_engine.convert()
+                if os.path.exists(brochure_out) and os.path.getsize(brochure_out) > 0:
+                    output_docx_path = brochure_out
+        except Exception as b_err:
+            print(f"[CloudRun Engine] Error en brochure engine: {b_err}", file=sys.stderr)
+
+        if not output_docx_path:
+            if engine == "libreoffice":
+                try:
+                    output_docx_path = convert_with_libreoffice(input_pdf_path, temp_dir)
+                except Exception as lo_err:
+                    print(f"LibreOffice failed ({lo_err}), trying pdf2docx fallback...", file=sys.stderr)
+                    fallback_path = os.path.join(temp_dir, "fallback_out.docx")
+                    output_docx_path = convert_with_pdf2docx(input_pdf_path, fallback_path)
+            else:
+                fallback_path = os.path.join(temp_dir, "pdf2docx_out.docx")
                 output_docx_path = convert_with_pdf2docx(input_pdf_path, fallback_path)
-        else:
-            fallback_path = os.path.join(temp_dir, "pdf2docx_out.docx")
-            output_docx_path = convert_with_pdf2docx(input_pdf_path, fallback_path)
 
         if not output_docx_path or not os.path.exists(output_docx_path):
             raise HTTPException(status_code=500, detail="Conversion could not generate DOCX file")

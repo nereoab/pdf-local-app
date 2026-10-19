@@ -80,3 +80,54 @@ jobs:
         run: npx firebase-tools deploy --only hosting --non-interactive
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+  # ────────────────────────────────────────────────
+  # Job 3: Deploy Microservicio Cloud Run (pdfblack-converter)
+  # ────────────────────────────────────────────────
+  deploy-converter:
+    name: Deploy Cloud Run Converter (pdfblack-converter)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detectar cambios en motor de conversión
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            converter:
+              - 'cloudrun/**'
+              - 'server/**'
+
+      - name: Sincronizar scripts de server/ a cloudrun/
+        if: steps.filter.outputs.converter == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          cp -f server/pdf2docx_official_convert.py cloudrun/pdf2docx_official_convert.py || true
+          cp -f server/brochure_engine.py cloudrun/brochure_engine.py || true
+
+      - name: Authenticate to Google Cloud
+        if: steps.filter.outputs.converter == 'true' || github.event_name == 'workflow_dispatch'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PDFBLACK_PROY }}
+
+      - name: Setup Google Cloud SDK
+        if: steps.filter.outputs.converter == 'true' || github.event_name == 'workflow_dispatch'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        if: steps.filter.outputs.converter == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          cd cloudrun
+          gcloud run deploy pdfblack-converter \
+            --source . \
+            --project pdfblack-proy \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 2 \
+            --min-instances 0 \
+            --max-instances 10
+

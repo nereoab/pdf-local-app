@@ -52,14 +52,33 @@ def convert_with_libreoffice(input_pdf: str, output_dir: str) -> str:
     raise RuntimeError(f"LibreOffice conversion failed: {res.stderr.decode('utf-8', errors='ignore')}")
 
 def convert_with_pdf2docx(input_pdf: str, output_docx: str):
-    """Fallback con pdf2docx"""
-    from pdf2docx import Converter
-    cv = Converter(input_pdf)
-    cv.convert(output_docx, start=0, end=None)
-    cv.close()
-    if not os.path.exists(output_docx):
-        raise RuntimeError("pdf2docx fallback failed")
-    return output_docx
+    """Conversión Ultra HD con paridad visual y post-procesamiento OpenXML idéntico a Local"""
+    try:
+        from pdf2docx_official_convert import Converter, enhance_docx_visual_fidelity
+        cv = Converter(input_pdf)
+        kwargs = {
+            "delete_end_line_hyphen": True,
+            "line_overlap_threshold": 1.0,
+            "parse_stream_table": True,
+            "parse_lattice_table": True,
+            "clip_image_res_ratio": 2.0,
+        }
+        cv.convert(output_docx, multi_processing=False, **kwargs)
+        cv.close()
+        if not os.path.exists(output_docx) or os.path.getsize(output_docx) == 0:
+            raise RuntimeError("pdf2docx failed to generate file")
+        # Post-procesamiento OpenXML idéntico al motor local
+        enhance_docx_visual_fidelity(output_docx, input_pdf)
+        return output_docx
+    except Exception as e:
+        print(f"[CloudRun Engine] Error en motor oficial pdf2docx: {e}. Intentando fallback estándar...", file=sys.stderr)
+        from pdf2docx import Converter
+        cv = Converter(input_pdf)
+        cv.convert(output_docx, start=0, end=None)
+        cv.close()
+        if not os.path.exists(output_docx):
+            raise RuntimeError(f"pdf2docx fallback failed: {e}")
+        return output_docx
 
 @app.post("/convert/pdf-to-docx")
 async def convert_pdf_to_docx(

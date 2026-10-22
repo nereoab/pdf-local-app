@@ -611,158 +611,195 @@ export default function FoliarSuccessView({
       animate={{ opacity: 1, scale: 1 }}
       className="w-full max-w-4xl mx-auto my-6 font-sans space-y-4"
     >
-      {/* ── 1. CABECERA SUPERIOR LIMPIA CON ESTADO Y RESET ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#111116]/90 border border-zinc-700/80 rounded-2xl px-5 py-4 backdrop-blur-md shadow-xl">
-        <div className="flex items-center gap-3.5">
-          <div className="p-2 bg-zinc-900 border border-[#E8DFCF]/40 rounded-xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)]">
-            <AnimatedCheckmark size={24} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap mb-0.5">
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] font-bold text-[10px] font-mono rounded-full uppercase tracking-wider">
-                <Sparkles className="w-3 h-3 text-[#FAF6EE]" />
-                {badgeText || (isEs ? 'Foliado Completado' : 'Numbering Completed')}
-              </span>
-              <span className="flex items-center gap-1 px-2.5 py-0.5 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[10px] font-mono">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                {isEs ? '100% Local & Privado' : '100% Local & Private'}
-              </span>
+      {/* ── MASTER COCKPIT: ESTADO, ARCHIVO Y DASHBOARD DE TELEMETRÍA (DISEÑO LINEAR / GEMINI 4 ARGON) ── */}
+      <div className="bg-gradient-to-b from-[#14151C] via-[#111217] to-[#0D0E12] border border-zinc-700/80 rounded-3xl p-5 sm:p-6 backdrop-blur-md shadow-2xl relative overflow-hidden space-y-4">
+        {/* Línea de brillo superior platino champagne */}
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#FAF6EE]/30 to-transparent pointer-events-none" />
+
+        {/* 1. FILA DE ESTADO SUPERIOR (CABECERA ELEGANTE UNIFICADA) */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800/80">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-zinc-900 border border-[#E8DFCF]/40 rounded-xl text-[#FAF6EE] shadow-[0_0_15px_rgba(232,223,207,0.2)] flex-shrink-0">
+              <AnimatedCheckmark size={22} />
             </div>
-            <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight uppercase">
-              {successTitle ||
-                (isEs ? '¡Documento Foliado con Éxito!' : 'Document Numbered Successfully!')}
-            </h2>
-          </div>
-        </div>
-
-        <button
-          onClick={onReset}
-          className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono border border-zinc-700 hover:border-[#E8DFCF]/50 transition-all cursor-pointer shadow-sm self-stretch sm:self-auto justify-center"
-        >
-          <RotateCcw className="w-3.5 h-3.5 text-white" />
-          <span>{isEs ? 'Procesar otro archivo' : 'Process another file'}</span>
-        </button>
-      </div>
-
-      {/* ── 2. METADATOS DEL ARCHIVO Y ACCIONES RÁPIDAS ── */}
-      <div className="bg-[#14141b] border border-zinc-700/70 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
-        <div className="flex items-center gap-3.5 min-w-0 max-w-full">
-          <div className="bg-zinc-800 border border-zinc-600 p-2.5 rounded-xl flex-shrink-0">
-            <FileText className="w-6 h-6 text-white" />
-          </div>
-          <div className="min-w-0">
-            {isEditingName ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={customFilename}
-                  onChange={(e) => setCustomFilename(e.target.value)}
-                  onBlur={() => setIsEditingName(false)}
-                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
-                  autoFocus
-                  className="bg-black/60 border border-[#E8DFCF] rounded-lg px-2.5 py-1 text-sm text-white font-mono focus:outline-none focus:ring-1 focus:ring-[#FAF6EE]"
-                />
-                <button
-                  onClick={() => setIsEditingName(false)}
-                  className="p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-emerald-400"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/30 text-[#E8DFCF] font-bold text-[10px] font-mono rounded-full uppercase tracking-wider">
+                  <Sparkles className="w-3 h-3 text-[#FAF6EE]" />
+                  {badgeText || (isEs ? 'Proceso Completado' : 'Process Completed')}
+                </span>
+                <span className="flex items-center gap-1 px-2.5 py-0.5 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-300 text-[10px] font-mono">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  {isEs ? '100% Local & Privado' : '100% Local & Private'}
+                </span>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-white font-bold text-sm sm:text-base truncate max-w-[240px] sm:max-w-[420px] font-mono">
-                  {activeFilename}
-                </span>
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                  title={isEs ? 'Renombrar archivo' : 'Rename file'}
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono mt-1 flex-wrap">
-              <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-200 font-bold uppercase">
-                {(() => {
-                  const lower = activeFilename.toLowerCase();
-                  if (lower.endsWith('.zip')) return 'ZIP';
-                  if (lower.endsWith('.docx') || lower.endsWith('.doc')) return 'DOCX';
-                  if (lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.csv'))
-                    return 'XLSX';
-                  if (lower.endsWith('.pptx') || lower.endsWith('.ppt')) return 'PPTX';
-                  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'JPG';
-                  if (lower.endsWith('.png')) return 'PNG';
-                  if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'HTML';
-                  if (lower.endsWith('.txt')) return 'TXT';
-                  return 'PDF';
-                })()}
-              </span>
-              {completedResult.fileSize && <span>• {completedResult.fileSize}</span>}
-              {numberedCount !== undefined && totalPages !== undefined ? (
-                <span className="px-2 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/20 text-[#FAF6EE] rounded font-bold">
-                  {numberedCount} {isEs ? 'de' : 'of'} {totalPages}{' '}
-                  {isEs ? 'págs foliadas' : 'pages numbered'}
-                </span>
-              ) : totalPages !== undefined && totalPages > 0 ? (
-                <span className="px-2 py-0.5 bg-[#FAF6EE]/10 border border-[#E8DFCF]/20 text-[#FAF6EE] rounded font-bold">
-                  {totalPages}{' '}
-                  {isEs
-                    ? totalPages === 1
-                      ? 'página'
-                      : 'páginas'
-                    : totalPages === 1
-                      ? 'page'
-                      : 'pages'}
-                </span>
-              ) : null}
-              {metricBadge}
-              <span className="text-zinc-500 hidden sm:inline">
-                • {modeText || (isEs ? 'Motor Notarial' : 'Notarial Engine')}
-              </span>
+              <h2 className="text-base sm:text-lg md:text-xl font-extrabold text-white tracking-tight uppercase">
+                {successTitle ||
+                  (isEs ? '¡Documento Listo para Descargar!' : 'Document Ready for Download!')}
+              </h2>
             </div>
           </div>
-        </div>
 
-        {/* Botones de acción rápida secundaria */}
-        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-shrink-0">
-          {(() => {
-            const lower = activeFilename.toLowerCase();
-            const isNonViewableOfficeOrArchive =
-              lower.endsWith('.zip') ||
-              lower.endsWith('.docx') ||
-              lower.endsWith('.doc') ||
-              lower.endsWith('.xlsx') ||
-              lower.endsWith('.xls') ||
-              lower.endsWith('.csv') ||
-              lower.endsWith('.pptx') ||
-              lower.endsWith('.ppt');
-            if (isNonViewableOfficeOrArchive) return null;
-            return (
-              <button
-                onClick={() => setShowPreviewModal(true)}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm"
-              >
-                <Eye className="w-4 h-4 text-[#FAF6EE]" />
-                <span>{isEs ? 'Vista Previa' : 'Preview'}</span>
-              </button>
-            );
-          })()}
           <button
-            onClick={handleCopyShareLink}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm"
+            onClick={onReset}
+            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-mono border border-zinc-700 hover:border-[#E8DFCF]/50 transition-all cursor-pointer shadow-sm self-stretch sm:self-auto justify-center flex-shrink-0"
+            title={isEs ? 'Procesar otro archivo' : 'Process another file'}
           >
-            {copiedFile ? (
-              <Check className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <Copy className="w-4 h-4 text-[#FAF6EE]" />
-            )}
-            <span>
-              {copiedFile ? (isEs ? '¡Copiado!' : 'Copied!') : isEs ? 'Copiar Enlace' : 'Copy Link'}
-            </span>
+            <RotateCcw className="w-3.5 h-3.5 text-white" />
+            <span>{isEs ? 'Procesar otro archivo' : 'Process another file'}</span>
           </button>
+        </div>
+
+        {/* 2. CUERPO MODULAR (OPCIÓN 2: FOCO EN EL AHORRO / LINEAR DASHBOARD) */}
+        <div
+          className={`grid grid-cols-1 ${metricBadge ? 'lg:grid-cols-12' : ''} gap-3.5 items-stretch`}
+        >
+          {/* LADO IZQUIERDO: ARCHIVO + ACCIONES RÁPIDAS */}
+          <div
+            className={`${
+              metricBadge ? 'lg:col-span-6 xl:col-span-7' : 'w-full'
+            } flex flex-col justify-between bg-black/40 border border-zinc-800/80 rounded-2xl p-4 space-y-3.5`}
+          >
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="bg-zinc-800 border border-zinc-600 p-2.5 rounded-xl flex-shrink-0">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={customFilename}
+                      onChange={(e) => setCustomFilename(e.target.value)}
+                      onBlur={() => setIsEditingName(false)}
+                      onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
+                      autoFocus
+                      className="bg-black/60 border border-[#E8DFCF] rounded-lg px-2.5 py-1 text-sm text-white font-mono focus:outline-none focus:ring-1 focus:ring-[#FAF6EE] w-full"
+                    />
+                    <button
+                      onClick={() => setIsEditingName(false)}
+                      className="p-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-emerald-400 flex-shrink-0"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-bold text-sm sm:text-base truncate font-mono">
+                      {activeFilename}
+                    </span>
+                    <button
+                      onClick={() => setIsEditingName(true)}
+                      className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                      title={isEs ? 'Renombrar archivo' : 'Rename file'}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono mt-1.5 flex-wrap">
+                  <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-200 font-bold uppercase text-[10px]">
+                    {(() => {
+                      const lower = activeFilename.toLowerCase();
+                      if (lower.endsWith('.zip')) return 'ZIP';
+                      if (lower.endsWith('.docx') || lower.endsWith('.doc')) return 'DOCX';
+                      if (
+                        lower.endsWith('.xlsx') ||
+                        lower.endsWith('.xls') ||
+                        lower.endsWith('.csv')
+                      )
+                        return 'XLSX';
+                      if (lower.endsWith('.pptx') || lower.endsWith('.ppt')) return 'PPTX';
+                      if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'JPG';
+                      if (lower.endsWith('.png')) return 'PNG';
+                      if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'HTML';
+                      if (lower.endsWith('.txt')) return 'TXT';
+                      return 'PDF';
+                    })()}
+                  </span>
+                  {!metricBadge && completedResult.fileSize && (
+                    <span>• {completedResult.fileSize}</span>
+                  )}
+                  {numberedCount !== undefined && totalPages !== undefined ? (
+                    <span className="text-zinc-300">
+                      • {numberedCount} {isEs ? 'de' : 'of'} {totalPages} {isEs ? 'págs' : 'pages'}
+                    </span>
+                  ) : totalPages !== undefined && totalPages > 0 ? (
+                    <span className="text-zinc-300">
+                      • {totalPages}{' '}
+                      {totalPages === 1 ? (isEs ? 'página' : 'page') : isEs ? 'páginas' : 'pages'}
+                    </span>
+                  ) : null}
+                  {modeText && !metricBadge && (
+                    <span className="text-zinc-500 hidden sm:inline">• {modeText}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones directas integradas del archivo */}
+            <div className="flex items-center gap-2 pt-2.5 border-t border-zinc-800/60">
+              {(() => {
+                const lower = activeFilename.toLowerCase();
+                const isNonViewableOfficeOrArchive =
+                  lower.endsWith('.zip') ||
+                  lower.endsWith('.docx') ||
+                  lower.endsWith('.doc') ||
+                  lower.endsWith('.xlsx') ||
+                  lower.endsWith('.xls') ||
+                  lower.endsWith('.csv') ||
+                  lower.endsWith('.pptx') ||
+                  lower.endsWith('.ppt');
+                if (isNonViewableOfficeOrArchive) return null;
+                return (
+                  <button
+                    onClick={() => setShowPreviewModal(true)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-[#FAF6EE]" />
+                    <span>{isEs ? 'Vista Previa' : 'Preview'}</span>
+                  </button>
+                );
+              })()}
+              <button
+                onClick={handleCopyShareLink}
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-mono border border-zinc-700 hover:border-zinc-500 transition-all cursor-pointer shadow-sm"
+              >
+                {copiedFile ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-[#FAF6EE]" />
+                )}
+                <span>
+                  {copiedFile
+                    ? isEs
+                      ? '¡Copiado!'
+                      : 'Copied!'
+                    : isEs
+                      ? 'Copiar Enlace'
+                      : 'Copy Link'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* LADO DERECHO: WIDGET DASHBOARD TELEMETRÍA (GEMINI 4 ARGON) */}
+          {metricBadge && (
+            <div className="lg:col-span-6 xl:col-span-5 bg-gradient-to-br from-[#121715] via-[#0e1311] to-[#0a0d10] border border-emerald-500/25 rounded-2xl p-4 flex flex-col justify-between shadow-inner space-y-3">
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-emerald-500/15">
+                <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  {isEs ? 'Telemetría de Ahorro' : 'Savings Telemetry'}
+                </span>
+                <span className="text-[9px] font-mono text-emerald-400/80 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
+                  Gemini 4 Argon
+                </span>
+              </div>
+
+              <div className="flex-1 flex items-center">{metricBadge}</div>
+            </div>
+          )}
         </div>
       </div>
 

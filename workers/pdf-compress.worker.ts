@@ -12,7 +12,6 @@
 
 import { PDFDocument, PDFName, PDFDict, PDFRawStream, PDFNumber, PDFRef } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
-// @ts-expect-error pako does not provide complete typings
 import pako from 'pako';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
@@ -58,6 +57,7 @@ export interface DocumentAnatomy {
   pageCount: number;
   isPdfA: boolean;
   pdfADetails?: string;
+  isEncrypted: boolean;
   estimatedSavings: {
     low: number;
     medium: number;
@@ -280,6 +280,7 @@ export function analyzePdfAnatomy(pdfDoc: PDFDocument, totalBytes: number): Docu
     pageCount: pdfDoc.getPageCount(),
     isPdfA: pdfADetection.isPdfA,
     pdfADetails: pdfADetection.details,
+    isEncrypted: pdfDoc.isEncrypted || Boolean(pdfDoc.context.trailerInfo?.Encrypt),
     estimatedSavings: {
       low: Math.min(totalBytes * 0.45, Math.max(totalBytes * 0.1, estLow)),
       medium: Math.min(totalBytes * 0.78, Math.max(totalBytes * 0.25, estMedium)),
@@ -294,6 +295,7 @@ export function analyzePdfAnatomy(pdfDoc: PDFDocument, totalBytes: number): Docu
 
 interface InPlaceCompressionParams {
   maxDimension: number;
+  maxScaleFactor?: number;
   jpegQuality: number;
   colorMode: OutputColorMode;
 }
@@ -311,42 +313,92 @@ function getCompressionParams(
 
     if (ratio <= 0.2) {
       // Requiere reducción drástica (>80%)
-      return { maxDimension: 1100, jpegQuality: 0.52, colorMode: outputColorMode };
+      return {
+        maxDimension: 1000,
+        maxScaleFactor: 0.5,
+        jpegQuality: 0.45,
+        colorMode: outputColorMode,
+      };
     } else if (ratio <= 0.4) {
       // Reducción alta (60-80%)
-      return { maxDimension: 1400, jpegQuality: 0.6, colorMode: outputColorMode };
+      return {
+        maxDimension: 1200,
+        maxScaleFactor: 0.65,
+        jpegQuality: 0.52,
+        colorMode: outputColorMode,
+      };
     } else if (ratio <= 0.65) {
       // Reducción media (35-60%)
-      return { maxDimension: 1800, jpegQuality: 0.7, colorMode: outputColorMode };
+      return {
+        maxDimension: 1500,
+        maxScaleFactor: 0.75,
+        jpegQuality: 0.62,
+        colorMode: outputColorMode,
+      };
     } else {
       // Reducción suave (<35%)
-      return { maxDimension: 2400, jpegQuality: 0.8, colorMode: outputColorMode };
+      return {
+        maxDimension: 2000,
+        maxScaleFactor: 0.85,
+        jpegQuality: 0.72,
+        colorMode: outputColorMode,
+      };
     }
   }
 
   // 2. Modo DPI Forzado
   if (dpiMode === '72') {
-    return { maxDimension: 1200, jpegQuality: 0.58, colorMode: outputColorMode };
+    return {
+      maxDimension: 1100,
+      maxScaleFactor: 0.6,
+      jpegQuality: 0.5,
+      colorMode: outputColorMode,
+    };
   }
   if (dpiMode === '96') {
-    return { maxDimension: 1600, jpegQuality: 0.65, colorMode: outputColorMode };
+    return {
+      maxDimension: 1400,
+      maxScaleFactor: 0.75,
+      jpegQuality: 0.62,
+      colorMode: outputColorMode,
+    };
   }
   if (dpiMode === '150') {
-    return { maxDimension: 2500, jpegQuality: 0.8, colorMode: outputColorMode };
+    return {
+      maxDimension: 2200,
+      maxScaleFactor: 0.88,
+      jpegQuality: 0.75,
+      colorMode: outputColorMode,
+    };
   }
 
   // 3. Niveles estándar
   switch (level) {
     case 'low':
       // Fidelidad de impresión / CAD (150 DPI)
-      return { maxDimension: 2600, jpegQuality: 0.82, colorMode: outputColorMode };
+      return {
+        maxDimension: 2400,
+        maxScaleFactor: 0.9,
+        jpegQuality: 0.78,
+        colorMode: outputColorMode,
+      };
     case 'medium':
       // Equilibrado recomendado (~110 DPI)
-      return { maxDimension: 1800, jpegQuality: 0.7, colorMode: outputColorMode };
+      return {
+        maxDimension: 1600,
+        maxScaleFactor: 0.78,
+        jpegQuality: 0.65,
+        colorMode: outputColorMode,
+      };
     case 'high':
     default:
       // Máxima compresión legible (~96 DPI)
-      return { maxDimension: 1350, jpegQuality: 0.6, colorMode: outputColorMode };
+      return {
+        maxDimension: 1200,
+        maxScaleFactor: 0.65,
+        jpegQuality: 0.52,
+        colorMode: outputColorMode,
+      };
   }
 }
 
@@ -409,9 +461,9 @@ async function compressImagesInPlace(
         const blob = new Blob([origBytes as unknown as BlobPart], { type: 'image/jpeg' });
         const imgBitmap = await createImageBitmap(blob);
 
-        let scale = 1.0;
+        let scale = params.maxScaleFactor || 1.0;
         const maxSide = Math.max(imgBitmap.width, imgBitmap.height);
-        if (maxSide > params.maxDimension) {
+        if (maxSide * scale > params.maxDimension) {
           scale = params.maxDimension / maxSide;
         }
 
@@ -471,9 +523,12 @@ async function compressImagesInPlace(
             ctx.putImageData(imgData, 0, 0);
 
             let finalCanvas = canvas;
+            let scale = params.maxScaleFactor || 1.0;
             const maxSide = Math.max(width, height);
-            if (maxSide > params.maxDimension) {
-              const scale = params.maxDimension / maxSide;
+            if (maxSide * scale > params.maxDimension) {
+              scale = params.maxDimension / maxSide;
+            }
+            if (scale < 0.99) {
               targetW = Math.max(1, Math.round(width * scale));
               targetH = Math.max(1, Math.round(height * scale));
               const scaledCanvas = new OffscreenCanvas(targetW, targetH);
@@ -806,20 +861,28 @@ async function compressSinglePdf(
     stage: 'compressing_streams',
   });
 
-  optimizeFlateStreams(pdfDoc);
+  const isEncrypted = pdfDoc.isEncrypted || Boolean(pdfDoc.context.trailerInfo?.Encrypt);
+  if (!isEncrypted) {
+    optimizeFlateStreams(pdfDoc);
+  }
 
-  // 5. Empaquetado con Object Streams (/ObjStm)
+  // 5. Empaquetado seguro (useObjectStreams solo si no hay encriptación para evitar corrupción)
   report({
     type: 'progress',
     percent: 88,
-    message: 'Empaquetando con Object Streams y optimizando tabla XRef...',
+    message: isEncrypted
+      ? 'Optimizando estructura y preservando compatibilidad estándar...'
+      : 'Empaquetando con Object Streams y optimizando tabla XRef...',
     currentFile: fileIndex + 1,
     totalFiles,
     fileName,
     stage: 'packaging',
   });
 
-  let compressedBytes = await pdfDoc.save({ useObjectStreams: true, addDefaultPage: false });
+  let compressedBytes = await pdfDoc.save({
+    useObjectStreams: !isEncrypted,
+    addDefaultPage: false,
+  });
 
   // 6. Si es modo Target Size y aún supera el objetivo, hacer segunda pasada agresiva
   if (
@@ -840,13 +903,16 @@ async function compressSinglePdf(
 
     const aggressiveParams: InPlaceCompressionParams = {
       maxDimension: 1000,
+      maxScaleFactor: 0.5,
       jpegQuality: 0.48,
       colorMode: options.outputColorMode,
     };
 
     await compressImagesInPlace(pdfDoc, aggressiveParams);
-    optimizeFlateStreams(pdfDoc);
-    compressedBytes = await pdfDoc.save({ useObjectStreams: true, addDefaultPage: false });
+    if (!isEncrypted) {
+      optimizeFlateStreams(pdfDoc);
+    }
+    compressedBytes = await pdfDoc.save({ useObjectStreams: !isEncrypted, addDefaultPage: false });
   }
 
   // 7. Decisión final: entregar comprimido u original

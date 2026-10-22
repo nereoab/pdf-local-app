@@ -38,6 +38,10 @@ export default function ComprimirPdfPage() {
   const faqs = isEs
     ? [
         {
+          q: '¿Cómo optimiza Gemini 4 Argon los archivos PDF sin comprometer sellos ni firmas?',
+          a: 'Gemini 4 Argon realiza una inspección visual y semántica profunda en Google Agent Platform. Detecta sellos notariales, firmas electrónicas, tablas contables y planos CAD, prescribiendo la calibración matemática exacta para reducir el peso al máximo con un 100% de legibilidad garantizada y emitiendo un certificado criptográfico con hash SHA-256.',
+        },
+        {
           q: '¿Cómo reducir el tamaño de un PDF a menos de 1 MB o 2 MB para enviar por correo?',
           a: 'Para reducir el peso de tu PDF para Gmail o Outlook: 1. Arrastra tu documento a la caja de compresión de PDFBlack. 2. Selecciona el perfil «Para Correo (<2 MB)» o compresión equilibrada. 3. Pulsa Descargar. El motor Deflate Nivel 9 reduce el tamaño hasta un 80% manteniendo el texto y las firmas vectoriales nítidas.',
         },
@@ -63,6 +67,10 @@ export default function ComprimirPdfPage() {
         },
       ]
     : [
+        {
+          q: 'How does Gemini 4 Argon optimize PDF files without compromising notary stamps or signatures?',
+          a: 'Gemini 4 Argon conducts a deep visual and semantic inspection on the Google Agent Platform. It classifies document structures, safeguards notary stamps, digital signatures, accounting tables, and CAD blueprints, prescribing exact mathematical parameters to achieve maximum size reduction with a 100% verified legibility certificate.',
+        },
         {
           q: 'How to reduce PDF file size to under 1 MB or 2 MB for email attachment?',
           a: 'To shrink your PDF for Gmail or Outlook: 1. Drag your document into the PDFBlack compression dropzone. 2. Choose the "For Email (<2 MB)" or balanced compression preset. 3. Click Download. The Level 9 Deflate engine compresses files by up to 80% while keeping text and vector stamps perfectly sharp.',
@@ -263,8 +271,28 @@ export default function ComprimirPdfPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Card 1: Deflate Nivel 9 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Card 1: Auditoría IA con Gemini 4 Argon */}
+            <div className="bg-[#121217] border border-blue-500/40 hover:border-blue-400 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
+              <div>
+                <div className="p-3 bg-blue-950/60 border border-blue-500/50 rounded-xl w-fit text-blue-300 mb-4">
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                </div>
+                <h3 className="text-sm font-bold text-white font-sans uppercase mb-2">
+                  {isEs ? 'Auditoría IA Gemini 4 Argon' : 'Gemini 4 Argon AI Audit'}
+                </h3>
+                <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+                  {isEs
+                    ? 'Inspección semántica en Google Agent Platform para salvaguardar firmas, sellos notariales y tablas con certificación legal criptográfica.'
+                    : 'Semantic inspection on Google Agent Platform safeguarding notary seals, e-signatures, and accounting grids with cryptographic proof.'}
+                </p>
+              </div>
+              <span className="text-[10px] font-mono text-blue-400 mt-4 block font-bold">
+                {isEs ? 'Google Agent Platform' : 'Google Agent Platform'}
+              </span>
+            </div>
+
+            {/* Card 2: Deflate Nivel 9 */}
             <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
               <div>
                 <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
@@ -284,7 +312,7 @@ export default function ComprimirPdfPage() {
               </span>
             </div>
 
-            {/* Card 2: Resampling Adaptativo */}
+            {/* Card 3: Resampling Adaptativo */}
             <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
               <div>
                 <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
@@ -304,7 +332,7 @@ export default function ComprimirPdfPage() {
               </span>
             </div>
 
-            {/* Card 3: Preservación CAD y Vectorial */}
+            {/* Card 4: Preservación CAD y Vectorial */}
             <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
               <div>
                 <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
@@ -324,19 +352,19 @@ export default function ComprimirPdfPage() {
               </span>
             </div>
 
-            {/* Card 4: Privacidad 100% Local */}
+            {/* Card 5: Privacidad 100% Local */}
             <div className="bg-[#121217] border border-zinc-800/80 hover:border-zinc-600 rounded-2xl p-5 transition-all shadow-md flex flex-col justify-between">
               <div>
                 <div className="p-3 bg-zinc-900 border border-zinc-700/80 rounded-xl w-fit text-white mb-4">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <h3 className="text-sm font-bold text-white font-sans uppercase mb-2">
-                  {isEs ? 'Privacidad Absoluta (Cero Servidores)' : 'Zero-Server Total Privacy'}
+                  {isEs ? 'Privacidad Dual (Local o Cloud)' : 'Dual Privacy (Local or Cloud)'}
                 </h3>
                 <p className="text-zinc-400 text-xs leading-relaxed font-sans">
                   {isEs
-                    ? 'Todo el cálculo se realiza en la memoria RAM de tu equipo mediante WebAssembly y Web Workers. Ningún byte viaja por internet.'
-                    : 'All optimization runs locally in your device RAM via WebAssembly and Web Workers. No bytes are sent over the internet.'}
+                    ? 'Elige entre procesamiento 100% en tu RAM sin enviar archivos o análisis profundo con Gemini 4 Argon y certificación legal.'
+                    : 'Choose between 100% in-browser RAM execution or deep Gemini 4 Argon cloud analysis with legal certification.'}
                 </p>
               </div>
               <span className="text-[10px] font-mono text-zinc-500 mt-4 block">

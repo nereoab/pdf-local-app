@@ -36,6 +36,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
+import { trackFileLoaded } from '@/lib/analytics';
 
 import type {
   WorkerMessageOut,
@@ -415,6 +416,8 @@ export default function PdfMerger() {
   const processAndAddFileList = async (fileList: File[]) => {
     const selected = fileList.filter((f) => f.type === 'application/pdf');
     if (selected.length === 0) return;
+
+    trackFileLoaded(selected, 'unir');
 
     const newItems: FileItem[] = [];
     const pdfjsLib = await import('pdfjs-dist');

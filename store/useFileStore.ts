@@ -1,4 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
+import { trackFileLoaded } from '@/lib/analytics';
 
 interface FileState {
   globalFile: File | null;
@@ -14,13 +15,27 @@ const createFileStore = () =>
   create<FileState>((set) => ({
     globalFile: null,
     globalFiles: [],
-    setGlobalFile: (file) => set({ globalFile: file, globalFiles: file ? [file] : [] }),
-    setGlobalFiles: (files) => set({ globalFiles: files, globalFile: files.length > 0 ? files[0] : null }),
-    addGlobalFiles: (newFiles) =>
+    setGlobalFile: (file) => {
+      if (file) {
+        trackFileLoaded(file);
+      }
+      set({ globalFile: file, globalFiles: file ? [file] : [] });
+    },
+    setGlobalFiles: (files) => {
+      if (files && files.length > 0) {
+        trackFileLoaded(files);
+      }
+      set({ globalFiles: files, globalFile: files.length > 0 ? files[0] : null });
+    },
+    addGlobalFiles: (newFiles) => {
+      if (newFiles && newFiles.length > 0) {
+        trackFileLoaded(newFiles);
+      }
       set((state) => {
         const updated = [...state.globalFiles, ...newFiles];
         return { globalFiles: updated, globalFile: updated.length > 0 ? updated[0] : null };
-      }),
+      });
+    },
     removeGlobalFile: (index) =>
       set((state) => {
         const updated = state.globalFiles.filter((_, i) => i !== index);
@@ -36,4 +51,4 @@ type FileStore = UseBoundStore<StoreApi<FileState>>;
 const g = globalThis as unknown as { __pdfblack_filestore?: FileStore };
 
 export const useFileStore: FileStore =
-  g.__pdfblack_filestore ?? (g.__pdfblack_filestore = createFileStore());
+  g.__pdfblack_filestore ?? (g.__pdfblack_filestore = createFileStore());

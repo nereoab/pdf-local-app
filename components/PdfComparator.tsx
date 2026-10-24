@@ -36,6 +36,7 @@ import { useFileStore } from '../store/useFileStore';
 import { useUIStore } from '../store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import FoliarSuccessView from './FoliarSuccessView';
+import { trackFileLoaded } from '@/lib/analytics';
 import type { CompareResult, CompareOptions, DiffWord } from '../workers/pdf-compare.worker';
 
 export default function PdfComparator() {
@@ -59,6 +60,14 @@ export default function PdfComparator() {
   // ============================================================
   const [fileA, setFileA] = useState<File | null>(() => globalFile || null);
   const [fileB, setFileB] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (fileA) trackFileLoaded(fileA, 'comparar');
+  }, [fileA]);
+
+  useEffect(() => {
+    if (fileB) trackFileLoaded(fileB, 'comparar');
+  }, [fileB]);
 
   // Modos de visualización
   // 'split': Lado a Lado con sincronización

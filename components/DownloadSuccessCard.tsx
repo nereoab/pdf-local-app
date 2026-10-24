@@ -37,6 +37,7 @@ import { useFileStore } from '@/store/useFileStore';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { trackToolEvent } from '@/lib/analytics';
 
 export interface OptimizationMetrics {
   originalSize: string;
@@ -116,6 +117,20 @@ export default function DownloadSuccessCard({
   const activeRawBlob = activeItem ? activeItem.rawBlob : rawBlob;
   const activeDownloadUrl = activeItem ? activeItem.downloadUrl : downloadUrl;
 
+  // Disparar confetti inicial y registrar evento tool_completed en GA4
+  useEffect(() => {
+    try {
+      triggerLuxuryConfetti();
+      trackToolEvent(currentToolId || 'pdf_tool', 'tool_completed', {
+        filename: activeFilename,
+        output_format: outputFormat,
+        is_batch: isBatch,
+      });
+    } catch {
+      // no-op silencioso
+    }
+  }, [currentToolId, activeFilename, outputFormat, isBatch]);
+
   const handleManualDownload = () => {
     if (!downloadUrl) return;
     const link = document.createElement('a');
@@ -125,11 +140,19 @@ export default function DownloadSuccessCard({
     link.click();
     document.body.removeChild(link);
     setDownloaded(true);
+    trackToolEvent(currentToolId || 'pdf_tool', 'file_downloaded', {
+      filename,
+      output_format: outputFormat,
+    });
     toast.success(isEs ? '¡Descarga iniciada!' : 'Download started!');
   };
 
   const handleNavigateToTool = async (targetPath: string) => {
     try {
+      trackToolEvent(currentToolId || 'pdf_tool', 'opened_in_tool', {
+        target_path: targetPath,
+        filename: activeFilename,
+      });
       if (outputFormat === 'pdf' && (activeDownloadUrl || activeRawBlob)) {
         let fileToPass: File;
         if (activeRawBlob) {
@@ -421,7 +444,13 @@ export default function DownloadSuccessCard({
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  onClick={onDownloadAllZip}
+                  onClick={() => {
+                    trackToolEvent(currentToolId || 'pdf_tool', 'file_downloaded', {
+                      type: 'zip',
+                      file_count: batchItems?.length || 0,
+                    });
+                    onDownloadAllZip();
+                  }}
                   disabled={isCreatingZip}
                   className="relative overflow-hidden flex items-center justify-center gap-3 px-8 py-4 rounded-full font-sans font-extrabold text-sm sm:text-base transition-all cursor-pointer flex-shrink-0 bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black shadow-[0_0_30px_rgba(232,223,207,0.35)] hover:shadow-[0_0_40px_rgba(250,246,238,0.6)] border border-[#FAF6EE]/80 group"
                 >
@@ -527,7 +556,14 @@ export default function DownloadSuccessCard({
                         <a
                           href={item.downloadUrl}
                           download={item.fileName}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            trackToolEvent(currentToolId || 'pdf_tool', 'file_downloaded', {
+                              filename: item.fileName,
+                              output_format: outputFormat,
+                              is_batch_item: true,
+                            });
+                          }}
                           className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white hover:text-[#FAF6EE] font-mono font-bold rounded-lg text-xs transition-all flex items-center gap-1.5 border border-zinc-700 flex-shrink-0 cursor-pointer shadow-sm"
                         >
                           <FileDown className="w-3.5 h-3.5" />

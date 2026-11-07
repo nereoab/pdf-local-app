@@ -142,8 +142,31 @@ Devuelve ÚNICAMENTE un objeto JSON estrictamente válido con este esquema:
 }`;
 
   try {
+    let payloadBuffer = pdfBuffer;
+
+    // Si el PDF es pesado (> 8 MB y > 3 páginas), generamos una muestra representativa
+    // para Gemini 4 Argon, evitando saturar la memoria RAM del servidor y superando el límite de 20 MB inline
+    if (pdfBuffer.length > 8 * 1024 * 1024 && pageCount > 3) {
+      try {
+        const sampleDoc = await PDFDocument.create();
+        const pagesToSample = [0, Math.floor(pageCount / 2), pageCount - 1].filter(
+          (p, idx, arr) => arr.indexOf(p) === idx && p < pageCount,
+        );
+        const sourceDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+        const sampledPages = await sampleDoc.copyPages(sourceDoc, pagesToSample);
+        sampledPages.forEach((p) => sampleDoc.addPage(p));
+        const sampleBytes = await sampleDoc.save();
+        payloadBuffer = Buffer.from(sampleBytes);
+      } catch (e) {
+        console.warn(
+          '[Gemini Compress Service] No se pudo generar muestra compacta, usando original:',
+          e,
+        );
+      }
+    }
+
     const rawAiResponse = await callGeminiApi(prompt, {
-      data: pdfBuffer.toString('base64'),
+      data: payloadBuffer.toString('base64'),
       mimeType: 'application/pdf',
     });
 

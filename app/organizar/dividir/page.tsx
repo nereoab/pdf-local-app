@@ -57,6 +57,10 @@ export default function DividirPdfPage() {
   const faqs = isEs
     ? [
         {
+          q: '¿Cómo dividir un PDF en partes menores de 25 MB para enviar por correo o Mesa de Partes?',
+          a: 'Servicios de correo electrónico como Gmail y Outlook limitan los archivos adjuntos a 25 MB, y las mesas de partes virtuales exigen archivos de 10 MB a 25 MB. En PDFBlack selecciona la pestaña «Por Tamaño Objetivo (MB)», elige el preset de 25 MB (o ingresa un límite personalizado) y el motor calculará la distribución de páginas para generar partes que nunca superen ese peso, empaquetadas en un archivo ZIP con descarga instantánea.',
+        },
+        {
           q: '¿Existe algún límite en el tamaño del archivo o número de páginas para dividir?',
           a: 'No existen límites artificiales impuestos por servidores. Gracias al motor Web Worker con transferencia de memoria zero-copy de PDFBlack, puedes dividir archivos de cientos de páginas o decenas de megabytes directamente en la memoria RAM de tu navegador, sin esperas de subida ni colas de procesamiento.',
         },
@@ -94,6 +98,10 @@ export default function DividirPdfPage() {
         },
       ]
     : [
+        {
+          q: 'How to split a PDF into parts under 25 MB for email attachments or court portals?',
+          a: 'Email services like Gmail and Outlook cap attachments at 25 MB, while government and court filings enforce 10 MB to 25 MB limits. On PDFBlack, select the «By Target Size (MB)» mode, pick the 25 MB preset (or custom size), and our algorithm chunks pages into segments that never exceed the specified MB budget, packaged into a ZIP ready for instant download.',
+        },
         {
           q: 'Is there any file size or page limit when splitting PDF documents?',
           a: 'No artificial server limits. Thanks to PDFBlack zero-copy Web Worker architecture, you can split PDF files containing hundreds of pages or large multi-megabyte dossiers directly in your local browser RAM without upload delays or queue wait times.',
@@ -136,15 +144,15 @@ export default function DividirPdfPage() {
     '@context': 'https://schema.org',
     '@type': ['WebApplication', 'SoftwareApplication'],
     name: isEs
-      ? 'Dividir PDF Gratis Online — Separar y Extraer Páginas PDF | PDFBlack'
-      : 'Split PDF Online Free — Separate & Extract PDF Pages | PDFBlack',
+      ? 'Dividir PDF en 25 MB Gratis Online — Separar y Extraer Páginas PDF | PDFBlack'
+      : 'Split PDF into 25 MB Online Free — Separate & Extract PDF Pages | PDFBlack',
     url: isEs ? `${SITE_URL}/organizar/dividir` : `${SITE_URL}/en/split-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
     description: isEs
-      ? 'Separa, corta y extrae páginas de documentos PDF por rangos, pares/impares o bloques fijos de forma rápida, gratuita y 100% local. Sin límites ni marcas de agua.'
-      : 'Separate, cut, and extract pages from PDF documents by custom ranges, even/odd, or fixed chunks fast, free, and 100% locally. Zero limits and no watermarks.',
+      ? 'Separa, corta y divide archivos PDF en partes de 25 MB para enviar por correo o mesa de partes, por rangos o bloques fijos de forma rápida, gratuita y 100% local.'
+      : 'Separate, cut, and split PDF documents into 25 MB chunks for email attachment or court filing, by custom ranges, even/odd, or fixed chunks fast, free, and 100% locally.',
     softwareVersion: '5.0',
     screenshot: `${SITE_URL}/og-dividir-pdf.png`,
     aggregateRating: {
@@ -160,6 +168,7 @@ export default function DividirPdfPage() {
       priceCurrency: 'USD',
     },
     featureList: [
+      'División por tamaño objetivo en MB (preset de 25 MB para Gmail, Outlook y mesas de partes)',
       'Extracción vectorial sin pérdida manteniendo resolución nativa ISO 32000-1',
       'División por rangos personalizados continuos o discontinuos (ej. 1-3, 5, 8-12)',
       'Extracción de páginas pares o impares con un solo clic',

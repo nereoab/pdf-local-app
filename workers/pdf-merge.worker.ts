@@ -10,7 +10,16 @@
  * 6. Utiliza Transferable Objects para paso de ArrayBuffers con cero copia en memoria RAM.
  */
 
-import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  degrees,
+  PDFName,
+  PDFArray,
+  PDFRef,
+  PDFString,
+} from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -133,14 +142,16 @@ function parsePageRange(rangeStr: string, totalPages: number): number[] {
 }
 
 async function generateThumbnail(arrayBuffer: ArrayBuffer): Promise<string | undefined> {
+  let pdfjsDoc: any = null;
+  let page: any = null;
+  let canvas: OffscreenCanvas | null = null;
   try {
-    const pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) })
-      .promise;
-    const page = await pdfjsDoc.getPage(1);
+    pdfjsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+    page = await pdfjsDoc.getPage(1);
     const viewport = page.getViewport({ scale: 0.3 });
 
     if (typeof OffscreenCanvas !== 'undefined') {
-      const canvas = new OffscreenCanvas(viewport.width, viewport.height);
+      canvas = new OffscreenCanvas(viewport.width, viewport.height);
       const context = canvas.getContext('2d');
       if (context) {
         await page.render({ canvasContext: context as any, canvas: canvas as any, viewport } as any)
@@ -156,6 +167,16 @@ async function generateThumbnail(arrayBuffer: ArrayBuffer): Promise<string | und
     }
   } catch (e) {
     console.warn('[pdf-merge.worker] Could not generate thumbnail in worker:', e);
+  } finally {
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+    try {
+      page?.cleanup();
+      pdfjsDoc?.cleanup();
+      pdfjsDoc?.destroy();
+    } catch {}
   }
   return undefined;
 }
@@ -647,6 +668,60 @@ async function handleMerge(data: MergeRequest) {
     }
     mergedPdf.setProducer('PDFBlack Enterprise Engine v4.0');
     mergedPdf.setCreator('PDFBlack (https://pdf-black.com)');
+
+    // 6. GENERACIÓN DE MARCADORES INTERACTIVOS (OUTLINES) PARA VISORES COMO ADOBE ACROBAT
+    if (documentCatalog.length > 0) {
+      try {
+        const context = mergedPdf.context;
+        const pages = mergedPdf.getPages();
+        if (pages.length > 0) {
+          const outlineRefs: PDFRef[] = [];
+          const outlinesDictRef = context.nextRef();
+
+          for (let i = 0; i < documentCatalog.length; i++) {
+            outlineRefs.push(context.nextRef());
+          }
+
+          for (let i = 0; i < documentCatalog.length; i++) {
+            const item = documentCatalog[i];
+            const pageIndex = Math.min(Math.max(0, item.startPage - 1), pages.length - 1);
+            const targetPage = pages[pageIndex];
+
+            const destArray = PDFArray.withContext(context);
+            destArray.push(targetPage.ref);
+            destArray.push(PDFName.of('Fit'));
+
+            const cleanName = item.name.replace(/\.[^/.]+$/, '').trim() || `Documento ${i + 1}`;
+            const itemDict = context.obj({
+              Title: PDFString.of(cleanName),
+              Parent: outlinesDictRef,
+              Dest: destArray,
+            });
+
+            if (i > 0) {
+              itemDict.set(PDFName.of('Prev'), outlineRefs[i - 1]);
+            }
+            if (i < documentCatalog.length - 1) {
+              itemDict.set(PDFName.of('Next'), outlineRefs[i + 1]);
+            }
+
+            context.assign(outlineRefs[i], itemDict);
+          }
+
+          const outlinesDict = context.obj({
+            Type: PDFName.of('Outlines'),
+            First: outlineRefs[0],
+            Last: outlineRefs[outlineRefs.length - 1],
+            Count: outlineRefs.length,
+          });
+
+          context.assign(outlinesDictRef, outlinesDict);
+          mergedPdf.catalog.set(PDFName.of('Outlines'), outlinesDictRef);
+        }
+      } catch (outlineErr) {
+        console.warn('Advertencia al generar marcadores PDF:', outlineErr);
+      }
+    }
 
     self.postMessage({
       type: 'progress',

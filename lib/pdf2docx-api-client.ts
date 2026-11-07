@@ -17,15 +17,17 @@ export async function convertPdfToWordWithApi(
 ): Promise<Blob> {
   const onProgress = options?.onProgress;
   const initialMsg =
-    options?.engine === 'adobe'
-      ? 'Enviando a Adobe Acrobat Services...'
-      : options?.engine === 'cloudconvert'
-        ? 'Enviando a CloudConvert API v2 (Nube Privada)...'
-        : options?.engine === 'local'
-          ? 'Compilando documento con Motor Local PyMuPDF...'
-          : options?.engine === 'pdf2docx'
-            ? 'Iniciando PDFBlack Ultra Engine (análisis geométrico y tablas Pro)...'
-            : 'Enviando documento al motor de conversión...';
+    options?.engine === 'gemini'
+      ? 'Conectando con Gemini 4 Argon AI (Reconstrucción Cognitiva & Tablas)...'
+      : options?.engine === 'adobe'
+        ? 'Enviando a Adobe Acrobat Services...'
+        : options?.engine === 'cloudconvert'
+          ? 'Enviando a CloudConvert API v2 (Nube Privada)...'
+          : options?.engine === 'local'
+            ? 'Compilando documento con Motor Local PyMuPDF...'
+            : options?.engine === 'pdf2docx'
+              ? 'Iniciando PDFBlack Ultra Engine (análisis geométrico y tablas Pro)...'
+              : 'Enviando documento al motor de conversión...';
   onProgress?.(10, initialMsg);
 
   const formData = new FormData();

@@ -120,7 +120,7 @@ export default function PdfOrganizer() {
     }
   }, [isEs, pages]);
 
-  // ATAJOS DE TECLADO GLOBALES CTRL+Z Y CTRL+Y
+  // ATAJOS DE TECLADO GLOBALES PROFESIONALES (CTRL+Z, CTRL+Y, ESCAPE)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -135,6 +135,8 @@ export default function PdfOrganizer() {
       ) {
         e.preventDefault();
         handleRedo();
+      } else if (e.key === 'Escape') {
+        setPreviewZoomPage(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -311,11 +313,16 @@ export default function PdfOrganizer() {
                           : item,
                       ),
                     );
+                    canvas.width = 0;
+                    canvas.height = 0;
+                    (page as any).cleanup?.();
                   }
                 } catch (pageErr) {
                   console.warn(`Could not render thumbnail for page ${p}:`, pageErr);
                 }
               }
+              (pdf as any).destroy?.();
+              pdf.cleanup?.();
             } catch (docErr: any) {
               console.warn('PDF.js thumbnail generation error:', docErr);
             }

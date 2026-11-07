@@ -319,10 +319,11 @@ export async function convertPdfToExcelWithGemini(
   options?: GeminiConversionOptions,
 ): Promise<Buffer> {
   const apiKey = getGeminiApiKey();
+  const hasGscCreds = fs.existsSync(path.join(process.cwd(), 'gsc-credentials.json'));
 
-  if (!apiKey) {
+  if (!apiKey && !hasGscCreds) {
     throw new Error(
-      'GEMINI_API_KEY no está configurada en .env.local ni en las variables de entorno.',
+      'No se encontró clave GEMINI_API_KEY ni credenciales de Google Agent Platform para Gemini.',
     );
   }
 
@@ -404,7 +405,20 @@ Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura:
 
     if (sheetData.rows && sheetData.rows.length > 0) {
       for (const row of sheetData.rows) {
-        rowsData.push(row);
+        const parsedRow = row.map((cell) => {
+          if (cell === null || cell === undefined) return '';
+          if (typeof cell === 'number') return cell;
+          if (typeof cell === 'string') {
+            const trimmed = cell.trim();
+            // Limpieza de números con formato moneda o comas (ej. "S/ 1,250.50", "$450.00", "1,200.00")
+            const cleanedNum = trimmed.replace(/^[$\sS/€£¥]+/, '').replace(/,/g, '');
+            if (/^-?\d+(\.\d+)?$/.test(cleanedNum) && !isNaN(Number(cleanedNum))) {
+              return Number(cleanedNum);
+            }
+          }
+          return cell;
+        });
+        rowsData.push(parsedRow);
       }
     }
 

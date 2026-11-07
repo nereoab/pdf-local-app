@@ -820,7 +820,7 @@ export default function FoliarSuccessView({
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
               onClick={handleManualDownload}
-              className={`w-full relative overflow-hidden flex flex-col sm:flex-row items-center justify-center gap-3 px-6 py-4.5 sm:py-5 rounded-2xl font-sans font-extrabold text-base sm:text-lg transition-all cursor-pointer shadow-xl group border ${
+              className={`w-full relative overflow-hidden flex flex-col sm:flex-row items-center justify-center gap-3 px-6 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-sans font-bold text-base sm:text-lg transition-all cursor-pointer shadow-xl group border ${
                 downloaded
                   ? 'bg-gradient-to-r from-[#FAF6EE] to-[#E8DFCF] text-black border-[#FAF6EE] shadow-[0_0_35px_rgba(250,246,238,0.5)]'
                   : 'bg-gradient-to-r from-[#FAF6EE] via-[#E8DFCF] to-[#DFD5C2] text-black shadow-[0_0_30px_rgba(232,223,207,0.35)] hover:shadow-[0_0_45px_rgba(250,246,238,0.65)] border-[#FAF6EE]'
@@ -831,23 +831,22 @@ export default function FoliarSuccessView({
 
               <div className="flex items-center gap-2.5">
                 {downloaded ? (
-                  <CheckCircle2 className="w-6 h-6 text-black flex-shrink-0 stroke-[2.5]" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-800 flex-shrink-0 stroke-[2.5]" />
                 ) : (
-                  <Download className="w-6 h-6 text-black group-hover:translate-y-0.5 transition-transform flex-shrink-0 stroke-[2.5]" />
+                  <Download className="w-5 h-5 text-black group-hover:translate-y-0.5 transition-transform flex-shrink-0 stroke-[2.5]" />
                 )}
-                <span className="tracking-tight uppercase">
+                <span className="tracking-tight">
                   {downloaded
                     ? isEs
-                      ? '¡Descargado con éxito! Descargar de nuevo'
-                      : 'Downloaded! Download again'
-                    : downloadButtonText ||
-                      (isEs ? 'Descargar Documento Foliado' : 'Download Numbered PDF')}
+                      ? 'Descargar de nuevo'
+                      : 'Download again'
+                    : downloadButtonText || (isEs ? 'Descargar PDF' : 'Download PDF')}
                 </span>
               </div>
 
               {completedResult.fileSize && (
-                <span className="text-xs font-mono font-bold bg-black/15 px-2.5 py-1 rounded-full text-black/90">
-                  {completedResult.fileSize} • {isEs ? 'Listo para imprimir' : 'Ready to print'}
+                <span className="text-xs font-mono font-semibold bg-black/10 px-2.5 py-0.5 rounded-full text-black/85">
+                  {completedResult.fileSize}
                 </span>
               )}
             </motion.button>
@@ -889,174 +888,168 @@ export default function FoliarSuccessView({
               )}
             </div>
 
-            {/* CUADRÍCULA DE BOTONES DE COMPARTIR CON EL MISMO PROTAGONISMO */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            {/* FILA COMPACTA DE 8 BOTONES DE COMPARTIR */}
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2">
               {/* 1. WhatsApp Oficial */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleShareWhatsApp}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#15241b] hover:to-[#0c1810] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#15241b] hover:to-[#0c1810] border border-emerald-500/40 hover:border-emerald-400 rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <WhatsAppIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(37,211,102,0.45)]" />
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
+                  <WhatsAppIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(37,211,102,0.4)]" />
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-emerald-300 block font-sans">
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-emerald-300 block font-sans truncate">
                     WhatsApp
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-tight mt-0.5">
-                    {isEs ? 'Chat o Web' : 'Chat or Web'}
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Chat' : 'Chat'}
                   </span>
                 </div>
               </motion.button>
 
               {/* 2. Telegram Oficial */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleShareTelegram}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#13222d] hover:to-[#0b151d] border border-sky-500/40 hover:border-sky-400 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#13222d] hover:to-[#0b151d] border border-sky-500/40 hover:border-sky-400 rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <TelegramIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(34,158,217,0.45)]" />
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
+                  <TelegramIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(34,158,217,0.4)]" />
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-sky-300 block font-sans">
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-sky-300 block font-sans truncate">
                     Telegram
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-tight mt-0.5">
-                    {isEs ? 'Canal o grupo' : 'Channel or group'}
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Canal' : 'Channel'}
                   </span>
                 </div>
               </motion.button>
 
               {/* 3. Google Drive Oficial */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleShareGoogleDrive}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#232014] hover:to-[#141209] border border-amber-500/40 hover:border-amber-400 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#232014] hover:to-[#141209] border border-amber-500/40 hover:border-amber-400 rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <GoogleDriveIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(255,186,0,0.4)]" />
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
+                  <GoogleDriveIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(255,186,0,0.35)]" />
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-amber-300 block font-sans">
-                    Google Drive
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-amber-300 block font-sans truncate">
+                    Drive
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-tight mt-0.5">
-                    {isEs ? 'Guardar en nube' : 'Save to cloud'}
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Nube' : 'Cloud'}
                   </span>
                 </div>
               </motion.button>
 
               {/* 4. Facebook Oficial */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleShareFacebook}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#141a29] hover:to-[#0a101b] border border-blue-500/40 hover:border-blue-400 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#141a29] hover:to-[#0a101b] border border-blue-500/40 hover:border-blue-400 rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <FacebookIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(24,119,242,0.45)]" />
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
+                  <FacebookIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(24,119,242,0.4)]" />
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-blue-300 block font-sans">
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-blue-300 block font-sans truncate">
                     Facebook
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-tight mt-0.5">
-                    {isEs ? 'Messenger o feed' : 'Messenger or feed'}
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Feed' : 'Feed'}
                   </span>
                 </div>
               </motion.button>
 
               {/* 5. Código QR Móvil */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setShowQRModal(true)}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#262420] hover:to-[#171614] border border-[#E8DFCF]/40 hover:border-[#FAF6EE] rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#262420] hover:to-[#171614] border border-[#E8DFCF]/40 hover:border-[#FAF6EE] rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <QrBrandIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(250,246,238,0.35)]" />
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
+                  <QrBrandIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(250,246,238,0.3)]" />
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-[#FAF6EE] block font-sans">
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-[#FAF6EE] block font-sans truncate">
                     {isEs ? 'Código QR' : 'QR Code'}
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-tight mt-0.5">
-                    {isEs ? 'Escanear con móvil' : 'Scan with mobile'}
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Móvil' : 'Mobile'}
                   </span>
                 </div>
               </motion.button>
 
               {/* 6. Correo / Gmail Oficial */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleShareEmail}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#251818] hover:to-[#160c0c] border border-rose-500/40 hover:border-rose-400 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#251818] hover:to-[#160c0c] border border-rose-500/40 hover:border-rose-400 rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <GmailIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(234,67,53,0.4)]" />
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
+                  <GmailIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(234,67,53,0.35)]" />
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-rose-300 block font-sans">
-                    {isEs ? 'Correo / Gmail' : 'Email / Gmail'}
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-rose-300 block font-sans truncate">
+                    Gmail
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-tight mt-0.5">
-                    {isEs ? 'Redactar mensaje' : 'Compose email'}
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Correo' : 'Email'}
                   </span>
                 </div>
               </motion.button>
 
               {/* 7. Más Apps (AirDrop / Compartir Sistema) */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleNativeShare}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#211628] hover:to-[#120b17] border border-purple-500/40 hover:border-purple-400 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#211628] hover:to-[#120b17] border border-purple-500/40 hover:border-purple-400 rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
-                  <SystemShareBrandIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(168,85,247,0.45)]" />
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
+                  <SystemShareBrandIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(168,85,247,0.4)]" />
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-purple-300 block font-sans">
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-purple-300 block font-sans truncate">
                     {isEs ? 'Más Apps' : 'More Apps'}
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-tight mt-0.5">
-                    {isEs ? 'AirDrop o Sistema' : 'AirDrop or System'}
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-zinc-300 font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Sistema' : 'System'}
                   </span>
                 </div>
               </motion.button>
 
               {/* 8. Copiar Enlace Oficial */}
               <motion.button
-                whileHover={{ scale: 1.03, y: -2 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.04, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={handleCopyShareLink}
-                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#1f2027] hover:to-[#111216] border border-zinc-600 hover:border-[#E8DFCF]/50 rounded-2xl p-3.5 flex flex-col items-start justify-between gap-2.5 transition-all text-left cursor-pointer group shadow-md"
+                className="bg-gradient-to-b from-[#18181f] via-[#111116] to-[#0a0a0d] hover:from-[#1f2027] hover:to-[#111216] border border-zinc-600 hover:border-[#E8DFCF]/50 rounded-xl p-2 sm:p-2.5 flex flex-col items-center justify-center gap-1 transition-all text-center cursor-pointer group shadow-sm min-w-0"
               >
-                <div className="p-1 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110">
+                <div className="flex items-center justify-center transition-transform group-hover:scale-110">
                   {copiedFile ? (
-                    <Check className="w-8 h-8 text-emerald-400" />
+                    <Check className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
                   ) : (
-                    <CopyFileBrandIcon className="w-8 h-8 drop-shadow-[0_2px_10px_rgba(148,163,184,0.35)]" />
+                    <CopyFileBrandIcon className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-[0_2px_8px_rgba(148,163,184,0.3)]" />
                   )}
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-white group-hover:text-[#FAF6EE] block font-sans">
-                    {copiedFile
-                      ? isEs
-                        ? '¡Copiado!'
-                        : 'Copied!'
-                      : isEs
-                        ? 'Copiar Enlace'
-                        : 'Copy Link'}
+                <div className="w-full text-center overflow-hidden">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-white group-hover:text-[#FAF6EE] block font-sans truncate">
+                    {copiedFile ? (isEs ? '¡Copiado!' : 'Copied!') : isEs ? 'Copiar' : 'Copy'}
                   </span>
-                  <span className="text-[10px] text-zinc-400 group-hover:text-[#FAF6EE] font-mono block leading-tight mt-0.5 truncate max-w-[110px]">
-                    pdf-black.com
+                  <span className="text-[8px] sm:text-[9px] text-zinc-400 group-hover:text-[#FAF6EE] font-mono block leading-none truncate mt-0.5">
+                    {isEs ? 'Enlace' : 'Link'}
                   </span>
                 </div>
               </motion.button>

@@ -627,6 +627,12 @@ async function attemptDeepRescue(
         height: originalViewport.height,
       });
 
+      canvas.width = 0;
+      canvas.height = 0;
+      try {
+        page.cleanup();
+      } catch {}
+
       rescuedCount++;
     } catch {
       lostPageNumbers.push(pageNum);
@@ -665,6 +671,11 @@ async function attemptDeepRescue(
       }
     }
   }
+
+  try {
+    pdfjsDoc.cleanup();
+    (pdfjsDoc as any).destroy?.();
+  } catch {}
 
   if (lostPageNumbers.length > 0 && rescuedCount > 0) {
     issuesFixed.push(`${rescuedCount} de ${targetPages.length} paginas rescatadas exitosamente`);

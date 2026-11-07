@@ -374,8 +374,17 @@ async function rasterizePdf(fileBuffer: ArrayBuffer): Promise<Uint8Array> {
       const ov = pg.getViewport({ scale: 1.0 });
       const np = rp.addPage([ov.width, ov.height]);
       np.drawImage(img, { x: 0, y: 0, width: ov.width, height: ov.height });
+      cv.width = 0;
+      cv.height = 0;
     }
+    try {
+      pg.cleanup();
+    } catch {}
   }
+  try {
+    srcDoc.cleanup();
+    (srcDoc as any).destroy?.();
+  } catch {}
   return new Uint8Array(await rp.save({ useObjectStreams: false }));
 }
 

@@ -285,9 +285,16 @@ self.onmessage = async (e: MessageEvent<BlackWhiteWorkerMessageIn>) => {
         height: origViewport.height,
       });
 
-      // Liberar recursos
+      // Liberar recursos de página y canvas inmediatamente
+      canvas.width = 0;
+      canvas.height = 0;
       page.cleanup();
     }
+
+    try {
+      pdfjsDoc.cleanup();
+      (pdfjsDoc as any).destroy?.();
+    } catch {}
 
     postProgress(94, 'Generando archivo PDF monocromático final...');
 

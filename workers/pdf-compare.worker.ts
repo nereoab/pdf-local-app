@@ -355,11 +355,17 @@ async function extractPages(
               viewport,
             } as unknown as Parameters<typeof page.render>[0]).promise;
             renderedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            canvas.width = 0;
+            canvas.height = 0;
           }
         } catch {
           // Skip
         }
       }
+
+      try {
+        page.cleanup();
+      } catch {}
 
       pages.push({
         pageNum,
@@ -381,6 +387,11 @@ async function extractPages(
       });
     }
   }
+
+  try {
+    pdfDoc.cleanup();
+    (pdfDoc as any).destroy?.();
+  } catch {}
 
   return {
     pages,

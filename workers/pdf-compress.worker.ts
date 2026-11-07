@@ -481,6 +481,9 @@ async function compressImagesInPlace(
             quality: params.jpegQuality,
           });
           newJpegBytes = new Uint8Array(await newBlob.arrayBuffer());
+          // Liberación inmediata de VRAM / buffers gráficos
+          canvas.width = 0;
+          canvas.height = 0;
         }
         imgBitmap.close();
       } catch {
@@ -547,6 +550,14 @@ async function compressImagesInPlace(
                 quality: params.jpegQuality,
               });
               newJpegBytes = new Uint8Array(await newBlob.arrayBuffer());
+            }
+
+            // Liberación explícita de ambos canvas para evitar fugas de memoria
+            canvas.width = 0;
+            canvas.height = 0;
+            if (finalCanvas !== canvas) {
+              finalCanvas.width = 0;
+              finalCanvas.height = 0;
             }
           }
         }
@@ -643,6 +654,13 @@ async function rasterizePageToNewPdf(
     width: origViewport.width,
     height: origViewport.height,
   });
+
+  // Liberación forzada de memoria gráfica y limpieza de glifos en memoria
+  canvas.width = 0;
+  canvas.height = 0;
+  try {
+    pdfPage.cleanup();
+  } catch {}
 }
 
 // ============================================================
@@ -721,8 +739,7 @@ async function compressSinglePdf(
       stage: 'optimizing_images',
     });
 
-    const pdfjsDoc = await pdfjsLib.getDocument({ data: fileBuffer.slice(0) as ArrayBuffer })
-      .promise;
+    const pdfjsDoc = await pdfjsLib.getDocument({ data: fileBuffer }).promise;
     const newPdf = await PDFDocument.create();
 
     const scale = options.dpiMode === '72' ? 1.0 : options.dpiMode === '150' ? 2.0 : 1.33;
@@ -754,6 +771,11 @@ async function compressSinglePdf(
         newPdf.addPage([612, 792]);
       }
     }
+
+    try {
+      pdfjsDoc.cleanup();
+      (pdfjsDoc as any).destroy?.();
+    } catch {}
 
     pagesPreservedVector = 0;
 

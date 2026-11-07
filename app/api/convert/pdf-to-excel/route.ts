@@ -179,10 +179,11 @@ export async function POST(req: NextRequest) {
 
     console.warn('[PDF-to-Excel] Local Python engine failed:', pyStderr);
 
-    // 5. Fallback con Gemini si está configurado
+    // 5. Fallback con Gemini 4 Argon si está configurado
     try {
-      if (process.env.GEMINI_API_KEY) {
-        console.log('[PDF-to-Excel] Fallback to Gemini AI Structural Engine...');
+      const hasGscCreds = fs.existsSync(path.join(process.cwd(), 'gsc-credentials.json'));
+      if (process.env.GEMINI_API_KEY || hasGscCreds) {
+        console.log('[PDF-to-Excel] Fallback to Gemini 4 Argon Structural Engine...');
         const xlsxBuffer = await convertPdfToExcelWithGemini(buffer, file.name);
         return new NextResponse(new Uint8Array(xlsxBuffer), {
           status: 200,
@@ -190,6 +191,7 @@ export async function POST(req: NextRequest) {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition': `attachment; filename="${safeOutName}"`,
             'Content-Length': xlsxBuffer.length.toString(),
+            'X-Conversion-Engine-Used': 'gemini-4-argon',
           },
         });
       }

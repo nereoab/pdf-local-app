@@ -750,7 +750,17 @@ async function unlockPdfCore(
           // Ignorar caracteres no soportados por standard fonts
         }
       }
+
+      canvas.width = 0;
+      canvas.height = 0;
+      try {
+        page.cleanup();
+      } catch {}
     }
+
+    try {
+      loadingTask.destroy();
+    } catch {}
 
     if (options.stripMetadata) {
       cleanPdf.setTitle('');

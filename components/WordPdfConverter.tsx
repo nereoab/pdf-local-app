@@ -188,7 +188,7 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
   const [includeDocHeader, setIncludeDocHeader] = useState<boolean>(true);
   const [includeImages, setIncludeImages] = useState<boolean>(true);
   const [conversionEngine, setConversionEngine] = useState<
-    'adobe' | 'local' | 'pdf2docx' | 'cloudconvert'
+    'adobe' | 'local' | 'pdf2docx' | 'cloudconvert' | 'gemini'
   >('pdf2docx');
 
   // OPCIONES AVANZADAS WORD -> PDF (MEJORADAS)
@@ -2222,6 +2222,32 @@ export default function WordPdfConverter({ defaultMode = 'word-to-pdf' }: WordPd
                             {isEs
                               ? 'Motor en la nube de alto rendimiento. Reconstruye el documento con maquetación fiel, estilos tipográficos e imágenes.'
                               : 'High-performance cloud processing engine. Faithful document layout with typography, styling and graphics.'}
+                          </p>
+                        </button>
+
+                        {/* OPCIÓN 5: GEMINI 4 ARGON AI */}
+                        <button
+                          type="button"
+                          onClick={() => setConversionEngine('gemini')}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative md:col-span-2 ${
+                            conversionEngine === 'gemini'
+                              ? 'bg-gradient-to-r from-blue-950/80 via-indigo-950/80 to-purple-950/80 border-blue-400 ring-2 ring-blue-400/60 shadow-lg shadow-indigo-950/50'
+                              : 'bg-zinc-900/90 border-zinc-700 hover:border-blue-500/60 opacity-80 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                              <Sparkles className="w-4 h-4 text-blue-400" />
+                              <span>✨ Gemini 4 Argon AI (Reconstrucción Cognitiva & Tablas)</span>
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/25 text-blue-200 border border-blue-400/50">
+                              {isEs ? 'Tablas Complejas y Oficios' : 'Complex Tables & Memos'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-300 leading-relaxed">
+                            {isEs
+                              ? 'Reconstrucción cognitiva inteligente con Gemini 4 Argon. Deduce tablas sin bordes, membretes, bloques de firma y jerarquía tipográfica sin romper el documento.'
+                              : 'Cognitive reconstruction with Gemini 4 Argon. Deduces borderless tables, headers, signatures and layouts perfectly.'}
                           </p>
                         </button>
                       </div>

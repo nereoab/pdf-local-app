@@ -475,6 +475,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Fallback 5: Gemini 4 Argon AI Cognitive Engine (Red de Rescate Semántico)
+    try {
+      const hasGscCreds = fs.existsSync(path.join(process.cwd(), 'gsc-credentials.json'));
+      if (process.env.GEMINI_API_KEY || hasGscCreds) {
+        console.log(
+          '[PDF-to-Word] Ultimate Fallback: Converting with Gemini 4 Argon Structural Engine...',
+        );
+        const geminiDocxBuffer = await convertPdfToWordWithGemini(activeBuffer, file.name, {
+          pages: isSubSet ? undefined : pages || undefined,
+        });
+        if (geminiDocxBuffer && geminiDocxBuffer.length > 0) {
+          return new NextResponse(new Uint8Array(geminiDocxBuffer), {
+            status: 200,
+            headers: {
+              'Content-Type':
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              'Content-Disposition': `attachment; filename="${safeOutName}"`,
+              'Content-Length': geminiDocxBuffer.length.toString(),
+              'X-Conversion-Engine-Used': 'gemini-4-argon-fallback',
+              'X-Fallback-Triggered': 'true',
+            },
+          });
+        }
+      }
+    } catch (geminiFallbackErr) {
+      console.warn('[PDF-to-Word] Gemini 4 Argon fallback error:', geminiFallbackErr);
+    }
+
     return NextResponse.json(
       { error: 'No fue posible convertir el documento con los motores disponibles' },
       { status: 500 },

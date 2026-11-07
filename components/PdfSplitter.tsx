@@ -151,6 +151,8 @@ export default function PdfSplitter() {
   const [extractMode, setExtractMode] = useState<'all' | 'specific' | 'even' | 'odd'>('all');
   const [specificPagesInput, setSpecificPagesInput] = useState<string>('1, 2, 3');
   const [chunkPageCount, setChunkPageCount] = useState<number>(5);
+  const [sizeSplitMode, setSizeSplitMode] = useState<'mb' | 'pages'>('mb');
+  const [targetMb, setTargetMb] = useState<number>(25);
   const [createZip, setCreateZip] = useState<boolean>(true);
   const [filePrefix, setFilePrefix] = useState<string>('Documento_Dividido');
   const [addPageFooterNumbering, setAddPageFooterNumbering] = useState<boolean>(false);
@@ -555,6 +557,14 @@ export default function PdfSplitter() {
   }, [pageThumbnails]);
 
   // CÁLCULO DE RESUMEN EN TIEMPO REAL (LIVE SPLIT SUMMARY)
+  const calculatedPagesPerChunk = useMemo(() => {
+    if (sizeSplitMode === 'pages') return Math.max(1, chunkPageCount);
+    if (!file || totalPages <= 0) return 5;
+    const avgBytesPerPage = file.size / totalPages;
+    const targetBytes = targetMb * 1024 * 1024 * 0.95;
+    return Math.max(1, Math.floor(targetBytes / Math.max(1, avgBytesPerPage)));
+  }, [sizeSplitMode, chunkPageCount, file, totalPages, targetMb]);
+
   const liveSummary = useMemo(() => {
     if (totalPages === 0) return null;
 
@@ -611,7 +621,7 @@ export default function PdfSplitter() {
         includedCount = Array.from(indices).filter((i) => pageThumbnails[i]?.included).length;
       }
     } else {
-      const size = Math.max(1, chunkPageCount);
+      const size = calculatedPagesPerChunk;
       partsCount = Math.ceil(totalPages / size);
       includedCount = selectedCount;
     }
@@ -635,7 +645,7 @@ export default function PdfSplitter() {
     mergeAllRanges,
     ranges,
     pageThumbnails,
-    chunkPageCount,
+    calculatedPagesPerChunk,
     selectedCount,
     extractMode,
     specificPagesInput,
@@ -728,8 +738,8 @@ export default function PdfSplitter() {
           if (sorted.length > 0) pageGroups.push(sorted);
         }
       } else {
-        // TAB TAMAÑO
-        const size = Math.max(1, chunkPageCount);
+        // TAB TAMAÑO (Por Peso Objetivo en MB o por Páginas)
+        const size = calculatedPagesPerChunk;
         for (let i = 0; i < totalPages; i += size) {
           const chunk: number[] = [];
           for (let j = i; j < Math.min(i + size, totalPages); j++) {
@@ -1671,29 +1681,118 @@ export default function PdfSplitter() {
                     </div>
                   )}
 
-                  {/* CONTENIDO TAB 3: TAMAÑO */}
+                  {/* CONTENIDO TAB 3: TAMAÑO (PESO EN MB O PÁGINAS) */}
                   {mainTab === 'tamano' && (
                     <div className="space-y-3 font-mono text-xs">
-                      <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2.5">
-                        <label className="text-[10px] text-zinc-400 uppercase tracking-wider block">
-                          {isEs ? 'Dividir cada N páginas:' : 'Chunk every N pages:'}
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={totalPages || 100}
-                          value={chunkPageCount}
-                          onChange={(e) =>
-                            setChunkPageCount(Math.max(1, parseInt(e.target.value, 10) || 1))
-                          }
-                          className="w-full bg-zinc-900 border border-white/20 rounded-xl p-2.5 text-white text-xs font-mono outline-none focus:border-white/50"
-                        />
-                        <p className="text-[10px] text-emerald-400 font-mono">
-                          {isEs
-                            ? `✓ Generará ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} partes de ${chunkPageCount} página(s)`
-                            : `✓ Will generate ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} parts of ${chunkPageCount} page(s)`}
-                        </p>
+                      {/* Sub-selector: Peso en MB vs Por Páginas */}
+                      <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950 rounded-xl border border-white/10 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setSizeSplitMode('mb')}
+                          className={`py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer ${
+                            sizeSplitMode === 'mb'
+                              ? 'bg-white text-black shadow-sm'
+                              : 'text-zinc-400 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? '⚖ Límite en Megabytes (MB)' : '⚖ Target Size (MB)'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSizeSplitMode('pages')}
+                          className={`py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer ${
+                            sizeSplitMode === 'pages'
+                              ? 'bg-white text-black shadow-sm'
+                              : 'text-zinc-400 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? '📄 Cada N Páginas' : '📄 Every N Pages'}
+                        </button>
                       </div>
+
+                      {sizeSplitMode === 'mb' ? (
+                        <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-3">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] text-zinc-400 uppercase tracking-wider block">
+                              {isEs ? 'Límite Máximo por Archivo:' : 'Max File Size Limit:'}
+                            </label>
+                            <span className="text-[10px] text-zinc-500">
+                              {file ? `Archivo: ${(file.size / (1024 * 1024)).toFixed(1)} MB` : ''}
+                            </span>
+                          </div>
+
+                          {/* Presets Corporativos */}
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { label: '10 MB', value: 10, hint: 'WhatsApp' },
+                              { label: '25 MB', value: 25, hint: 'Gmail / Corte' },
+                              { label: '50 MB', value: 50, hint: 'Portales' },
+                            ].map((preset) => (
+                              <button
+                                key={preset.value}
+                                type="button"
+                                onClick={() => setTargetMb(preset.value)}
+                                className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                                  targetMb === preset.value
+                                    ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300 shadow-sm'
+                                    : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-700'
+                                }`}
+                              >
+                                <span className="block font-bold text-xs">{preset.label}</span>
+                                <span className="text-[9px] text-zinc-500">{preset.hint}</span>
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[10px] text-zinc-400">
+                              {isEs ? 'Personalizado:' : 'Custom:'}
+                            </span>
+                            <div className="relative flex-1">
+                              <input
+                                type="number"
+                                min={1}
+                                max={500}
+                                value={targetMb}
+                                onChange={(e) =>
+                                  setTargetMb(Math.max(1, parseInt(e.target.value, 10) || 1))
+                                }
+                                className="w-full bg-zinc-900 border border-white/20 rounded-xl p-2 pr-9 text-white text-xs font-mono outline-none focus:border-white/50"
+                              />
+                              <span className="absolute right-3 top-2 text-xs text-zinc-500">
+                                MB
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-[10px] text-emerald-400 font-mono">
+                            {isEs
+                              ? `✓ Dividirá en partes de ~${calculatedPagesPerChunk} páginas para no superar ${targetMb} MB`
+                              : `✓ Will split into parts of ~${calculatedPagesPerChunk} pages to stay under ${targetMb} MB`}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-zinc-950 border border-white/10 p-3.5 rounded-xl space-y-2.5">
+                          <label className="text-[10px] text-zinc-400 uppercase tracking-wider block">
+                            {isEs ? 'Dividir cada N páginas:' : 'Chunk every N pages:'}
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalPages || 100}
+                            value={chunkPageCount}
+                            onChange={(e) =>
+                              setChunkPageCount(Math.max(1, parseInt(e.target.value, 10) || 1))
+                            }
+                            className="w-full bg-zinc-900 border border-white/20 rounded-xl p-2.5 text-white text-xs font-mono outline-none focus:border-white/50"
+                          />
+                          <p className="text-[10px] text-emerald-400 font-mono">
+                            {isEs
+                              ? `✓ Generará ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} partes de ${chunkPageCount} página(s)`
+                              : `✓ Will generate ${Math.ceil((totalPages || 1) / Math.max(1, chunkPageCount))} parts of ${chunkPageCount} page(s)`}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

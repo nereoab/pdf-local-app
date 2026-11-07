@@ -412,7 +412,18 @@ async function redactRasterMode(
       width: origViewport.width,
       height: origViewport.height,
     });
+
+    canvas.width = 0;
+    canvas.height = 0;
+    try {
+      page.cleanup();
+    } catch {}
   }
+
+  try {
+    srcDoc.cleanup();
+    (srcDoc as any).destroy?.();
+  } catch {}
 
   report({
     type: 'progress',

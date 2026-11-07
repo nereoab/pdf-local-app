@@ -56,6 +56,14 @@ export default function UnirPdfPage() {
   const faqs = isEs
     ? [
         {
+          q: '¿Cómo unir archivos PDF mayores de 100 MB o 300 MB gratis en PDFBlack?',
+          a: 'A diferencia de plataformas como iLovePDF o Smallpdf, que bloquean la herramienta a partir de 100 MB o 15 MB para obligar a pagar suscripciones mensuales, PDFBlack no impone límites de subida. Puedes combinar archivos de 100 MB, 300 MB o más de 500 MB gratis, ya que la fusión se ejecuta íntegramente en la memoria RAM de tu propio navegador sin depender de colas ni servidores externos.',
+        },
+        {
+          q: '¿La unión de documentos conserva los marcadores interactivos (Outlines) para Adobe Acrobat Reader?',
+          a: 'Sí. El motor de PDFBlack genera automáticamente un árbol jerárquico de marcadores (/Outlines) en el documento consolidado. Al abrir el archivo en Adobe Acrobat Reader o visores PDF corporativos, tendrás acceso a un panel de navegación interactivo con el nombre y página de inicio de cada archivo anexado.',
+        },
+        {
           q: '¿Cómo unir varios archivos PDF en uno solo gratis sin límites de tamaño?',
           a: 'Para unir múltiples archivos PDF gratis: 1. Arrastra todos tus documentos a la plataforma PDFBlack. 2. Ordena visualmente las páginas o activa el Índice Corporativo y numeración continua. 3. Haz clic en «Unir Archivos PDF» y descarga al instante tu documento unificado sin marcas de agua ni límites.',
         },
@@ -97,6 +105,14 @@ export default function UnirPdfPage() {
         },
       ]
     : [
+        {
+          q: 'Can I merge PDF files larger than 100 MB or 300 MB for free on PDFBlack?',
+          a: 'Yes. Unlike cloud tools like iLovePDF or Smallpdf that cap file uploads at 100 MB or 15 MB to push paid monthly tiers, PDFBlack runs completely client-side. You can merge PDFs of 100 MB, 300 MB, or 500+ MB with no server paywalls because file streams are handled directly in your local browser RAM.',
+        },
+        {
+          q: 'Does merging generate interactive bookmarks (Outlines) for Adobe Acrobat?',
+          a: 'Yes. PDFBlack creates an interactive /Outlines tree in the consolidated PDF. When opening the document in Adobe Acrobat Reader, users can instantly jump between source documents using the Acrobat bookmarks sidebar.',
+        },
         {
           q: 'How to merge multiple PDF files into one for free without size limits?',
           a: 'To merge multiple PDF files for free: 1. Drag all your documents into the PDFBlack workspace. 2. Visually arrange pages or enable the automatic Table of Contents. 3. Click "Merge PDF Files" and download your unified document instantly without watermarks, limits, or signup.',
@@ -143,15 +159,15 @@ export default function UnirPdfPage() {
     '@context': 'https://schema.org',
     '@type': ['WebApplication', 'SoftwareApplication'],
     name: isEs
-      ? 'Unir PDF Gratis Online — Sin Límites de Tamaño ni Registro | PDFBlack'
-      : 'Free PDF Merger Online — Combine PDFs with No Limits or Sign-Up | PDFBlack',
+      ? 'Unir PDF Mayor de 100 MB Gratis Online — Sin Límites de Tamaño ni Registro | PDFBlack'
+      : 'Merge PDF Larger than 100 MB Free Online — No File Limits or Sign-Up | PDFBlack',
     url: isEs ? `${SITE_URL}/organizar/unir` : `${SITE_URL}/en/merge-pdf`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
     description: isEs
-      ? 'Combina y une múltiples archivos PDF en un solo documento sin límites de peso ni de archivos. 100% local en tu navegador, sin subir a servidores, gratis y sin registro.'
-      : 'Merge multiple PDF files into one document with no file size limits and no account required. 100% private in-browser local processing, automatic Table of Contents, and zero server uploads.',
+      ? 'Combina y une archivos PDF mayores a 100 MB, 300 MB o 500 MB sin límites de peso ni paywalls. 100% local en tu navegador con marcadores interactivos para Acrobat, sin marcas de agua y gratis.'
+      : 'Merge PDF files larger than 100 MB, 300 MB or 500 MB with zero file size limits and no paywalls. 100% private in-browser local processing, interactive Acrobat bookmarks, and zero server uploads.',
     softwareVersion: '5.0',
     screenshot: `${SITE_URL}/og-unir-pdf.png`,
     aggregateRating: {
@@ -167,6 +183,8 @@ export default function UnirPdfPage() {
       priceCurrency: 'USD',
     },
     featureList: [
+      'Capacidad para unir archivos PDF pesados mayores de 100 MB, 300 MB y 500 MB sin límites',
+      'Generación de marcadores interactivos (Outlines) compatibles con Adobe Acrobat Reader',
       'Fusión vectorial nativa ISO 32000-1 sin pérdida ni rasterización',
       'Generación automática de Índice Corporativo / Tabla de Contenidos (TOC)',
       'Foliado continuo y foliado Bates para expedientes notariales y judiciales',
@@ -652,24 +670,53 @@ export default function UnirPdfPage() {
 
                 <tr>
                   <td className="p-4 sm:p-5 font-semibold text-white">
-                    {isEs ? 'Límites de Peso y Archivos' : 'Size and File Limits'}
+                    {isEs
+                      ? 'Límites de Peso y Fusión Mayor a 100 MB'
+                      : 'Size Limits & 100+ MB Merging'}
                     <span className="block text-[11px] text-zinc-400 font-normal font-mono mt-0.5">
                       {isEs
-                        ? 'Restricciones artificiales impuestas por servidores'
-                        : 'Artificial limits enforced by servers'}
+                        ? 'Capacidad para unir PDFs de 100 MB, 300 MB o 500 MB'
+                        : 'Ability to combine 100 MB, 300 MB or 500 MB PDFs'}
                     </span>
                   </td>
                   <td className="p-4 sm:p-5 text-emerald-400 bg-emerald-950/20 border-x border-zinc-800/80 font-mono text-xs">
                     <span className="inline-flex items-center gap-1.5 font-bold">
                       <Check className="w-4 h-4 text-emerald-400" />
                       {isEs
-                        ? 'Ilimitado (Sujeto solo a tu RAM)'
-                        : 'Unlimited (Bounded by local RAM)'}
+                        ? 'Sin límites (>100 MB, 300 MB, 500 MB en RAM)'
+                        : 'Unlimited (>100 MB, 300 MB, 500 MB in RAM)'}
                     </span>
                   </td>
                   <td className="p-4 sm:p-5 text-zinc-400 font-mono text-xs">
                     <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                      {isEs ? 'Limitado a 15–50 MB o de pago' : 'Capped at 15–50 MB or paid tier'}
+                      {isEs
+                        ? 'Bloqueo a 100 MB (iLovePDF) o 15 MB (Smallpdf)'
+                        : 'Capped at 100 MB or 15 MB paywall'}
+                    </span>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td className="p-4 sm:p-5 font-semibold text-white">
+                    {isEs
+                      ? 'Marcadores Jerárquicos para Adobe Acrobat'
+                      : 'Interactive Adobe Acrobat Bookmarks'}
+                    <span className="block text-[11px] text-zinc-400 font-normal font-mono mt-0.5">
+                      {isEs
+                        ? 'Árbol de navegación /Outlines por documento y sección'
+                        : 'Interactive /Outlines navigation tree per document'}
+                    </span>
+                  </td>
+                  <td className="p-4 sm:p-5 text-emerald-400 bg-emerald-950/20 border-x border-zinc-800/80 font-mono text-xs">
+                    <span className="inline-flex items-center gap-1.5 font-bold">
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      {isEs ? 'Generación automática en PDF final' : 'Automated in final PDF'}
+                    </span>
+                  </td>
+                  <td className="p-4 sm:p-5 text-zinc-400 font-mono text-xs">
+                    <span className="inline-flex items-center gap-1.5 text-red-400">
+                      <XIcon className="w-4 h-4 text-red-400" />
+                      {isEs ? 'No disponible o se pierden marcadores' : 'Missing or stripped out'}
                     </span>
                   </td>
                 </tr>

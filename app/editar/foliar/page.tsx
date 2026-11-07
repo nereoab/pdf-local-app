@@ -21,6 +21,7 @@ import {
   Maximize2,
   Link2,
   Crop,
+  Trash2,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import RelatedLongTailSolutions from '@/components/RelatedLongTailSolutions';
@@ -368,14 +369,14 @@ export default function FoliarPage() {
             <PdfFoliador />
           </section>
 
-          {/* ── CALLOUT FLUJO DE TRABAJO: UNIR ANTES DE FOLIAR (INYECCIÓN DE AUTORIDAD SEO) ── */}
+          {/* ── CALLOUT FLUJO DE TRABAJO 1: UNIR ANTES DE FOLIAR (INYECCIÓN DE AUTORIDAD SEO) ── */}
           <section
             aria-label={
               isEs
                 ? 'Flujo de trabajo recomendado: unir antes de foliar'
                 : 'Recommended workflow: merge before foliating'
             }
-            className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl"
+            className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans"
           >
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
@@ -389,8 +390,8 @@ export default function FoliarPage() {
                 </p>
                 <p className="text-xs text-zinc-400 font-sans leading-relaxed">
                   {isEs
-                    ? 'Para una foliación correlativa perfecta sin saltos, recomendamos consolidar primero tus anexos en un solo archivo continuo con nuestra herramienta gratuita sin límites.'
-                    : 'For seamless consecutive numbering, we recommend consolidating all your exhibits into a single continuous file with our unlimited free merger tool.'}
+                    ? 'Para una foliación continua sin saltos, consolida primero tus anexos. PDFBlack une archivos mayores de 100 MB, 300 MB o 500 MB gratis y con marcadores automáticos para Adobe Acrobat.'
+                    : 'For seamless continuous foliation, consolidate your exhibits first. PDFBlack merges files over 100 MB, 300 MB, or 500 MB free with automatic Acrobat bookmarks.'}
                 </p>
               </div>
             </div>
@@ -398,7 +399,41 @@ export default function FoliarPage() {
               href={isEs ? '/organizar/unir' : '/en/merge-pdf'}
               className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
             >
-              {isEs ? 'Unir Archivos PDF →' : 'Merge PDF Files →'}
+              {isEs ? 'Unir PDFs (>100 MB) →' : 'Merge PDFs (100+ MB) →'}
+            </Link>
+          </section>
+
+          {/* ── CALLOUT FLUJO DE TRABAJO 2: ELIMINAR HOJAS EN BLANCO ANTES DE FOLIAR (LINK EQUITY HACIA /organizar/eliminar) ── */}
+          <section
+            aria-label={
+              isEs
+                ? 'Flujo de trabajo recomendado: eliminar páginas en blanco antes de foliar'
+                : 'Recommended workflow: remove blank pages before foliating'
+            }
+            className="w-full bg-gradient-to-r from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-700/80 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xl font-sans"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white text-black rounded-xl flex-shrink-0 shadow-md">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-white font-sans">
+                  {isEs
+                    ? '¿Tu expediente escaneado contiene fojas vacías o caras en blanco?'
+                    : 'Does your scanned docket contain blank pages or empty back-sides?'}
+                </p>
+                <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                  {isEs
+                    ? 'Evita observaciones o nulidades procesales por foliar fojas vacías: detecta y elimina automáticamente todas las páginas en blanco con 1 solo clic antes de foliar.'
+                    : 'Avoid filing rejections due to numbered blank sheets: auto-detect and delete all blank pages with 1 click before stamping folios.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              href={isEs ? '/organizar/eliminar' : '/en/delete-pdf-pages'}
+              className="px-5 py-2.5 bg-white hover:bg-zinc-200 text-black text-xs font-bold font-mono rounded-xl transition-all whitespace-nowrap flex-shrink-0 cursor-pointer shadow-lg hover:scale-105 active:scale-95"
+            >
+              {isEs ? 'Quitar Hojas en Blanco →' : 'Delete Blank Sheets →'}
             </Link>
           </section>
 

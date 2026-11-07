@@ -1472,8 +1472,8 @@ export default function PdfMerger() {
                     />
                     <span>
                       {isEs
-                        ? 'Generar Índice estructurado al inicio'
-                        : 'Generate structured Index at start'}
+                        ? 'Generar Índice visual y Marcadores de Acrobat'
+                        : 'Generate visual TOC and Acrobat Bookmarks'}
                     </span>
                   </label>
 

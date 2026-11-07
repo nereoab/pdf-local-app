@@ -53,6 +53,14 @@ export default function EliminarPdfPage() {
   const faqs = isEs
     ? [
         {
+          q: '¿Cómo eliminar páginas en blanco de un PDF automáticamente?',
+          a: 'En PDFBlack puedes detectar y purgar hojas vacías en 1 solo clic: 1. Carga tu documento PDF en la herramienta. 2. Haz clic en el botón «Detectar Hojas en Blanco». El motor analizará la densidad cromática y de píxeles de cada página en segundo plano; si una hoja proviene de un escaneo a doble cara vacío o carece de contenido impreso, quedará marcada en rojo de inmediato. 3. Haz clic en «Eliminar Páginas» y descarga tu archivo limpio sin marcas de agua.',
+        },
+        {
+          q: '¿Por qué los escaneos a doble cara generan hojas en blanco y cómo borrarlas en lote?',
+          a: 'Al escanear expedientes impresos por una sola cara en impresoras multifuncionales con alimentador dúplex (ADF), el escáner digitaliza el reverso en blanco de cada hoja, duplicando innecesariamente el peso del PDF. PDFBlack examina la matriz de píxeles en memoria RAM e identifica al instante todas las fojas vacías para eliminarlas en bloque sin desconfigurar la secuencia del documento.',
+        },
+        {
           q: '¿Cómo elimino una o varias páginas específicas de un documento PDF?',
           a: 'Solo debes cargar tu archivo PDF en la herramienta; se generarán de inmediato miniaturas visuales de cada hoja. Haz clic sobre las páginas que desees descartar (se marcarán en rojo con un icono de confirmación) o escribe los números y rangos en el campo de texto (por ejemplo: «2, 5, 8-12»). Luego pulsa «Eliminar Páginas» para descargar el documento depurado al instante.',
         },
@@ -90,6 +98,14 @@ export default function EliminarPdfPage() {
         },
       ]
     : [
+        {
+          q: 'How to delete blank pages from a PDF automatically?',
+          a: 'In PDFBlack you can detect and remove empty sheets in 1 click: 1. Upload your PDF file. 2. Click the «Detect Blank Pages» button. The engine analyzes pixel density in memory; blank pages from duplex scanning or empty sheets are highlighted in red automatically. 3. Click «Delete Pages» to download your sanitized document without watermarks.',
+        },
+        {
+          q: 'Why do duplex scans generate blank pages and how to remove them in bulk?',
+          a: 'Scanning single-sided documents with automatic document feeder (ADF) duplex settings creates empty reverse sheets, doubling file size. PDFBlack scans all sheets via in-browser Web Workers and selects blank backs in seconds without altering docket sequence.',
+        },
         {
           q: 'How do I delete specific pages from a PDF document?',
           a: 'Simply drop your PDF into the tool; crisp visual thumbnails of each sheet will render instantly. Click on any pages you wish to discard (they will turn red with a clear deletion badge) or enter page numbers and ranges into the input box (e.g. «2, 5, 8-12»). Then click «Delete Pages» to download your cleaned document immediately.',
@@ -132,15 +148,15 @@ export default function EliminarPdfPage() {
     '@context': 'https://schema.org',
     '@type': ['WebApplication', 'SoftwareApplication'],
     name: isEs
-      ? 'Eliminar Páginas PDF Gratis Online — Borrar Hojas PDF | PDFBlack'
-      : 'Delete PDF Pages Free Online — Remove PDF Sheets | PDFBlack',
+      ? 'Eliminar Páginas en Blanco de PDF Gratis — Borrar Hojas Vacías Automáticamente | PDFBlack'
+      : 'Delete Blank Pages from PDF Free Online — Auto Remove Empty Sheets | PDFBlack',
     url: isEs ? `${SITE_URL}/organizar/eliminar` : `${SITE_URL}/en/delete-pdf-pages`,
     applicationCategory: 'UtilitiesApplication, BusinessApplication',
     operatingSystem: 'All (Windows, macOS, Linux, iOS, Android)',
     browserRequirements: 'Requires JavaScript. Requires HTML5 Canvas and WebAssembly/Web Workers.',
     description: isEs
-      ? 'Elimina páginas y hojas no deseadas de documentos PDF por selección visual, rangos, pares/impares o páginas en blanco de forma rápida, gratuita y 100% local.'
-      : 'Delete unwanted pages and sheets from PDF documents via visual selection, ranges, evens/odds, or blank page detection fast, free, and 100% locally.',
+      ? 'Detecta y elimina páginas en blanco de un PDF automáticamente en 1 clic. Borra hojas vacías de escaneos a doble cara, fojas notariales y documentos sin límites de peso.'
+      : 'Automatically detect and delete blank pages from PDF in 1 click. Clean scanned duplex documents, empty sheets, and legal briefs with zero file limits.',
     softwareVersion: '5.0',
     screenshot: `${SITE_URL}/og-eliminar-pdf.png`,
     aggregateRating: {
@@ -156,6 +172,8 @@ export default function EliminarPdfPage() {
       priceCurrency: 'USD',
     },
     featureList: [
+      'Detección automática de páginas en blanco en 1 clic mediante análisis de densidad óptica',
+      'Eliminación masiva de hojas vacías de escaneos dúplex',
       'Supresión vectorial limpia preservando fuentes y resolución nativa ISO 32000-1',
       'Selección visual con miniaturas reales en cuadrícula responsiva',
       'Detección automática de páginas en blanco con algoritmo heurístico Canvas',

@@ -19,6 +19,7 @@ import {
   LayoutGrid,
   Plus,
   Trash2,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
@@ -117,6 +118,12 @@ export default function PdfRotator() {
     return pages.filter((p) => p.rotation !== 0).length;
   }, [pages]);
 
+  const selectedPagesCount = useMemo(() => {
+    return pages.filter((p) => p.selected).length;
+  }, [pages]);
+
+  const [rotationTarget, setRotationTarget] = useState<'selection' | 'all'>('selection');
+
   // Cargar y renderizar miniaturas Canvas del PDF
   const renderThumbnails = useCallback(
     async (selectedFile: File, pass?: string) => {
@@ -160,6 +167,10 @@ export default function PdfRotator() {
             isLandscape = viewport.width > viewport.height;
           }
 
+          canvas.width = 0;
+          canvas.height = 0;
+          (page as any).cleanup?.();
+
           thumbs.push({
             pageNum: p,
             thumbnailUrl: dataUrl,
@@ -187,6 +198,41 @@ export default function PdfRotator() {
         toast.success(
           isEs ? `${count} páginas cargadas con éxito` : `${count} pages loaded successfully`,
         );
+
+        // Renderizado progresivo no bloqueante para páginas restantes
+        if (count > renderLimit) {
+          setTimeout(async () => {
+            const bgCanvas = document.createElement('canvas');
+            const bgCtx = bgCanvas.getContext('2d');
+            for (let p = renderLimit + 1; p <= count; p++) {
+              try {
+                const page = await pdf.getPage(p);
+                const viewport = page.getViewport({ scale: 0.5 });
+                let dataUrl: string | null = null;
+                let isLandscape = false;
+                if (bgCtx) {
+                  bgCanvas.width = viewport.width;
+                  bgCanvas.height = viewport.height;
+                  await page.render({ canvasContext: bgCtx, viewport, canvas: bgCanvas } as any)
+                    .promise;
+                  dataUrl = bgCanvas.toDataURL('image/jpeg', 0.6);
+                  isLandscape = viewport.width > viewport.height;
+                }
+                (page as any).cleanup?.();
+                setPages((prev) =>
+                  prev.map((item) =>
+                    item.pageNum === p ? { ...item, thumbnailUrl: dataUrl, isLandscape } : item,
+                  ),
+                );
+                if (p % 6 === 0) await new Promise((r) => setTimeout(r, 15));
+              } catch {
+                // silenciar error
+              }
+            }
+            bgCanvas.width = 0;
+            bgCanvas.height = 0;
+          }, 60);
+        }
       } catch (error: any) {
         if (error?.name === 'PasswordException' || error?.code === 1) {
           setIsEncrypted(true);
@@ -263,6 +309,7 @@ export default function PdfRotator() {
     setUnlockedPassword(undefined);
     setPasswordInput('');
     setIsDragging(false);
+    setRotationTarget('selection');
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [setGlobalFile, setHeaderHidden]);
 
@@ -332,32 +379,40 @@ export default function PdfRotator() {
     setPages((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], selected: !updated[index].selected };
+      const hasAnySelected = updated.some((p) => p.selected);
+      if (hasAnySelected) {
+        setRotationTarget('selection');
+      }
       return updated;
     });
   };
 
   const selectEvenPages = () => {
     setPages((prev) => prev.map((p) => ({ ...p, selected: p.pageNum % 2 === 0 })));
+    setRotationTarget('selection');
     toast.info(isEs ? 'Páginas pares seleccionadas' : 'Even pages selected');
   };
 
   const selectOddPages = () => {
     setPages((prev) => prev.map((p) => ({ ...p, selected: p.pageNum % 2 !== 0 })));
+    setRotationTarget('selection');
     toast.info(isEs ? 'Páginas impares seleccionadas' : 'Odd pages selected');
   };
 
   const selectLandscapePages = () => {
     setPages((prev) => prev.map((p) => ({ ...p, selected: p.isLandscape })));
+    setRotationTarget('selection');
     toast.info(isEs ? 'Páginas horizontales seleccionadas' : 'Landscape pages selected');
   };
 
   const clearSelection = () => {
     setPages((prev) => prev.map((p) => ({ ...p, selected: false })));
+    setRotationTarget('all');
   };
 
   const rotateSelectedPages = (degreesToAdd: number) => {
-    const selectedCount = pages.filter((p) => p.selected).length;
-    if (selectedCount === 0) {
+    const count = pages.filter((p) => p.selected).length;
+    if (count === 0) {
       toast.warning(
         isEs ? 'Selecciona al menos una página primero' : 'Select at least one page first',
       );
@@ -375,16 +430,69 @@ export default function PdfRotator() {
     setDownloadUrl(null);
     toast.success(
       isEs
-        ? `${selectedCount} páginas seleccionadas rotadas`
-        : `${selectedCount} selected pages rotated`,
+        ? `${count} páginas seleccionadas rotadas (${degreesToAdd > 0 ? '+' : ''}${degreesToAdd}°)`
+        : `${count} selected pages rotated (${degreesToAdd > 0 ? '+' : ''}${degreesToAdd}°)`,
     );
   };
+
+  // Determinar si la acción de rotación afectará sólo a la selección o a todo el PDF
+  const isTargetingSelection = selectedPagesCount > 0 && rotationTarget === 'selection';
+
+  const handleRotate = (degreesToAdd: number) => {
+    if (isTargetingSelection) {
+      rotateSelectedPages(degreesToAdd);
+    } else {
+      rotateAllPages(degreesToAdd);
+    }
+  };
+
+  const handleReset = () => {
+    if (isTargetingSelection) {
+      setPages((prev) => prev.map((p) => (p.selected ? { ...p, rotation: 0 } : p)));
+      setDownloadUrl(null);
+      toast.info(
+        isEs
+          ? `Rotación de ${selectedPagesCount} páginas seleccionadas restablecida a 0°`
+          : `Rotation of ${selectedPagesCount} selected pages reset to 0°`,
+      );
+    } else {
+      resetAllRotations();
+    }
+  };
+
+  // ATAJOS DE TECLADO GLOBALES PROFESIONALES (R, L, SUPR, ESCAPE)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+
+      if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        handleRotate(90);
+      } else if (e.key.toLowerCase() === 'l' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        handleRotate(-90);
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        handleReset();
+      } else if (e.key === 'Escape') {
+        if (previewZoomPage) {
+          setPreviewZoomPage(null);
+        } else if (selectedPagesCount > 0) {
+          clearSelection();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleRotate, handleReset, previewZoomPage, selectedPagesCount]);
 
   // PARSER DE RANGOS DE TEXTO
   const handleRangeInputChange = (val: string) => {
     setRangeInput(val);
     if (!val.trim()) {
       setPages((prev) => prev.map((p) => ({ ...p, selected: false })));
+      setRotationTarget('all');
       return;
     }
 
@@ -414,6 +522,9 @@ export default function PdfRotator() {
         selected: indicesToSelect.has(p.pageNum),
       })),
     );
+    if (indicesToSelect.size > 0) {
+      setRotationTarget('selection');
+    }
   };
 
   // EJECUCIÓN CON WEB WORKER
@@ -800,11 +911,11 @@ export default function PdfRotator() {
 
             {/* BARRA DE SELECCIÓN RÁPIDA DE FILTROS */}
             <div className="bg-[#121217] p-3 rounded-2xl border border-zinc-700/80 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] mb-4 shadow-inner">
-              <span className="text-zinc-200 font-bold">
-                {isEs ? 'Selección Rápida de Hojas:' : 'Quick Select:'}
-              </span>
-
               <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-zinc-200 font-bold mr-1">
+                  {isEs ? 'Selección Rápida de Hojas:' : 'Quick Select:'}
+                </span>
+
                 <button
                   type="button"
                   onClick={selectEvenPages}
@@ -827,14 +938,52 @@ export default function PdfRotator() {
                   <Filter className="w-3 h-3 text-white" />
                   {isEs ? 'Horizontales' : 'Landscapes'}
                 </button>
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl border border-zinc-700 transition-colors cursor-pointer"
-                >
-                  {isEs ? 'Limpiar' : 'Clear'}
-                </button>
+                {selectedPagesCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-xl border border-zinc-700 transition-colors cursor-pointer"
+                  >
+                    {isEs ? 'Limpiar' : 'Clear'}
+                  </button>
+                )}
               </div>
+
+              {selectedPagesCount > 0 && (
+                <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-xl">
+                  <span className="text-emerald-300 font-bold flex items-center gap-1 text-xs">
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    {selectedPagesCount} {isEs ? 'seleccionadas' : 'selected'}
+                  </span>
+                  <div className="h-4 w-px bg-emerald-500/30 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => rotateSelectedPages(90)}
+                    className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 font-bold text-xs cursor-pointer shadow-sm"
+                    title={
+                      isEs
+                        ? 'Girar 90° a la derecha las páginas seleccionadas'
+                        : 'Rotate selected pages 90° CW'
+                    }
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span>+90° Der</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => rotateSelectedPages(-90)}
+                    className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 font-bold text-xs cursor-pointer shadow-sm"
+                    title={
+                      isEs
+                        ? 'Girar 90° a la izquierda las páginas seleccionadas'
+                        : 'Rotate selected pages 90° CCW'
+                    }
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>-90° Izq</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* GRID DE MINIATURAS CANVAS CON ROTACIÓN VISUAL */}
@@ -847,7 +996,7 @@ export default function PdfRotator() {
                   onClick={() => toggleSelectPage(idx)}
                   className={`relative w-full h-[260px] min-h-[260px] rounded-2xl border p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 group overflow-hidden ${
                     p.selected
-                      ? 'border-white bg-zinc-900 shadow-[0_0_15px_rgba(255,255,255,0.25)]'
+                      ? 'border-emerald-400 bg-zinc-900/90 shadow-[0_0_20px_rgba(52,211,153,0.3)] ring-1 ring-emerald-400/50'
                       : p.rotation !== 0
                         ? 'border-white/40 bg-zinc-950'
                         : 'border-white/10 hover:border-white/30 bg-zinc-950'
@@ -855,7 +1004,14 @@ export default function PdfRotator() {
                 >
                   {/* BADGES DE PÁGINA Y ROTACIÓN */}
                   <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px] shrink-0">
-                    <span className="px-2 py-0.5 rounded-md font-bold bg-zinc-900 border border-white/10 text-zinc-300">
+                    <span
+                      className={`px-2 py-0.5 rounded-md font-bold border flex items-center gap-1 text-[10px] transition-colors ${
+                        p.selected
+                          ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                          : 'bg-zinc-900 border-white/10 text-zinc-300'
+                      }`}
+                    >
+                      {p.selected && <Check className="w-3 h-3 stroke-[3]" />}
                       Pág. {p.pageNum}
                     </span>
                     <span
@@ -948,38 +1104,97 @@ export default function PdfRotator() {
 
             {/* CUADRÍCULA DE 3 COLUMNAS */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
-              {/* COLUMNA 1: ROTACIÓN MASIVA Y NORMALIZACIÓN */}
+              {/* COLUMNA 1: ACCIONES DE ROTACIÓN INTELIGENTES */}
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-3 shadow-inner">
-                <span className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
-                  {isEs ? 'Rotación Masiva de Todo el PDF:' : 'Mass Full Document Rotation:'}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
+                    {isEs ? 'Acciones de Rotación:' : 'Rotation Actions:'}
+                  </span>
+                  {selectedPagesCount > 0 && (
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+                      {selectedPagesCount} {isEs ? 'seleccionadas' : 'selected'}
+                    </span>
+                  )}
+                </div>
 
+                {/* SELECTOR DE OBJETIVO: SOLO SI HAY PÁGINAS SELECCIONADAS */}
+                {selectedPagesCount > 0 ? (
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950 rounded-xl border border-zinc-800 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setRotationTarget('selection')}
+                      className={`py-1.5 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        rotationTarget === 'selection'
+                          ? 'bg-emerald-500 text-black shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <Check className="w-3 h-3 stroke-[3]" />
+                      <span>
+                        {isEs
+                          ? `Solo Selección (${selectedPagesCount})`
+                          : `Selected (${selectedPagesCount})`}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRotationTarget('all')}
+                      className={`py-1.5 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        rotationTarget === 'all'
+                          ? 'bg-white text-black shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      <span>
+                        {isEs ? `Todo el PDF (${pages.length})` : `All (${pages.length})`}
+                      </span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-zinc-400 bg-zinc-950/60 px-3 py-1.5 rounded-xl border border-zinc-800/80 flex items-center justify-between">
+                    <span>{isEs ? 'Objetivo:' : 'Target:'}</span>
+                    <span className="text-zinc-200 font-bold">
+                      {isEs
+                        ? `Todo el PDF (${pages.length} páginas)`
+                        : `All pages (${pages.length})`}
+                    </span>
+                  </div>
+                )}
+
+                {/* BOTONES DE ROTACIÓN */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => rotateAllPages(90)}
+                    onClick={() => handleRotate(90)}
                     disabled={pages.length === 0}
-                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
+                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs shadow-sm hover:border-zinc-500"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Girar 90° Der' : 'Rotate 90° CW'}</span>
+                    <span>
+                      {isEs ? 'Girar 90° Der' : 'Rotate 90° CW'}
+                      {isTargetingSelection && ` (${selectedPagesCount})`}
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => rotateAllPages(-90)}
+                    onClick={() => handleRotate(-90)}
                     disabled={pages.length === 0}
-                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
+                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs shadow-sm hover:border-zinc-500"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>{isEs ? 'Girar 90° Izq' : 'Rotate 90° CCW'}</span>
+                    <span>
+                      {isEs ? 'Girar 90° Izq' : 'Rotate 90° CCW'}
+                      {isTargetingSelection && ` (${selectedPagesCount})`}
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => rotateAllPages(180)}
+                    onClick={() => handleRotate(180)}
                     disabled={pages.length === 0}
-                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
+                    className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs shadow-sm hover:border-zinc-500"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
                     <span>{isEs ? 'Girar 180°' : 'Rotate 180°'}</span>
@@ -987,12 +1202,18 @@ export default function PdfRotator() {
 
                   <button
                     type="button"
-                    onClick={resetAllRotations}
+                    onClick={handleReset}
                     disabled={pages.length === 0}
                     className="p-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 text-xs"
                   >
                     <X className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>{isEs ? 'Reset (0°)' : 'Reset (0°)'}</span>
+                    <span>
+                      {isEs
+                        ? isTargetingSelection
+                          ? 'Reset selec. (0°)'
+                          : 'Reset todo (0°)'
+                        : 'Reset (0°)'}
+                    </span>
                   </button>
                 </div>
 
@@ -1004,35 +1225,55 @@ export default function PdfRotator() {
                     type="button"
                     onClick={normalizeLandscapePages}
                     disabled={pages.length === 0}
-                    className="px-3 py-1.5 bg-white text-black font-bold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40 font-mono"
+                    className="px-3 py-1.5 bg-white text-black font-bold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-40 font-mono hover:bg-zinc-200"
                   >
                     {isEs ? 'Normalizar Horizontales' : 'Normalize Landscapes'}
                   </button>
                 </div>
               </div>
 
-              {/* COLUMNA 2: ROTACIÓN POR SELECCIÓN O RANGO */}
+              {/* COLUMNA 2: FILTROS Y RANGO DE PÁGINAS */}
               <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-800 font-mono space-y-3 shadow-inner">
-                <span className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
-                  {isEs ? 'Girar Páginas Seleccionadas:' : 'Rotate Selected Pages:'}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-zinc-300 font-bold uppercase tracking-wider block">
+                    {isEs ? 'Filtros y Rango de Hojas:' : 'Filters & Page Range:'}
+                  </span>
+                  {selectedPagesCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      className="text-[10px] text-zinc-400 hover:text-white underline cursor-pointer"
+                    >
+                      {isEs ? 'Limpiar selección' : 'Clear selection'}
+                    </button>
+                  )}
+                </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                {/* BOTONES DE SELECCIÓN RÁPIDA EN EL PANEL */}
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => rotateSelectedPages(90)}
+                    onClick={selectEvenPages}
                     disabled={pages.length === 0}
-                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-zinc-700 transition-colors cursor-pointer disabled:opacity-40 text-xs"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white font-bold rounded-xl border border-zinc-700 transition-colors cursor-pointer disabled:opacity-40 text-xs text-center"
                   >
-                    +90° Derecha
+                    {isEs ? 'Pares' : 'Evens'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => rotateSelectedPages(-90)}
+                    onClick={selectOddPages}
                     disabled={pages.length === 0}
-                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl border border-zinc-700 transition-colors cursor-pointer disabled:opacity-40 text-xs"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white font-bold rounded-xl border border-zinc-700 transition-colors cursor-pointer disabled:opacity-40 text-xs text-center"
                   >
-                    -90° Izquierda
+                    {isEs ? 'Impares' : 'Odds'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={selectLandscapePages}
+                    disabled={pages.length === 0}
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white font-bold rounded-xl border border-zinc-700 transition-colors cursor-pointer disabled:opacity-40 text-xs text-center"
+                  >
+                    {isEs ? 'Apaisadas' : 'Landscape'}
                   </button>
                 </div>
 
@@ -1047,6 +1288,13 @@ export default function PdfRotator() {
                     placeholder="ej: 1, 3, 5-8"
                     className="w-full p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-xs font-bold text-white outline-none focus:border-white/40 font-mono"
                   />
+                </div>
+
+                <div className="text-[10px] font-mono text-zinc-400 bg-zinc-950/60 p-2 rounded-xl border border-zinc-800/80 flex items-center justify-between">
+                  <span>{isEs ? 'Seleccionadas:' : 'Selected:'}</span>
+                  <span className="font-bold text-zinc-200">
+                    {selectedPagesCount} / {pages.length} {isEs ? 'hojas' : 'sheets'}
+                  </span>
                 </div>
               </div>
 

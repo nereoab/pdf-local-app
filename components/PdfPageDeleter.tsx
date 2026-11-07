@@ -134,9 +134,9 @@ export default function PdfPageDeleter() {
         const count = pdf.numPages;
 
         const thumbs: PageThumb[] = [];
-        const renderLimit = Math.min(count, 32);
+        const initialRenderLimit = Math.min(count, 24);
 
-        for (let p = 1; p <= renderLimit; p++) {
+        for (let p = 1; p <= initialRenderLimit; p++) {
           setProgressMsg(
             isEs ? `Renderizando pág ${p} de ${count}...` : `Rendering page ${p} of ${count}...`,
           );
@@ -170,6 +170,10 @@ export default function PdfPageDeleter() {
             }
           }
 
+          canvas.width = 0;
+          canvas.height = 0;
+          (page as any).cleanup?.();
+
           thumbs.push({
             pageNum: p,
             thumbnailUrl: dataUrl,
@@ -178,8 +182,8 @@ export default function PdfPageDeleter() {
           });
         }
 
-        // Rellenar resto de páginas si el documento es grande
-        for (let p = renderLimit + 1; p <= count; p++) {
+        // Rellenar resto de páginas para que la estructura sea completa de inmediato
+        for (let p = initialRenderLimit + 1; p <= count; p++) {
           thumbs.push({
             pageNum: p,
             thumbnailUrl: null,
@@ -195,6 +199,57 @@ export default function PdfPageDeleter() {
         toast.success(
           isEs ? `${count} páginas cargadas con éxito` : `${count} pages loaded successfully`,
         );
+
+        // Renderizado progresivo no bloqueante en segundo plano para páginas restantes
+        if (count > initialRenderLimit) {
+          setTimeout(async () => {
+            const bgCanvas = document.createElement('canvas');
+            const bgContext = bgCanvas.getContext('2d');
+            for (let p = initialRenderLimit + 1; p <= count; p++) {
+              try {
+                const page = await pdf.getPage(p);
+                const viewport = page.getViewport({ scale: 0.5 });
+                let dataUrl: string | null = null;
+                let isBlank = false;
+
+                if (bgContext) {
+                  bgCanvas.width = viewport.width;
+                  bgCanvas.height = viewport.height;
+                  await page.render({ canvasContext: bgContext, viewport, canvas: bgCanvas } as any)
+                    .promise;
+                  dataUrl = bgCanvas.toDataURL('image/jpeg', 0.6);
+
+                  const imgData = bgContext.getImageData(
+                    0,
+                    0,
+                    bgCanvas.width,
+                    bgCanvas.height,
+                  ).data;
+                  let nonWhite = 0;
+                  for (let i = 0; i < imgData.length; i += 16) {
+                    if (imgData[i] < 240 || imgData[i + 1] < 240 || imgData[i + 2] < 240)
+                      nonWhite++;
+                  }
+                  if (nonWhite < (imgData.length / 16) * 0.005) {
+                    isBlank = true;
+                  }
+                }
+
+                (page as any).cleanup?.();
+                setPages((prev) =>
+                  prev.map((item) =>
+                    item.pageNum === p ? { ...item, thumbnailUrl: dataUrl, isBlank } : item,
+                  ),
+                );
+                if (p % 6 === 0) await new Promise((r) => setTimeout(r, 15));
+              } catch {
+                // silenciar fallos aislados de miniaturas
+              }
+            }
+            bgCanvas.width = 0;
+            bgCanvas.height = 0;
+          }, 60);
+        }
       } catch (error: any) {
         if (error?.name === 'PasswordException' || error?.code === 1) {
           setIsEncrypted(true);
@@ -303,15 +358,108 @@ export default function PdfPageDeleter() {
     setDownloadUrl(null);
   };
 
-  const selectBlankPages = () => {
-    setPages((prev) =>
-      prev.map((p) => ({
-        ...p,
-        selectedToDelete: p.isBlank ? true : p.selectedToDelete,
-      })),
+  const [isScanningBlanks, setIsScanningBlanks] = useState(false);
+
+  const scanAndSelectBlankPages = async () => {
+    if (!file) return;
+    setIsScanningBlanks(true);
+    toast.info(
+      isEs
+        ? 'Analizando densidad óptica del documento en busca de hojas en blanco...'
+        : 'Scanning optical density for blank pages...',
     );
-    setDownloadUrl(null);
-    toast.info(isEs ? 'Páginas en blanco seleccionadas' : 'Blank pages selected');
+
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, password: unlockedPassword })
+        .promise;
+      const count = pdf.numPages;
+
+      let foundBlanks = 0;
+      const blankIndices = new Set<number>();
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+
+      for (let p = 1; p <= count; p++) {
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 0.25 });
+
+        if (context) {
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: context, viewport, canvas } as any).promise;
+
+          const imgData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+          let nonWhitePixels = 0;
+          for (let i = 0; i < imgData.length; i += 16) {
+            if (imgData[i] < 240 || imgData[i + 1] < 240 || imgData[i + 2] < 240) {
+              nonWhitePixels++;
+            }
+          }
+
+          if (nonWhitePixels < (imgData.length / 16) * 0.005) {
+            foundBlanks++;
+            blankIndices.add(p);
+          }
+        }
+        (page as any).cleanup?.();
+        if (p % 8 === 0) await new Promise((r) => setTimeout(r, 0));
+      }
+
+      canvas.width = 0;
+      canvas.height = 0;
+
+      setPages((prev) =>
+        prev.map((page) => ({
+          ...page,
+          isBlank: blankIndices.has(page.pageNum),
+          selectedToDelete: blankIndices.has(page.pageNum) ? true : page.selectedToDelete,
+        })),
+      );
+      setDownloadUrl(null);
+
+      if (foundBlanks > 0) {
+        toast.success(
+          isEs
+            ? `✓ Se detectaron ${foundBlanks} páginas en blanco y se marcaron para eliminar`
+            : `✓ Detected ${foundBlanks} blank pages and marked for deletion`,
+        );
+      } else {
+        toast.info(
+          isEs
+            ? 'No se detectaron páginas en blanco en el documento'
+            : 'No blank pages detected in document',
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(isEs ? 'Error al escanear hojas en blanco' : 'Error scanning blank pages');
+    } finally {
+      setIsScanningBlanks(false);
+    }
+  };
+
+  const selectBlankPages = () => {
+    // Si ya hay páginas identificadas como blanco, marcarlas de inmediato; si no, correr el escáner completo
+    const hasDetectedBlanks = pages.some((p) => p.isBlank);
+    if (hasDetectedBlanks) {
+      setPages((prev) =>
+        prev.map((p) => ({
+          ...p,
+          selectedToDelete: p.isBlank ? true : p.selectedToDelete,
+        })),
+      );
+      setDownloadUrl(null);
+      toast.info(
+        isEs ? 'Páginas en blanco marcadas para eliminar' : 'Blank pages marked for deletion',
+      );
+    } else {
+      scanAndSelectBlankPages();
+    }
   };
 
   const invertSelection = () => {
@@ -785,10 +933,20 @@ export default function PdfPageDeleter() {
                 <button
                   type="button"
                   onClick={selectBlankPages}
-                  className="px-2.5 py-1 bg-zinc-800 hover:bg-amber-500/20 hover:text-amber-300 text-zinc-300 rounded-xl border border-zinc-700 transition-colors cursor-pointer flex items-center gap-1"
+                  disabled={isScanningBlanks || pages.length === 0}
+                  className="px-3 py-1 bg-amber-500/15 hover:bg-amber-500 hover:text-black text-amber-300 rounded-xl border border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 font-bold shadow-sm"
+                  title={
+                    isEs
+                      ? 'Escanear densidad óptica y seleccionar hojas en blanco'
+                      : 'Scan optical density and select blank pages'
+                  }
                 >
-                  <Filter className="w-3 h-3 text-amber-400" />
-                  {isEs ? 'Blancas' : 'Blanks'}
+                  {isScanningBlanks ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  <span>{isEs ? 'Detectar Hojas en Blanco' : 'Detect Blank Pages'}</span>
                 </button>
                 <button
                   type="button"

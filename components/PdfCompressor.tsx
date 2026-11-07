@@ -283,7 +283,11 @@ export default function PdfCompressor() {
           cMapPacked: true,
         }).promise;
 
-        if (isCancelled) return;
+        if (isCancelled) {
+          (pdf as any).destroy?.();
+          pdf.cleanup();
+          return;
+        }
 
         setTotalPages(pdf.numPages);
         setPreviewPageNum((prev) => Math.min(prev, pdf.numPages));
@@ -306,7 +310,13 @@ export default function PdfCompressor() {
           if (!isCancelled) {
             setThumbnails([{ pageNum: targetPage, dataUrl: canvas.toDataURL('image/jpeg', 0.85) }]);
           }
+          // Limpieza inmediata de VRAM del canvas
+          canvas.width = 0;
+          canvas.height = 0;
         }
+        page.cleanup();
+        (pdf as any).destroy?.();
+        pdf.cleanup();
       } catch (err) {
         console.warn('Error generando preview:', err);
       } finally {
@@ -614,6 +624,7 @@ export default function PdfCompressor() {
           const formData = new FormData();
           formData.append('file', currentFile);
           formData.append('action', 'compress');
+          formData.append('format', 'binary');
           formData.append(
             'options',
             JSON.stringify({
@@ -637,26 +648,22 @@ export default function PdfCompressor() {
             throw new Error(errData.error || `Error al procesar ${currentFile.name}`);
           }
 
-          const data = await res.json();
-          const binaryStr = atob(data.base64Pdf);
-          const bytes = new Uint8Array(binaryStr.length);
-          for (let b = 0; b < binaryStr.length; b++) {
-            bytes[b] = binaryStr.charCodeAt(b);
-          }
-          const blob = new Blob([bytes], { type: 'application/pdf' });
+          // Cero saturación de RAM: Ingesta directa en Blob sin conversiones Base64 intermedias
+          const blob = await res.blob();
           const url = URL.createObjectURL(blob);
-
-          if (data.certificate) {
-            setActiveCertificate(data.certificate);
-          }
+          const origSize = Number(res.headers.get('X-Original-Size')) || currentFile.size;
+          const compSize = Number(res.headers.get('X-Compressed-Size')) || blob.size;
+          const redPct =
+            Number(res.headers.get('X-Reduction-Percent')) ||
+            Math.max(0, Math.round(((origSize - compSize) / origSize) * 100));
 
           collectedResults.push({
             fileName: currentFile.name,
-            originalSize: data.originalSize || currentFile.size,
-            compressedSize: data.compressedSize || blob.size,
-            reductionPercent: data.reductionPercent || 0,
-            wasPdfA: !!data.isPdfA,
-            pdfAStatus: data.isPdfA ? 'preserved' : 'not-applicable',
+            originalSize: origSize,
+            compressedSize: compSize,
+            reductionPercent: redPct,
+            wasPdfA: false,
+            pdfAStatus: 'not-applicable',
             downloadUrl: url,
             rawBlob: blob,
           });

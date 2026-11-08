@@ -17,6 +17,9 @@ import {
   Plus,
   ListChecks,
   Trash2,
+  Grid,
+  Check,
+  Eye,
 } from 'lucide-react';
 import { TextIcon } from './ProgramIcons';
 import { toast } from 'sonner';
@@ -152,6 +155,8 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
   const [pageRangeInput, setPageRangeInput] = useState<string>('1-10');
   const [selectedPageSet, setSelectedPageSet] = useState<Set<number>>(new Set());
+  const [previewViewMode, setPreviewViewMode] = useState<'single' | 'gallery'>('single');
+  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState<boolean>(false);
 
   // OPCIONES AVANZADAS PDF -> TEXTO
   const [preserveLayout, setPreserveLayout] = useState<boolean>(true);
@@ -560,6 +565,102 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
     setSelectedPageSet(inverted);
     setPageSelectionMode('custom');
   };
+
+  const togglePageSelection = (pageNum: number) => {
+    setSelectedPageSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(pageNum)) {
+        next.delete(pageNum);
+      } else {
+        next.add(pageNum);
+      }
+      return next;
+    });
+    setPageSelectionMode('custom');
+  };
+
+  const selectOddPages = () => {
+    if (totalPages > 0) {
+      const odds = new Set(
+        Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 !== 0),
+      );
+      setSelectedPageSet(odds);
+      setPageSelectionMode('odd');
+    }
+  };
+
+  const selectEvenPages = () => {
+    if (totalPages > 0) {
+      const evens = new Set(
+        Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 === 0),
+      );
+      setSelectedPageSet(evens);
+      setPageSelectionMode('even');
+    }
+  };
+
+  const loadAllPageThumbnails = useCallback(
+    async (slotIndex: number) => {
+      const currentSlot = slots[slotIndex];
+      if (!currentSlot?.file || !currentSlot.file.name.toLowerCase().endsWith('.pdf')) return;
+      if (isGeneratingThumbnails) return;
+
+      try {
+        setIsGeneratingThumbnails(true);
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const arrayBuffer = await currentSlot.file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const numPages = pdfDoc.numPages;
+        const newUrls: Record<number, string> = { ...currentSlot.pageDataUrls };
+
+        for (let p = 1; p <= numPages; p++) {
+          if (cancelRenderRef.current) break;
+          if (newUrls[p]) continue;
+
+          try {
+            const page = await pdfDoc.getPage(p);
+            const viewport = page.getViewport({ scale: 0.28 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                typeof page.render
+              >[0]).promise;
+              newUrls[p] = canvas.toDataURL('image/jpeg', 0.8);
+              canvas.width = 0;
+              canvas.height = 0;
+            }
+          } catch (pageErr) {
+            console.warn(`Error rendering thumbnail page ${p}:`, pageErr);
+          }
+
+          if (p % 3 === 0 || p === numPages) {
+            const currentSnapshot = { ...newUrls };
+            setSlots((prev) =>
+              prev.map((s, idx) =>
+                idx === slotIndex ? { ...s, pageDataUrls: currentSnapshot } : s,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        console.error('Error generating all page thumbnails:', e);
+      } finally {
+        setIsGeneratingThumbnails(false);
+      }
+    },
+    [slots, isGeneratingThumbnails],
+  );
 
   const executeConversion = async () => {
     if (mode === 'pdf-to-text' && !file) return;
@@ -1240,100 +1341,270 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
 
                 {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
-                  {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
-                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                  {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) O GALERÍA INTERACTIVA ── */}
+                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-3 sm:p-4 flex flex-col justify-between relative overflow-hidden shadow-inner min-h-[380px]">
                     {file ? (
-                      <div className="flex flex-col items-center justify-center w-full h-full py-1">
-                        {/* HOJA PDF O DOCUMENTO DE TEXTO EN VISTA PREVIA REDUCIDA AL 50% */}
-                        {mode === 'pdf-to-text' || file.name.toLowerCase().endsWith('.pdf') ? (
-                          <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
-                            {activeSlot.pageDataUrls[activePage] ? (
-                              <img
-                                src={activeSlot.pageDataUrls[activePage]}
-                                alt={`Pág ${activePage}`}
-                                className="w-full h-full object-contain select-none"
-                              />
-                            ) : activeSlot.thumbnailUrl ? (
-                              <img
-                                src={activeSlot.thumbnailUrl}
-                                alt="Pág 1"
-                                className="w-full h-full object-contain select-none"
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
-                                <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
-                                <span className="text-[11px] font-mono font-bold">
-                                  Pág. {activePage}
-                                </span>
+                      <div className="flex flex-col w-full h-full">
+                        {/* BARRA SUPERIOR DE SELECTOR: VISTA HOJA vs GALERÍA DE PÁGINAS */}
+                        {totalPages > 1 &&
+                          (mode === 'pdf-to-text' || file.name.toLowerCase().endsWith('.pdf')) && (
+                            <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800/80 font-mono text-xs shrink-0">
+                              <div className="flex items-center gap-1.5 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewViewMode('single')}
+                                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    previewViewMode === 'single'
+                                      ? 'bg-white text-black shadow-sm'
+                                      : 'text-zinc-400 hover:text-white'
+                                  }`}
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span>{isEs ? 'Vista Hoja' : 'Page View'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreviewViewMode('gallery');
+                                    loadAllPageThumbnails(activeSlotIndex);
+                                  }}
+                                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    previewViewMode === 'gallery'
+                                      ? 'bg-cyan-600 text-white shadow-sm'
+                                      : 'text-zinc-400 hover:text-white'
+                                  }`}
+                                >
+                                  <Grid className="w-3.5 h-3.5" />
+                                  <span>{isEs ? 'Galería de Páginas' : 'Page Gallery'}</span>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                      previewViewMode === 'gallery'
+                                        ? 'bg-cyan-800 text-cyan-100'
+                                        : 'bg-zinc-800 text-zinc-300'
+                                    }`}
+                                  >
+                                    {targetPages.length}/{totalPages}
+                                  </span>
+                                </button>
                               </div>
-                            )}
 
-                            {totalPages > 0 && (
-                              <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
-                                #{activePage} / {totalPages}
-                              </div>
-                            )}
+                              {previewViewMode === 'gallery' && (
+                                <div className="flex items-center gap-1 text-[10px]">
+                                  <button
+                                    type="button"
+                                    onClick={handleSelectAll}
+                                    className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                                  >
+                                    {isEs ? 'Todas' : 'All'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleInvertSelection}
+                                    className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                                  >
+                                    {isEs ? 'Invertir' : 'Invert'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleDeselectAll}
+                                    className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                                  >
+                                    {isEs ? 'Ninguna' : 'None'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                        {/* CONTENIDO DE LA VISTA: SINGLE (HOJA AL 50%) O GALLERY (CUADRÍCULA DE SELECCIÓN) */}
+                        {previewViewMode === 'gallery' &&
+                        (mode === 'pdf-to-text' || file.name.toLowerCase().endsWith('.pdf')) &&
+                        totalPages > 1 ? (
+                          <div className="flex-1 flex flex-col min-h-0">
+                            <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 mb-2 px-1 shrink-0">
+                              <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                                <span>✓</span>
+                                {isEs
+                                  ? `${targetPages.length} de ${totalPages} páginas elegidas para extraer texto`
+                                  : `${targetPages.length} of ${totalPages} pages selected for text extraction`}
+                              </span>
+                              {isGeneratingThumbnails && (
+                                <span className="flex items-center gap-1 text-[10px] text-zinc-400">
+                                  <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                                  {isEs ? 'Cargando miniaturas...' : 'Rendering thumbnails...'}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 flex-1 overflow-y-auto max-h-[350px] p-1.5 pr-2 custom-scrollbar">
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => {
+                                const isSelected = targetPages.includes(pNum);
+                                const thumbUrl =
+                                  activeSlot.pageDataUrls[pNum] ||
+                                  (pNum === 1 ? activeSlot.thumbnailUrl : null);
+
+                                return (
+                                  <div
+                                    key={pNum}
+                                    onClick={() => togglePageSelection(pNum)}
+                                    className={`relative rounded-xl border p-2 flex flex-col justify-between cursor-pointer transition-all duration-200 group select-none ${
+                                      isSelected
+                                        ? 'border-cyan-500 bg-cyan-950/30 ring-2 ring-cyan-500/50 shadow-md shadow-cyan-500/10'
+                                        : 'border-zinc-800 bg-zinc-950/60 opacity-60 hover:opacity-100 hover:border-zinc-700'
+                                    }`}
+                                  >
+                                    {/* CABECERA DE LA MINIATURA: NÚMERO Y CHECK */}
+                                    <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px] shrink-0">
+                                      <span
+                                        className={`px-1.5 py-0.5 rounded font-bold ${
+                                          isSelected
+                                            ? 'bg-cyan-600 text-white'
+                                            : 'bg-zinc-900 border border-zinc-700 text-zinc-400'
+                                        }`}
+                                      >
+                                        #{pNum}
+                                      </span>
+                                      <div
+                                        className={`w-4 h-4 rounded-md flex items-center justify-center transition-colors ${
+                                          isSelected
+                                            ? 'bg-cyan-500 text-white'
+                                            : 'border border-zinc-600 bg-zinc-900/80 group-hover:border-zinc-400'
+                                        }`}
+                                      >
+                                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                      </div>
+                                    </div>
+
+                                    {/* IMAGEN DE LA MINIATURA */}
+                                    <div className="w-full h-[115px] bg-white rounded-lg overflow-hidden flex items-center justify-center relative shadow-sm border border-zinc-300">
+                                      {thumbUrl ? (
+                                        <img
+                                          src={thumbUrl}
+                                          alt={`Pág ${pNum}`}
+                                          className="w-full h-full object-contain select-none"
+                                        />
+                                      ) : (
+                                        <div className="flex flex-col items-center justify-center text-zinc-400 gap-1">
+                                          <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
+                                          <span className="text-[9px] font-mono">Pág. {pNum}</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* PIE DE MINIATURA */}
+                                    <div className="w-full flex items-center justify-between mt-1.5 text-[9px] font-mono text-zinc-400 shrink-0">
+                                      <span>
+                                        {isSelected
+                                          ? isEs
+                                            ? '✓ Incluida'
+                                            : '✓ Included'
+                                          : isEs
+                                            ? 'Omitida'
+                                            : 'Excluded'}
+                                      </span>
+                                      <span className="text-zinc-500 text-[8px]">TXT</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         ) : (
-                          /* HOJA DE TEXTO AL 50% VISUAL */
-                          <div className="relative bg-[#18181f] text-white rounded-xl shadow-2xl border border-cyan-500/40 overflow-hidden flex flex-col p-4 transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group justify-between">
-                            <div className="space-y-2 overflow-hidden flex-1 flex flex-col">
-                              <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs border-b border-zinc-700/80 pb-1.5 shrink-0">
-                                <TextIcon className="w-4 h-4 text-cyan-400 shrink-0" />
-                                <span className="truncate font-sans font-extrabold text-cyan-300">
-                                  {file.name}
-                                </span>
-                              </div>
-
-                              {/* CONTENIDO PREVIO DE TEXTO */}
-                              <div className="flex-1 overflow-hidden rounded border border-zinc-800 bg-[#0e0e12] p-2.5 text-[10px] font-mono text-zinc-300 leading-relaxed overflow-y-auto custom-scrollbar">
-                                {manualText ? (
-                                  <p className="whitespace-pre-wrap">{manualText}</p>
+                          /* MODO SINGLE: VISOR AL 50% */
+                          <div className="flex flex-col items-center justify-center w-full flex-1 py-1">
+                            {mode === 'pdf-to-text' || file.name.toLowerCase().endsWith('.pdf') ? (
+                              <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
+                                {activeSlot.pageDataUrls[activePage] ? (
+                                  <img
+                                    src={activeSlot.pageDataUrls[activePage]}
+                                    alt={`Pág ${activePage}`}
+                                    className="w-full h-full object-contain select-none"
+                                  />
+                                ) : activeSlot.thumbnailUrl ? (
+                                  <img
+                                    src={activeSlot.thumbnailUrl}
+                                    alt="Pág 1"
+                                    className="w-full h-full object-contain select-none"
+                                  />
                                 ) : (
-                                  <p className="text-zinc-500 italic">
-                                    {isEs
-                                      ? 'Archivo de texto plano (.txt)'
-                                      : 'Plain text file (.txt)'}
-                                  </p>
+                                  <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                                    <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
+                                    <span className="text-[11px] font-mono font-bold">
+                                      Pág. {activePage}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {totalPages > 0 && (
+                                  <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                                    #{activePage} / {totalPages}
+                                  </div>
                                 )}
                               </div>
-                            </div>
+                            ) : (
+                              /* HOJA DE TEXTO AL 50% VISUAL */
+                              <div className="relative bg-[#18181f] text-white rounded-xl shadow-2xl border border-cyan-500/40 overflow-hidden flex flex-col p-4 transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group justify-between">
+                                <div className="space-y-2 overflow-hidden flex-1 flex flex-col">
+                                  <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs border-b border-zinc-700/80 pb-1.5 shrink-0">
+                                    <TextIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+                                    <span className="truncate font-sans font-extrabold text-cyan-300">
+                                      {file.name}
+                                    </span>
+                                  </div>
 
-                            <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500 pt-1.5 border-t border-zinc-800 shrink-0">
-                              <span className="text-cyan-400 font-bold">
-                                {manualText ? `${manualText.length} caracteres` : 'Texto UTF-8'}
-                              </span>
-                              <span className="bg-black/80 px-2 py-0.5 rounded text-white font-bold border border-white/20">
-                                #{activePage} / {totalPages || 1}
-                              </span>
-                            </div>
-                          </div>
-                        )}
+                                  {/* CONTENIDO PREVIO DE TEXTO */}
+                                  <div className="flex-1 overflow-hidden rounded border border-zinc-800 bg-[#0e0e12] p-2.5 text-[10px] font-mono text-zinc-300 leading-relaxed overflow-y-auto custom-scrollbar">
+                                    {manualText ? (
+                                      <p className="whitespace-pre-wrap">{manualText}</p>
+                                    ) : (
+                                      <p className="text-zinc-500 italic">
+                                        {isEs
+                                          ? 'Archivo de texto plano (.txt)'
+                                          : 'Plain text file (.txt)'}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
 
-                        {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
-                        {totalPages > 1 && (
-                          <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
-                            <button
-                              type="button"
-                              onClick={() => setActivePage(Math.max(1, activePage - 1))}
-                              disabled={activePage <= 1}
-                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
-                              title={isEs ? 'Página anterior' : 'Previous page'}
-                            >
-                              ◀
-                            </button>
-                            <span className="font-bold text-white text-[11px]">
-                              {activePage} / {totalPages}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setActivePage(Math.min(totalPages, activePage + 1))}
-                              disabled={activePage >= totalPages}
-                              className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
-                              title={isEs ? 'Página siguiente' : 'Next page'}
-                            >
-                              ▶
-                            </button>
+                                <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500 pt-1.5 border-t border-zinc-800 shrink-0">
+                                  <span className="text-cyan-400 font-bold">
+                                    {manualText ? `${manualText.length} caracteres` : 'Texto UTF-8'}
+                                  </span>
+                                  <span className="bg-black/80 px-2 py-0.5 rounded text-white font-bold border border-white/20">
+                                    #{activePage} / {totalPages || 1}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
+                            {totalPages > 1 && (
+                              <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
+                                <button
+                                  type="button"
+                                  onClick={() => setActivePage(Math.max(1, activePage - 1))}
+                                  disabled={activePage <= 1}
+                                  className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                                  title={isEs ? 'Página anterior' : 'Previous page'}
+                                >
+                                  ◀
+                                </button>
+                                <span className="font-bold text-white text-[11px]">
+                                  {activePage} / {totalPages}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActivePage(Math.min(totalPages, activePage + 1))
+                                  }
+                                  disabled={activePage >= totalPages}
+                                  className="px-2 py-0.5 hover:text-white disabled:opacity-30 transition-colors font-bold cursor-pointer"
+                                  title={isEs ? 'Página siguiente' : 'Next page'}
+                                >
+                                  ▶
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1520,10 +1791,13 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                           <button
                             type="button"
-                            onClick={() => setPageSelectionMode('all')}
+                            onClick={() => {
+                              setPageSelectionMode('all');
+                              handleSelectAll();
+                            }}
                             className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                               pageSelectionMode === 'all'
                                 ? 'bg-cyan-500 text-black border-cyan-500 shadow-md font-bold'
@@ -1545,7 +1819,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                           </button>
                           <button
                             type="button"
-                            onClick={() => setPageSelectionMode('odd')}
+                            onClick={selectOddPages}
                             className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                               pageSelectionMode === 'odd'
                                 ? 'bg-cyan-500 text-black border-cyan-500 shadow-md font-bold'
@@ -1556,7 +1830,7 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                           </button>
                           <button
                             type="button"
-                            onClick={() => setPageSelectionMode('even')}
+                            onClick={selectEvenPages}
                             className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
                               pageSelectionMode === 'even'
                                 ? 'bg-cyan-500 text-black border-cyan-500 shadow-md font-bold'
@@ -1565,7 +1839,45 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                           >
                             {isEs ? 'Pares' : 'Even'}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewViewMode('gallery');
+                              loadAllPageThumbnails(activeSlotIndex);
+                            }}
+                            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 col-span-2 sm:col-span-1 ${
+                              pageSelectionMode === 'custom' || previewViewMode === 'gallery'
+                                ? 'bg-cyan-500 text-black border-cyan-400 shadow-md ring-1 ring-cyan-300 font-bold'
+                                : 'bg-zinc-900 text-cyan-400 border-cyan-500/40 hover:text-white hover:border-cyan-400'
+                            }`}
+                            title={
+                              isEs ? 'Abrir selector visual de páginas' : 'Open visual page gallery'
+                            }
+                          >
+                            <Grid className="w-3 h-3" />
+                            <span>{isEs ? 'Galería' : 'Gallery'}</span>
+                          </button>
                         </div>
+
+                        {/* INDICADOR DE PÁGINAS ELEGIDAS EN GALERÍA */}
+                        {(pageSelectionMode === 'custom' || previewViewMode === 'gallery') && (
+                          <div className="flex items-center justify-between text-[11px] bg-cyan-950/40 border border-cyan-500/40 px-2.5 py-1.5 rounded-xl text-cyan-200 font-mono">
+                            <span>
+                              ✓ {targetPages.length}{' '}
+                              {isEs ? 'pág(s) elegida(s) en Galería' : 'pages picked in Gallery'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewViewMode('gallery');
+                                loadAllPageThumbnails(activeSlotIndex);
+                              }}
+                              className="underline text-white font-bold hover:text-cyan-200 cursor-pointer"
+                            >
+                              {isEs ? 'Modificar' : 'Edit'}
+                            </button>
+                          </div>
+                        )}
 
                         {pageSelectionMode === 'range' && (
                           <div className="space-y-2 pt-1 border-t border-zinc-800">

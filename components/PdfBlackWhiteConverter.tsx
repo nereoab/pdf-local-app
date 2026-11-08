@@ -19,6 +19,7 @@ import {
   Eye,
   Loader2,
   Check,
+  Grid,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -36,7 +37,7 @@ if (typeof window !== 'undefined' && 'GlobalWorkerOptions' in pdfjsLib) {
 
 export type BlackWhiteMode = 'grayscale' | 'blackwhite';
 export type QualityPreset = 'draft' | 'standard' | 'high';
-export type PageScope = 'all' | 'even' | 'odd' | 'range';
+export type PageScope = 'all' | 'even' | 'odd' | 'range' | 'custom';
 
 interface SlotItem {
   id: string;
@@ -45,6 +46,7 @@ interface SlotItem {
   activePage: number;
   previewOriginalUrl: string | null;
   previewFilteredUrl: string | null;
+  pageDataUrls?: Record<number, string>;
 }
 
 interface CompletedResult {
@@ -115,6 +117,9 @@ export default function PdfBlackWhiteConverter() {
   const [qualityPreset, setQualityPreset] = useState<QualityPreset>('standard');
   const [pageScope, setPageScope] = useState<PageScope>('all');
   const [pageRange, setPageRange] = useState<string>('');
+  const [selectedPageSet, setSelectedPageSet] = useState<Set<number>>(new Set());
+  const [previewViewMode, setPreviewViewMode] = useState<'single' | 'gallery'>('single');
+  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState<boolean>(false);
 
   // Toggle de vista previa: filtrado o color original
   const [previewModeToggle, setPreviewModeToggle] = useState<'filtered' | 'original'>('filtered');
@@ -247,6 +252,163 @@ export default function PdfBlackWhiteConverter() {
       }
     },
     [],
+  );
+
+  const totalPages = activeSlot?.totalPages || 0;
+
+  const targetPages = useMemo(() => {
+    if (totalPages === 0) return [];
+    if (pageScope === 'all') {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (pageScope === 'odd') {
+      return Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 !== 0);
+    }
+    if (pageScope === 'even') {
+      return Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 === 0);
+    }
+    if (pageScope === 'range') {
+      if (!pageRange.trim()) return Array.from({ length: totalPages }, (_, i) => i + 1);
+      const selected = new Set<number>();
+      const parts = pageRange.split(',');
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (trimmed.includes('-')) {
+          const [s, e] = trimmed.split('-').map(Number);
+          if (!isNaN(s) && !isNaN(e)) {
+            for (let i = Math.min(s, e); i <= Math.max(s, e); i++) {
+              if (i >= 1 && i <= totalPages) selected.add(i);
+            }
+          }
+        } else {
+          const num = Number(trimmed);
+          if (!isNaN(num) && num >= 1 && num <= totalPages) {
+            selected.add(num);
+          }
+        }
+      }
+      const arr = Array.from(selected).sort((a, b) => a - b);
+      return arr.length > 0 ? arr : Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    // custom
+    return Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) =>
+      selectedPageSet.has(p),
+    );
+  }, [totalPages, pageScope, pageRange, selectedPageSet]);
+
+  const handleSelectAll = () => {
+    if (totalPages > 0) {
+      setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
+      setPageScope('all');
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedPageSet(new Set());
+    setPageScope('custom');
+  };
+
+  const handleInvertSelection = () => {
+    const current = new Set(targetPages);
+    const inverted = new Set<number>();
+    for (let p = 1; p <= totalPages; p++) {
+      if (!current.has(p)) inverted.add(p);
+    }
+    setSelectedPageSet(inverted);
+    setPageScope('custom');
+  };
+
+  const togglePageSelection = (pageNum: number) => {
+    setSelectedPageSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(pageNum)) {
+        next.delete(pageNum);
+      } else {
+        next.add(pageNum);
+      }
+      return next;
+    });
+    setPageScope('custom');
+  };
+
+  const selectOddPages = () => {
+    if (totalPages > 0) {
+      const odds = new Set(
+        Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 !== 0),
+      );
+      setSelectedPageSet(odds);
+      setPageScope('odd');
+    }
+  };
+
+  const selectEvenPages = () => {
+    if (totalPages > 0) {
+      const evens = new Set(
+        Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p % 2 === 0),
+      );
+      setSelectedPageSet(evens);
+      setPageScope('even');
+    }
+  };
+
+  const loadAllPageThumbnails = useCallback(
+    async (slotIndex: number) => {
+      const currentSlot = slots[slotIndex];
+      if (!currentSlot?.file) return;
+      if (isGeneratingThumbnails) return;
+
+      try {
+        setIsGeneratingThumbnails(true);
+        const arrayBuffer = await currentSlot.file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+          cMapPacked: true,
+        }).promise;
+
+        const numPages = pdfDoc.numPages;
+        const newUrls: Record<number, string> = { ...(currentSlot.pageDataUrls || {}) };
+
+        for (let p = 1; p <= numPages; p++) {
+          if (newUrls[p]) continue;
+
+          try {
+            const page = await pdfDoc.getPage(p);
+            const viewport = page.getViewport({ scale: 0.28 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                typeof page.render
+              >[0]).promise;
+              newUrls[p] = canvas.toDataURL('image/jpeg', 0.8);
+              canvas.width = 0;
+              canvas.height = 0;
+            }
+          } catch (pageErr) {
+            console.warn(`Error rendering thumbnail page ${p}:`, pageErr);
+          }
+
+          if (p % 3 === 0 || p === numPages) {
+            const currentSnapshot = { ...newUrls };
+            setSlots((prev) =>
+              prev.map((s, idx) =>
+                idx === slotIndex ? { ...s, pageDataUrls: currentSnapshot } : s,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        console.error('Error generating all page thumbnails:', e);
+      } finally {
+        setIsGeneratingThumbnails(false);
+      }
+    },
+    [slots, isGeneratingThumbnails],
   );
 
   // Cargar archivos en los slots
@@ -407,6 +569,15 @@ export default function PdfBlackWhiteConverter() {
     }
 
     try {
+      if (targetPages.length === 0) {
+        toast.error(
+          isEs
+            ? 'Por favor selecciona al menos una página para procesar.'
+            : 'Please select at least one page to process.',
+        );
+        return;
+      }
+
       setIsProcessing(true);
       setProgressPercent(5);
       setProgressMsg(
@@ -472,6 +643,14 @@ export default function PdfBlackWhiteConverter() {
         worker.terminate();
       };
 
+      const effectiveScope = pageScope === 'custom' ? 'range' : pageScope;
+      const effectiveRange =
+        pageScope === 'custom'
+          ? Array.from(selectedPageSet)
+              .sort((a, b) => a - b)
+              .join(',')
+          : pageRange;
+
       worker.postMessage(
         {
           action: 'convert',
@@ -481,8 +660,8 @@ export default function PdfBlackWhiteConverter() {
             mode,
             threshold,
             qualityPreset,
-            pageScope,
-            pageRange,
+            pageScope: effectiveScope,
+            pageRange: effectiveRange,
           },
         },
         [arrayBuffer],
@@ -862,110 +1041,266 @@ export default function PdfBlackWhiteConverter() {
 
                 {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
-                  {/* ── LADO IZQUIERDO: VISOR COMPACTO CON PREVISUALIZACIÓN FILTRADA ── */}
-                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-between relative overflow-hidden shadow-inner min-h-[380px]">
-                    {/* CONTROLES SUPERIORES DEL VISOR: TOGGLE FILTRO VS ORIGINAL */}
-                    <div className="flex items-center justify-between w-full pb-2 mb-2 border-b border-zinc-800/80">
-                      <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase">
-                        {previewModeToggle === 'filtered'
-                          ? mode === 'blackwhite'
-                            ? isEs
-                              ? 'Vista: Blanco y Negro'
-                              : 'View: Black & White'
-                            : isEs
-                              ? 'Vista: Escala de Grises'
-                              : 'View: Grayscale'
-                          : isEs
-                            ? 'Vista: Original a Color'
-                            : 'View: Original Color'}
-                      </span>
-                      <div className="flex items-center bg-zinc-900 border border-zinc-700/80 p-0.5 rounded-lg text-[10px] font-mono">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewModeToggle('filtered')}
-                          className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                            previewModeToggle === 'filtered'
-                              ? 'bg-white text-black shadow-sm'
-                              : 'text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Monocromo' : 'Monochrome'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPreviewModeToggle('original')}
-                          className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                            previewModeToggle === 'original'
-                              ? 'bg-white text-black shadow-sm'
-                              : 'text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          {isEs ? 'Original' : 'Original'}
-                        </button>
+                  {/* ── LADO IZQUIERDO: VISOR COMPACTO CON PREVISUALIZACIÓN O GALERÍA INTERACTIVA ── */}
+                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-3 sm:p-4 flex flex-col justify-between relative overflow-hidden shadow-inner min-h-[380px]">
+                    {/* BARRA SUPERIOR DE SELECTOR: VISTA HOJA vs GALERÍA DE PÁGINAS */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800/80 font-mono text-xs shrink-0 w-full">
+                        <div className="flex items-center gap-1.5 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewViewMode('single')}
+                            className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                              previewViewMode === 'single'
+                                ? 'bg-white text-black shadow-sm'
+                                : 'text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>{isEs ? 'Vista Hoja' : 'Page View'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewViewMode('gallery');
+                              loadAllPageThumbnails(activeSlotIndex);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                              previewViewMode === 'gallery'
+                                ? 'bg-zinc-100 text-black shadow-sm'
+                                : 'text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            <Grid className="w-3.5 h-3.5" />
+                            <span>{isEs ? 'Galería de Páginas' : 'Page Gallery'}</span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                previewViewMode === 'gallery'
+                                  ? 'bg-zinc-800 text-white'
+                                  : 'bg-zinc-800 text-zinc-300'
+                              }`}
+                            >
+                              {targetPages.length}/{totalPages}
+                            </span>
+                          </button>
+                        </div>
+
+                        {previewViewMode === 'gallery' ? (
+                          <div className="flex items-center gap-1 text-[10px]">
+                            <button
+                              type="button"
+                              onClick={handleSelectAll}
+                              className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                            >
+                              {isEs ? 'Todas' : 'All'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleInvertSelection}
+                              className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                            >
+                              {isEs ? 'Invertir' : 'Invert'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeselectAll}
+                              className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                            >
+                              {isEs ? 'Ninguna' : 'None'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center bg-zinc-900 border border-zinc-700/80 p-0.5 rounded-lg text-[10px] font-mono">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewModeToggle('filtered')}
+                              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                                previewModeToggle === 'filtered'
+                                  ? 'bg-white text-black shadow-sm'
+                                  : 'text-zinc-400 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Monocromo' : 'Monochrome'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewModeToggle('original')}
+                              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                                previewModeToggle === 'original'
+                                  ? 'bg-white text-black shadow-sm'
+                                  : 'text-zinc-400 hover:text-white'
+                              }`}
+                            >
+                              {isEs ? 'Original' : 'Original'}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
 
-                    {/* HOJA PDF EN VISTA PREVIA REDUCIDA AL 50% */}
-                    <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
-                      {isPreviewLoading ? (
-                        <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
-                          <Loader2 className="w-8 h-8 animate-spin text-zinc-800" />
-                          <span className="text-[11px] font-mono font-bold text-zinc-700">
-                            {isEs ? 'Renderizando filtro...' : 'Rendering filter...'}
+                    {/* CONTENIDO DE LA VISTA: SINGLE O GALERÍA */}
+                    {previewViewMode === 'gallery' && totalPages > 1 ? (
+                      <div className="flex-1 flex flex-col min-h-0 w-full">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 mb-2 px-1 shrink-0">
+                          <span className="flex items-center gap-1.5 text-zinc-200 font-bold">
+                            <span>✓</span>
+                            {isEs
+                              ? `${targetPages.length} de ${totalPages} páginas elegidas para procesar`
+                              : `${targetPages.length} of ${totalPages} pages selected to process`}
                           </span>
+                          {isGeneratingThumbnails && (
+                            <span className="flex items-center gap-1 text-[10px] text-zinc-400">
+                              <Loader2 className="w-3 h-3 animate-spin text-white" />
+                              {isEs ? 'Cargando miniaturas...' : 'Rendering thumbnails...'}
+                            </span>
+                          )}
                         </div>
-                      ) : previewModeToggle === 'filtered' && activeSlot?.previewFilteredUrl ? (
-                        <img
-                          src={activeSlot.previewFilteredUrl}
-                          alt="Vista previa filtrada"
-                          className="w-full h-full object-contain select-none"
-                        />
-                      ) : activeSlot?.previewOriginalUrl ? (
-                        <img
-                          src={activeSlot.previewOriginalUrl}
-                          alt="Vista previa original"
-                          className="w-full h-full object-contain select-none"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-zinc-400 gap-2 p-4 text-center">
-                          <Printer className="w-8 h-8 text-zinc-400" />
-                          <span className="text-[11px] font-mono">
-                            {isEs ? 'Cargando documento...' : 'Loading document...'}
-                          </span>
-                        </div>
-                      )}
 
-                      {/* BADGE DE PÁGINA */}
-                      {(activeSlot?.totalPages || 0) > 0 && (
-                        <div className="absolute bottom-2 right-2 bg-black/85 text-white font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/20 shadow-md">
-                          #{activeSlot.activePage} / {activeSlot.totalPages}
-                        </div>
-                      )}
-                    </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 flex-1 overflow-y-auto max-h-[350px] p-1.5 pr-2 custom-scrollbar">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => {
+                            const isSelected = targetPages.includes(pNum);
+                            const thumbUrl =
+                              activeSlot?.pageDataUrls?.[pNum] ||
+                              (pNum === 1
+                                ? previewModeToggle === 'filtered'
+                                  ? activeSlot?.previewFilteredUrl
+                                  : activeSlot?.previewOriginalUrl
+                                : null);
 
-                    {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
-                    {(activeSlot?.totalPages || 0) > 1 && (
-                      <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
-                        <button
-                          type="button"
-                          onClick={() => handlePageChange(activeSlot.activePage - 1)}
-                          disabled={activeSlot.activePage <= 1}
-                          className="hover:text-white disabled:opacity-30 disabled:hover:text-zinc-300 transition-colors cursor-pointer"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <span className="font-bold">
-                          {isEs ? 'Pág.' : 'Page'} {activeSlot.activePage} {isEs ? 'de' : 'of'}{' '}
-                          {activeSlot.totalPages}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handlePageChange(activeSlot.activePage + 1)}
-                          disabled={activeSlot.activePage >= activeSlot.totalPages}
-                          className="hover:text-white disabled:opacity-30 disabled:hover:text-zinc-300 transition-colors cursor-pointer"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
+                            return (
+                              <div
+                                key={pNum}
+                                onClick={() => togglePageSelection(pNum)}
+                                className={`relative rounded-xl border p-2 flex flex-col justify-between cursor-pointer transition-all duration-200 group select-none ${
+                                  isSelected
+                                    ? 'border-white bg-zinc-900/90 ring-2 ring-white/40 shadow-md shadow-white/5'
+                                    : 'border-zinc-800 bg-zinc-950/60 opacity-60 hover:opacity-100 hover:border-zinc-700'
+                                }`}
+                              >
+                                {/* CABECERA DE LA MINIATURA */}
+                                <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px] shrink-0">
+                                  <span
+                                    className={`px-1.5 py-0.5 rounded font-bold ${
+                                      isSelected
+                                        ? 'bg-white text-black'
+                                        : 'bg-zinc-900 border border-zinc-700 text-zinc-400'
+                                    }`}
+                                  >
+                                    #{pNum}
+                                  </span>
+                                  <div
+                                    className={`w-4 h-4 rounded-md flex items-center justify-center transition-colors ${
+                                      isSelected
+                                        ? 'bg-white text-black'
+                                        : 'border border-zinc-600 bg-zinc-900/80 group-hover:border-zinc-400'
+                                    }`}
+                                  >
+                                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                  </div>
+                                </div>
+
+                                {/* IMAGEN DE LA MINIATURA */}
+                                <div className="w-full h-[115px] bg-white rounded-lg overflow-hidden flex items-center justify-center relative shadow-sm border border-zinc-300">
+                                  {thumbUrl ? (
+                                    <img
+                                      src={thumbUrl}
+                                      alt={`Pág ${pNum}`}
+                                      className="w-full h-full object-contain select-none"
+                                    />
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center text-zinc-400 gap-1">
+                                      <Loader2 className="w-4 h-4 animate-spin text-zinc-500" />
+                                      <span className="text-[9px] font-mono">Pág. {pNum}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* PIE DE MINIATURA */}
+                                <div className="w-full flex items-center justify-between mt-1.5 text-[9px] font-mono text-zinc-400 shrink-0">
+                                  <span>
+                                    {isSelected
+                                      ? isEs
+                                        ? '✓ Incluida'
+                                        : '✓ Included'
+                                      : isEs
+                                        ? 'Omitida'
+                                        : 'Excluded'}
+                                  </span>
+                                  <span className="text-zinc-500 text-[8px]">
+                                    {mode === 'blackwhite' ? 'B&W' : 'GRAY'}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      /* MODO SINGLE: VISOR AL 50% */
+                      <div className="flex flex-col items-center justify-center w-full flex-1 py-1">
+                        {/* HOJA PDF EN VISTA PREVIA REDUCIDA AL 50% */}
+                        <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
+                          {isPreviewLoading ? (
+                            <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                              <Loader2 className="w-8 h-8 animate-spin text-zinc-800" />
+                              <span className="text-[11px] font-mono font-bold text-zinc-700">
+                                {isEs ? 'Renderizando filtro...' : 'Rendering filter...'}
+                              </span>
+                            </div>
+                          ) : previewModeToggle === 'filtered' && activeSlot?.previewFilteredUrl ? (
+                            <img
+                              src={activeSlot.previewFilteredUrl}
+                              alt="Vista previa filtrada"
+                              className="w-full h-full object-contain select-none"
+                            />
+                          ) : activeSlot?.previewOriginalUrl ? (
+                            <img
+                              src={activeSlot.previewOriginalUrl}
+                              alt="Vista previa original"
+                              className="w-full h-full object-contain select-none"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-zinc-400 gap-2 p-4 text-center">
+                              <Printer className="w-8 h-8 text-zinc-400" />
+                              <span className="text-[11px] font-mono">
+                                {isEs ? 'Cargando documento...' : 'Loading document...'}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* BADGE DE PÁGINA */}
+                          {(activeSlot?.totalPages || 0) > 0 && (
+                            <div className="absolute bottom-2 right-2 bg-black/85 text-white font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/20 shadow-md">
+                              #{activeSlot.activePage} / {activeSlot.totalPages}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* CONTROLES COMPACTOS DE PAGINACIÓN */}
+                        {(activeSlot?.totalPages || 0) > 1 && (
+                          <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
+                            <button
+                              type="button"
+                              onClick={() => handlePageChange(activeSlot.activePage - 1)}
+                              disabled={activeSlot.activePage <= 1}
+                              className="hover:text-white disabled:opacity-30 disabled:hover:text-zinc-300 transition-colors cursor-pointer"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="font-bold">
+                              {isEs ? 'Pág.' : 'Page'} {activeSlot.activePage} {isEs ? 'de' : 'of'}{' '}
+                              {activeSlot.totalPages}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handlePageChange(activeSlot.activePage + 1)}
+                              disabled={activeSlot.activePage >= activeSlot.totalPages}
+                              className="hover:text-white disabled:opacity-30 disabled:hover:text-zinc-300 transition-colors cursor-pointer"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1200,34 +1535,105 @@ export default function PdfBlackWhiteConverter() {
 
                   {/* COLUMNA 3: ALCANCE DE PÁGINAS */}
                   <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 flex flex-col justify-between shadow-inner space-y-3">
-                    <div>
-                      <span className="text-[10px] text-zinc-400 uppercase font-bold block mb-2">
-                        {isEs ? '3. Alcance de Páginas' : '3. Page Range Scope'}
-                      </span>
-                      <div className="grid grid-cols-2 gap-1.5 mb-2">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400 uppercase font-bold flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-white" />
+                          <span>{isEs ? '3. Páginas a Procesar' : '3. Pages to Process'}</span>
+                        </span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg">
+                          {targetPages.length} {isEs ? 'de' : 'of'} {totalPages}
+                        </span>
+                      </div>
+
+                      {/* MODOS DE SELECCIÓN */}
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setPageScope('all')}
-                          className={`py-2 px-1 rounded-xl border text-[10px] font-bold transition-all text-center cursor-pointer ${
+                          onClick={() => {
+                            setPageScope('all');
+                            handleSelectAll();
+                          }}
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-bold transition-all text-center cursor-pointer ${
                             pageScope === 'all'
                               ? 'bg-white text-black border-white shadow-md'
                               : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
                           }`}
                         >
-                          {isEs ? 'Todas' : 'All Pages'}
+                          {isEs ? 'Todas' : 'All'}
                         </button>
                         <button
                           type="button"
                           onClick={() => setPageScope('range')}
-                          className={`py-2 px-1 rounded-xl border text-[10px] font-bold transition-all text-center cursor-pointer ${
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-bold transition-all text-center cursor-pointer ${
                             pageScope === 'range'
                               ? 'bg-white text-black border-white shadow-md'
                               : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
                           }`}
                         >
-                          {isEs ? 'Por Rango' : 'Custom Range'}
+                          {isEs ? 'Rango' : 'Range'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={selectOddPages}
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-bold transition-all text-center cursor-pointer ${
+                            pageScope === 'odd'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Impares' : 'Odd'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={selectEvenPages}
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-bold transition-all text-center cursor-pointer ${
+                            pageScope === 'even'
+                              ? 'bg-white text-black border-white shadow-md'
+                              : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                          }`}
+                        >
+                          {isEs ? 'Pares' : 'Even'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewViewMode('gallery');
+                            loadAllPageThumbnails(activeSlotIndex);
+                          }}
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 col-span-2 sm:col-span-1 ${
+                            pageScope === 'custom' || previewViewMode === 'gallery'
+                              ? 'bg-zinc-100 text-black border-white shadow-md ring-1 ring-white/50'
+                              : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:text-white hover:border-zinc-500'
+                          }`}
+                          title={
+                            isEs ? 'Abrir selector visual de páginas' : 'Open visual page gallery'
+                          }
+                        >
+                          <Grid className="w-3 h-3" />
+                          <span>{isEs ? 'Galería' : 'Gallery'}</span>
                         </button>
                       </div>
+
+                      {/* INDICADOR DE PÁGINAS ELEGIDAS EN GALERÍA */}
+                      {(pageScope === 'custom' || previewViewMode === 'gallery') && (
+                        <div className="flex items-center justify-between text-[11px] bg-zinc-900/90 border border-zinc-700 px-2.5 py-1.5 rounded-xl text-zinc-200 font-mono">
+                          <span>
+                            ✓ {targetPages.length}{' '}
+                            {isEs ? 'pág(s) elegida(s) en Galería' : 'pages picked in Gallery'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewViewMode('gallery');
+                              loadAllPageThumbnails(activeSlotIndex);
+                            }}
+                            className="underline text-white font-bold hover:text-zinc-300 cursor-pointer"
+                          >
+                            {isEs ? 'Modificar' : 'Edit'}
+                          </button>
+                        </div>
+                      )}
 
                       {pageScope === 'range' && (
                         <input
@@ -1238,31 +1644,6 @@ export default function PdfBlackWhiteConverter() {
                           className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-xl text-xs text-white placeholder-zinc-500 font-mono mt-1"
                         />
                       )}
-
-                      <div className="flex gap-1.5 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => setPageScope('odd')}
-                          className={`flex-1 py-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-all ${
-                            pageScope === 'odd'
-                              ? 'bg-zinc-700 text-white border-zinc-500'
-                              : 'bg-zinc-950 text-zinc-500 border-zinc-850 hover:text-zinc-300'
-                          }`}
-                        >
-                          {isEs ? 'Impares' : 'Odd Pages'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPageScope('even')}
-                          className={`flex-1 py-1.5 rounded-lg border text-[9px] font-bold cursor-pointer transition-all ${
-                            pageScope === 'even'
-                              ? 'bg-zinc-700 text-white border-zinc-500'
-                              : 'bg-zinc-950 text-zinc-500 border-zinc-850 hover:text-zinc-300'
-                          }`}
-                        >
-                          {isEs ? 'Pares' : 'Even Pages'}
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>

@@ -503,7 +503,7 @@ export default function PowerPointPdfConverter({
   // OPCIONES AVANZADAS PDF -> PPTX
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
   const [fitMode, setFitMode] = useState<FitMode>('contain');
-  const [renderQuality, setRenderQuality] = useState<RenderQuality>('high');
+  const [renderQuality, setRenderQuality] = useState<RenderQuality>('4k');
   const [slideTheme, setSlideTheme] = useState<SlideTheme>('white');
   const [addSlideNumbers, setAddSlideNumbers] = useState<boolean>(true);
 
@@ -2664,8 +2664,14 @@ export default function PowerPointPdfConverter({
                       {isEs ? 'PANEL DE CONTROL' : 'CONTROL PANEL'}
                     </h2>
                   </div>
-                  <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
-                    <Sliders className="w-4 h-4" />
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 border border-amber-500/40 text-amber-300 shadow-sm">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      <span>✨ 4K ULTRA HD</span>
+                    </div>
+                    <div className="p-2 bg-zinc-900 border border-zinc-700 rounded-xl text-white">
+                      <Sliders className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
 
@@ -2751,86 +2757,14 @@ export default function PowerPointPdfConverter({
                       </button>
                     </div>
 
-                    {/* FORMATO DE MAQUETACIÓN PPTX (VISIBLE EN MODO EDITABLE) */}
-                    {conversionEngine !== 'ocr' && (
-                      <div className="pt-3 border-t border-zinc-800/80">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                          <span className="text-[11px] font-bold text-zinc-300 flex items-center gap-1.5 font-sans">
-                            <span>
-                              🎨{' '}
-                              {isEs
-                                ? 'Estilo de Maquetación de Diapositiva:'
-                                : 'Slide Layout Style:'}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPptxTextMode('hybrid')}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                              pptxTextMode === 'hybrid'
-                                ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm ring-1 ring-orange-400/30'
-                                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-400 hover:text-white'
-                            }`}
-                          >
-                            <span className="text-xs font-bold block">
-                              ✨ {isEs ? 'Híbrido Inteligente' : 'Smart Hybrid'}
-                            </span>
-                            <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
-                              {isEs
-                                ? 'Fondo HD + Cajas editables nativas'
-                                : 'HD Background + Native editable boxes'}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPptxTextMode('native')}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                              pptxTextMode === 'native'
-                                ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm ring-1 ring-orange-400/30'
-                                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-400 hover:text-white'
-                            }`}
-                          >
-                            <span className="text-xs font-bold block">
-                              📄 {isEs ? 'Nativo Vectorial' : 'Native Vector'}
-                            </span>
-                            <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
-                              {isEs
-                                ? 'Cajas limpias y viñetas (peso pluma)'
-                                : 'Clean text boxes & bullets (lightweight)'}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPptxTextMode('raster')}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                              pptxTextMode === 'raster'
-                                ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm ring-1 ring-orange-400/30'
-                                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-400 hover:text-white'
-                            }`}
-                          >
-                            <span className="text-xs font-bold block">
-                              🖼️ {isEs ? 'Lámina HD' : 'HD Slide'}
-                            </span>
-                            <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
-                              {isEs
-                                ? 'Fidelidad visual 100% pixel a pixel'
-                                : '100% pixel-perfect raster'}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     {/* BADGE DE SEGURIDAD Y COMPATIBILIDAD */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-mono">
                       <span className="flex items-center gap-1.5 text-zinc-300">
                         <ShieldCheck className="w-4 h-4 text-orange-400 shrink-0" />
                         <span>
                           {isEs
-                            ? 'Motor Inteligente con Auto-Failover • Procesamiento Seguro Zero-Knowledge'
-                            : 'Smart Engine with Auto-Failover • Secure Zero-Knowledge Processing'}
+                            ? 'Motor Inteligente • Presentaciones Editables en 4K Ultra HD (Zero-Knowledge)'
+                            : 'Smart Engine • Editable 4K Ultra HD Presentations (Zero-Knowledge)'}
                         </span>
                       </span>
                       <span className="text-zinc-500">
@@ -3107,65 +3041,97 @@ export default function PowerPointPdfConverter({
                       </div>
                     </div>
 
-                    {/* COLUMNA 3: NITIDEZ, TEMA Y NUMERACIÓN */}
-                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
-                      <div className="space-y-3">
-                        <div className="flex flex-col gap-2">
+                    {/* COLUMNA 3: NITIDEZ Y RESOLUCIÓN 4K, TEMA Y NUMERACIÓN */}
+                    <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3.5 shadow-inner flex flex-col justify-between">
+                      <div className="space-y-3.5">
+                        {/* SELECTOR DE NITIDEZ / RESOLUCIÓN 4K */}
+                        <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <label className="text-zinc-300 font-bold flex items-center gap-1.5">
-                              <Sparkles className="w-4 h-4 text-orange-400" />
-                              {isEs ? 'Nitidez / Calidad' : 'Sharpness'}
+                            <label className="text-zinc-200 font-bold flex items-center gap-1.5 text-xs font-sans">
+                              <Sparkles className="w-4 h-4 text-amber-400" />
+                              <span>{isEs ? 'Nitidez y Resolución' : 'Resolution & Quality'}</span>
                             </label>
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => setRenderQuality('high')}
-                                className={`py-1 px-1.5 sm:px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                                  renderQuality === 'high'
-                                    ? 'bg-white text-black border-white shadow-sm'
-                                    : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                                }`}
-                              >
-                                HD
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRenderQuality('ultra')}
-                                className={`py-1 px-1.5 sm:px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                                  renderQuality === 'ultra'
-                                    ? 'bg-white text-black border-white shadow-sm'
-                                    : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                                }`}
-                              >
-                                FHD
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRenderQuality('4k')}
-                                className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                                  renderQuality === '4k'
-                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-amber-400 shadow-md ring-1 ring-amber-400/50'
-                                    : 'bg-zinc-900 text-amber-300 border-amber-500/40 hover:border-amber-400'
-                                }`}
-                              >
-                                <span>✨ 4K UHD</span>
-                              </button>
-                            </div>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              {renderQuality === '4k'
+                                ? '✨ 4K UHD'
+                                : renderQuality === 'ultra'
+                                  ? 'FHD 2K'
+                                  : 'HD 1080p'}
+                            </span>
                           </div>
-                          {renderQuality === '4k' && (
-                            <div className="text-[10px] text-amber-300 font-mono bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1.5">
-                              <span>🖥️</span>
-                              <span>
-                                {isEs
-                                  ? '3840×2160 px • Ultra HD para proyectores y pantallas 4K'
-                                  : '3840×2160 px • Ultra HD for 4K displays & projectors'}
+
+                          <div className="grid grid-cols-3 gap-1.5 font-mono">
+                            <button
+                              type="button"
+                              onClick={() => setRenderQuality('high')}
+                              className={`py-2 px-1 rounded-xl text-center border transition-all cursor-pointer flex flex-col items-center justify-center ${
+                                renderQuality === 'high'
+                                  ? 'bg-white text-black border-white shadow-md font-bold'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
+                              }`}
+                            >
+                              <span className="text-xs font-bold font-sans">HD</span>
+                              <span className="text-[9px] text-zinc-400 leading-none mt-0.5">
+                                1080p
                               </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setRenderQuality('ultra')}
+                              className={`py-2 px-1 rounded-xl text-center border transition-all cursor-pointer flex flex-col items-center justify-center ${
+                                renderQuality === 'ultra'
+                                  ? 'bg-white text-black border-white shadow-md font-bold'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
+                              }`}
+                            >
+                              <span className="text-xs font-bold font-sans">Full HD</span>
+                              <span className="text-[9px] text-zinc-400 leading-none mt-0.5">
+                                2K QHD
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setRenderQuality('4k')}
+                              className={`py-2 px-1 rounded-xl text-center border transition-all cursor-pointer flex flex-col items-center justify-center relative ${
+                                renderQuality === '4k'
+                                  ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-black border-amber-300 shadow-md ring-2 ring-amber-400/70 scale-[1.02]'
+                                  : 'bg-amber-950/20 text-amber-300 border-amber-500/40 hover:border-amber-400 hover:text-white'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 font-bold">
+                                <Sparkles className="w-3 h-3 text-amber-200 animate-pulse" />
+                                <span className="text-xs font-black font-sans">4K UHD</span>
+                              </div>
+                              <span className="text-[9px] font-bold text-amber-100/90 leading-none mt-0.5">
+                                3840 px
+                              </span>
+                            </button>
+                          </div>
+
+                          {renderQuality === '4k' && (
+                            <div className="text-[10px] text-amber-200 font-mono bg-gradient-to-r from-amber-950/60 via-orange-950/30 to-zinc-900 p-2.5 rounded-xl border border-amber-500/40 flex items-start gap-2 shadow-sm">
+                              <span className="text-sm">🖥️</span>
+                              <div className="leading-tight">
+                                <span className="font-bold text-amber-300 block mb-0.5 font-sans">
+                                  {isEs
+                                    ? '4K Ultra HD (3840×2160 px)'
+                                    : '4K Ultra HD (3840×2160 px)'}
+                                </span>
+                                <span className="text-zinc-400 text-[9px] block">
+                                  {isEs
+                                    ? 'Claridad cinematográfica para pantallas gigantes, monitores Retina y proyectores corporativos.'
+                                    : 'Cinematic clarity for large displays, Retina monitors & corporate 4K projectors.'}
+                                </span>
+                              </div>
                             </div>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <label className="text-zinc-300 font-bold flex items-center gap-1.5">
+                        {/* TEMA DE FONDO SLIDE */}
+                        <div className="flex items-center justify-between pt-1">
+                          <label className="text-zinc-300 font-bold flex items-center gap-1.5 text-xs font-sans">
                             <Presentation className="w-4 h-4 text-orange-400" />
                             {isEs ? 'Fondo Slide' : 'Slide Theme'}
                           </label>
@@ -3412,10 +3378,10 @@ export default function PowerPointPdfConverter({
                               : isEs
                                 ? targetPages.length === 0
                                   ? 'Selecciona al menos 1 página'
-                                  : `Convertir ${targetPages.length} Diapositiva${targetPages.length === 1 ? '' : 's'} a PPTX →`
+                                  : `Convertir ${targetPages.length} Diapositiva${targetPages.length === 1 ? '' : 's'} a PPTX${renderQuality === '4k' ? ' en 4K Ultra HD' : ''} →`
                                 : targetPages.length === 0
                                   ? 'Select at least 1 page'
-                                  : `Convert ${targetPages.length} Slide${targetPages.length === 1 ? '' : 's'} to PPTX →`}
+                                  : `Convert ${targetPages.length} Slide${targetPages.length === 1 ? '' : 's'} to PPTX${renderQuality === '4k' ? ' in 4K Ultra HD' : ''} →`}
                       </span>
                     </button>
                   )}

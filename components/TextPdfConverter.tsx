@@ -1478,116 +1478,29 @@ export default function TextPdfConverter({ defaultMode = 'pdf-to-text' }: TextPd
                   </div>
                 </div>
 
-                {/* SELECTOR VISUAL DE MOTOR DE CONVERSIÓN EN 2X2 */}
-                <div className="bg-[#121217] p-3.5 sm:p-4 rounded-2xl border border-zinc-700/80 space-y-2.5 font-mono text-xs shadow-inner">
-                  <div className="flex items-center justify-between">
-                    <label className="text-zinc-200 font-bold flex items-center gap-1.5 text-xs">
-                      <Cpu className="w-4 h-4 text-cyan-400" />
-                      <span>
-                        {isEs ? 'Motor de Conversión de Texto' : 'Text Conversion Engine'}
-                      </span>
-                    </label>
-                    <span className="text-[10px] text-zinc-400 font-mono">
-                      {isEs ? '4 Motores Disponibles' : '4 Engines Available'}
+                {/* BADGE DE CONFIANZA Y PRIVACIDAD EN MODO PDF A TEXTO */}
+                <div className="bg-[#121217] px-4 py-3 rounded-2xl border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-mono shadow-inner">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="text-zinc-200 font-bold">
+                      {isEs
+                        ? 'Extractor Vectorial de Texto • Procesamiento 100% Local (RAM)'
+                        : 'In-Memory Vector Text Extractor • 100% Local Processing (RAM)'}
                     </span>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('adobe')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'adobe'
-                          ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🏆 Adobe Acrobat Pro (Nube)</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                          {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Máxima fidelidad oficial en reconocimiento de tipografías, párrafos y orden de lectura natural.'
-                          : 'Official cloud fidelity for fonts, paragraphs & natural reading order.'}
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('cloudconvert')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'cloudconvert'
-                          ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🌐 CloudConvert (Nube)</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                          {isEs ? 'Procesamiento Cloud' : 'Cloud Engine'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Motor en la nube de alta disponibilidad. Conversión rápida a texto plano o compilación de PDF.'
-                          : 'High-performance cloud engine for fast plain text and PDF compilation.'}
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('local')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'local'
-                          ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>⚡ Motor Local PDF.js</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                          {isEs ? 'Instantáneo (~0.5s)' : 'Instant (~0.5s)'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Extracción de texto directa en memoria 100% privada sin subir archivos a servidores externos.'
-                          : '100% private in-memory text extraction without uploading files externally.'}
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('clean')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'clean'
-                          ? 'bg-purple-950/50 border-purple-400 ring-1 ring-purple-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>📊 Texto Limpio (Desguionado)</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                          {isEs ? 'Párrafos Fluidos' : 'Flowing Paragraphs'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Eliminación inteligente de cortes de línea rotos, guiones huérfanos y caracteres especiales.'
-                          : 'Smart removal of broken line wraps, orphan hyphens and special characters.'}
-                      </p>
-                    </button>
+                  <div className="flex items-center gap-3 text-[11px] text-zinc-400">
+                    <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>{isEs ? 'Zero-Knowledge' : 'Zero-Knowledge'}</span>
+                    </span>
+                    <span>•</span>
+                    <span className="text-zinc-300 font-semibold">
+                      {isEs ? 'Codificación UTF-8' : 'UTF-8 Encoding'}
+                    </span>
+                    <span>•</span>
+                    <span className="text-cyan-300 font-bold">
+                      {isEs ? 'Sin Servidores Externos' : 'No External Servers'}
+                    </span>
                   </div>
                 </div>
 

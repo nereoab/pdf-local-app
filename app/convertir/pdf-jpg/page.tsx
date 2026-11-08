@@ -14,7 +14,7 @@ const JpgPdfConverter = dynamic(() => import('@/components/JpgPdfConverter'), {
           007 / CONVERSIÓN DE IMÁGENES JPG Y PDF
         </span>
         <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
-          <span>CONVERTIR PDF A JPG (EXTRAER IMÁGENES EN ALTA RESOLUCIÓN)</span>
+          <span>CONVERTIR PDF A JPG Y 4K ULTRA HD (IMÁGENES EN ALTA RESOLUCIÓN)</span>
         </h1>
       </div>
       <div className="flex flex-col items-center justify-center min-h-[460px] w-full border border-zinc-800 rounded-2xl bg-zinc-950/40 gap-4 font-mono">

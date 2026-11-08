@@ -24,20 +24,22 @@ import {
   Trash2,
   Eye,
   UploadCloud,
+  Check,
+  Maximize2,
 } from 'lucide-react';
 import { JpgIcon } from './ProgramIcons';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext';
 import { useFileStore } from '@/store/useFileStore';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import FoliarSuccessView from '@/components/FoliarSuccessView';
 import { useUIStore } from '@/store/useUIStore';
 import { convertWithApi } from '@/lib/adobe-api-client';
 
 type ConversionDirection = 'jpg-to-pdf' | 'pdf-to-jpg';
 type ImageFormat = 'jpeg' | 'png' | 'webp';
-type DpiQuality = '300dpi' | '150dpi' | '72dpi';
+type DpiQuality = '4k' | '300dpi' | '150dpi' | '72dpi';
 type MarginOption = 'none' | 'small' | 'big';
 type PageSelectionMode = 'all' | 'range' | 'custom' | 'even' | 'odd';
 
@@ -239,6 +241,8 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const [pageSelectionMode, setPageSelectionMode] = useState<PageSelectionMode>('all');
   const [pageRangeInput, setPageRangeInput] = useState<string>('1-10');
   const [selectedPageSet, setSelectedPageSet] = useState<Set<number>>(new Set());
+  const [previewViewMode, setPreviewViewMode] = useState<'single' | 'gallery'>('single');
+  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
 
   // MOTOR DE CONVERSIÓN
   const [conversionEngine, setConversionEngine] = useState<
@@ -249,6 +253,76 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
   const [imgFormat, setImgFormat] = useState<ImageFormat>('jpeg');
   const [dpiQuality, setDpiQuality] = useState<DpiQuality>('150dpi');
   const [imageQuality, setImageQuality] = useState<number>(0.92);
+
+  // RESOLUCIÓN ESCALADA DINÁMICA (INCLUYE 4K ULTRA HD NATIVO)
+  const getScaleForDpi = useCallback(
+    (
+      page: { getViewport: (params: { scale: number }) => { width: number; height: number } },
+      quality: DpiQuality,
+    ): number => {
+      if (quality === '72dpi') return 1.0;
+      if (quality === '150dpi') return 2.0;
+      if (quality === '300dpi') return 3.0;
+      if (quality === '4k') {
+        const vp = page.getViewport({ scale: 1.0 });
+        const maxDim = Math.max(vp.width, vp.height);
+        const targetScale = maxDim > 0 ? 3840 / maxDim : 4.5;
+        return Math.min(5.5, Math.max(3.8, parseFloat(targetScale.toFixed(2))));
+      }
+      return 2.0;
+    },
+    [],
+  );
+
+  // ACCIONES DE SELECCIÓN DE PÁGINAS
+  const togglePageSelection = (pageNum: number) => {
+    setSelectedPageSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(pageNum)) {
+        next.delete(pageNum);
+      } else {
+        next.add(pageNum);
+      }
+      return next;
+    });
+    setPageSelectionMode('custom');
+  };
+
+  const selectAllPages = () => {
+    if (totalPages > 0) {
+      setSelectedPageSet(new Set(Array.from({ length: totalPages }, (_, i) => i + 1)));
+      setPageSelectionMode('all');
+    }
+  };
+
+  const deselectAllPages = () => {
+    setSelectedPageSet(new Set());
+    setPageSelectionMode('custom');
+  };
+
+  const invertPageSelection = () => {
+    const current = new Set(targetPages);
+    const inverted = new Set<number>();
+    for (let p = 1; p <= totalPages; p++) {
+      if (!current.has(p)) inverted.add(p);
+    }
+    setSelectedPageSet(inverted);
+    setPageSelectionMode('custom');
+  };
+
+  const selectOddPages = () => {
+    const odds = new Set<number>();
+    for (let p = 1; p <= totalPages; p += 2) odds.add(p);
+    setSelectedPageSet(odds);
+    setPageSelectionMode('odd');
+  };
+
+  const selectEvenPages = () => {
+    const evens = new Set<number>();
+    for (let p = 2; p <= totalPages; p += 2) evens.add(p);
+    setSelectedPageSet(evens);
+    setPageSelectionMode('even');
+  };
 
   // OPCIONES AVANZADAS JPG -> PDF
   const [marginOption, setMarginOption] = useState<MarginOption>('none');
@@ -410,6 +484,70 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
       }
     },
     [slots],
+  );
+
+  // CARGA RÁPIDA DE MINIATURAS DE TODAS LAS PÁGINAS PARA LA GALERÍA DE SELECCIÓN
+  const loadAllPageThumbnails = useCallback(
+    async (slotIndex: number) => {
+      const currentSlot = slots[slotIndex];
+      if (!currentSlot?.file || !currentSlot.file.name.toLowerCase().endsWith('.pdf')) return;
+      if (isGeneratingThumbnails) return;
+
+      try {
+        setIsGeneratingThumbnails(true);
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        const arrayBuffer = await currentSlot.file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({
+          data: arrayBuffer.slice(0),
+          cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true,
+        }).promise;
+
+        const numPages = pdfDoc.numPages;
+        const newUrls: Record<number, string> = { ...currentSlot.pageDataUrls };
+
+        for (let p = 1; p <= numPages; p++) {
+          if (cancelRenderRef.current) break;
+          if (newUrls[p]) continue;
+
+          try {
+            const page = await pdfDoc.getPage(p);
+            const viewport = page.getViewport({ scale: 0.28 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
+                typeof page.render
+              >[0]).promise;
+              newUrls[p] = canvas.toDataURL('image/jpeg', 0.8);
+              canvas.width = 0;
+              canvas.height = 0;
+            }
+          } catch (pageErr) {
+            console.warn(`Error rendering thumbnail page ${p}:`, pageErr);
+          }
+
+          if (p % 3 === 0 || p === numPages) {
+            const currentSnapshot = { ...newUrls };
+            setSlots((prev) =>
+              prev.map((s, idx) =>
+                idx === slotIndex ? { ...s, pageDataUrls: currentSnapshot } : s,
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        console.error('Error generating all page thumbnails:', e);
+      } finally {
+        setIsGeneratingThumbnails(false);
+      }
+    },
+    [slots, isGeneratingThumbnails],
   );
 
   useEffect(() => {
@@ -864,7 +1002,8 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             cMapPacked: true,
           }).promise;
 
-          const scaleVal = dpiQuality === '300dpi' ? 3.0 : dpiQuality === '72dpi' ? 1.0 : 2.0;
+          const qualityLabel =
+            dpiQuality === '4k' ? '4K Ultra HD (3840px)' : dpiQuality.toUpperCase();
           const mimeType =
             imgFormat === 'png' ? 'image/png' : imgFormat === 'webp' ? 'image/webp' : 'image/jpeg';
           const ext = imgFormat === 'jpeg' ? 'jpg' : imgFormat;
@@ -874,12 +1013,13 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             const pageNum = targetPages[0];
             setProgressMsg(
               isEs
-                ? `Renderizando página ${pageNum} a ${dpiQuality}...`
-                : `Rendering page ${pageNum} at ${dpiQuality}...`,
+                ? `Renderizando página ${pageNum} en ${qualityLabel}...`
+                : `Rendering page ${pageNum} at ${qualityLabel}...`,
             );
             setProgressPercent(60);
 
             const page = await pdfDoc.getPage(pageNum);
+            const scaleVal = getScaleForDpi(page, dpiQuality);
             const viewport = page.getViewport({ scale: scaleVal });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
@@ -899,6 +1039,9 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
               if (resultBlob) {
                 localUrl = URL.createObjectURL(resultBlob);
               }
+              // Liberar memoria Canvas inmediatamente
+              canvas.width = 0;
+              canvas.height = 0;
             }
 
             const outName = `${baseName}_Pagina_${pageNum}.${ext}`;
@@ -922,8 +1065,8 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
             }
             toast.success(
               isEs
-                ? `¡Página ${pageNum} exportada a ${ext.toUpperCase()} con éxito!`
-                : `Page ${pageNum} exported to ${ext.toUpperCase()} successfully!`,
+                ? `¡Página ${pageNum} exportada en ${qualityLabel} con éxito!`
+                : `Page ${pageNum} exported at ${qualityLabel} successfully!`,
             );
           } else {
             const zip = new JSZip();
@@ -935,11 +1078,12 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
               setProgressPercent(pct);
               setProgressMsg(
                 isEs
-                  ? `Renderizando pág. ${idx + 1} de ${totalToConvert} (Pág. ${pageNum} a ${dpiQuality})...`
-                  : `Rendering page ${idx + 1} of ${totalToConvert} (Page ${pageNum} at ${dpiQuality})...`,
+                  ? `Renderizando pág. ${idx + 1} de ${totalToConvert} (Pág. ${pageNum} en ${qualityLabel})...`
+                  : `Rendering page ${idx + 1} of ${totalToConvert} (Page ${pageNum} at ${qualityLabel})...`,
               );
 
               const page = await pdfDoc.getPage(pageNum);
+              const scaleVal = getScaleForDpi(page, dpiQuality);
               const viewport = page.getViewport({ scale: scaleVal });
               const canvas = document.createElement('canvas');
               canvas.width = viewport.width;
@@ -960,6 +1104,9 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                   const arrayBuf = await blob.arrayBuffer();
                   imgFolder.file(`${baseName}_Pagina_${pageNum}.${ext}`, arrayBuf);
                 }
+                // Liberar memoria Canvas en cada iteración
+                canvas.width = 0;
+                canvas.height = 0;
               }
             }
 
@@ -1006,7 +1153,6 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
           const pdfjsLib = await import('pdfjs-dist');
           pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
-          const scaleVal = dpiQuality === '300dpi' ? 3.0 : dpiQuality === '72dpi' ? 1.0 : 2.0;
           const mimeType =
             imgFormat === 'png' ? 'image/png' : imgFormat === 'webp' ? 'image/webp' : 'image/jpeg';
           const ext = imgFormat === 'jpeg' ? 'jpg' : imgFormat;
@@ -1041,11 +1187,12 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
               setProgressPercent(pct);
               setProgressMsg(
                 isEs
-                  ? `[${currentFile.name}] Exportando pág. ${pNum}...`
-                  : `[${currentFile.name}] Exporting page ${pNum}...`,
+                  ? `[${currentFile.name}] Exportando pág. ${pNum} (${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality})...`
+                  : `[${currentFile.name}] Exporting page ${pNum} (${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality})...`,
               );
 
               const page = await pdfDoc.getPage(pNum);
+              const scaleVal = getScaleForDpi(page, dpiQuality);
               const viewport = page.getViewport({ scale: scaleVal });
               const canvas = document.createElement('canvas');
               canvas.width = viewport.width;
@@ -1067,6 +1214,8 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                 const imgBytes = await imgBlob.arrayBuffer();
                 targetFolder.file(`Pagina_${pNum}.${ext}`, imgBytes);
               }
+              canvas.width = 0;
+              canvas.height = 0;
             }
           }
 
@@ -1480,79 +1629,259 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
 
                 {/* CONTENEDOR PRINCIPAL SPLIT: IZQUIERDA AL 50% | DERECHA 3 CAJAS */}
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[420px] overflow-hidden">
-                  {/* ── LADO IZQUIERDO: VISOR COMPACTO A MITAD DE TAMAÑO (50% VISUAL) ── */}
-                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col items-center justify-center relative overflow-hidden shadow-inner min-h-[380px]">
+                  {/* ── LADO IZQUIERDO: VISOR COMPACTO / GALERÍA DE PÁGINAS ── */}
+                  <div className="lg:col-span-6 bg-[#0c0c10] rounded-2xl border border-zinc-800 p-4 flex flex-col relative overflow-hidden shadow-inner min-h-[380px]">
                     {file ? (
-                      <div className="flex flex-col items-center justify-center w-full h-full py-1">
-                        {/* HOJA EN VISTA PREVIA REDUCIDA AL 50% (SÚPER MINIATURA COMPACTA) */}
-                        <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
-                          {mode === 'pdf-to-jpg' || file.name.toLowerCase().endsWith('.pdf') ? (
-                            activeSlot.pageDataUrls[activePage] ? (
-                              <>
-                                <img
-                                  src={activeSlot.pageDataUrls[activePage]}
-                                  alt={`Pág ${activePage}`}
-                                  className="w-full h-full object-contain select-none"
-                                />
-                              </>
-                            ) : activeSlot.thumbnailUrl ? (
-                              <>
-                                <img
-                                  src={activeSlot.thumbnailUrl}
-                                  alt="Pág 1"
-                                  className="w-full h-full object-contain select-none"
-                                />
-                              </>
-                            ) : (
-                              <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
-                                <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                                <span className="text-[11px] font-mono font-bold">
-                                  Pág. {activePage}
-                                </span>
+                      <div className="flex flex-col w-full h-full">
+                        {/* SELECTOR DE VISTA: VISTA DETALLE VS GALERÍA DE PÁGINAS (SOLO PDF) */}
+                        {(mode === 'pdf-to-jpg' || file.name.toLowerCase().endsWith('.pdf')) &&
+                          totalPages > 1 && (
+                            <div className="w-full flex flex-wrap items-center justify-between pb-2 mb-3 border-b border-zinc-800/80 font-mono text-[11px] gap-2 shrink-0">
+                              <div className="flex items-center gap-1.5 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewViewMode('single')}
+                                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    previewViewMode === 'single'
+                                      ? 'bg-white text-black shadow-sm'
+                                      : 'text-zinc-400 hover:text-white'
+                                  }`}
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span>{isEs ? 'Vista Hoja' : 'Page View'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreviewViewMode('gallery');
+                                    loadAllPageThumbnails(activeSlotIndex);
+                                  }}
+                                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    previewViewMode === 'gallery'
+                                      ? 'bg-purple-600 text-white shadow-sm'
+                                      : 'text-zinc-400 hover:text-white'
+                                  }`}
+                                >
+                                  <Grid className="w-3.5 h-3.5" />
+                                  <span>{isEs ? 'Galería de Páginas' : 'Page Gallery'}</span>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                      previewViewMode === 'gallery'
+                                        ? 'bg-purple-800 text-purple-100'
+                                        : 'bg-zinc-800 text-zinc-300'
+                                    }`}
+                                  >
+                                    {targetPages.length}/{totalPages}
+                                  </span>
+                                </button>
                               </div>
-                            )
-                          ) : activeSlot.previewUrl ? (
-                            <>
-                              <img
-                                src={activeSlot.previewUrl}
-                                alt="Vista previa"
-                                className="w-full h-full object-contain select-none"
-                              />
-                            </>
-                          ) : null}
 
-                          {/* INDICADOR DE PÁGINA EN LA ESQUINA */}
-                          {totalPages > 0 && (
-                            <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
-                              #{activePage} / {totalPages}
+                              {previewViewMode === 'gallery' && (
+                                <div className="flex items-center gap-1 text-[10px]">
+                                  <button
+                                    type="button"
+                                    onClick={selectAllPages}
+                                    className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                                  >
+                                    {isEs ? 'Todas' : 'All'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={invertPageSelection}
+                                    className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                                  >
+                                    {isEs ? 'Invertir' : 'Invert'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={deselectAllPages}
+                                    className="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700 cursor-pointer"
+                                  >
+                                    {isEs ? 'Ninguna' : 'None'}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
-                        </div>
 
-                        {/* CONTROLES COMPACTOS DE PAGINACIÓN DEBAJO DE LA HOJA (SI MULTIPÁGINA) */}
-                        {totalPages > 1 && (
-                          <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
-                            <button
-                              type="button"
-                              onClick={() => setActivePage(Math.max(1, activePage - 1))}
-                              disabled={activePage <= 1}
-                              className="hover:text-white disabled:opacity-30 cursor-pointer p-0.5"
-                              title={isEs ? 'Página anterior' : 'Previous page'}
-                            >
-                              ◀
-                            </button>
-                            <span className="font-bold text-white text-[11px]">
-                              {activePage} / {totalPages}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setActivePage(Math.min(totalPages, activePage + 1))}
-                              disabled={activePage >= totalPages}
-                              className="hover:text-white disabled:opacity-30 cursor-pointer p-0.5"
-                              title={isEs ? 'Página siguiente' : 'Next page'}
-                            >
-                              ▶
-                            </button>
+                        {/* CONTENIDO DE LA VISTA: SINGLE (HOJA AL 50%) O GALLERY (CUADRÍCULA DE SELECCIÓN) */}
+                        {previewViewMode === 'gallery' &&
+                        (mode === 'pdf-to-jpg' || file.name.toLowerCase().endsWith('.pdf')) &&
+                        totalPages > 1 ? (
+                          <div className="flex-1 flex flex-col min-h-0">
+                            <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 mb-2 px-1 shrink-0">
+                              <span className="flex items-center gap-1.5 text-purple-300 font-bold">
+                                <span>✓</span>
+                                {isEs
+                                  ? `${targetPages.length} de ${totalPages} páginas elegidas para convertir en ${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality}`
+                                  : `${targetPages.length} of ${totalPages} pages selected for ${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality}`}
+                              </span>
+                              {isGeneratingThumbnails && (
+                                <span className="flex items-center gap-1 text-[10px] text-zinc-400">
+                                  <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+                                  {isEs ? 'Cargando miniaturas...' : 'Rendering thumbnails...'}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 flex-1 overflow-y-auto max-h-[350px] p-1.5 pr-2 custom-scrollbar">
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => {
+                                const isSelected = targetPages.includes(pNum);
+                                const thumbUrl =
+                                  activeSlot.pageDataUrls[pNum] ||
+                                  (pNum === 1 ? activeSlot.thumbnailUrl : null);
+
+                                return (
+                                  <div
+                                    key={pNum}
+                                    onClick={() => togglePageSelection(pNum)}
+                                    className={`relative rounded-xl border p-2 flex flex-col justify-between cursor-pointer transition-all duration-200 group select-none ${
+                                      isSelected
+                                        ? 'border-purple-500 bg-purple-950/30 ring-2 ring-purple-500/50 shadow-md shadow-purple-500/10'
+                                        : 'border-zinc-800 bg-zinc-950/60 opacity-60 hover:opacity-100 hover:border-zinc-700'
+                                    }`}
+                                  >
+                                    {/* CABECERA DE LA MINIATURA: NÚMERO Y CHECK */}
+                                    <div className="w-full flex items-center justify-between mb-1.5 font-mono text-[10px] shrink-0">
+                                      <span
+                                        className={`px-1.5 py-0.5 rounded font-bold ${
+                                          isSelected
+                                            ? 'bg-purple-600 text-white'
+                                            : 'bg-zinc-900 border border-zinc-700 text-zinc-400'
+                                        }`}
+                                      >
+                                        #{pNum}
+                                      </span>
+                                      <div
+                                        className={`w-4 h-4 rounded-md flex items-center justify-center transition-colors ${
+                                          isSelected
+                                            ? 'bg-purple-500 text-white'
+                                            : 'border border-zinc-600 bg-zinc-900/80 group-hover:border-zinc-400'
+                                        }`}
+                                      >
+                                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                      </div>
+                                    </div>
+
+                                    {/* IMAGEN DE LA MINIATURA */}
+                                    <div className="w-full h-[115px] bg-white rounded-lg overflow-hidden flex items-center justify-center relative shadow-sm border border-zinc-300">
+                                      {thumbUrl ? (
+                                        <img
+                                          src={thumbUrl}
+                                          alt={`Página ${pNum}`}
+                                          className="w-full h-full object-contain select-none"
+                                        />
+                                      ) : (
+                                        <div className="flex flex-col items-center justify-center text-zinc-400 gap-1">
+                                          <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                                          <span className="text-[9px] font-mono font-bold text-zinc-500">
+                                            Pág. {pNum}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* PIE DE LA TARJETA CON INDICADOR DE CALIDAD */}
+                                    <div className="mt-1.5 flex items-center justify-between text-[9px] font-mono">
+                                      <span
+                                        className={
+                                          isSelected ? 'text-purple-300 font-bold' : 'text-zinc-500'
+                                        }
+                                      >
+                                        {isSelected
+                                          ? dpiQuality === '4k'
+                                            ? '✨ 4K UHD'
+                                            : dpiQuality
+                                          : isEs
+                                            ? 'Excluida'
+                                            : 'Skipped'}
+                                      </span>
+                                      {isSelected && (
+                                        <span className="text-[8px] text-emerald-400 font-bold">
+                                          ✓ EXPORTAR
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          /* HOJA EN VISTA PREVIA REDUCIDA AL 50% (SÚPER MINIATURA COMPACTA) */
+                          <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                            <div className="relative bg-white rounded-xl shadow-2xl border border-zinc-400/80 overflow-hidden flex items-center justify-center transition-all duration-300 w-[240px] sm:w-[260px] h-[330px] sm:h-[358px] group">
+                              {mode === 'pdf-to-jpg' || file.name.toLowerCase().endsWith('.pdf') ? (
+                                activeSlot.pageDataUrls[activePage] ? (
+                                  <>
+                                    <img
+                                      src={activeSlot.pageDataUrls[activePage]}
+                                      alt={`Pág ${activePage}`}
+                                      className="w-full h-full object-contain select-none"
+                                    />
+                                  </>
+                                ) : activeSlot.thumbnailUrl ? (
+                                  <>
+                                    <img
+                                      src={activeSlot.thumbnailUrl}
+                                      alt="Pág 1"
+                                      className="w-full h-full object-contain select-none"
+                                    />
+                                  </>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center text-zinc-500 gap-2">
+                                    <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                                    <span className="text-[11px] font-mono font-bold">
+                                      Pág. {activePage}
+                                    </span>
+                                  </div>
+                                )
+                              ) : activeSlot.previewUrl ? (
+                                <>
+                                  <img
+                                    src={activeSlot.previewUrl}
+                                    alt="Vista previa"
+                                    className="w-full h-full object-contain select-none"
+                                  />
+                                </>
+                              ) : null}
+
+                              {/* INDICADOR DE PÁGINA EN LA ESQUINA */}
+                              {totalPages > 0 && (
+                                <div className="absolute bottom-2 right-2 bg-black/80 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
+                                  #{activePage} / {totalPages}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* CONTROLES COMPACTOS DE PAGINACIÓN DEBAJO DE LA HOJA (SI MULTIPÁGINA) */}
+                            {totalPages > 1 && (
+                              <div className="flex items-center gap-3 mt-3 bg-zinc-900 border border-zinc-700/80 px-3 py-1 rounded-full text-xs font-mono text-zinc-300 shadow-md">
+                                <button
+                                  type="button"
+                                  onClick={() => setActivePage(Math.max(1, activePage - 1))}
+                                  disabled={activePage <= 1}
+                                  className="hover:text-white disabled:opacity-30 cursor-pointer p-0.5"
+                                  title={isEs ? 'Página anterior' : 'Previous page'}
+                                >
+                                  ◀
+                                </button>
+                                <span className="font-bold text-white text-[11px]">
+                                  {activePage} / {totalPages}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActivePage(Math.min(totalPages, activePage + 1))
+                                  }
+                                  disabled={activePage >= totalPages}
+                                  className="hover:text-white disabled:opacity-30 cursor-pointer p-0.5"
+                                  title={isEs ? 'Página siguiente' : 'Next page'}
+                                >
+                                  ▶
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1872,7 +2201,7 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                         </div>
 
                         {/* MODOS DE SELECCIÓN */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                           <button
                             type="button"
                             onClick={() => setPageSelectionMode('all')}
@@ -1917,6 +2246,24 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                           >
                             {isEs ? 'Pares' : 'Even'}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewViewMode('gallery');
+                              loadAllPageThumbnails(activeSlotIndex);
+                            }}
+                            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 col-span-2 sm:col-span-1 ${
+                              pageSelectionMode === 'custom' || previewViewMode === 'gallery'
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-md ring-1 ring-purple-400'
+                                : 'bg-zinc-900 text-purple-300 border-purple-500/40 hover:text-white hover:border-purple-400'
+                            }`}
+                            title={
+                              isEs ? 'Abrir selector visual de páginas' : 'Open visual page gallery'
+                            }
+                          >
+                            <Grid className="w-3 h-3" />
+                            <span>{isEs ? 'Galería' : 'Gallery'}</span>
+                          </button>
                         </div>
 
                         {/* INPUT DE RANGO */}
@@ -1946,6 +2293,30 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                                 </button>
                               ))}
                             </div>
+                          </div>
+                        )}
+
+                        {/* AVISO DE SELECCIÓN MANUAL EN GALERÍA */}
+                        {pageSelectionMode === 'custom' && (
+                          <div className="p-2 bg-purple-950/30 border border-purple-800/60 rounded-xl flex items-center justify-between text-[11px] text-purple-300">
+                            <span className="flex items-center gap-1.5">
+                              <Check className="w-3.5 h-3.5 text-purple-400" />
+                              <span>
+                                {isEs
+                                  ? `${targetPages.length} pág(s) elegida(s) en Galería`
+                                  : `${targetPages.length} pg(s) chosen in Gallery`}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewViewMode('gallery');
+                                loadAllPageThumbnails(activeSlotIndex);
+                              }}
+                              className="underline text-white font-bold hover:text-purple-200 cursor-pointer"
+                            >
+                              {isEs ? 'Modificar' : 'Edit'}
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1999,44 +2370,101 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                         </div>
 
                         <div>
-                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-purple-400" />
-                            {isEs ? 'Densidad y Resolución' : 'DPI Density'}
+                          <label className="text-zinc-300 font-bold mb-1.5 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles className="w-4 h-4 text-purple-400" />
+                              {isEs ? 'Densidad y Resolución' : 'DPI Density'}
+                            </span>
+                            {dpiQuality === '4k' && (
+                              <span className="text-[9px] px-1.5 py-0.2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-mono font-black rounded-full uppercase tracking-wider animate-pulse">
+                                4K UHD 3840px
+                              </span>
+                            )}
                           </label>
-                          <div className="grid grid-cols-3 gap-1.5">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                             <button
                               type="button"
                               onClick={() => setDpiQuality('72dpi')}
                               className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
                                 dpiQuality === '72dpi'
-                                  ? 'bg-white text-black border-white'
+                                  ? 'bg-white text-black border-white shadow'
                                   : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                               }`}
                             >
                               72 DPI
+                              <span className="block text-[8px] font-mono opacity-70">Web</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => setDpiQuality('150dpi')}
                               className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
                                 dpiQuality === '150dpi'
-                                  ? 'bg-white text-black border-white'
+                                  ? 'bg-white text-black border-white shadow'
                                   : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                               }`}
                             >
                               150 DPI
+                              <span className="block text-[8px] font-mono opacity-70">Full HD</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => setDpiQuality('300dpi')}
                               className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center ${
                                 dpiQuality === '300dpi'
-                                  ? 'bg-white text-black border-white'
+                                  ? 'bg-white text-black border-white shadow'
                                   : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
                               }`}
                             >
                               300 DPI
+                              <span className="block text-[8px] font-mono opacity-70">
+                                Imprenta
+                              </span>
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => setDpiQuality('4k')}
+                              className={`py-1.5 px-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer text-center relative overflow-hidden ${
+                                dpiQuality === '4k'
+                                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-400 shadow-md shadow-purple-500/20 ring-1 ring-purple-400'
+                                  : 'bg-zinc-900 text-purple-300 border-purple-500/40 hover:border-purple-400 hover:text-white'
+                              }`}
+                            >
+                              ✨ 4K UHD
+                              <span className="block text-[8px] font-mono opacity-80">3840 px</span>
+                            </button>
+                          </div>
+
+                          {/* EXPLICACIÓN DINÁMICA DE LA RESOLUCIÓN SELECCIONADA */}
+                          <div className="mt-2 text-[10px] text-zinc-400 font-mono bg-zinc-900/60 p-2 rounded-lg border border-zinc-800">
+                            {dpiQuality === '4k' && (
+                              <span className="text-purple-300 font-semibold flex items-center gap-1">
+                                <span>✨</span>
+                                {isEs
+                                  ? 'Ultra HD 4K (~3840×2160 px). Claridad cinematográfica sin pixelado al hacer zoom.'
+                                  : 'Native 4K Ultra HD (~3840×2160 px). Cinema-grade sharpness, crystal clear at any zoom.'}
+                              </span>
+                            )}
+                            {dpiQuality === '300dpi' && (
+                              <span className="text-zinc-300">
+                                {isEs
+                                  ? 'Calidad editorial 300 DPI (~2480×1754 px). Ideal para documentos legales e imprenta.'
+                                  : 'Editorial 300 DPI quality (~2480×1754 px). Ideal for legal and document printing.'}
+                              </span>
+                            )}
+                            {dpiQuality === '150dpi' && (
+                              <span className="text-zinc-300">
+                                {isEs
+                                  ? 'Definición Full HD 150 DPI (~1654×1170 px). Excelente balance de nitidez y peso.'
+                                  : 'Full HD 150 DPI (~1654×1170 px). Balanced sharpness and file size.'}
+                              </span>
+                            )}
+                            {dpiQuality === '72dpi' && (
+                              <span className="text-zinc-300">
+                                {isEs
+                                  ? 'Estándar Web 72 DPI (~842×595 px). Archivos ligeros para web y mensajería.'
+                                  : 'Web standard 72 DPI (~842×595 px). Lightweight files for web & quick messaging.'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2260,13 +2688,13 @@ export default function JpgPdfConverter({ defaultMode = 'pdf-to-jpg' }: JpgPdfCo
                                 ? targetPages.length === 0
                                   ? 'Selecciona al menos 1 página'
                                   : targetPages.length === 1
-                                    ? `Exportar 1 Página a .${imgFormat === 'jpeg' ? 'jpg' : imgFormat} →`
-                                    : `Exportar ${targetPages.length} Páginas a ZIP (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`
+                                    ? `Exportar 1 Página en ${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality} (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`
+                                    : `Exportar ${targetPages.length} Páginas a ZIP en ${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality} (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`
                                 : targetPages.length === 0
                                   ? 'Select at least 1 page'
                                   : targetPages.length === 1
-                                    ? `Export 1 Page to .${imgFormat === 'jpeg' ? 'jpg' : imgFormat} →`
-                                    : `Export ${targetPages.length} Pages to ZIP (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`}
+                                    ? `Export 1 Page in ${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality} (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`
+                                    : `Export ${targetPages.length} Pages to ZIP in ${dpiQuality === '4k' ? '4K Ultra HD' : dpiQuality} (.${imgFormat === 'jpeg' ? 'jpg' : imgFormat}) →`}
                       </span>
                     </button>
                   )}

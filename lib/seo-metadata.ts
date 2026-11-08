@@ -132,20 +132,26 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       keywordsEn: ['convert powerpoint to pdf', 'pptx to pdf free', 'slides to pdf'],
     },
     'pdf-jpg': {
-      titleEs: 'Convertir PDF a JPG Gratis Online — Extraer Fotos | PDFBlack',
-      titleEn: 'Convert PDF to JPG Free Online — Extract Images | PDFBlack',
+      titleEs: 'Convertir PDF a JPG y 4K Ultra HD Gratis — Extraer Fotos | PDFBlack',
+      titleEn: 'Convert PDF to JPG & 4K Ultra HD Free — Extract Images | PDFBlack',
       descEs:
-        'Convierte páginas de PDF a imágenes JPG y PNG nítidas en alta definición (300 DPI) con descarga individual o en paquete ZIP.',
+        'Convierte páginas de PDF a imágenes JPG, PNG y WebP en 4K Ultra HD (3840px) y 300 DPI. Selecciona páginas en galería visual con descarga individual o en ZIP 100% privado.',
       descEn:
-        'Convert PDF pages into high-resolution JPG and PNG images (up to 300 DPI). Download individual images or a unified ZIP.',
+        'Convert PDF pages into crystal-clear 4K Ultra HD (3840px) & 300 DPI images (JPG, PNG, WebP). Select custom pages via visual gallery with instant ZIP or single download.',
       keywordsEs: [
         'convertir pdf a jpg',
+        'convertir pdf a 4k',
+        'pdf a imagen 4k',
+        'pasar pdf a jpg 4k',
         'pdf a imagen gratis',
         'extraer fotos de pdf',
-        'pdf a png',
+        'pdf a png alta resolucion',
       ],
       keywordsEn: [
         'convert pdf to jpg',
+        'convert pdf to 4k',
+        'pdf to 4k image',
+        'pdf to 4k jpg',
         'pdf to image free',
         'pdf to png online',
         'extract images from pdf',

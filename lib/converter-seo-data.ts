@@ -462,64 +462,95 @@ export const CONVERTER_SEO_DATA: Record<string, ConverterSeoSectionProps> = {
   'pdf-jpg': {
     toolKey: 'pdf-jpg',
     sourceFormat: 'PDF',
-    targetFormat: 'Imágenes (JPG / PNG)',
-    titleEs: 'Convertir PDF a JPG / PNG Online Gratis',
-    titleEn: 'Convert PDF to JPG / PNG Online Free',
+    targetFormat: 'Imágenes (JPG / PNG / WebP 4K)',
+    titleEs: 'Convertir PDF a JPG y 4K Ultra HD Online Gratis',
+    titleEn: 'Convert PDF to JPG & 4K Ultra HD Online Free',
     descriptionEs:
-      'Convierte páginas de documentos PDF en imágenes de alta calidad (JPG, PNG o WebP) o extrae todas las fotos individuales en un archivo comprimido .ZIP.',
+      'Convierte páginas de documentos PDF en imágenes 4K Ultra HD (3840 px) y 300 DPI (JPG, PNG o WebP). Selecciona páginas visualmente en galería o por rangos y descarga en ZIP 100% privado en memoria.',
     descriptionEn:
-      'Convert PDF document pages into high-quality images (JPG, PNG, or WebP) or extract all individual photos in a compressed .ZIP file.',
+      'Convert PDF pages into crystal-clear 4K Ultra HD (3840 px) and 300 DPI images (JPG, PNG, or WebP). Select pages visually via thumbnail gallery and download in a ZIP 100% private in memory.',
     stepsEs: [
       {
         title: 'Sube tu documento PDF',
-        desc: 'Selecciona el PDF que contiene las páginas o imágenes.',
+        desc: 'Selecciona el PDF que contiene las páginas o diapositivas a convertir.',
       },
       {
-        title: 'Elige el formato y calidad',
-        desc: 'Selecciona JPG, PNG (con transparencia) o WebP a 300 DPI.',
+        title: 'Elige páginas y resolución 4K',
+        desc: 'Selecciona páginas en la galería visual y escoge calidad 4K UHD (3840 px) o 300 DPI.',
       },
       {
         title: 'Descarga tus imágenes',
-        desc: 'Descarga la imagen individual o un archivo .ZIP con todas las páginas.',
+        desc: 'Descarga la imagen individual o un archivo .ZIP con todas las páginas seleccionadas.',
       },
     ],
     stepsEn: [
-      { title: 'Upload your PDF document', desc: 'Select the PDF containing pages or images.' },
       {
-        title: 'Choose format & quality',
-        desc: 'Select JPG, PNG (with transparency), or WebP at 300 DPI.',
+        title: 'Upload your PDF document',
+        desc: 'Select the PDF containing pages or presentation slides.',
+      },
+      {
+        title: 'Choose pages & 4K quality',
+        desc: 'Pick pages in the visual gallery and select 4K UHD (3840 px) or 300 DPI.',
       },
       {
         title: 'Download your images',
-        desc: 'Download single image or a .ZIP archive with all pages.',
+        desc: 'Download single image or a .ZIP archive with all selected pages.',
       },
     ],
     featuresEs: [
-      { title: 'Resolución de 300 DPI', desc: 'Nitidez profesional apta para diseño o impresión.' },
       {
-        title: 'Empaquetado en ZIP',
-        desc: 'Descarga todas las páginas numeradas en un solo clic.',
+        title: 'Resolución 4K Ultra HD',
+        desc: 'Renderizado vectorial a ~3840 × 2160 px para presentaciones y pantallas gigantes.',
       },
       {
-        title: 'Selector de Páginas',
-        desc: 'Elige solo las páginas que realmente necesitas exportar.',
+        title: 'Selector Visual de Páginas',
+        desc: 'Galería interactiva para marcar qué páginas exportar o definir rangos personalizados.',
+      },
+      {
+        title: 'Empaquetado en ZIP',
+        desc: 'Descarga todas las páginas numeradas en un solo paquete comprimido instantáneo.',
       },
     ],
     featuresEn: [
-      { title: '300 DPI Resolution', desc: 'Professional sharpness suitable for design or print.' },
-      { title: 'ZIP Packaging', desc: 'Download all numbered pages in a single click.' },
-      { title: 'Page Selector', desc: 'Choose only the specific pages you actually need.' },
+      {
+        title: '4K Ultra HD Resolution',
+        desc: 'Vector rendering at ~3840 × 2160 px for high-end displays and presentations.',
+      },
+      {
+        title: 'Visual Page Selector',
+        desc: 'Interactive thumbnail gallery to select custom pages or define ranges.',
+      },
+      {
+        title: 'ZIP Packaging',
+        desc: 'Download all numbered pages in a single compressed archive.',
+      },
     ],
     faqsEs: [
       {
+        q: '¿Cómo convierto un PDF a imagen 4K sin perder calidad?',
+        a: 'En PDFBlack selecciona la opción ✨ 4K UHD (3840 px). El motor vectorial procesa el documento en tu navegador a un factor de escala 4.5x, produciendo imágenes ultra nítidas de aproximadamente 3840 × 2160 píxeles sin marcas de agua ni compresión destructiva.',
+      },
+      {
+        q: '¿Puedo elegir páginas específicas para exportar a imagen?',
+        a: 'Sí. Puedes hacer clic en la pestaña «Galería de Páginas» para marcar o desmarcar hojas visualmente con miniaturas en tiempo real, o utilizar el modo «Rango» (ej: 1-5, 8, 12) o filtros de páginas pares e impares.',
+      },
+      {
         q: '¿Qué diferencia hay entre JPG y PNG?',
-        a: 'JPG ofrece menor peso de archivo, mientras que PNG ofrece máxima nitidez sin compresión destructiva.',
+        a: 'JPG ofrece menor peso de archivo ideal para fotos, mientras que PNG ofrece máxima nitidez sin pérdidas ideal para planos, firmas y texto.',
       },
     ],
     faqsEn: [
       {
+        q: 'How do I convert a PDF to a 4K image without losing quality?',
+        a: 'In PDFBlack, select the ✨ 4K UHD (3840 px) option. The vector rendering engine processes the file in-browser at 4.5x scale, generating razor-sharp ~3840 × 2160 px images with zero watermarks or lossy blur.',
+      },
+      {
+        q: 'Can I pick specific pages to convert?',
+        a: 'Yes. Switch to the «Page Gallery» to visually toggle individual sheets, or choose «Range» (e.g. 1-5, 8, 12) or even/odd page filters.',
+      },
+      {
         q: 'What is the difference between JPG and PNG?',
-        a: 'JPG offers smaller file size, while PNG delivers maximum clarity with lossless compression.',
+        a: 'JPG offers smaller file sizes, while PNG delivers maximum clarity with lossless compression for schematics and fine text.',
       },
     ],
   },

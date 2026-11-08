@@ -2359,254 +2359,209 @@ export default function PowerPointPdfConverter({
                   </div>
                 </div>
 
-                {/* SELECTOR VISUAL DE MOTOR DE CONVERSIÓN EN 2X2 */}
-                <div className="bg-[#121217] p-3.5 sm:p-4 rounded-2xl border border-zinc-700/80 space-y-2.5 font-mono text-xs shadow-inner">
-                  <div className="flex items-center justify-between">
-                    <label className="text-zinc-200 font-bold flex items-center gap-1.5 text-xs">
-                      <Cpu className="w-4 h-4 text-orange-400" />
-                      <span>
+                {/* CONFIGURACIÓN DEL MODO DE PRESENTACIÓN Y FIDELIDAD */}
+                {mode === 'pdf-to-powerpoint' ? (
+                  <div className="bg-[#121217] p-4 sm:p-5 rounded-2xl border border-zinc-700/80 space-y-4 font-mono text-xs shadow-inner">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="text-zinc-200 font-bold flex items-center gap-2 text-xs font-sans">
+                        <Sparkles className="w-4 h-4 text-orange-400" />
+                        <span>
+                          {isEs
+                            ? 'Modo de Generación de Diapositivas PPTX'
+                            : 'PPTX Slide Generation Mode'}
+                        </span>
+                      </label>
+                      <span className="text-[10px] text-zinc-400 font-mono flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                         {isEs
-                          ? 'Motor de Presentaciones PowerPoint'
-                          : 'PowerPoint Presentation Engine'}
+                          ? 'Reconstrucción Vectorial Asistida'
+                          : 'Assisted Vector Reconstruction'}
                       </span>
-                    </label>
-                    <span className="text-[10px] text-zinc-400 font-mono">
-                      {isEs ? '5 Motores Disponibles' : '5 Engines Available'}
-                    </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* MODO 1: VECTORIAL EDITABLE INTELIGENTE */}
+                      <button
+                        type="button"
+                        onClick={() => setConversionEngine('auto')}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                          conversionEngine !== 'ocr'
+                            ? 'bg-gradient-to-r from-orange-950/60 via-amber-950/30 to-zinc-900 border-orange-400 ring-2 ring-orange-400/50 shadow-lg'
+                            : 'bg-zinc-900/90 border-zinc-700/80 hover:border-zinc-500 opacity-80 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-bold text-white flex items-center gap-2 text-xs sm:text-sm font-sans">
+                            <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+                            <span>
+                              {isEs
+                                ? 'Diapositivas Editables (Recomendado)'
+                                : 'Editable Slides (Recommended)'}
+                            </span>
+                          </span>
+                          <span className="text-[9px] sm:text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            {isEs ? 'Texto y Formas Nativas' : 'Native Text & Shapes'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed font-mono">
+                          {isEs
+                            ? 'Convierte automáticamente el PDF en diapositivas con textos, cajas y tipografías editables directamente en PowerPoint.'
+                            : 'Automatically converts the PDF into slides with editable text, boxes, and typography in PowerPoint.'}
+                        </p>
+                      </button>
+
+                      {/* MODO 2: OCR PARA ESCANEADOS */}
+                      <button
+                        type="button"
+                        onClick={() => setConversionEngine('ocr')}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 relative ${
+                          conversionEngine === 'ocr'
+                            ? 'bg-gradient-to-r from-amber-950/60 via-orange-950/30 to-zinc-900 border-amber-400 ring-2 ring-amber-400/50 shadow-lg'
+                            : 'bg-zinc-900/90 border-zinc-700/80 hover:border-zinc-500 opacity-80 hover:opacity-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-bold text-white flex items-center gap-2 text-xs sm:text-sm font-sans">
+                            <Eye className="w-4 h-4 text-amber-400" />
+                            <span>
+                              {isEs
+                                ? 'Reconocimiento OCR (Para Escaneados)'
+                                : 'OCR Recognition (For Scans)'}
+                            </span>
+                          </span>
+                          <span className="text-[9px] sm:text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            {isEs ? 'Visión Computacional' : 'Computer Vision'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed font-mono">
+                          {isEs
+                            ? 'Especial para PDFs que son fotos, escaneos físicos o imágenes. Extrae el texto mediante OCR y lo coloca en capas editables.'
+                            : 'Specially for PDFs that are photos, scans, or images. Extracts text via OCR into editable layers.'}
+                        </p>
+                      </button>
+                    </div>
+
+                    {/* FORMATO DE MAQUETACIÓN PPTX (VISIBLE EN MODO EDITABLE) */}
+                    {conversionEngine !== 'ocr' && (
+                      <div className="pt-3 border-t border-zinc-800/80">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                          <span className="text-[11px] font-bold text-zinc-300 flex items-center gap-1.5 font-sans">
+                            <span>
+                              🎨{' '}
+                              {isEs
+                                ? 'Estilo de Maquetación de Diapositiva:'
+                                : 'Slide Layout Style:'}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPptxTextMode('hybrid')}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                              pptxTextMode === 'hybrid'
+                                ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm ring-1 ring-orange-400/30'
+                                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-xs font-bold block">
+                              ✨ {isEs ? 'Híbrido Inteligente' : 'Smart Hybrid'}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
+                              {isEs
+                                ? 'Fondo HD + Cajas editables nativas'
+                                : 'HD Background + Native editable boxes'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPptxTextMode('native')}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                              pptxTextMode === 'native'
+                                ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm ring-1 ring-orange-400/30'
+                                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-xs font-bold block">
+                              📄 {isEs ? 'Nativo Vectorial' : 'Native Vector'}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
+                              {isEs
+                                ? 'Cajas limpias y viñetas (peso pluma)'
+                                : 'Clean text boxes & bullets (lightweight)'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPptxTextMode('raster')}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                              pptxTextMode === 'raster'
+                                ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm ring-1 ring-orange-400/30'
+                                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-xs font-bold block">
+                              🖼️ {isEs ? 'Lámina HD' : 'HD Slide'}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
+                              {isEs
+                                ? 'Fidelidad visual 100% pixel a pixel'
+                                : '100% pixel-perfect raster'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* BADGE DE SEGURIDAD Y COMPATIBILIDAD */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-mono">
+                      <span className="flex items-center gap-1.5 text-zinc-300">
+                        <ShieldCheck className="w-4 h-4 text-orange-400 shrink-0" />
+                        <span>
+                          {isEs
+                            ? 'Motor Inteligente con Auto-Failover • Procesamiento Seguro Zero-Knowledge'
+                            : 'Smart Engine with Auto-Failover • Secure Zero-Knowledge Processing'}
+                        </span>
+                      </span>
+                      <span className="text-zinc-500">
+                        {isEs
+                          ? '100% Compatible con PowerPoint & Office 365'
+                          : '100% Compatible with PowerPoint & Office 365'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* OPCIÓN 0: MODO INTELIGENTE MULTI-MOTOR (AUTO) */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('auto')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative md:col-span-2 ${
-                        conversionEngine === 'auto'
-                          ? 'bg-gradient-to-r from-orange-950/60 via-amber-950/40 to-zinc-900 border-orange-400 ring-2 ring-orange-400/50 shadow-lg'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-85 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-2 text-xs sm:text-sm font-sans">
-                          <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+                ) : (
+                  /* MODO POWERPOINT A PDF: BADGE CORPORATIVO DE FIDELIDAD */
+                  <div className="bg-[#121217] p-3.5 sm:p-4 rounded-2xl border border-zinc-700/80 font-mono text-xs shadow-inner flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-4 h-4 text-orange-400" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-white text-xs sm:text-sm font-sans flex items-center gap-2">
                           <span>
-                            🚀{' '}
                             {isEs
-                              ? 'Modo Inteligente Multi-Motor (Recomendado)'
-                              : 'Smart Multi-Engine Mode (Recommended)'}
+                              ? 'Conversor Vectorial PowerPoint a PDF'
+                              : 'Vector PowerPoint to PDF Converter'}
                           </span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-300 border border-orange-500/40">
+                            ISO 32000
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
                           {isEs
-                            ? '100% Éxito Garantizado • Auto Failover'
-                            : '100% Guaranteed • Auto Failover'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-300 leading-relaxed font-mono">
-                        {isEs
-                          ? 'Enruta automáticamente la presentación a través del mejor motor disponible: Adobe Acrobat Services Oficial, Motor Nativo Office COM/LibreOffice o CloudConvert, con respaldo ultra-resistente OpenXML garantizado.'
-                          : 'Automatically routes the presentation through the best available engine: Official Adobe Acrobat Services, Native Office COM/LibreOffice or CloudConvert, with guaranteed OpenXML fallback.'}
-                      </p>
-                    </button>
-                    {/* OPCIÓN 1: ADOBE ACROBAT SERVICES */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('adobe')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'adobe'
-                          ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>
-                            🏆 {isEs ? 'Adobe Acrobat Pro (Nube)' : 'Adobe Acrobat Pro (Cloud)'}
-                          </span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                          {isEs ? 'Alta Fidelidad' : 'High Fidelity'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Máxima fidelidad oficial de Adobe en diapositivas, textos vectoriales, fuentes y gráficos.'
-                          : 'Official Adobe fidelity for slides, vector texts, fonts & graphics.'}
-                      </p>
-                    </button>
-
-                    {/* OPCIÓN 2: CLOUDCONVERT API */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('cloudconvert')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'cloudconvert'
-                          ? 'bg-cyan-950/50 border-cyan-400 ring-1 ring-cyan-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🌐 {isEs ? 'CloudConvert (Nube)' : 'CloudConvert (Cloud)'}</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                          {isEs ? 'Procesamiento Cloud' : 'Cloud Engine'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {isEs
-                          ? 'Motor en la nube de alto rendimiento. Convierte presentaciones con maquetación fiel en PPTX.'
-                          : 'High-performance cloud engine. Faithful presentation layout into PPTX.'}
-                      </p>
-                    </button>
-
-                    {/* OPCIÓN 3: MOTOR LOCAL NATIVO */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('local')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'local'
-                          ? 'bg-orange-950/50 border-orange-400 ring-1 ring-orange-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>
-                            {mode === 'pdf-to-powerpoint'
-                              ? isEs
-                                ? '⚡ Motor Local PptxGen'
-                                : '⚡ Local PptxGen Engine'
-                              : isEs
-                                ? '⚡ Motor Local Nativo Office'
-                                : '⚡ Native Local Office Engine'}
-                          </span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                          {mode === 'pdf-to-powerpoint'
-                            ? isEs
-                              ? 'Instantáneo (~0.5s)'
-                              : 'Instant (~0.5s)'
-                            : isEs
-                              ? 'Nativo Windows'
-                              : 'Native Windows'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {mode === 'pdf-to-powerpoint'
-                          ? isEs
-                            ? 'Compilación directa en memoria 100% privada sin subir datos a servidores externos.'
-                            : '100% private in-memory compilation without uploading files externally.'
-                          : isEs
-                            ? 'Conversión ultrarrápida con 100% fidelidad de Microsoft PowerPoint en tu equipo.'
-                            : 'Ultra-fast conversion with 100% Microsoft PowerPoint fidelity on your machine.'}
-                      </p>
-                    </button>
-
-                    {/* OPCIÓN 4: MOTOR OCR RECONSTRUCTOR DE ESCANEADOS */}
-                    <button
-                      type="button"
-                      onClick={() => setConversionEngine('ocr')}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 relative ${
-                        conversionEngine === 'ocr'
-                          ? 'bg-amber-950/50 border-amber-400 ring-1 ring-amber-400/50 shadow-md'
-                          : 'bg-zinc-900/90 border-zinc-700 hover:border-zinc-500 opacity-75 hover:opacity-100'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                          <span>🔍 {isEs ? 'Motor OCR Escaneados' : 'Scanned OCR Engine'}</span>
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                          Tesseract OCR
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-400 leading-relaxed">
-                        {mode === 'pdf-to-powerpoint'
-                          ? isEs
-                            ? 'Reconoce y extrae texto de fotos, capturas o PDFs escaneados para crear diapositivas editables.'
-                            : 'Recognizes & extracts text from photos, screenshots & scanned PDFs into editable slides.'
-                          : isEs
-                            ? 'Genera PDF con indexación de búsqueda OCR completa en diagramas y capturas de diapositivas.'
-                            : 'Generates PDF with full OCR search indexing for slide diagrams & screenshots.'}
-                      </p>
-                    </button>
-                  </div>
-
-                  {/* SUB-AJUSTE: ESTILO DE DIAPOSITIVA (SOLO MOTOR LOCAL) */}
-                  {mode === 'pdf-to-powerpoint' && (
-                    <div className="bg-[#0e0e13] border border-orange-500/20 rounded-2xl p-3.5 mt-3 shadow-inner">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5 font-sans">
-                          <Sparkles className="w-4 h-4 text-orange-400" />
-                          {isEs
-                            ? '⚙️ Formato de Diapositiva (Sub-ajuste del Motor Local)'
-                            : '⚙️ Slide Format (Local Engine Sub-setting)'}
-                        </span>
-                        <span className="text-[10px] text-zinc-400 font-mono bg-zinc-800/80 px-2 py-0.5 rounded border border-zinc-700">
-                          {isEs
-                            ? 'Ajuste de Formateo • No es un motor adicional'
-                            : 'Formatting Option • Not an additional engine'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPptxTextMode('hybrid')}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            pptxTextMode === 'hybrid'
-                              ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm'
-                              : 'bg-zinc-900 border-zinc-700/80 text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">
-                            ✨ {isEs ? 'Híbrido Inteligente' : 'Smart Hybrid'}
-                          </span>
-                          <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
-                            {isEs
-                              ? 'Fondo HD + Cajas editables nativas'
-                              : 'HD Background + Native editable boxes'}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPptxTextMode('native')}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            pptxTextMode === 'native'
-                              ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm'
-                              : 'bg-zinc-900 border-zinc-700/80 text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">
-                            📄 {isEs ? 'Nativo Vectorial' : 'Native Vector'}
-                          </span>
-                          <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
-                            {isEs
-                              ? 'Cajas limpias y viñetas (peso pluma)'
-                              : 'Clean text boxes & bullets (lightweight)'}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPptxTextMode('raster')}
-                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                            pptxTextMode === 'raster'
-                              ? 'bg-orange-950/60 border-orange-400 text-white shadow-sm'
-                              : 'bg-zinc-900 border-zinc-700/80 text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-xs font-bold block">
-                            🖼️ {isEs ? 'Lámina HD' : 'HD Slide'}
-                          </span>
-                          <span className="text-[10px] text-zinc-400 leading-tight block mt-0.5">
-                            {isEs
-                              ? 'Fidelidad visual 100% pixel a pixel'
-                              : '100% pixel-perfect raster'}
-                          </span>
-                        </button>
+                            ? 'Máxima fidelidad tipográfica, vectorizado de diapositivas y formato de impresión estándar.'
+                            : 'Maximum typographic fidelity, vector slides rendering, and standard print format.'}
+                        </p>
                       </div>
                     </div>
-                  )}
-                </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span className="text-[10px] px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700/80 text-zinc-300 font-mono">
+                        ⚡ {isEs ? 'Auto-Failover Activo' : 'Active Auto-Failover'}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* GRID DE OPCIONES MODULARES EN 3 COLUMNAS */}
                 {mode === 'pdf-to-powerpoint' ? (

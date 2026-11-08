@@ -14,7 +14,7 @@ const PowerPointPdfConverter = dynamic(() => import('@/components/PowerPointPdfC
           003 / CONVERSIÓN DE PRESENTACIONES POWERPOINT Y PDF
         </span>
         <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 font-sans uppercase">
-          <span>CONVERTIR PDF A POWERPOINT (PPTX EDITABLE)</span>
+          <span>CONVERTIR PDF A POWERPOINT Y DIAPOSITIVAS 4K (PPTX EDITABLE)</span>
         </h1>
       </div>
       <div className="flex flex-col items-center justify-center min-h-[460px] w-full border border-zinc-800 rounded-2xl bg-zinc-950/40 gap-4 font-mono">

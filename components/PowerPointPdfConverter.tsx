@@ -39,7 +39,7 @@ type ConversionDirection = 'powerpoint-to-pdf' | 'pdf-to-powerpoint';
 type AspectRatio = '16:9' | '4:3';
 type HandoutLayout = '1_per_page' | '2_per_page' | '4_per_page';
 type FitMode = 'contain' | 'cover';
-type RenderQuality = 'high' | 'ultra';
+type RenderQuality = 'high' | 'ultra' | '4k';
 type SlideTheme = 'white' | 'dark';
 type PageSelectionMode = 'all' | 'range' | 'custom' | 'even' | 'odd';
 
@@ -1467,7 +1467,6 @@ export default function PowerPointPdfConverter({
               cMapPacked: true,
             }).promise;
 
-            const renderScale = renderQuality === 'ultra' ? 2.5 : 2.0;
             const slideW = aspectRatio === '4:3' ? 10.0 : 13.33;
             const slideH = aspectRatio === '4:3' ? 7.5 : 7.5;
 
@@ -1479,12 +1478,25 @@ export default function PowerPointPdfConverter({
                     ? `Escaneando OCR diapositiva ${idx + 1} de ${totalToConvert}...`
                     : `OCR scanning slide ${idx + 1} of ${totalToConvert}...`
                   : isEs
-                    ? `Generando diapositiva ${idx + 1} de ${totalToConvert}...`
-                    : `Generating slide ${idx + 1} of ${totalToConvert}...`,
+                    ? `Generando diapositiva ${idx + 1} de ${totalToConvert}${renderQuality === '4k' ? ' en 4K Ultra HD...' : '...'}`
+                    : `Generating slide ${idx + 1} of ${totalToConvert}${renderQuality === '4k' ? ' in 4K Ultra HD...' : '...'}`,
               );
               setProgressPercent(10 + Math.round(((idx + 1) / totalToConvert) * 80));
 
               const page = await pdfDoc.getPage(pageNum);
+              const baseViewport = page.getViewport({ scale: 1.0 });
+
+              let renderScale = 2.0;
+              if (renderQuality === '4k') {
+                // Modo 4K Ultra HD: garantiza al menos 3840px en el lado largo para nitidez cinematográfica
+                const longEdge = Math.max(baseViewport.width, baseViewport.height);
+                renderScale = Math.max(3840 / Math.max(1, longEdge), 4.0);
+              } else if (renderQuality === 'ultra') {
+                renderScale = 2.5;
+              } else {
+                renderScale = 2.0;
+              }
+
               const viewport = page.getViewport({ scale: renderScale });
 
               const slide = pres.addSlide();
@@ -1501,8 +1513,14 @@ export default function PowerPointPdfConverter({
                 await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
                   typeof page.render
                 >[0]).promise;
-                const imgData = canvas.toDataURL('image/png', 0.95);
+                const imgData = canvas.toDataURL(
+                  renderQuality === '4k' ? 'image/jpeg' : 'image/png',
+                  renderQuality === '4k' ? 0.96 : 0.95,
+                );
                 slide.addImage({ data: imgData, x: 0, y: 0, w: '100%', h: '100%' });
+                // Liberar memoria GPU/VRAM de inmediato
+                canvas.width = 0;
+                canvas.height = 0;
               }
 
               // Si es Motor OCR, extraer palabras por visión con Tesseract
@@ -1624,7 +1642,19 @@ export default function PowerPointPdfConverter({
             for (let pIdx = 0; pIdx < pagesToExport.length; pIdx++) {
               const pNum = pagesToExport[pIdx];
               const page = await pdfDoc.getPage(pNum);
-              const viewport = page.getViewport({ scale: 2.0 });
+              const baseViewport = page.getViewport({ scale: 1.0 });
+
+              let renderScale = 2.0;
+              if (renderQuality === '4k') {
+                const longEdge = Math.max(baseViewport.width, baseViewport.height);
+                renderScale = Math.max(3840 / Math.max(1, longEdge), 4.0);
+              } else if (renderQuality === 'ultra') {
+                renderScale = 2.5;
+              } else {
+                renderScale = 2.0;
+              }
+
+              const viewport = page.getViewport({ scale: renderScale });
               const canvas = document.createElement('canvas');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
@@ -1635,9 +1665,15 @@ export default function PowerPointPdfConverter({
                 await page.render({ canvasContext: ctx, viewport } as unknown as Parameters<
                   typeof page.render
                 >[0]).promise;
-                const imgData = canvas.toDataURL('image/png', 0.9);
+                const imgData = canvas.toDataURL(
+                  renderQuality === '4k' ? 'image/jpeg' : 'image/png',
+                  renderQuality === '4k' ? 0.96 : 0.9,
+                );
                 const slide = pres.addSlide();
                 slide.addImage({ data: imgData, x: 0, y: 0, w: '100%', h: '100%' });
+                // Liberar memoria GPU/VRAM de inmediato
+                canvas.width = 0;
+                canvas.height = 0;
               }
             }
 
@@ -1749,8 +1785,8 @@ export default function PowerPointPdfConverter({
                   ? 'CONVERTIR POWERPOINT A PDF'
                   : 'CONVERT POWERPOINT TO PDF'
                 : isEs
-                  ? 'CONVERTIR PDF A POWERPOINT (CONVERSOR DUAL 2 EN 1)'
-                  : 'CONVERT PDF TO POWERPOINT (2-IN-1 DUAL CONVERTER)'}
+                  ? 'CONVERTIR PDF A POWERPOINT Y DIAPOSITIVAS 4K'
+                  : 'CONVERT PDF TO POWERPOINT & 4K SLIDES'}
             </h1>
           </div>
         </div>
@@ -1941,8 +1977,8 @@ export default function PowerPointPdfConverter({
                     ? 'CONVERTIR PRESENTACIÓN POWERPOINT A PDF'
                     : 'CONVERT POWERPOINT PRESENTATION TO PDF'
                   : isEs
-                    ? 'CONVERTIR PDF A PRESENTACIÓN POWERPOINT'
-                    : 'CONVERT PDF TO POWERPOINT PRESENTATION'}
+                    ? 'CONVERTIR PDF A PRESENTACIÓN POWERPOINT Y DIAPOSITIVAS 4K'
+                    : 'CONVERT PDF TO POWERPOINT & 4K SLIDES'}
               </h2>
               <p className="text-zinc-400 text-xs sm:text-sm font-mono mb-8 max-w-xl leading-relaxed">
                 {mode === 'powerpoint-to-pdf'
@@ -1950,8 +1986,8 @@ export default function PowerPointPdfConverter({
                     ? 'Transforma archivos PowerPoint (.pptx) en documentos PDF vectoriales con alta definición y hasta 3 cajas independientes en tu memoria RAM.'
                     : 'Transform PowerPoint files (.pptx) into vector PDF documents with high definition and up to 3 parallel slots in RAM.'
                   : isEs
-                    ? 'Transforma páginas PDF a diapositivas PowerPoint (.pptx) con previsualización al 50% y máxima confidencialidad en tu memoria RAM.'
-                    : 'Transform PDF pages into PowerPoint slides (.pptx) with 50% split preview and maximum in-RAM privacy.'}
+                    ? 'Transforma páginas PDF a diapositivas PowerPoint (.pptx) editables en calidad 4K Ultra HD y máxima confidencialidad en tu memoria RAM.'
+                    : 'Transform PDF pages into editable PowerPoint slides (.pptx) in 4K Ultra HD quality with maximum in-RAM privacy.'}
               </p>
               <button
                 type="button"
@@ -2757,35 +2793,58 @@ export default function PowerPointPdfConverter({
                     {/* COLUMNA 3: NITIDEZ, TEMA Y NUMERACIÓN */}
                     <div className="bg-[#121217] p-4 rounded-2xl border border-zinc-700/80 space-y-3 shadow-inner flex flex-col justify-between">
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-zinc-300 font-bold flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-orange-400" />
-                            {isEs ? 'Nitidez / Calidad' : 'Sharpness'}
-                          </label>
-                          <div className="flex gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setRenderQuality('high')}
-                              className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                                renderQuality === 'high'
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                              }`}
-                            >
-                              HD 2X
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setRenderQuality('ultra')}
-                              className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                                renderQuality === 'ultra'
-                                  ? 'bg-white text-black border-white'
-                                  : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
-                              }`}
-                            >
-                              Ultra HD
-                            </button>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-zinc-300 font-bold flex items-center gap-1.5">
+                              <Sparkles className="w-4 h-4 text-orange-400" />
+                              {isEs ? 'Nitidez / Calidad' : 'Sharpness'}
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setRenderQuality('high')}
+                                className={`py-1 px-1.5 sm:px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                  renderQuality === 'high'
+                                    ? 'bg-white text-black border-white shadow-sm'
+                                    : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                                }`}
+                              >
+                                HD
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRenderQuality('ultra')}
+                                className={`py-1 px-1.5 sm:px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                  renderQuality === 'ultra'
+                                    ? 'bg-white text-black border-white shadow-sm'
+                                    : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-white'
+                                }`}
+                              >
+                                FHD
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRenderQuality('4k')}
+                                className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                                  renderQuality === '4k'
+                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-amber-400 shadow-md ring-1 ring-amber-400/50'
+                                    : 'bg-zinc-900 text-amber-300 border-amber-500/40 hover:border-amber-400'
+                                }`}
+                              >
+                                <span>✨ 4K UHD</span>
+                              </button>
+                            </div>
                           </div>
+                          {renderQuality === '4k' && (
+                            <div className="text-[10px] text-amber-300 font-mono bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1.5">
+                              <span>🖥️</span>
+                              <span>
+                                {isEs
+                                  ? '3840×2160 px • Ultra HD para proyectores y pantallas 4K'
+                                  : '3840×2160 px • Ultra HD for 4K displays & projectors'}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between">

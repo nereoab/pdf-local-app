@@ -353,60 +353,102 @@ export const CONVERTER_SEO_DATA: Record<string, ConverterSeoSectionProps> = {
     toolKey: 'pdf-powerpoint',
     sourceFormat: 'PDF',
     targetFormat: 'PowerPoint (.pptx)',
-    titleEs: 'Convertir PDF a PowerPoint Online (Diapositivas PPTX)',
-    titleEn: 'Convert PDF to PowerPoint Online (PPTX Slides)',
+    titleEs: 'Convertir PDF a PowerPoint Online (Diapositivas 4K y PPTX Editable)',
+    titleEn: 'Convert PDF to PowerPoint Online (4K Slides & Editable PPTX)',
     descriptionEs:
-      'Convierte tus presentaciones en PDF a diapositivas editables de PowerPoint (.pptx). Cada página se convierte en una diapositiva con texto, formas e imágenes modificables.',
+      'Convierte tus presentaciones en PDF a diapositivas editables de PowerPoint (.pptx) con calidad cinematográfica 4K Ultra HD (3840px). Cada página se convierte en una diapositiva con texto, formas nativas y fondos en máxima resolución.',
     descriptionEn:
-      'Convert your PDF presentations into editable PowerPoint slides (.pptx). Each page turns into a slide with modifiable text, shapes, and images.',
+      'Convert your PDF presentations into editable PowerPoint slides (.pptx) with cinematic 4K Ultra HD (3840px) quality. Each page turns into an independent slide with native text, shapes, and ultra-high-definition backgrounds.',
     stepsEs: [
-      { title: 'Sube tu presentación PDF', desc: 'Carga tus diapositivas o catálogo en PDF.' },
       {
-        title: 'Reconstrucción PPTX',
-        desc: 'Generamos diapositivas 16:9 o 4:3 con elementos vectoriales.',
+        title: 'Sube tu presentación PDF',
+        desc: 'Carga tus diapositivas o catálogo en PDF de forma 100% privada.',
+      },
+      {
+        title: 'Calidad 4K y Reconstrucción PPTX',
+        desc: 'Elige nitidez 4K Ultra HD (3840px), proporción 16:9 o 4:3 y estilo de maquetación.',
       },
       {
         title: 'Descarga y Expón',
-        desc: 'Abre tu archivo en Microsoft PowerPoint o Google Slides.',
+        desc: 'Abre tu presentación lista para editar en Microsoft PowerPoint o Google Slides.',
       },
     ],
     stepsEn: [
-      { title: 'Upload your PDF presentation', desc: 'Upload your slides or PDF catalog.' },
       {
-        title: 'PPTX Reconstruction',
-        desc: 'We generate 16:9 or 4:3 slides with vector elements.',
+        title: 'Upload your PDF presentation',
+        desc: 'Upload your slides or PDF document with 100% in-RAM privacy.',
+      },
+      {
+        title: '4K Quality & PPTX Reconstruction',
+        desc: 'Choose 4K Ultra HD (3840px) sharpness, 16:9 or 4:3 ratio, and slide layout style.',
       },
       {
         title: 'Download & Present',
-        desc: 'Open your file in Microsoft PowerPoint or Google Slides.',
+        desc: 'Open your presentation ready to edit in Microsoft PowerPoint or Google Slides.',
       },
     ],
     featuresEs: [
-      { title: 'Formato Panorámico 16:9', desc: 'Adaptado a pantallas y proyectores modernos.' },
       {
-        title: 'Diapositivas Individuales',
-        desc: 'Cada página se organiza en una diapositiva independiente.',
+        title: 'Diapositivas en Calidad 4K Ultra HD',
+        desc: 'Resolución cinematográfica de 3840px para proyectores y pantallas 4K.',
       },
       {
-        title: 'Compatible con Google Slides',
-        desc: 'Importa tu archivo .pptx directamente a la nube.',
+        title: 'Formato Panorámico 16:9 y 4:3',
+        desc: 'Adaptado a pantallas modernas de conferencias sin deformar contenidos.',
+      },
+      {
+        title: 'Textos y Formas Editables',
+        desc: 'Reconstrucción vectorial para modificar tipografías, colores y párrafos libremente.',
+      },
+      {
+        title: 'Compatible con PowerPoint & Google Slides',
+        desc: 'Archivos .pptx nativos compatibles con Microsoft 365, Office y Google Slides.',
       },
     ],
     featuresEn: [
-      { title: 'Widescreen 16:9 Format', desc: 'Tailored for modern displays and projectors.' },
-      { title: 'Individual Slides', desc: 'Each page is organized onto an independent slide.' },
-      { title: 'Google Slides Compatible', desc: 'Import your .pptx file directly to the cloud.' },
+      {
+        title: '4K Ultra HD Slide Quality',
+        desc: 'Cinematic 3840px resolution for high-end displays and 4K projectors.',
+      },
+      {
+        title: 'Widescreen 16:9 & 4:3 Ratios',
+        desc: 'Tailored for modern conference displays without aspect ratio distortion.',
+      },
+      {
+        title: 'Editable Text & Vector Shapes',
+        desc: 'Vector reconstruction to freely modify fonts, colors, and paragraphs.',
+      },
+      {
+        title: 'Google Slides & PowerPoint Compatible',
+        desc: 'Native .pptx files fully compatible with Microsoft 365 and Google Slides.',
+      },
     ],
     faqsEs: [
       {
-        q: '¿Puedo editar los textos en PowerPoint?',
-        a: 'Sí, con el motor de Adobe Acrobat los textos y títulos quedan listos para editar.',
+        q: '¿Cómo funciona la conversión de diapositivas a 4K Ultra HD?',
+        a: 'Al seleccionar la opción 4K UHD, el conversor procesa y renderiza los elementos visuales a resolución ultra alta de 3840px. Esto garantiza una nitidez cristalina en salas de reuniones, proyectores de gran escala y pantallas 4K.',
+      },
+      {
+        q: '¿Puedo editar los textos en PowerPoint después de convertir?',
+        a: 'Sí, las diapositivas generadas cuentan con cajas de texto y capas independientes para que puedas cambiar palabras, tipografías y colores en Microsoft PowerPoint.',
+      },
+      {
+        q: '¿Sirve para documentos PDF escaneados?',
+        a: 'Sí, el conversor incluye un modo OCR integrado que detecta automáticamente el texto en imágenes o escaneos físicos para hacerlo editable.',
       },
     ],
     faqsEn: [
       {
-        q: 'Can I edit the text in PowerPoint?',
-        a: 'Yes, with the Adobe Acrobat engine, texts and titles are fully editable.',
+        q: 'How does 4K Ultra HD slide conversion work?',
+        a: 'When 4K UHD is selected, our engine renders slide elements at an ultra-sharp 3840px resolution, guaranteeing crisp presentation quality on 4K projectors and boardroom monitors.',
+      },
+      {
+        q: 'Can I edit the text in PowerPoint after converting?',
+        a: 'Yes, generated slides include independent text boxes and native layers so you can edit words, fonts, and colors in Microsoft PowerPoint.',
+      },
+      {
+        q: 'Does it support scanned PDF documents?',
+        a: 'Yes, the converter includes an integrated OCR engine that recognizes text from photos or scans into editable slide layers.',
       },
     ],
   },

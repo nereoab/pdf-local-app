@@ -104,18 +104,28 @@ export const TOOLS_METADATA_REGISTRY: Record<string, Record<string, ToolSeoInfo>
       ],
     },
     'pdf-powerpoint': {
-      titleEs: 'Convertir PDF a PowerPoint Gratis — Diapositivas | PDFBlack',
-      titleEn: 'Convert PDF to PowerPoint Free Online — Slides | PDFBlack',
+      titleEs: 'Convertir PDF a PowerPoint y Diapositivas 4K Gratis — PPTX Editable | PDFBlack',
+      titleEn: 'Convert PDF to PowerPoint & 4K Slides Free Online — Editable PPTX | PDFBlack',
       descEs:
-        'Transforma cada página de tu PDF en diapositivas editables de PowerPoint (.pptx) con imágenes y textos independientes.',
+        'Convierte archivos PDF en presentaciones PowerPoint (.pptx) editables con calidad 4K Ultra HD (3840px). Textos, fuentes nativas y diapositivas panorámicas 16:9 sin límites.',
       descEn:
-        'Convert PDF pages into fully editable PowerPoint presentation slides (.pptx) with separate text boxes and images.',
+        'Convert PDF files into fully editable PowerPoint slides (.pptx) with crystal-clear 4K Ultra HD (3840px) quality. Native typography, vector text, and 16:9 widescreen layout.',
       keywordsEs: [
         'convertir pdf a powerpoint',
-        'pdf a pptx gratis',
-        'pdf a presentaciones online',
+        'pdf a powerpoint 4k',
+        'pdf a diapositivas 4k',
+        'pdf a pptx editable',
+        'pdf a powerpoint gratis',
+        'convertir presentacion pdf a pptx',
       ],
-      keywordsEn: ['convert pdf to powerpoint', 'pdf to pptx free', 'pdf to presentation slides'],
+      keywordsEn: [
+        'convert pdf to powerpoint',
+        'pdf to 4k slides',
+        'pdf to 4k powerpoint',
+        'editable pdf to pptx',
+        'free pdf to powerpoint',
+        'pdf to widescreen slides',
+      ],
     },
     'powerpoint-pdf': {
       titleEs: 'Convertir PowerPoint a PDF Gratis Online — PPTX | PDFBlack',
@@ -827,9 +837,14 @@ export const PORTUGUESE_TOOL_METADATA: Record<
     keywords: ['converter excel para pdf', 'excel para pdf gratis', 'salvar planilha em pdf'],
   },
   'pdf-powerpoint': {
-    title: 'Converter PDF para PowerPoint Online Grátis — Slides PPTX | PDFBlack',
-    desc: 'Transforme páginas de PDF em apresentações de slides editáveis do PowerPoint (.pptx).',
-    keywords: ['converter pdf para powerpoint', 'pdf para pptx', 'pdf para slides'],
+    title: 'Converter PDF para PowerPoint e Slides 4K Grátis — PPTX Editável | PDFBlack',
+    desc: 'Transforme páginas de PDF em apresentações de slides editáveis do PowerPoint (.pptx) com qualidade 4K Ultra HD.',
+    keywords: [
+      'converter pdf para powerpoint',
+      'pdf para powerpoint 4k',
+      'pdf para pptx',
+      'pdf para slides 4k',
+    ],
   },
   'powerpoint-pdf': {
     title: 'Converter PowerPoint para PDF Online Grátis — PPTX para PDF | PDFBlack',
